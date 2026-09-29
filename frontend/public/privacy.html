@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Policy | LazyMonkey FIT CLUB AI Gym & Fitness Management Platform</title>
+    <meta name="description" content="Comprehensive Privacy Policy and Biometric Data Governance Policy for LazyMonkey FIT CLUB AI Gym & Health Facility Management Systems.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #f8fafc;
+            --bg-secondary: #ffffff;
+            --bg-card: #f1f5f9;
+            --bg-card-hover: #e2e8f0;
+            --text-main: #0f172a;
+            --text-muted: #475569;
+            --text-subtle: #64748b;
+            --accent-primary: #ea580c;
+            --accent-hover: #c2410c;
+            --accent-emerald: #059669;
+            --accent-cyan: #0284c7;
+            --accent-rose: #e11d48;
+            --accent-amber: #d97706;
+            --border-color: #e2e8f0;
+            --glass-bg: rgba(255, 255, 255, 0.95);
+            --glass-border: #cbd5e1;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-main);
+            line-height: 1.7;
+            font-size: 15px;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Top Header */
+        header.site-header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--border-color);
+            padding: 18px 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .brand-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 800;
+            font-size: 1.25rem;
+            letter-spacing: -0.02em;
+            color: #0f172a;
+            text-decoration: none;
+        }
+
+        .brand-badge {
+            background: linear-gradient(135deg, var(--accent-primary), #f97316);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .last-updated {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            background: #f1f5f9;
+            padding: 6px 14px;
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+            font-weight: 600;
+        }
+
+        .btn-print {
+            background: #ffffff;
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+
+        .btn-print:hover {
+            background: var(--bg-card);
+            border-color: var(--accent-primary);
+        }
+
+        /* Layout Container */
+        .container {
+            max-width: 1440px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 40px;
+            padding: 40px;
+        }
+
+        /* Sticky Sidebar Navigation */
+        aside.sidebar {
+            position: sticky;
+            top: 90px;
+            height: calc(100vh - 120px);
+            overflow-y: auto;
+            padding-right: 15px;
+        }
+
+        aside.sidebar::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        aside.sidebar::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        .nav-title {
+            font-size: 0.75rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-subtle);
+            margin-bottom: 16px;
+        }
+
+        .toc-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .toc-link {
+            display: block;
+            padding: 8px 12px;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.88rem;
+            font-weight: 500;
+            border-radius: 6px;
+            transition: all 0.15s ease;
+            border-left: 2px solid transparent;
+        }
+
+        .toc-link:hover {
+            color: var(--text-main);
+            background: #f1f5f9;
+            border-left-color: var(--accent-primary);
+        }
+
+        .toc-link.active {
+            color: var(--accent-primary);
+            font-weight: 700;
+            background: #fff7ed;
+            border-left-color: var(--accent-primary);
+        }
+
+        /* Main Content */
+        main.legal-content {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 50px 60px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+        }
+
+        .policy-hero {
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 30px;
+            margin-bottom: 40px;
+        }
+
+        .policy-hero h1 {
+            font-size: 2.5rem;
+            font-weight: 900;
+            letter-spacing: -0.03em;
+            color: #0f172a;
+            margin-bottom: 12px;
+        }
+
+        .policy-hero p {
+            font-size: 1.05rem;
+            color: var(--text-muted);
+            max-width: 800px;
+            font-weight: 500;
+        }
+
+        .legal-section {
+            margin-bottom: 48px;
+            scroll-margin-top: 100px;
+        }
+
+        .legal-section h2 {
+            font-size: 1.45rem;
+            font-weight: 800;
+            color: #0f172a;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .section-num {
+            color: var(--accent-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.1rem;
+            font-weight: 800;
+        }
+
+        .legal-section h3 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin: 24px 0 12px 0;
+        }
+
+        .legal-section p {
+            color: #334155;
+            margin-bottom: 16px;
+            text-align: justify;
+        }
+
+        .legal-section ul, .legal-section ol {
+            margin: 16px 0 20px 24px;
+            color: #334155;
+        }
+
+        .legal-section li {
+            margin-bottom: 10px;
+            padding-left: 4px;
+        }
+
+        /* Callout Box */
+        .callout-box {
+            background: #fff7ed;
+            border: 1px solid #fed7aa;
+            border-left: 4px solid var(--accent-primary);
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin: 24px 0;
+        }
+
+        .callout-box.warning {
+            background: #fff1f2;
+            border-color: #fecdd3;
+            border-left-color: var(--accent-rose);
+        }
+
+        .callout-box.emerald {
+            background: #ecfdf5;
+            border-color: #a7f3d0;
+            border-left-color: var(--accent-emerald);
+        }
+
+        .callout-title {
+            font-weight: 800;
+            font-size: 0.95rem;
+            color: #0f172a;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Table Styling */
+        .legal-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 24px 0;
+            background: #ffffff;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+
+        .legal-table th, .legal-table td {
+            padding: 14px 18px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.9rem;
+        }
+
+        .legal-table th {
+            background: #f8fafc;
+            color: #0f172a;
+            font-weight: 700;
+        }
+
+        .legal-table td {
+            color: var(--text-muted);
+        }
+
+        .legal-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* Contact Box */
+        .contact-card {
+            background: #f8fafc;
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 28px;
+            margin-top: 30px;
+        }
+
+        .contact-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            margin-top: 16px;
+        }
+
+        .contact-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .contact-item .label {
+            font-size: 0.8rem;
+            color: var(--text-subtle);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-weight: 700;
+        }
+
+        .contact-item .value {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #0f172a;
+        }
+
+        .contact-item .value a {
+            color: #0f172a !important;
+        }
+
+        /* Footer */
+        footer.site-footer {
+            border-top: 1px solid var(--border-color);
+            padding: 30px 40px;
+            text-align: center;
+            color: var(--text-subtle);
+            font-size: 0.85rem;
+            margin-top: 60px;
+            background: #ffffff;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+            aside.sidebar {
+                display: none;
+            }
+            main.legal-content {
+                padding: 30px 24px;
+            }
+        }
+
+        @media print {
+            header.site-header, aside.sidebar, .btn-print, footer.site-footer {
+                display: none !important;
+            }
+            body {
+                background: white !important;
+                color: black !important;
+            }
+            main.legal-content {
+                border: none !important;
+                box-shadow: none !important;
+                padding: 0 !important;
+                background: white !important;
+            }
+            .legal-section h2, .legal-section h3, .policy-hero h1 {
+                color: black !important;
+                -webkit-text-fill-color: black !important;
+            }
+            .legal-section p, .legal-section li, .legal-table td {
+                color: #333 !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header class="site-header">
+        <a href="/" class="brand-logo">
+            <span>LAZYMONKEY FIT CLUB AI</span>
+            <span class="brand-badge">Enterprise Legal</span>
+        </a>
+        <div class="header-actions">
+            <span class="last-updated">Effective Date: August 28, 2026</span>
+            <button class="btn-print" onclick="window.print()">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 002-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                Print Document
+            </button>
+        </div>
+    </header>
+
+    <!-- Container -->
+    <div class="container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="nav-title">Document Outline</div>
+            <ul class="toc-list">
+                <li><a href="#section-1" class="toc-link">1. Introduction & Scope</a></li>
+                <li><a href="#section-2" class="toc-link">2. Key Definitions</a></li>
+                <li><a href="#section-3" class="toc-link">3. Categories of Data Collected</a></li>
+                <li><a href="#section-4" class="toc-link">4. Biometric & Body Composition Policy</a></li>
+                <li><a href="#section-5" class="toc-link">5. Legal Bases for Processing</a></li>
+                <li><a href="#section-6" class="toc-link">6. Methods of Data Collection</a></li>
+                <li><a href="#section-7" class="toc-link">7. Purposes of Processing</a></li>
+                <li><a href="#section-8" class="toc-link">8. Disclosures & Third Parties</a></li>
+                <li><a href="#section-9" class="toc-link">9. Data Security & Encryption</a></li>
+                <li><a href="#section-10" class="toc-link">10. Data Retention & Purging</a></li>
+                <li><a href="#section-11" class="toc-link">11. International Transfers</a></li>
+                <li><a href="#section-12" class="toc-link">12. Data Subject Rights</a></li>
+                <li><a href="#section-13" class="toc-link">13. Children & Minors Privacy</a></li>
+                <li><a href="#section-14" class="toc-link">14. Cookies & Local Storage</a></li>
+                <li><a href="#section-15" class="toc-link">15. California Notice (CCPA/CPRA)</a></li>
+                <li><a href="#section-16" class="toc-link">16. European Union & UK Annex</a></li>
+                <li><a href="#section-17" class="toc-link">17. Data Breach Protocol</a></li>
+                <li><a href="#section-18" class="toc-link">18. Amendments & Revisions</a></li>
+                <li><a href="#section-19" class="toc-link">19. Contact Information</a></li>
+            </ul>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="legal-content">
+            
+            <div class="policy-hero">
+                <h1>Privacy Policy & Biometric Data Governance Statement</h1>
+                <p>Comprehensive enterprise governance framework detailing personal data protection, biometric template safeguards, body composition telemetry, and privacy compliance for LazyMonkey FIT CLUB AI Health Platform.</p>
+            </div>
+
+            <!-- Section 1 -->
+            <section id="section-1" class="legal-section">
+                <h2><span class="section-num">01.</span> Introduction & Legal Scope</h2>
+                <p>Welcome to <strong>LazyMonkey FIT CLUB AI</strong> (hereinafter referred to as "the Platform", "LazyMonkey FIT CLUB AI", "We", "Us", or "Our"). LazyMonkey FIT CLUB AI delivers an integrated enterprise software-as-a-service (SaaS) ecosystem, IoT access controller middleware, biometric authentication infrastructure, body composition scanner integration modules, Point of Sale (POS) terminals, and mobile applications designed for health clubs, fitness centers, gym operators, personal trainers, and gym members worldwide.</p>
+                <p>This Privacy Policy ("Policy") governs the collection, processing, storage, disclosure, transmission, and protection of Personal Data and Sensitive Biometric Data gathered through your interaction with our cloud software, physical hardware terminals (including eSSL eBioserver middleware and connected access control turnstiles), body composition scanners (such as InBody BIA devices), web services, and native mobile applications.</p>
+                <p>By registering for an account, accessing any gym facility utilizing LazyMonkey FIT CLUB AI infrastructure, consenting to biometric enrollment (facial recognition or fingerprint verification), undergoing body composition scans, or downloading our mobile application, you explicitly acknowledge that you have read, understood, and agreed to the data processing practices detailed within this Policy.</p>
+                
+                <div class="callout-box emerald">
+                    <div class="callout-title">
+                        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        Strict Enterprise Safeguards Commitment
+                    </div>
+                    LazyMonkey FIT CLUB AI strictly adheres to the EU General Data Protection Regulation (GDPR), California Consumer Privacy Act (CCPA/CPRA), Illinois Biometric Information Privacy Act (BIPA), Health Insurance Portability and Accountability Act (HIPAA) alignment standards, and global data protection statutes. We NEVER sell biometric templates or health metrics.
+                </div>
+            </section>
+
+            <!-- Section 2 -->
+            <section id="section-2" class="legal-section">
+                <h2><span class="section-num">02.</span> Key Definitions & Legal Terms</h2>
+                <p>For the purposes of this Privacy Policy, the following capitalized terms shall have the exact meanings ascribed below:</p>
+                <ul>
+                    <li><strong>"Account":</strong> A unique authorized credential created for a Facility Owner, Staff Member, Personal Trainer, or Gym Customer to access the Platform.</li>
+                    <li><strong>"Biometric Data":</strong> Any personal data resulting from specific technical processing relating to the physical, physiological, or behavioral characteristics of a natural person, including facial mathematical feature vector hashes, facial geometry representations, and fingerprint ridge minutiae templates.</li>
+                    <li><strong>"Body Composition Telemetry":</strong> Quantitative physiological measurements gathered via Bioelectrical Impedance Analysis (BIA) or optical body scanners, including total weight, body fat percentage, skeletal muscle mass, total body water, visceral fat level, extracellular water ratio, basal metabolic rate (BMR), and segmental muscle distribution.</li>
+                    <li><strong>"Facility Operator / Owner":</strong> The commercial enterprise or gym business entity operating a physical fitness location that utilizes LazyMonkey FIT CLUB AI software and hardware middleware to manage operations.</li>
+                    <li><strong>"Member / Customer":</strong> An individual registered with a Facility Operator who utilizes physical gym services, access control doors, body scanners, or mobile member portals.</li>
+                    <li><strong>"eBioserver Middleware":</strong> The physical or cloud SOAP/HTTP server layer communicating directly with eSSL biometric hardware terminals, turnstile relays, and facial recognition devices.</li>
+                    <li><strong>"Personal Data":</strong> Any information relating to an identified or identifiable natural person ("Data Subject"), as defined under Article 4(1) of the EU GDPR.</li>
+                </ul>
+            </section>
+
+            <!-- Section 3 -->
+            <section id="section-3" class="legal-section">
+                <h2><span class="section-num">03.</span> Categories of Data Collected</h2>
+                <p>We process various categories of information depending on your relationship with LazyMonkey FIT CLUB AI and the specific features enabled by your Facility Operator:</p>
+                
+                <table class="legal-table">
+                    <thead>
+                        <tr>
+                            <th>Data Category</th>
+                            <th>Data Fields Included</th>
+                            <th>Primary Purpose</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Identity & Contact Data</strong></td>
+                            <td>Full legal name, phone number, email address, physical address, date of birth, emergency contact details, assigned profile photo.</td>
+                            <td>Account creation, identity verification, contract execution, emergency notification.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Biometric Identification Data</strong></td>
+                            <td>Facial vector mathematical hashes, fingerprint minutiae templates, RFID card serial numbers, verification timestamps.</td>
+                            <td>Automated turnstile access control, hands-free facility entry, anti-passback verification.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Physiological Telemetry</strong></td>
+                            <td>Weight, height, skeletal muscle mass, body fat percentage, body water, visceral fat rating, BMR, segmental analysis, scan date/time.</td>
+                            <td>Fitness progress tracking, automated trainer recommendations, body composition analytics.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Financial & Billing Data</strong></td>
+                            <td>Masked credit/debit card numbers, payment token hashes, billing address, transaction history, membership plan details.</td>
+                            <td>Subscription billing, Point of Sale (POS) transactions, automated dues collection.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Technical & Telemetry Data</strong></td>
+                            <td>IP address, MAC address, browser type, OS version, device identifiers, API access logs, webhook audit trails, cookie session IDs.</td>
+                            <td>Platform security, fraud prevention, server load balancing, bug diagnostics.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- Section 4 -->
+            <section id="section-4" class="legal-section">
+                <h2><span class="section-num">04.</span> Biometric & Body Composition Data Policy</h2>
+                <p>This Section constitutes our formal <strong>Biometric Information Privacy Policy</strong> under Illinois BIPA (740 ILCS 14/), Texas Business & Commerce Code (§ 503.001), Washington Rev. Code (§ 19.375.020), and EU GDPR Article 9 (Special Category Data).</p>
+
+                <h3>4.1 Nature of Biometric Processing</h3>
+                <p>When you enroll in biometric access control at a facility powered by LazyMonkey FIT CLUB AI, your facial image or fingerprint is captured by an integrated terminal (such as eSSL AiFace, ERIS, ARION, or F-series devices). The raw image is immediately processed locally by the hardware or eBioserver middleware to extract key spatial nodal points, creating an encrypted mathematical vector (hash). <strong>We do not store unencrypted raw facial photo files or raw fingerprint images in our biometric database.</strong></p>
+
+                <h3>4.2 Written Consent Requirement</h3>
+                <p>Prior to initial biometric enrollment, every member or staff member must provide explicit written or digital consent via our enrollment portal. Consent is voluntary. If a member declines biometric enrollment, Facility Operators are required to provide alternative access mechanisms, such as RFID keyfobs, mobile QR codes, or staff-assisted entry.</p>
+
+                <div class="callout-box warning">
+                    <div class="callout-title">
+                        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                        Biometric Retention & Automated Retention Limits
+                    </div>
+                    LazyMonkey FIT CLUB AI automatically purges biometric vector templates from server memory and physical eBioserver caches within <strong>thirty (30) days</strong> of a member's membership termination, or when the member revokes consent, or within <strong>three (3) years</strong> of the individual's last interaction with the facility—whichever occurs first.
+                </div>
+
+                <h3>4.3 Body Composition Telemetry Handling</h3>
+                <p>Body composition readings captured through integrated BIA scanners are processed solely to provide personal wellness insights and graphical progress tracking to the member and their assigned certified personal trainer. BIA telemetry is classified as sensitive personal health data and receives AES-256 encryption at rest.</p>
+            </section>
+
+            <!-- Section 5 -->
+            <section id="section-5" class="legal-section">
+                <h2><span class="section-num">05.</span> Legal Bases for Processing (EU GDPR)</h2>
+                <p>In accordance with GDPR Article 6 and Article 9, LazyMonkey FIT CLUB AI processes Personal Data under the following lawful legal grounds:</p>
+                <ol>
+                    <li><strong>Performance of Contract (Art. 6(1)(b)):</strong> Necessary to fulfill our contractual obligation to provide gym management software, process billing transactions, and allow facility entry.</li>
+                    <li><strong>Explicit Consent (Art. 6(1)(a) & Art. 9(2)(a)):</strong> Required for processing special categories of data, specifically biometric vector templates and detailed physiological body composition scans.</li>
+                    <li><strong>Legitimate Interests (Art. 6(1)(f)):</strong> Necessary for facility physical security, preventing unauthorized multi-person entry (tailgating), fraud prevention, and system performance monitoring.</li>
+                    <li><strong>Legal Obligation (Art. 6(1)(c)):</strong> Processing required to comply with statutory tax, financial accounting, labor law, and health authority mandates.</li>
+                </ol>
+            </section>
+
+            <!-- Section 6 -->
+            <section id="section-6" class="legal-section">
+                <h2><span class="section-num">06.</span> Methods of Data Collection</h2>
+                <p>Information is collected through three primary channels:</p>
+                <ul>
+                    <li><strong>Direct Input:</strong> Form submissions during membership registration, POS checkout transactions, trainer consultation notes, or mobile app profile configuration.</li>
+                    <li><strong>Hardware & IoT Integration:</strong> Real-time HTTP/SOAP webhook pushes triggered when a member scans their face/fingerprint at eSSL hardware terminals or steps onto an integrated InBody scale.</li>
+                    <li><strong>Automated Telemetry:</strong> Automatic logging of HTTP requests, IP addresses, JWT token exchanges, error stack traces, and session cookies during software interaction.</li>
+                </ul>
+            </section>
+
+            <!-- Section 7 -->
+            <section id="section-7" class="legal-section">
+                <h2><span class="section-num">07.</span> Purposes of Data Processing</h2>
+                <p>LazyMonkey FIT CLUB AI utilizes collected data exclusively for the following operational and legal purposes:</p>
+                <ul>
+                    <li>Executing real-time physical access control door unlocks and turnstile relay triggers.</li>
+                    <li>Recording accurate member check-in logs and calculating facility peak-hour analytics.</li>
+                    <li>Generating body composition trend reports, macro recommendations, and workout schedules.</li>
+                    <li>Processing recurring membership dues, Point of Sale transactions, and trainer commission payouts.</li>
+                    <li>Enforcing facility security, investigating unauthorized access, and auditing staff operations.</li>
+                    <li>Sending transactional SMS notifications, billing reminders, and push notifications.</li>
+                </ul>
+            </section>
+
+            <!-- Section 8 -->
+            <section id="section-8" class="legal-section">
+                <h2><span class="section-num">08.</span> Data Sharing & Third-Party Disclosures</h2>
+                <p>We do not sell, rent, or trade Personal Data or Biometric Data. Data disclosure is limited strictly to authorized service providers under contractual confidentiality terms:</p>
+
+                <table class="legal-table">
+                    <thead>
+                        <tr>
+                            <th>Third-Party Recipient</th>
+                            <th>Purpose of Disclosure</th>
+                            <th>Data Categories Shared</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Stripe / Payment Processors</strong></td>
+                            <td>Payment tokenization, recurring subscription processing, invoice collection.</td>
+                            <td>Billing name, payment token, billing address, transaction total.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>AWS / Cloud Infrastructure</strong></td>
+                            <td>Encrypted PostgreSQL database hosting, cloud compute, encrypted backup storage.</td>
+                            <td>All system data (AES-256 encrypted at rest).</td>
+                        </tr>
+                        <tr>
+                            <td><strong>eBioserver Middleware</strong></td>
+                            <td>Hardware-level device discovery, template syncing, and turnstile command execution.</td>
+                            <td>Device serial, enrollment number, biometric vector hashes.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Twilio / Messaging Gateways</strong></td>
+                            <td>SMS transactional alerts, multi-factor authentication (MFA) verification codes.</td>
+                            <td>Phone number, transactional message content.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Law Enforcement / Authorities</strong></td>
+                            <td>Mandatory compliance with valid judicial subpoenas, court orders, or search warrants.</td>
+                            <td>Targeted records strictly limited to court order scope.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- Section 9 -->
+            <section id="section-9" class="legal-section">
+                <h2><span class="section-num">09.</span> Data Security & Encryption Standards</h2>
+                <p>LazyMonkey FIT CLUB AI implements defense-in-depth security architecture to safeguard sensitive health and biometric assets:</p>
+                <ul>
+                    <li><strong>Encryption at Rest:</strong> All database instances, biometric vector stores, and backup volumes are encrypted using FIPS 140-2 validated <strong>AES-256</strong> algorithm.</li>
+                    <li><strong>Encryption in Transit:</strong> All data moving between physical eSSL terminals, eBioserver middleware, FastAPI backend services, and web frontend clients is transmitted via <strong>TLS 1.3</strong> (HTTPS/WSS) with forced Perfect Forward Secrecy.</li>
+                    <li><strong>Network Isolation:</strong> Biometric middleware servers operate inside isolated Virtual Private Clouds (VPC) protected by strict Web Application Firewalls (WAF) and zero-trust security groups.</li>
+                    <li><strong>Role-Based Access Control (RBAC):</strong> Strict principle of least privilege ensures staff members only access member data relevant to their role.</li>
+                </ul>
+            </section>
+
+            <!-- Section 10 -->
+            <section id="section-10" class="legal-section">
+                <h2><span class="section-num">10.</span> Data Retention & Automated Purging Schedules</h2>
+                <p>We store data only for as long as necessary to fulfill active service contracts or comply with legal requirements:</p>
+                <ul>
+                    <li><strong>Active Account Data:</strong> Retained for the duration of the active membership agreement.</li>
+                    <li><strong>Biometric Hashes:</strong> Automatically deleted within 30 days of membership cancellation or consent revocation.</li>
+                    <li><strong>Body Composition Logs:</strong> Retained for historical progress tracking until member requests account deletion.</li>
+                    <li><strong>Financial Transaction Logs:</strong> Retained for seven (7) years to comply with statutory tax audit regulations.</li>
+                    <li><strong>Server Access Logs:</strong> Automatically rotated and purged after ninety (90) days.</li>
+                </ul>
+            </section>
+
+            <!-- Section 11 -->
+            <section id="section-11" class="legal-section">
+                <h2><span class="section-num">11.</span> International Data Transfers</h2>
+                <p>LazyMonkey FIT CLUB AI processes data in secure data centers located in the United States, European Union, and Asia-Pacific regions. For data transfers originating from the European Economic Area (EEA) or UK to third countries, we execute EU Standard Contractual Clauses (SCCs) and enforce supplementary technical safeguards including end-to-end payload encryption.</p>
+            </section>
+
+            <!-- Section 12 -->
+            <section id="section-12" class="legal-section">
+                <h2><span class="section-num">12.</span> Individual Data Subject Rights</h2>
+                <p>Regardless of your geographic location, LazyMonkey FIT CLUB AI grants all Data Subjects the following enforceable privacy rights:</p>
+                <ul>
+                    <li><strong>Right to Access (Data Portability):</strong> Request a structured, machine-readable JSON copy of your personal data, biometric audit logs, and body composition telemetry.</li>
+                    <li><strong>Right to Rectification:</strong> Request correction of inaccurate or incomplete personal contact data.</li>
+                    <li><strong>Right to Erasure ("Right to be Forgotten"):</strong> Request immediate permanent deletion of your profile, biometric templates, and scan history (subject to financial audit retention mandates).</li>
+                    <li><strong>Right to Withdraw Consent:</strong> Revoke biometric consent at any time without penalty or loss of gym facility access.</li>
+                    <li><strong>Right to Restrict Processing:</strong> Request temporary restriction of data processing during a pending dispute.</li>
+                </ul>
+                <p>To exercise any right, submit a request to <a href="mailto:roufbaig123@gmail.com" style="color: var(--accent-primary);">roufbaig123@gmail.com</a> or utilize the privacy settings tab in your member mobile application.</p>
+            </section>
+
+            <!-- Section 13 -->
+            <section id="section-13" class="legal-section">
+                <h2><span class="section-num">13.</span> Children & Minors Privacy</h2>
+                <p>LazyMonkey FIT CLUB AI services are not directed to children under thirteen (13) years of age. For minor members aged 13 to 17 participating in gym memberships, biometric enrollment and body composition scanning strictly require explicit written authorization signed by a parent or legal guardian.</p>
+            </section>
+
+            <!-- Section 14 -->
+            <section id="section-14" class="legal-section">
+                <h2><span class="section-num">14.</span> Cookies & Local Storage Technologies</h2>
+                <p>Our platform uses essential session cookies, local storage items, and secure JWT tokens stored in HTTP-Only cookies to maintain authenticated sessions, store theme preferences, and protect against Cross-Site Request Forgery (CSRF) attacks. We do not utilize third-party cross-site tracking cookies for advertising purposes.</p>
+            </section>
+
+            <!-- Section 15 -->
+            <section id="section-15" class="legal-section">
+                <h2><span class="section-num">15.</span> California Consumer Privacy Notice (CCPA / CPRA)</h2>
+                <p>This Notice applies solely to residents of California under the California Consumer Privacy Act (CCPA) as amended by the CPRA:</p>
+                <ul>
+                    <li><strong>No Sale of Personal Information:</strong> LazyMonkey FIT CLUB AI has not sold or shared personal or biometric information in the preceding 12 months.</li>
+                    <li><strong>Right to Limit Sensitive Personal Information:</strong> You have the absolute right to limit our use of Sensitive Personal Information (biometrics and health telemetry) strictly to necessary facility operational purposes.</li>
+                    <li><strong>Non-Discrimination:</strong> We will never deny services, charge different prices, or degrade service quality if you exercise CCPA rights.</li>
+                </ul>
+            </section>
+
+            <!-- Section 16 -->
+            <section id="section-16" class="legal-section">
+                <h2><span class="section-num">16.</span> European Union & UK GDPR Compliance Annex</h2>
+                <p>For individuals located in the European Union or United Kingdom, the Data Controller for processing your information is the specific Facility Operator (gym) where you hold a membership. LazyMonkey FIT CLUB AI acts as a Data Processor under GDPR Article 28. In inquiries involving controller obligations, we collaborate directly with your facility operator.</p>
+                <p>You have the right to lodge a complaint with your local EU Data Protection Authority (DPA) or the UK Information Commissioner's Office (ICO) if you believe processing infringes applicable regulation.</p>
+            </section>
+
+            <!-- Section 17 -->
+            <section id="section-17" class="legal-section">
+                <h2><span class="section-num">17.</span> Incident Response & Data Breach Notification</h2>
+                <p>LazyMonkey FIT CLUB AI maintains a rigorous Incident Response Plan. In the event of a confirmed security breach involving unencrypted Personal Data or Biometric Data, we will notify affected Facility Operators and supervisory authorities within <strong>seventy-two (72) hours</strong> of breach confirmation, outlining the nature of the breach, affected records, and immediate remediation steps taken.</p>
+            </section>
+
+            <!-- Section 18 -->
+            <section id="section-18" class="legal-section">
+                <h2><span class="section-num">18.</span> Policy Revisions & Modifications</h2>
+                <p>We reserve the right to update this Policy periodically to reflect technological advancements, new hardware middleware integrations, or statutory changes. Material amendments will be communicated via email or prominent system alerts thirty (30) days prior to taking effect. Continued use of LazyMonkey FIT CLUB AI following notification constitutes acceptance of the revised terms.</p>
+            </section>
+
+            <!-- Section 19 -->
+            <section id="section-19" class="legal-section">
+                <h2><span class="section-num">19.</span> Contact Information & Data Protection Officer</h2>
+                <p>If you have questions, concerns, or requests regarding this Privacy Policy, biometric safeguards, or data protection practices, please contact our Data Protection Office:</p>
+                
+                <div class="contact-card">
+                    <div style="font-weight: 800; font-size: 1.1rem; color: #0f172a;">FIT CLUB AI / LazyMonkey AI Privacy & Data Governance Office</div>
+                    <div class="contact-grid">
+                        <div class="contact-item">
+                            <span class="label">Data Protection Officer</span>
+                            <span class="value"><a href="mailto:roufbaig123@gmail.com" style="color: #0f172a; text-decoration: none;">roufbaig123@gmail.com</a></span>
+                        </div>
+                        <div class="contact-item">
+                            <span class="label">Legal Inquiries</span>
+                            <span class="value"><a href="mailto:roufbaig123@gmail.com" style="color: #0f172a; text-decoration: none;">roufbaig123@gmail.com</a></span>
+                        </div>
+                        <div class="contact-item">
+                            <span class="label">Global Support Line</span>
+                            <span class="value"><a href="tel:+919849344919" style="color: #0f172a; text-decoration: none;">+91 98493 44919</a></span>
+                        </div>
+                        <div class="contact-item">
+                            <span class="label">Direct WhatsApp Support</span>
+                            <span class="value"><a href="https://wa.me/919849344919" style="color: #059669; text-decoration: none; font-weight: 800;">+91 98493 44919</a></span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Footer -->
+    <footer class="site-footer">
+        &copy; 2026 LazyMonkey FIT CLUB AI Technologies Inc. All Rights Reserved. Enterprise Biometric Governance & Data Protection Standard.
+    </footer>
+
+</body>
+</html>

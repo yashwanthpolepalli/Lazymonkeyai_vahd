@@ -1,0 +1,64 @@
+{
+  "name": "fit-club-ai",
+  "productName": "FIT CLUB AI",
+  "version": "1.0.0",
+  "description": "LazyMonkey FIT CLUB AI - Smart AI for Fitness & Gym Management",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "build:mac": "electron-builder --mac",
+    "build:win": "electron-builder --win"
+  },
+  "author": "LazyMonkey AI Inc.",
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.lazymonkeyai.fitclub",
+    "productName": "FIT CLUB AI",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "assets/**/*"
+    ],
+    "mac": {
+      "icon": "assets/icon.icns",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["universal", "arm64", "x64"]
+        },
+        {
+          "target": "zip",
+          "arch": ["universal", "arm64", "x64"]
+        }
+      ],
+      "category": "public.app-category.lifestyle",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false
+    },
+    "win": {
+      "icon": "assets/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "FIT CLUB AI",
+      "artifactName": "FIT-CLUB-AI-Setup-${version}.${ext}"
+    }
+  }
+}

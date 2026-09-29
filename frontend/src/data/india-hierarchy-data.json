@@ -1,0 +1,432 @@
+{
+  "regions": [
+    {
+      "code": "R01",
+      "name": "North India",
+      "purpose": "Business/management grouping; customizable"
+    },
+    {
+      "code": "R02",
+      "name": "South India",
+      "purpose": "Business/management grouping; customizable"
+    },
+    {
+      "code": "R03",
+      "name": "East India",
+      "purpose": "Business/management grouping; customizable"
+    },
+    {
+      "code": "R04",
+      "name": "West India",
+      "purpose": "Business/management grouping; customizable"
+    },
+    {
+      "code": "R05",
+      "name": "Central India",
+      "purpose": "Business/management grouping; customizable"
+    },
+    {
+      "code": "R06",
+      "name": "North-East India",
+      "purpose": "Business/management grouping; customizable"
+    }
+  ],
+  "states": [
+    {
+      "code": "S01",
+      "name": "Andhra Pradesh",
+      "type": "State",
+      "region": "South India",
+      "zones": [
+        "Coastal Andhra",
+        "Rayalaseema"
+      ],
+      "district_count": 26
+    },
+    {
+      "code": "S02",
+      "name": "Arunachal Pradesh",
+      "type": "State",
+      "region": "North-East India",
+      "zones": [
+        "Eastern Arunachal",
+        "Western Arunachal"
+      ],
+      "district_count": 27
+    },
+    {
+      "code": "S03",
+      "name": "Assam",
+      "type": "State",
+      "region": "North-East India",
+      "zones": [
+        "Upper Assam",
+        "Lower Assam"
+      ],
+      "district_count": 35
+    },
+    {
+      "code": "S04",
+      "name": "Bihar",
+      "type": "State",
+      "region": "East India",
+      "zones": [
+        "North Bihar",
+        "South Bihar"
+      ],
+      "district_count": 38
+    },
+    {
+      "code": "S05",
+      "name": "Chhattisgarh",
+      "type": "State",
+      "region": "Central India",
+      "zones": [
+        "North Chhattisgarh",
+        "South Chhattisgarh"
+      ],
+      "district_count": 33
+    },
+    {
+      "code": "S06",
+      "name": "Goa",
+      "type": "State",
+      "region": "West India",
+      "zones": [
+        "North Goa",
+        "South Goa"
+      ],
+      "district_count": 2
+    },
+    {
+      "code": "S07",
+      "name": "Gujarat",
+      "type": "State",
+      "region": "West India",
+      "zones": [
+        "North Gujarat",
+        "South Gujarat"
+      ],
+      "district_count": 33
+    },
+    {
+      "code": "S08",
+      "name": "Haryana",
+      "type": "State",
+      "region": "North India",
+      "zones": [
+        "North Haryana",
+        "South Haryana"
+      ],
+      "district_count": 22
+    },
+    {
+      "code": "S09",
+      "name": "Himachal Pradesh",
+      "type": "State",
+      "region": "North India",
+      "zones": [
+        "Himachal North",
+        "Himachal South"
+      ],
+      "district_count": 12
+    },
+    {
+      "code": "S10",
+      "name": "Jharkhand",
+      "type": "State",
+      "region": "East India",
+      "zones": [
+        "North Jharkhand",
+        "South Jharkhand"
+      ],
+      "district_count": 24
+    },
+    {
+      "code": "S11",
+      "name": "Karnataka",
+      "type": "State",
+      "region": "South India",
+      "zones": [
+        "North Karnataka",
+        "South Karnataka"
+      ],
+      "district_count": 31
+    },
+    {
+      "code": "S12",
+      "name": "Kerala",
+      "type": "State",
+      "region": "South India",
+      "zones": [
+        "North Kerala",
+        "South Kerala"
+      ],
+      "district_count": 14
+    },
+    {
+      "code": "S13",
+      "name": "Madhya Pradesh",
+      "type": "State",
+      "region": "Central India",
+      "zones": [
+        "Malwa",
+        "Bundelkhand & Baghelkhand"
+      ],
+      "district_count": 55
+    },
+    {
+      "code": "S14",
+      "name": "Maharashtra",
+      "type": "State",
+      "region": "West India",
+      "zones": [
+        "Vidarbha",
+        "Maharashtra West"
+      ],
+      "district_count": 36
+    },
+    {
+      "code": "S15",
+      "name": "Manipur",
+      "type": "State",
+      "region": "North-East India",
+      "zones": [
+        "Manipur Valley",
+        "Manipur Hills"
+      ],
+      "district_count": 16
+    },
+    {
+      "code": "S16",
+      "name": "Meghalaya",
+      "type": "State",
+      "region": "North-East India",
+      "zones": [
+        "Garo Hills",
+        "Khasi-Jaintia Hills"
+      ],
+      "district_count": 12
+    },
+    {
+      "code": "S17",
+      "name": "Mizoram",
+      "type": "State",
+      "region": "North-East India",
+      "zones": [
+        "Northern Mizoram",
+        "Southern Mizoram"
+      ],
+      "district_count": 11
+    },
+    {
+      "code": "S18",
+      "name": "Nagaland",
+      "type": "State",
+      "region": "North-East India",
+      "zones": [
+        "Eastern Nagaland",
+        "Western Nagaland"
+      ],
+      "district_count": 17
+    },
+    {
+      "code": "S19",
+      "name": "Odisha",
+      "type": "State",
+      "region": "East India",
+      "zones": [
+        "North Odisha",
+        "South Odisha"
+      ],
+      "district_count": 30
+    },
+    {
+      "code": "S20",
+      "name": "Punjab",
+      "type": "State",
+      "region": "North India",
+      "zones": [
+        "Majha & Doaba",
+        "Malwa"
+      ],
+      "district_count": 23
+    },
+    {
+      "code": "S21",
+      "name": "Rajasthan",
+      "type": "State",
+      "region": "North India",
+      "zones": [
+        "East Rajasthan",
+        "West Rajasthan"
+      ],
+      "district_count": 41
+    },
+    {
+      "code": "S22",
+      "name": "Sikkim",
+      "type": "State",
+      "region": "North-East India",
+      "zones": [
+        "East Sikkim",
+        "West Sikkim"
+      ],
+      "district_count": 6
+    },
+    {
+      "code": "S23",
+      "name": "Tamil Nadu",
+      "type": "State",
+      "region": "South India",
+      "zones": [
+        "North Tamil Nadu",
+        "South Tamil Nadu"
+      ],
+      "district_count": 38
+    },
+    {
+      "code": "S24",
+      "name": "Telangana",
+      "type": "State",
+      "region": "South India",
+      "zones": [
+        "North Telangana",
+        "South Telangana"
+      ],
+      "district_count": 33
+    },
+    {
+      "code": "S25",
+      "name": "Tripura",
+      "type": "State",
+      "region": "North-East India",
+      "zones": [
+        "North Tripura",
+        "South Tripura"
+      ],
+      "district_count": 8
+    },
+    {
+      "code": "S26",
+      "name": "Uttar Pradesh",
+      "type": "State",
+      "region": "North India",
+      "zones": [
+        "Western UP",
+        "Eastern UP"
+      ],
+      "district_count": 75
+    },
+    {
+      "code": "S27",
+      "name": "Uttarakhand",
+      "type": "State",
+      "region": "North India",
+      "zones": [
+        "Garhwal",
+        "Kumaon"
+      ],
+      "district_count": 13
+    },
+    {
+      "code": "S28",
+      "name": "West Bengal",
+      "type": "State",
+      "region": "East India",
+      "zones": [
+        "North Bengal",
+        "South Bengal"
+      ],
+      "district_count": 23
+    },
+    {
+      "code": "S29",
+      "name": "Andaman and Nicobar Islands",
+      "type": "Union Territory",
+      "region": "South India",
+      "zones": [
+        "Andaman",
+        "Nicobar"
+      ],
+      "district_count": 3
+    },
+    {
+      "code": "S30",
+      "name": "Chandigarh",
+      "type": "Union Territory",
+      "region": "North India",
+      "zones": [
+        "Chandigarh",
+        "Chandigarh"
+      ],
+      "district_count": 1
+    },
+    {
+      "code": "S31",
+      "name": "Dadra and Nagar Haveli and Daman and Diu",
+      "type": "Union Territory",
+      "region": "West India",
+      "zones": [
+        "Dadra & Nagar Haveli",
+        "Daman & Diu"
+      ],
+      "district_count": 3
+    },
+    {
+      "code": "S32",
+      "name": "Delhi",
+      "type": "Union Territory",
+      "region": "North India",
+      "zones": [
+        "Delhi North & Central",
+        "Delhi South & East"
+      ],
+      "district_count": 11
+    },
+    {
+      "code": "S33",
+      "name": "Jammu and Kashmir",
+      "type": "Union Territory",
+      "region": "North India",
+      "zones": [
+        "Jammu",
+        "Kashmir"
+      ],
+      "district_count": 20
+    },
+    {
+      "code": "S34",
+      "name": "Ladakh",
+      "type": "Union Territory",
+      "region": "North India",
+      "zones": [
+        "Leh",
+        "Kargil"
+      ],
+      "district_count": 2
+    },
+    {
+      "code": "S35",
+      "name": "Lakshadweep",
+      "type": "Union Territory",
+      "region": "South India",
+      "zones": [
+        "Lakshadweep",
+        "Lakshadweep"
+      ],
+      "district_count": 1
+    },
+    {
+      "code": "S36",
+      "name": "Puducherry",
+      "type": "Union Territory",
+      "region": "South India",
+      "zones": [
+        "Puducherry",
+        "Karaikal"
+      ],
+      "district_count": 2
+    }
+  ]
+}

@@ -1,0 +1,114 @@
+{
+  "workout_type_policies": {
+    "muscle training": {
+      "display_name": "Muscle Training (Hypertrophy)",
+      "activity_multiplier": 1.725,
+      "protein_per_kg": 2.2,
+      "calorie_pct": 0.10,
+      "weekly_rate_kg": 0.35,
+      "description": "High-intensity resistance training with progressive overload"
+    },
+    "drop set": {
+      "display_name": "Drop Set / Hypertrophy",
+      "activity_multiplier": 1.725,
+      "protein_per_kg": 2.2,
+      "calorie_pct": 0.10,
+      "weekly_rate_kg": 0.35,
+      "description": "Hypertrophy-focused drop set training protocol"
+    },
+    "weight loss": {
+      "display_name": "Weight Loss",
+      "activity_multiplier": 1.55,
+      "protein_per_kg": 1.8,
+      "calorie_pct": -0.20,
+      "weekly_rate_kg": 0.60,
+      "description": "Calorie deficit training program targeting body fat reduction"
+    },
+    "cardio": {
+      "display_name": "Cardio",
+      "activity_multiplier": 1.55,
+      "protein_per_kg": 1.6,
+      "calorie_pct": -0.15,
+      "weekly_rate_kg": 0.50,
+      "description": "Sustained cardiovascular endurance training"
+    },
+    "zumba": {
+      "display_name": "Zumba Training",
+      "activity_multiplier": 1.375,
+      "protein_per_kg": 1.5,
+      "calorie_pct": -0.10,
+      "weekly_rate_kg": 0.40,
+      "description": "Dance-based aerobic exercise with moderate intensity"
+    },
+    "aerobics": {
+      "display_name": "Aerobics",
+      "activity_multiplier": 1.55,
+      "protein_per_kg": 1.6,
+      "calorie_pct": -0.10,
+      "weekly_rate_kg": 0.45,
+      "description": "Structured aerobic conditioning workout"
+    },
+    "calisthenics": {
+      "display_name": "Calisthenics",
+      "activity_multiplier": 1.55,
+      "protein_per_kg": 1.8,
+      "calorie_pct": 0.05,
+      "weekly_rate_kg": 0.35,
+      "description": "Bodyweight strength and mobility training"
+    },
+    "bulking": {
+      "display_name": "Bulking (Mass Gain)",
+      "activity_multiplier": 1.725,
+      "protein_per_kg": 2.4,
+      "calorie_pct": 0.15,
+      "weekly_rate_kg": 0.35,
+      "description": "Calorie surplus training program for maximum muscle mass gain"
+    },
+    "lean": {
+      "display_name": "Lean (Cut)",
+      "activity_multiplier": 1.55,
+      "protein_per_kg": 2.0,
+      "calorie_pct": -0.10,
+      "weekly_rate_kg": 0.55,
+      "description": "Lean muscle retention with moderate calorie deficit"
+    },
+    "body recomposition": {
+      "display_name": "Body Recomposition",
+      "activity_multiplier": 1.55,
+      "protein_per_kg": 2.0,
+      "calorie_pct": 0.0,
+      "weekly_rate_kg": 0.25,
+      "description": "Simultaneous fat loss and muscle gain at maintenance calories"
+    },
+    "recomp": {
+      "display_name": "Body Recomposition",
+      "activity_multiplier": 1.55,
+      "protein_per_kg": 2.0,
+      "calorie_pct": 0.0,
+      "weekly_rate_kg": 0.25,
+      "description": "Simultaneous fat loss and muscle gain at maintenance calories"
+    },
+    "athletic": {
+      "display_name": "Athletic Conditioning",
+      "activity_multiplier": 1.60,
+      "protein_per_kg": 2.0,
+      "calorie_pct": -0.08,
+      "weekly_rate_kg": 0.40,
+      "description": "Functional power-to-weight and athletic endurance conditioning"
+    }
+  },
+  "days_per_week_multipliers": {
+    "1": 1.2,
+    "2": 1.375,
+    "3": 1.375,
+    "4": 1.55,
+    "5": 1.55,
+    "6": 1.725,
+    "7": 1.9
+  },
+  "_meta": {
+    "version": "1.0",
+    "description": "Workout-type activity multipliers and macro distribution policies. Edit this file to update AI nutrition target calculations without code changes.",
+    "formula": "TDEE = BMR × activity_multiplier | target_calories = TDEE × (1 + calorie_pct) | protein = weight_kg × protein_per_kg"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "bulking": { "calorie_delta": 400, "protein_per_kg": 2.2, "name": "Hypertrophy / Bulking" },
+  "muscle gain": { "calorie_delta": 400, "protein_per_kg": 2.2, "name": "Hypertrophy / Bulking" },
+  "hypertrophy": { "calorie_delta": 400, "protein_per_kg": 2.2, "name": "Hypertrophy / Bulking" },
+  "fat loss": { "calorie_delta": -500, "protein_per_kg": 2.4, "name": "Fat Cutting" },
+  "weight loss": { "calorie_delta": -500, "protein_per_kg": 2.4, "name": "Fat Cutting" },
+  "cut": { "calorie_delta": -500, "protein_per_kg": 2.4, "name": "Fat Cutting" },
+  "shred": { "calorie_delta": -500, "protein_per_kg": 2.4, "name": "Fat Cutting" },
+  "lean": { "calorie_delta": 200, "protein_per_kg": 2.0, "name": "Lean Strength" },
+  "strength": { "calorie_delta": 200, "protein_per_kg": 2.0, "name": "Lean Strength" },
+  "recomposition": { "calorie_delta": -150, "protein_per_kg": 2.2, "name": "Body Recomposition" },
+  "recomp": { "calorie_delta": -150, "protein_per_kg": 2.2, "name": "Body Recomposition" },
+  "conditioning": { "calorie_delta": -150, "protein_per_kg": 2.2, "name": "Body Recomposition" },
+  "maintenance": { "calorie_delta": 0, "protein_per_kg": 2.0, "name": "Maintenance" }
+}

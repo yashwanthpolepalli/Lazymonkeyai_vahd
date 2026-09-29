@@ -1,0 +1,73 @@
+[
+  {
+    "id": "split_ppl",
+    "name": "Push / Pull / Legs",
+    "description": "6-day or 3-day split grouping workouts by primary movement pattern: Push, Pull, and Legs.",
+    "min_days": 3,
+    "max_days": 6,
+    "recommended_level": "Advanced",
+    "days": [
+      { "day_number": 1, "name": "Push A", "muscle_groups": "Chest, Shoulders, Triceps" },
+      { "day_number": 2, "name": "Pull A", "muscle_groups": "Back, Biceps, Rear Delts" },
+      { "day_number": 3, "name": "Legs A", "muscle_groups": "Quads, Hamstrings, Glutes, Calves" },
+      { "day_number": 4, "name": "Push B", "muscle_groups": "Chest, Shoulders, Triceps" },
+      { "day_number": 5, "name": "Pull B", "muscle_groups": "Back, Biceps, Rear Delts" },
+      { "day_number": 6, "name": "Legs B", "muscle_groups": "Quads, Hamstrings, Glutes, Calves" }
+    ]
+  },
+  {
+    "id": "split_upper_lower",
+    "name": "Upper / Lower",
+    "description": "4-day split alternating between upper body compound movements and lower body development.",
+    "min_days": 2,
+    "max_days": 4,
+    "recommended_level": "Intermediate",
+    "days": [
+      { "day_number": 1, "name": "Upper Power A", "muscle_groups": "Chest, Back, Shoulders, Arms" },
+      { "day_number": 2, "name": "Lower Power A", "muscle_groups": "Quads, Hamstrings, Calves, Abs" },
+      { "day_number": 3, "name": "Upper Hypertrophy B", "muscle_groups": "Chest, Back, Shoulders, Arms" },
+      { "day_number": 4, "name": "Lower Hypertrophy B", "muscle_groups": "Quads, Hamstrings, Calves, Abs" }
+    ]
+  },
+  {
+    "id": "split_full_body",
+    "name": "Full Body",
+    "description": "3-day full body split hitting every major muscle group each session for maximum efficiency.",
+    "min_days": 1,
+    "max_days": 3,
+    "recommended_level": "Beginner",
+    "days": [
+      { "day_number": 1, "name": "Full Body A", "muscle_groups": "Chest, Back, Quads, Shoulders, Abs" },
+      { "day_number": 2, "name": "Full Body B", "muscle_groups": "Quads, Back, Chest, Hamstrings, Arms" },
+      { "day_number": 3, "name": "Full Body C", "muscle_groups": "Chest, Back, Shoulders, Quads, Abs" }
+    ]
+  },
+  {
+    "id": "split_single_muscle",
+    "name": "Single Muscle",
+    "description": "5-day classic isolation split targeting one specific primary muscle group per workout.",
+    "min_days": 4, "max_days": 6,
+    "recommended_level": "Advanced",
+    "days": [
+      { "day_number": 1, "name": "Chest Day", "muscle_groups": "Chest" },
+      { "day_number": 2, "name": "Back Day", "muscle_groups": "Back" },
+      { "day_number": 3, "name": "Shoulders Day", "muscle_groups": "Shoulders" },
+      { "day_number": 4, "name": "Legs Day", "muscle_groups": "Quads, Hamstrings, Calves" },
+      { "day_number": 5, "name": "Arms & Abs Day", "muscle_groups": "Biceps, Triceps, Abs" }
+    ]
+  },
+  {
+    "id": "split_combination",
+    "name": "Combination",
+    "description": "5-day split pairing complimentary primary compound and secondary muscle groups.",
+    "min_days": 3, "max_days": 5,
+    "recommended_level": "Intermediate",
+    "days": [
+      { "day_number": 1, "name": "Chest + Triceps", "muscle_groups": "Chest, Triceps" },
+      { "day_number": 2, "name": "Back + Biceps", "muscle_groups": "Back, Biceps" },
+      { "day_number": 3, "name": "Legs + Shoulders", "muscle_groups": "Quads, Hamstrings, Shoulders" },
+      { "day_number": 4, "name": "Chest + Shoulders", "muscle_groups": "Chest, Shoulders" },
+      { "day_number": 5, "name": "Back + Arms", "muscle_groups": "Back, Biceps, Triceps" }
+    ]
+  }
+]

@@ -1,0 +1,82 @@
+# Excluded repository
+backend_repo/
+backend_repo
+**/backend_repo
+
+# Dependencies
+node_modules/
+**/node_modules/
+.venv/
+**/.venv/
+venv/
+**/venv/
+env/
+**/env/
+
+# Build & binary outputs
+dist/
+**/dist/
+build/
+**/build/
+downloads/
+**/downloads/
+**/downloads/**
+public/downloads/
+**/public/downloads/**
+frontend/public/downloads/
+frontend/dist/
+desktop/dist/
+
+# Binaries & large installers
+*.dmg
+*.zip
+*.exe
+*.dll
+*.dylib
+*.so
+*.tar.gz
+*.app
+
+# Session & Cache Data
+.wwebjs_auth/
+**/.wwebjs_auth/
+.wwebjs_cache/
+**/.wwebjs_cache/
+.vite/
+**/.vite/
+.next/
+**/.next/
+.cache/
+**/.cache/
+.pytest_cache/
+**/.pytest_cache/
+.coverage
+htmlcov/
+*.sqlite
+*.sqlite3
+*.db
+
+# Environment & Secrets
+.env
+**/.env
+.env.*
+**/.env.*
+*.pem
+*.key
+*.cert
+
+# Python Cache
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+
+# OS & Editor
+.DS_Store
+**/.DS_Store
+.idea/
+**/.idea/
+.vscode/
+**/.vscode/
+*.log

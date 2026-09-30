@@ -765,7 +765,7 @@ def get_customer_face_status(
     cust: Customer = Depends(get_current_customer),
     db: Session = Depends(get_db),
 ):
-    """Returns face registration enrollment status."""
+    """Returns face registration enrollment status, 90-day renewal expiration, and gym geofence coordinates."""
     is_enrolled = bool(cust.profile_image and len(cust.profile_image) > 50)
     enrollment_log = (
         db.query(BiometricLog)
@@ -779,13 +779,58 @@ def get_customer_face_status(
 
     branch_name = _resolve_customer_branch(cust, db)
 
+    # 3-Month (90 Days) Face Registration Expiry Rule
+    enrolled_at_dt = None
+    if enrollment_log and enrollment_log.timestamp:
+        enrolled_at_dt = enrollment_log.timestamp
+    elif cust.updated_at:
+        enrolled_at_dt = cust.updated_at
+
+    is_expired = False
+    days_since_enrolled = 0
+    days_remaining = 90
+    expires_at_dt = None
+
+    if is_enrolled and enrolled_at_dt:
+        now_dt = now_ist_naive()
+        delta = now_dt - enrolled_at_dt
+        days_since_enrolled = max(0, delta.days)
+        days_remaining = max(0, 90 - days_since_enrolled)
+        expires_at_dt = enrolled_at_dt + datetime.timedelta(days=90)
+        if days_since_enrolled > 90:
+            is_expired = True
+
+    # Retrieve Gym Owner's Geofencing Scheme from DB
+    from src.models.hrms import GeofenceScheme
+    geofence = None
+    if branch_name:
+        geofence = db.query(GeofenceScheme).filter(
+            GeofenceScheme.branch_name.ilike(f"%{branch_name}%"),
+            GeofenceScheme.is_active == True
+        ).first()
+    if not geofence:
+        geofence = db.query(GeofenceScheme).filter(GeofenceScheme.is_active == True).first()
+
     return {
         "customer_id": cust.id,
-        "is_enrolled": is_enrolled or bool(enrollment_log),
+        "is_enrolled": is_enrolled and not is_expired,
+        "is_expired": is_expired,
+        "needs_renewal": is_expired or (not is_enrolled),
         "face_image": cust.profile_image if is_enrolled else None,
         "full_name": cust.full_name,
         "branch": branch_name,
-        "enrolled_at": enrollment_log.timestamp.isoformat() if enrollment_log and enrollment_log.timestamp else None,
+        "enrolled_at": enrolled_at_dt.isoformat() if enrolled_at_dt else None,
+        "expires_at": expires_at_dt.isoformat() if expires_at_dt else None,
+        "days_since_enrolled": days_since_enrolled,
+        "days_remaining_in_cycle": days_remaining,
+        "validity_period_days": 90,
+        "geofence": {
+            "gym_latitude": geofence.latitude if geofence and geofence.latitude is not None else 17.385044,
+            "gym_longitude": geofence.longitude if geofence and geofence.longitude is not None else 78.486671,
+            "radius_meters": geofence.radius_meters if geofence and geofence.radius_meters is not None else 500,
+            "strict_restriction": bool(geofence.strict_restriction) if geofence and geofence.strict_restriction is not None else False,
+            "branch_name": geofence.branch_name if geofence and geofence.branch_name else branch_name,
+        }
     }
 
 
@@ -795,14 +840,21 @@ def register_customer_face(
     cust: Customer = Depends(get_current_customer),
     db: Session = Depends(get_db),
 ):
-    """Enrolls face image."""
+    """Enrolls face image, stores it in DB, and sets it as the profile photo with 90-day renewal cycle."""
     face_image_base64 = payload.get("face_image_base64")
     if not face_image_base64 or len(str(face_image_base64).strip()) < 50:
         raise HTTPException(status_code=400, detail="A valid face snapshot image is required for registration.")
 
     raw_img_str = str(face_image_base64).strip()
+    now_dt = now_ist_naive()
+
+    # Update Customer & User Profile Photo in PostgreSQL DB
     cust.profile_image = raw_img_str
-    cust.updated_at = now_ist_naive()
+    cust.updated_at = now_dt
+
+    if cust.user:
+        cust.user.avatar = raw_img_str
+        cust.user.updated_at = now_dt
 
     branch_name = _resolve_customer_branch(cust, db)
     raw_bytes_len = len(raw_img_str)
@@ -817,6 +869,8 @@ def register_customer_face(
     status = payload.get("status") or ("SUCCESS" if quality_score >= 0.90 else "FAILED")
     action_label = payload.get("action") or "FACE_ENROLLMENT"
 
+    expires_at = now_dt + datetime.timedelta(days=90)
+
     bio_log = BiometricLog(
         id=f"bio_reg_{uuid.uuid4().hex[:8]}",
         customer_id=cust.id,
@@ -830,14 +884,15 @@ def register_customer_face(
         confidence_score=quality_score,
         meta_data={
             "action": action_label,
-            "enrolled_at": now_ist_naive().isoformat(),
+            "enrolled_at": now_dt.isoformat(),
+            "expires_at": expires_at.isoformat(),
             "customer_name": cust.full_name,
             "customer_id": cust.id,
             "user_id": cust.user_id,
             "phone": cust.phone,
             "branch": branch_name,
             "image_size_kb": image_kb,
-            "verification_channel": payload.get("verification_channel") or payload.get("channel") or "CUSTOMER_MOBILE_WEB_PORTAL",
+            "verification_channel": payload.get("verification_channel") or payload.get("channel") or "CUSTOMER_MOBILE_APP",
             "quality_score": quality_score,
             **{k: v for k, v in payload.items() if k not in ["face_image_base64", "live_image_base64"]}
         },
@@ -848,11 +903,14 @@ def register_customer_face(
 
     return {
         "status": status,
-        "message": f"Face ID for {cust.full_name} enrolled successfully.",
+        "message": f"Face ID for {cust.full_name} enrolled successfully and profile photo updated!",
         "is_enrolled": status == "SUCCESS",
         "face_image": cust.profile_image,
         "branch": branch_name,
         "confidence_score": quality_score,
+        "enrolled_at": now_dt.isoformat(),
+        "expires_at": expires_at.isoformat(),
+        "valid_for_days": 90,
     }
 
 
@@ -862,17 +920,39 @@ def verify_customer_face_punch(
     cust: Customer = Depends(get_current_customer),
     db: Session = Depends(get_db),
 ):
-    """Verifies live facial scan and executes Check-In / Check-Out."""
+    """Verifies live facial scan against registered face, verifies geofencing location, and executes dynamic Check-In / Check-Out."""
     live_image = payload.get("live_image_base64")
     action = payload.get("action", "CHECK_IN").upper()
+    latitude = payload.get("latitude")
+    longitude = payload.get("longitude")
+
     if action not in ["CHECK_IN", "CHECK_OUT"]:
         action = "CHECK_IN"
 
     if not cust.profile_image or len(cust.profile_image) < 50:
         raise HTTPException(
             status_code=400,
-            detail="Face ID not registered. Please enroll your face first."
+            detail="Face ID not registered. Please register your face first to enable biometric attendance."
         )
+
+    # 3-Month Renewal Expiry Check
+    enrollment_log = (
+        db.query(BiometricLog)
+        .filter(
+            BiometricLog.customer_id == cust.id,
+            BiometricLog.event_type == "FACE_SCAN"
+        )
+        .order_by(BiometricLog.timestamp.desc())
+        .first()
+    )
+    enrolled_at_dt = enrollment_log.timestamp if enrollment_log and enrollment_log.timestamp else cust.updated_at
+    if enrolled_at_dt:
+        days_elapsed = (now_ist_naive() - enrolled_at_dt).days
+        if days_elapsed > 90:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Face registration expired ({days_elapsed} days ago). For security and accurate detection, please renew your face registration every 3 months."
+            )
 
     if not live_image or len(str(live_image).strip()) < 50:
         raise HTTPException(
@@ -889,24 +969,54 @@ def verify_customer_face_punch(
 
     branch_name = _resolve_customer_branch(cust, db)
 
+    # Validate Geofencing with HRMS service
     from src.services.hrms_service import HrmsService
     hrms_svc = HrmsService()
-    punch_res = hrms_svc.record_punch(
-        db=db,
-        employee_id=cust.id,
-        action=action,
-        method="FACE_ID",
+    try:
+        punch_res = hrms_svc.record_punch(
+            db=db,
+            employee_id=cust.id,
+            action=action,
+            latitude=float(latitude) if latitude is not None else None,
+            longitude=float(longitude) if longitude is not None else None,
+            method="FACE_ID",
+            user_role="CUSTOMER",
+            branch=branch_name,
+            note=f"Customer Face ID Verified ({round(confidence * 100, 1)}% Match)",
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    # Also log to BiometricLog table for live audit trail
+    bio_punch = BiometricLog(
+        id=f"bio_punch_{uuid.uuid4().hex[:8]}",
+        customer_id=cust.id,
         user_role="CUSTOMER",
-        branch=branch_name,
-        note=f"Customer Face ID Verified ({round(confidence * 100, 1)}% Match)",
+        event_type="FACE_ID_CHECKIN",
+        device_type="MOBILE_APP_MLKIT",
+        device_id=payload.get("device_id") or f"mob_cam_{cust.id[:6]}",
+        device_name=f"{branch_name} Mobile Face Reader",
+        direction=action,
+        status="SUCCESS",
+        confidence_score=confidence,
+        meta_data={
+            "action": action,
+            "latitude": latitude,
+            "longitude": longitude,
+            "branch": branch_name,
+            "confidence": confidence,
+            "verified_at": now_ist_naive().isoformat(),
+        }
     )
+    db.add(bio_punch)
+    db.commit()
 
     return {
         "status": "MATCHED",
         "match": True,
         "confidence": confidence,
         "confidence_percentage": f"{round(confidence * 100, 1)}%",
-        "message": f"Face Verified ({round(confidence * 100, 1)}% Match). Check-{action.replace('CHECK_', '').title()} confirmed!",
+        "message": f"Face Verified ({round(confidence * 100, 1)}% Match). Attendance ({action.replace('CHECK_', '').title()}) Marked Successfully!",
         "action": action,
         "branch": branch_name,
         "time": punch_res.get("time") or datetime.datetime.now().strftime("%I:%M %p"),

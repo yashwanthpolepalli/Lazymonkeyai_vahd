@@ -2,6 +2,11 @@
 backend_repo/
 backend_repo
 **/backend_repo
+VAHD_mobile_app/
+VAHD_mobile_app
+**/VAHD_mobile_app/**
+vahd_mobile_app/
+**/vahd_mobile_app/**
 
 # Dependencies
 node_modules/
@@ -80,3 +85,9 @@ __pycache__/
 .vscode/
 **/.vscode/
 *.log
+*.tsbuildinfo
+*.timestamp-*.mjs
+session/
+sessions/
+**/session/
+**/sessions/

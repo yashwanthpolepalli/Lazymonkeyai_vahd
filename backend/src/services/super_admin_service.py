@@ -460,7 +460,7 @@ class SuperAdminService:
         owner_name = payload.get("owner_name", "").strip()
         owner_email = payload.get("owner_email", "").strip().lower()
         phone = payload.get("phone", "").strip()
-        password = payload.get("password", "").strip() or "Pass@123"
+        password = payload.get("password", "").strip()
 
         # Plan & Billing Parameters
         plan_id = payload.get("plan_id")
@@ -475,6 +475,8 @@ class SuperAdminService:
             return {"success": False, "message": "Gym name is required"}
         if not owner_email:
             return {"success": False, "message": "Owner email is required"}
+        if not password:
+            return {"success": False, "message": "Owner password is required"}
         if not owner_name:
             owner_name = "Gym Owner"
 

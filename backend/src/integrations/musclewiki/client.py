@@ -15,7 +15,7 @@ class MuscleWikiClient:
     """
     def __init__(self) -> None:
         self.base_url = settings.MUSCLEWIKI_API_KEY.rstrip("/") if hasattr(settings, "MUSCLEWIKI_API_URL") else "https://api.musclewiki.com"
-        self.api_key = getattr(settings, "MUSCLEWIKI_API_KEY", "mw_NAhcwU4l7vVaQYKmBqz-A6Fw1804LA2UwgEaVcM5caQ")
+        self.api_key = settings.MUSCLEWIKI_API_KEY or ""
 
     @property
     def headers(self) -> Dict[str, str]:

@@ -146,7 +146,12 @@ def main():
         if sys.stdin.isatty():
             password = getpass.getpass("Enter Super Admin Password: ").strip()
         else:
-            password = "AdminPassword123"
+            raise SystemExit(
+                "SUPER_ADMIN_PASSWORD is required when running non-interactively."
+            )
+
+    if not password:
+        raise SystemExit("Super Admin password cannot be empty.")
 
     if not name:
         name = "Platform Super Admin"

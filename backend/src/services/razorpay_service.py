@@ -25,8 +25,8 @@ class RazorpayService:
         key_secret: Optional[str] = None,
         webhook_secret: Optional[str] = None,
     ):
-        self.key_id = (key_id or os.getenv("RAZORPAY_KEY_ID", "rzp_test_RCEmjSWmFaZJbN")).strip()
-        self.key_secret = (key_secret or os.getenv("RAZORPAY_KEY_SECRET", "IGLluMDmPXFRpqDd4MZ7PwBB")).strip()
+        self.key_id = (key_id or os.getenv("RAZORPAY_KEY_ID", "")).strip()
+        self.key_secret = (key_secret or os.getenv("RAZORPAY_KEY_SECRET", "")).strip()
         self.webhook_secret = (webhook_secret or os.getenv("RAZORPAY_WEBHOOK_SECRET", "")).strip()
 
     def _get_auth_header(self) -> Dict[str, str]:

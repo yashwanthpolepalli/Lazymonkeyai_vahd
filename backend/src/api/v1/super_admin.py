@@ -46,7 +46,10 @@ def onboard_organization(payload: dict = Body(...), db: Session = Depends(get_db
 @router.post("/owners/{user_id}/reset-credentials")
 def reset_owner_credentials(user_id: str, payload: dict = Body(...), db: Session = Depends(get_db)):
     """Reset Gym Owner credentials dynamically with bcrypt hashing and audit logging."""
-    new_password = payload.get("new_password") or payload.get("password") or "FitClub@2026"
+    new_password = (payload.get("new_password") or payload.get("password") or "").strip()
+    if not new_password:
+        return {"success": False, "message": "New password is required"}
+
     return SuperAdminService.reset_owner_credentials(db, user_id, new_password)
 
 

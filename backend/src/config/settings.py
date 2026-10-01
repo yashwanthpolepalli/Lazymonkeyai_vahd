@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     GYM_NAME: str = os.getenv("GYM_NAME", "FIT CLUB")
     GYM_PLATFORM_TAGLINE: str = os.getenv("GYM_PLATFORM_TAGLINE", "AI Enterprise Platform")
     API_V1_STR: str = "/api"
-    SECRET_KEY: str = os.getenv("SECRET_KEY", "fitclub-super-secret-jwt-key-32-chars-minimum-token")
+    SECRET_KEY: Optional[str] = os.getenv("SECRET_KEY")
     ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))
 
@@ -67,11 +67,11 @@ class Settings(BaseSettings):
     ESSL_BIOSERVER_TIMEOUT: int = int(os.getenv("ESSL_BIOSERVER_TIMEOUT", "8"))
 
     # ─── MuscleWiki API Key ──────────────────────────────────────────────
-    MUSCLEWIKI_API_KEY: str = os.getenv("MUSCLEWIKI_API_KEY", "mw_NAhcwU4l7vVaQYKmBqz-A6Fw1804LA2UwgEaVcM5caQ")
+    MUSCLEWIKI_API_KEY: Optional[str] = os.getenv("MUSCLEWIKI_API_KEY")
 
     # ─── Razorpay Payment Gateway ─────────────────────────────────────────
-    RAZORPAY_KEY_ID: str = os.getenv("RAZORPAY_KEY_ID", "rzp_test_RCEmjSWmFaZJbN")
-    RAZORPAY_KEY_SECRET: str = os.getenv("RAZORPAY_KEY_SECRET", "IGLluMDmPXFRpqDd4MZ7PwBB")
+    RAZORPAY_KEY_ID: Optional[str] = os.getenv("RAZORPAY_KEY_ID")
+    RAZORPAY_KEY_SECRET: Optional[str] = os.getenv("RAZORPAY_KEY_SECRET")
     RAZORPAY_WEBHOOK_SECRET: Optional[str] = os.getenv("RAZORPAY_WEBHOOK_SECRET", "")
 
     class Config:

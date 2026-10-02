@@ -119,7 +119,7 @@ def get_staff_face_status(
     from src.models.hrms import Employee
     from src.models.trainer import TrainerProfile
     from src.models.user import User
-    from src.models.biometrics import BiometricLog
+    from src.models.biometric import BiometricLog
 
     emp = db.query(Employee).filter(
         (Employee.id == employee_id) | (Employee.code == employee_id) | (Employee.email.ilike(employee_id))
@@ -138,13 +138,21 @@ def get_staff_face_status(
     face_img = None
     if emp and emp.avatar and len(emp.avatar) > 50:
         face_img = emp.avatar
-    elif usr and usr.avatar and len(usr.avatar) > 50:
-        face_img = usr.avatar
+    elif usr and (getattr(usr, 'avatar_url', None) or getattr(usr, 'avatar', None)) and len(getattr(usr, 'avatar_url', None) or getattr(usr, 'avatar', None)) > 50:
+        face_img = getattr(usr, 'avatar_url', None) or getattr(usr, 'avatar', None)
 
-    enroll_log = db.query(BiometricLog).filter(
-        (BiometricLog.direction == "ENROLL") | (BiometricLog.event_type == "FACE_ENROLLMENT"),
-        (BiometricLog.customer_id == employee_id) | (BiometricLog.meta_data["user_id"].astext == employee_id)
-    ).order_by(BiometricLog.timestamp.desc()).first()
+    # Fetch enroll logs by customer_id match or by scanning meta_data in Python
+    # Avoid .astext (JSONB-only) on plain JSON columns
+    enroll_log = None
+    enroll_logs = db.query(BiometricLog).filter(
+        (BiometricLog.direction == "ENROLL") | (BiometricLog.event_type == "FACE_ENROLLMENT") | (BiometricLog.event_type == "FACE_SCAN"),
+    ).order_by(BiometricLog.timestamp.desc()).limit(500).all()
+    for _log in enroll_logs:
+        meta = _log.meta_data or {}
+        log_uid = meta.get("user_id") or meta.get("employee_id") or ""
+        if _log.customer_id == employee_id or log_uid == employee_id:
+            enroll_log = _log
+            break
 
     enrolled_at = None
     if enroll_log:
@@ -152,8 +160,8 @@ def get_staff_face_status(
         if not face_img and enroll_log.meta_data and enroll_log.meta_data.get("face_image"):
             face_img = enroll_log.meta_data.get("face_image")
 
-    name = f"{emp.first_name} {emp.last_name or ''}".strip() if emp else (trainer.full_name if trainer else (usr.name if usr else employee_id))
-    role = (trainer.role if trainer and trainer.role else None) or (emp.designation if emp and emp.designation else None) or (usr.role if usr and usr.role else None) or "Trainer"
+    name = f"{emp.first_name} {emp.last_name or ''}".strip() if emp else (trainer.full_name if trainer else (getattr(usr, 'full_name', None) or getattr(usr, 'name', None) or employee_id))
+    role = (trainer.role if trainer and trainer.role else None) or (emp.designation if emp and emp.designation else None) or (usr.role if usr and usr.role else None) or "TRAINER"
 
     return {
         "is_enrolled": bool(face_img and len(face_img) > 50),
@@ -178,7 +186,8 @@ def register_staff_face(payload: dict, db: Session = Depends(get_db)):
     from src.models.hrms import Employee
     from src.models.trainer import TrainerProfile
     from src.models.user import User
-    from src.models.biometrics import BiometricLog
+    from src.models.customer import Customer
+    from src.models.biometric import BiometricLog
 
     raw_img = str(face_image).strip()
     raw_bytes_len = len(raw_img)
@@ -198,9 +207,11 @@ def register_staff_face(payload: dict, db: Session = Depends(get_db)):
     if emp:
         emp.avatar = raw_img
     if usr:
-        usr.avatar = raw_img
+        usr.avatar_url = raw_img
+        if hasattr(usr, 'avatar'):
+            usr.avatar = raw_img
 
-    name = payload.get("full_name") or (f"{emp.first_name} {emp.last_name or ''}".strip() if emp else (trainer.full_name if trainer else (usr.name if usr else employee_id)))
+    name = payload.get("full_name") or (f"{emp.first_name} {emp.last_name or ''}".strip() if emp else (trainer.full_name if trainer else (getattr(usr, 'full_name', None) or getattr(usr, 'name', None) or employee_id)))
     role = (
         payload.get("user_role")
         or (trainer.role if trainer and trainer.role else None)
@@ -224,9 +235,13 @@ def register_staff_face(payload: dict, db: Session = Depends(get_db)):
     status = payload.get("status") or ("SUCCESS" if quality_score >= 0.90 else "FAILED")
     action_label = payload.get("action") or "FACE_ENROLLMENT"
 
+    # Only set customer_id if employee_id exists in customers table to avoid foreign key violations
+    cust_exists = db.query(Customer).filter(Customer.id == employee_id).first()
+    customer_id_val = cust_exists.id if cust_exists else None
+
     bio_log = BiometricLog(
         id=f"bio_reg_{uuid.uuid4().hex[:8]}",
-        customer_id=employee_id,
+        customer_id=customer_id_val,
         user_role=role,
         event_type=event_type,
         device_type=device_type,
@@ -238,6 +253,7 @@ def register_staff_face(payload: dict, db: Session = Depends(get_db)):
         meta_data={
             "action": action_label,
             "user_id": employee_id,
+            "employee_id": employee_id,
             "user_name": name,
             "user_role": role,
             "branch": branch_name,
@@ -279,6 +295,7 @@ def verify_staff_face_punch(payload: dict, db: Session = Depends(get_db)):
     from src.models.hrms import Employee
     from src.models.trainer import TrainerProfile
     from src.models.user import User
+    from src.models.biometric import BiometricLog
 
     emp = db.query(Employee).filter(
         (Employee.id == employee_id) | (Employee.code == employee_id) | (Employee.email.ilike(employee_id))
@@ -288,7 +305,19 @@ def verify_staff_face_punch(payload: dict, db: Session = Depends(get_db)):
     ).first()
     usr = db.query(User).filter((User.id == employee_id) | (User.email.ilike(employee_id))).first()
 
-    stored_avatar = (emp.avatar if emp else None) or (usr.avatar if usr else None)
+    stored_avatar = (emp.avatar if emp and emp.avatar else None) or (getattr(usr, 'avatar_url', None) or getattr(usr, 'avatar', None) if usr else None)
+    if not stored_avatar:
+        # Avoid .astext (JSONB-only); filter in Python after fetching rows
+        recent_logs = db.query(BiometricLog).filter(
+            (BiometricLog.direction == "ENROLL") | (BiometricLog.event_type == "FACE_ENROLLMENT") | (BiometricLog.event_type == "FACE_SCAN"),
+        ).order_by(BiometricLog.timestamp.desc()).limit(500).all()
+        for _log in recent_logs:
+            meta = _log.meta_data or {}
+            log_uid = meta.get("user_id") or meta.get("employee_id") or ""
+            if (_log.customer_id == employee_id or log_uid == employee_id) and meta.get("face_image"):
+                stored_avatar = meta.get("face_image")
+                break
+
     if not stored_avatar or len(stored_avatar) < 50:
         raise HTTPException(status_code=400, detail="Face ID not enrolled. Please enroll your face first.")
 
@@ -299,7 +328,7 @@ def verify_staff_face_punch(payload: dict, db: Session = Depends(get_db)):
     seed_val = int(combined_hash[:4], 16) % 35
     confidence = round(0.965 + (seed_val / 1000.0), 4)
 
-    name = f"{emp.first_name} {emp.last_name or ''}".strip() if emp else (trainer.full_name if trainer else (usr.name if usr else employee_id))
+    name = f"{emp.first_name} {emp.last_name or ''}".strip() if emp else (trainer.full_name if trainer else (getattr(usr, 'full_name', None) or getattr(usr, 'name', None) or employee_id))
     resolved_role = (
         (user_role if user_role else None)
         or (trainer.role if trainer and trainer.role else None)

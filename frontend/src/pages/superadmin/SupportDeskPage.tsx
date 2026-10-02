@@ -169,7 +169,7 @@ export function SupportDeskPage() {
           <Icon name="search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
-            placeholder="Search tickets by ID, subject, or gym..."
+            placeholder="Search tickets by ID, subject, or organization..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-brand-500 outline-none"
@@ -324,11 +324,11 @@ export function SupportDeskPage() {
             <form onSubmit={handleCreateTicket} className="space-y-3 text-xs">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Gym / Organization</label>
+                  <label className="font-bold text-slate-700 block mb-1">Organization / Business</label>
                   <input
                     type="text"
                     required
-                    placeholder="e.g. PowerZone Fitness"
+                    placeholder="e.g. Acme Enterprise"
                     value={form.organization_name}
                     onChange={(e) => setForm((p) => ({ ...p, organization_name: e.target.value }))}
                     className="w-full px-3 py-2 border border-slate-200 rounded-xl"

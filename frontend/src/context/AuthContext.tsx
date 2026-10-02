@@ -11,7 +11,23 @@ interface AuthContextValue {
   logout: () => void;
 }
 
-const AuthContext = createContext<AuthContextValue | null>(null);
+const defaultAuthContext: AuthContextValue = {
+  user: null,
+  loading: false,
+  login: async (email: string, password: string, role?: string) => {
+    return api.auth.login(email, password, role);
+  },
+  signup: async (data: { full_name: string; email: string; password: string; phone?: string; gym_name?: string }) => {
+    return api.auth.signup(data);
+  },
+  updateUser: () => {},
+  logout: () => {
+    localStorage.removeItem('fitclub_user');
+    localStorage.removeItem('fitclub_token');
+  },
+};
+
+const AuthContext = createContext<AuthContextValue>(defaultAuthContext);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -88,8 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
-  return ctx;
+  return ctx || defaultAuthContext;
 }
 
 export type { Role };

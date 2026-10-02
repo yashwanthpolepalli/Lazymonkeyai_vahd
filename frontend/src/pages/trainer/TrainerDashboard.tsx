@@ -49,7 +49,7 @@ export function TrainerDashboard() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Trainer Dashboard" breadcrumb={['Trainer', 'Dashboard']} actions={<button className="btn-primary"><Icon name="plus" size={16} /> Assign Workout</button>} />
+      <PageHeader title="Trainer Dashboard" breadcrumb={['Trainer', 'Dashboard']} />
 
       {/* Trainer Shift Geofenced Punch Center */}
       <TrainerGeofencePunchWidget />
@@ -57,7 +57,7 @@ export function TrainerDashboard() {
       {loading ? (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">{Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)}</div>
       ) : (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">{kpis.map((k) => <KpiCard key={k.id} {...k} />)}</div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">{kpis.map((k, i) => <KpiCard key={k.id || k.label || i} {...k} />)}</div>
       )}
 
 

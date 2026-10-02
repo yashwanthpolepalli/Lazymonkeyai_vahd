@@ -689,7 +689,7 @@ class HrmsService:
                         (Employee.email.ilike(owner_user.email)) | (Employee.id == f"emp_{owner_user.id}")
                     ).first()
                     if not emp:
-                        full_name = owner_user.name or "Gym Owner / Director"
+                        full_name = getattr(owner_user, "full_name", None) or getattr(owner_user, "name", None) or "Gym Owner / Director"
                         unique_code = f"EMP-{uuid.uuid4().hex[:4].upper()}"
                         emp = Employee(
                             id=f"emp_{owner_user.id}",

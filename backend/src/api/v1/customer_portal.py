@@ -853,7 +853,7 @@ def register_customer_face(
     cust.updated_at = now_dt
 
     if cust.user:
-        cust.user.avatar = raw_img_str
+        cust.user.avatar_url = raw_img_str
         cust.user.updated_at = now_dt
 
     branch_name = _resolve_customer_branch(cust, db)

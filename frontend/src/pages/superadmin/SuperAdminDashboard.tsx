@@ -59,7 +59,7 @@ export function SuperAdminDashboard() {
         breadcrumb={['Super Admin', 'Overview']}
         actions={
           <button onClick={() => setOnboardOpen(true)} className="btn-primary flex items-center gap-2">
-            <Icon name="plus" size={16} /> Onboard Gym
+            <Icon name="plus" size={16} /> Onboard Owner
           </button>
         }
       />
@@ -80,13 +80,13 @@ export function SuperAdminDashboard() {
         <div className="card p-5">
           <h3 className="text-base font-bold text-navy-900 mb-4">Revenue by Plan</h3>
           {loading ? <Skeleton className="h-48 w-full" /> : (() => {
-            const totalGyms = kpis.find(k => k.id === 'total_gyms' || k.label === 'Total Gyms')?.value || 0;
+            const totalGyms = kpis.find(k => k.id === 'total_gyms' || k.label === 'Total Gyms' || k.label === 'Total Organizations')?.value || 0;
             const planDistribution = (revenue as any)?.planDistribution || [];
 
             return (
               <>
                 <div className="flex justify-center mb-4">
-                  <DonutChart segments={planDistribution} size={160} centerLabel={String(totalGyms)} centerSublabel="Gyms" />
+                  <DonutChart segments={planDistribution} size={160} centerLabel={String(totalGyms)} centerSublabel="Organizations" />
                 </div>
                 {planDistribution.length > 0 ? (
                   <div className="space-y-2">
@@ -111,7 +111,7 @@ export function SuperAdminDashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="card p-5">
-          <h3 className="text-base font-bold text-navy-900 mb-4">New Gym Growth</h3>
+          <h3 className="text-base font-bold text-navy-900 mb-4">New Organization Growth</h3>
           {loading || !revenue ? <Skeleton className="h-48 w-full" /> : (
             <BarChart data={revenue.newCustomers} labels={revenue.labels} height={180} color="#059669" />
           )}
@@ -124,13 +124,13 @@ export function SuperAdminDashboard() {
         </div>
       </div>
 
-      {/* Onboard Gym Modal */}
+      {/* Onboard Organization Modal */}
       {onboardOpen && (
         <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-6 w-full max-w-lg space-y-4 shadow-2xl border border-slate-100 animate-scale-in">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <Icon name="building-2" size={18} className="text-brand-600" /> Onboard New Gym Branch
+                <Icon name="building-2" size={18} className="text-brand-600" /> Onboard New Organization Branch
               </h3>
               <button onClick={() => setOnboardOpen(false)} className="text-slate-400 hover:text-slate-600">
                 <Icon name="x" size={18} />
@@ -139,11 +139,11 @@ export function SuperAdminDashboard() {
 
             <form onSubmit={handleOnboardGymSubmit} className="space-y-3">
               <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">Gym Name</label>
+                <label className="text-xs font-bold text-slate-700 block mb-1">Organization Name</label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Gold Gym Elite"
+                  placeholder="e.g. Acme Enterprise"
                   value={onboardForm.gym_name}
                   onChange={(e) => setOnboardForm((p) => ({ ...p, gym_name: e.target.value }))}
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-brand-500"
@@ -209,7 +209,7 @@ export function SuperAdminDashboard() {
                   Cancel
                 </button>
                 <button type="submit" disabled={onboarding} className="btn-primary py-2 px-4 text-xs font-bold">
-                  {onboarding ? 'Onboarding...' : 'Save & Onboard Gym'}
+                  {onboarding ? 'Onboarding...' : 'Save & Onboard Owner'}
                 </button>
               </div>
             </form>

@@ -755,16 +755,16 @@ class DashboardService:
     @staticmethod
     def get_trainer_kpis(db: Session) -> List[Dict[str, Any]]:
         """Retrieve dynamic trainer KPIs from database user and session metrics."""
-        assigned_cnt = db.query(func.count(Customer.id)).filter(Customer.assigned_trainer_id.isnot(None)).scalar() or db.query(func.count(Customer.id)).scalar() or 0
+        assigned_cnt = db.query(func.count(Customer.id)).filter(Customer.trainer_id.isnot(None)).scalar() or db.query(func.count(Customer.id)).scalar() or 0
         today_start = today_ist_start()
         today_sessions = db.query(func.count(WorkoutSession.id)).filter(WorkoutSession.started_at >= today_start).scalar() or 0
         avg_score = db.query(func.avg(Customer.fitness_score)).scalar()
         rating_str = f"{float(avg_score)/20:.1f}/5" if avg_score else "0.0/5"
 
         return [
-            {"title": "Assigned Clients", "value": assigned_cnt, "trend": "Active Clients", "icon": "users"},
-            {"title": "Sessions Today", "value": today_sessions, "trend": "Today", "icon": "dumbbell"},
-            {"title": "Avg Client Rating", "value": rating_str, "trend": "Score", "icon": "star"}
+            {"id": "assigned_clients", "title": "Assigned Clients", "value": assigned_cnt, "trend": "Active Clients", "icon": "users"},
+            {"id": "sessions_today", "title": "Sessions Today", "value": today_sessions, "trend": "Today", "icon": "dumbbell"},
+            {"id": "avg_rating", "title": "Avg Client Rating", "value": rating_str, "trend": "Score", "icon": "star"}
         ]
 
     @staticmethod
@@ -776,9 +776,9 @@ class DashboardService:
         active_days = db.query(func.count(func.distinct(func.date(BiometricLog.timestamp)))).scalar() or 0
 
         return [
-            {"title": "Workouts Completed", "value": completed, "trend": "Logged Sessions", "icon": "award"},
-            {"title": "Calorie Burn", "value": burn_str, "trend": "Total Burned", "icon": "flame"},
-            {"title": "Current Streak", "value": f"{active_days} Days", "trend": "Check-ins", "icon": "zap"}
+            {"id": "workouts_completed", "title": "Workouts Completed", "value": completed, "trend": "Logged Sessions", "icon": "award"},
+            {"id": "calorie_burn", "title": "Calorie Burn", "value": burn_str, "trend": "Total Burned", "icon": "flame"},
+            {"id": "current_streak", "title": "Current Streak", "value": f"{active_days} Days", "trend": "Check-ins", "icon": "zap"}
         ]
 
     @staticmethod

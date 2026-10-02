@@ -141,13 +141,13 @@ function AppRoutes() {
         <Route path="/app" element={<ProtectedRoute><RoleRedirect allowed={['customer']} /></ProtectedRoute>}>
           <Route index element={<CustomerDashboard />} />
           <Route path="attendance" element={<CustomerAttendancePage />} />
-          <Route path="workouts" element={<CustomerWorkoutsPage />} />
-          <Route path="nutrition" element={<CustomerNutritionPage />} />
-          <Route path="food-scanner" element={<FoodScannerPage />} />
+          <Route path="workouts" element={<Navigate to="/app" replace />} />
+          <Route path="nutrition" element={<Navigate to="/app" replace />} />
+          <Route path="food-scanner" element={<Navigate to="/app" replace />} />
           <Route path="progress" element={<ProgressPage />} />
           <Route path="ai-coach" element={<AiCoachPage />} />
-          <Route path="transformation" element={<CustomerTransformationPage />} />
-          <Route path="history" element={<WorkoutsPage />} />
+          <Route path="transformation" element={<Navigate to="/app" replace />} />
+          <Route path="history" element={<Navigate to="/app" replace />} />
           <Route path="profile" element={<CustomerProfilePage />} />
         </Route>
 

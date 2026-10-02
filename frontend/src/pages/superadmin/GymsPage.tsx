@@ -139,6 +139,15 @@ export function GymsPage() {
   const [resetting, setResetting] = useState(false);
   const [resetResult, setResetResult] = useState<{ email: string; password: string } | null>(null);
 
+  // Checkbox Selection & Deletion State
+  const [selectedOrgIds, setSelectedOrgIds] = useState<string[]>([]);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteConfirmModal, setDeleteConfirmModal] = useState<{ open: boolean; orgIds: string[]; gymNames: string[] }>({
+    open: false,
+    orgIds: [],
+    gymNames: [],
+  });
+
   // Fetch Gyms from DB
   const fetchGyms = () => {
     setLoading(true);
@@ -306,7 +315,7 @@ export function GymsPage() {
   const handleOpenResetModal = (g: any) => {
     setResetModalUser({
       id: g.owner_id || g.owner_email || g.id,
-      name: g.owner_name || g.owner || 'Gym Owner',
+      name: g.owner_name || g.owner || 'Owner',
       email: g.owner_email || g.owner || '',
     });
     setNewPasswordVal(generateSecurePassword());
@@ -332,6 +341,50 @@ export function GymsPage() {
     }
   };
 
+  const handleToggleSelectAll = () => {
+    if (filteredGyms.length > 0 && selectedOrgIds.length === filteredGyms.length) {
+      setSelectedOrgIds([]);
+    } else {
+      setSelectedOrgIds(filteredGyms.map((g) => g.id));
+    }
+  };
+
+  const handleToggleSelectOrg = (id: string) => {
+    setSelectedOrgIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleOpenDeleteSingle = (g: any) => {
+    setDeleteConfirmModal({
+      open: true,
+      orgIds: [g.id],
+      gymNames: [g.name || g.branch_name || 'Selected Organization'],
+    });
+  };
+
+  const handleConfirmDelete = async () => {
+    if (deleteConfirmModal.orgIds.length === 0) return;
+    setDeleting(true);
+    try {
+      if (deleteConfirmModal.orgIds.length === 1) {
+        await api.superAdmin.deleteOrganization(deleteConfirmModal.orgIds[0]);
+      } else {
+        await api.superAdmin.bulkDeleteOrganizations(deleteConfirmModal.orgIds);
+      }
+      setSelectedOrgIds((prev) => prev.filter((id) => !deleteConfirmModal.orgIds.includes(id)));
+      if (selected && deleteConfirmModal.orgIds.includes(selected.id)) {
+        setSelected(null);
+      }
+      setDeleteConfirmModal({ open: false, orgIds: [], gymNames: [] });
+      fetchGyms();
+    } catch (_err) {
+      /* ignore */
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const executeActualOnboarding = async (effectiveMethod?: string) => {
     setOnboarding(true);
     setOnboardError('');
@@ -340,10 +393,10 @@ export function GymsPage() {
       const methodToUse = effectiveMethod || paymentMethod;
       const payload = {
         ...onboardForm,
-        branch_name: onboardForm.branch_name.trim() || 'Main Branch',
-        plan_id: selectedPlan?.id,
-        plan_name: selectedPlan?.name || 'Pro Growth',
-        plan_tier: selectedPlan?.code || 'pro',
+        branch_name: onboardForm.branch_name.trim() || onboardForm.gym_name.trim(),
+        plan_id: selectedPlan?.id || '',
+        plan_name: selectedPlan?.name || '',
+        plan_tier: selectedPlan?.code || '',
         billing_cycle: billingCycle,
         payment_method: methodToUse,
         paid_amount: grandTotal,
@@ -359,22 +412,23 @@ export function GymsPage() {
         setOnboardOpen(false);
         setCredentialCardData({
           gym_name: onboardForm.gym_name,
-          branch_name: onboardForm.branch_name.trim() || 'Main Branch',
+          branch_name: onboardForm.branch_name.trim() || onboardForm.gym_name.trim(),
           owner_name: onboardForm.owner_name.trim() || '—',
           owner_email: onboardForm.owner_email,
           phone: onboardForm.phone,
           temporary_password: onboardForm.password,
-          plan_name: selectedPlan?.name || 'Pro Growth',
+          plan_name: selectedPlan?.name || '',
           billing_cycle: billingCycle,
           payment_method: methodToUse,
           paid_amount: grandTotal,
         });
         fetchGyms();
       } else {
-        setOnboardError(res?.message || 'Failed to onboard gym. Please try again.');
+        setOnboardError(res?.message || 'Failed to onboard organization. Please try again.');
       }
+
     } catch (err: any) {
-      setOnboardError(err?.message || 'Failed to onboard gym. Please check inputs.');
+      setOnboardError(err?.message || 'Failed to onboard organization. Please check inputs.');
     } finally {
       setOnboarding(false);
     }
@@ -382,7 +436,7 @@ export function GymsPage() {
 
   const handleCompleteOnboard = async () => {
     if (!onboardForm.gym_name.trim() || !onboardForm.owner_email.trim()) {
-      setOnboardError('Please fill in both Gym Name and Owner Email.');
+      setOnboardError('Please fill in both Organization Name and Owner Email.');
       setWizardStep(1);
       return;
     }
@@ -415,14 +469,14 @@ export function GymsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Gym Organizations Directory"
-        breadcrumb={['Super Admin', 'Gyms & Tenants']}
+        title="Organizations Directory"
+        breadcrumb={['Super Admin', 'Organizations & Tenants']}
         actions={
           <button
             onClick={handleOpenOnboard}
             className="btn-primary flex items-center gap-2 shadow-lg shadow-blue-600/20"
           >
-            <Icon name="plus" size={16} /> Onboard Gym &amp; Owner
+            <Icon name="plus" size={16} /> Onboard Owner
           </button>
         }
       />
@@ -433,7 +487,7 @@ export function GymsPage() {
           <Icon name="search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
-            placeholder="Search gym, owner, email, city, plan..."
+            placeholder="Search organization, owner, email, city, plan..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-blue-500 outline-none"
@@ -442,7 +496,7 @@ export function GymsPage() {
 
         <div className="flex items-center gap-2">
           <div className="text-xs text-slate-500 font-semibold bg-white border border-slate-200 px-3 py-1.5 rounded-xl shadow-xs">
-            Total Gyms: <span className="text-blue-600 font-bold">{gyms.length}</span>
+            Total Organizations: <span className="text-blue-600 font-bold">{gyms.length}</span>
           </div>
           <button onClick={fetchGyms} className="btn-secondary flex items-center gap-1.5 text-xs font-bold py-2 px-3">
             <Icon name="refresh-cw" size={14} /> Refresh
@@ -450,16 +504,66 @@ export function GymsPage() {
         </div>
       </div>
 
-      {/* Gyms Table */}
+      {/* Bulk Selection Actions Bar */}
+      {selectedOrgIds.length > 0 && (
+        <div className="flex items-center justify-between bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-3.5 shadow-sm animate-fade-in">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xs font-black shadow-xs">
+              {selectedOrgIds.length}
+            </div>
+            <div>
+              <span className="text-xs font-bold text-slate-900 block leading-tight">
+                {selectedOrgIds.length} {selectedOrgIds.length === 1 ? 'Organization' : 'Organizations'} Selected
+              </span>
+              <span className="text-[11px] text-slate-500 font-medium block">
+                Apply bulk management actions
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setSelectedOrgIds([])}
+              className="btn-secondary py-1.5 px-3 text-xs font-bold"
+            >
+              Clear Selection
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const selectedNames = gyms
+                  .filter((g) => selectedOrgIds.includes(g.id))
+                  .map((g) => g.name || g.branch_name || g.id);
+                setDeleteConfirmModal({ open: true, orgIds: selectedOrgIds, gymNames: selectedNames });
+              }}
+              className="px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-rose-600/20 transition-all cursor-pointer"
+            >
+              <Icon name="trash-2" size={14} />
+              <span>Delete Selected ({selectedOrgIds.length})</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Organizations Table */}
       <div className="card p-4">
         {loading ? (
-          <SkeletonTable rows={6} cols={8} />
+          <SkeletonTable rows={6} cols={9} />
         ) : filteredGyms.length > 0 ? (
           <div className="overflow-x-auto -mx-4 px-4">
-            <table className="w-full min-w-[950px] text-xs">
+            <table className="w-full min-w-[1000px] text-xs">
               <thead>
                 <tr className="border-b border-navy-100 text-navy-400 text-left font-semibold uppercase tracking-wider">
-                  <th className="px-3 py-3">Gym &amp; Branch</th>
+                  <th className="px-3 py-3 w-10 text-center">
+                    <input
+                      type="checkbox"
+                      checked={filteredGyms.length > 0 && selectedOrgIds.length === filteredGyms.length}
+                      onChange={handleToggleSelectAll}
+                      className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer accent-blue-600"
+                      title="Select / Deselect All"
+                    />
+                  </th>
+                  <th className="px-3 py-3">Organization &amp; Branch</th>
                   <th className="px-3 py-3">Owner Credentials</th>
                   <th className="px-3 py-3">City / Location</th>
                   <th className="px-3 py-3">Members</th>
@@ -473,8 +577,20 @@ export function GymsPage() {
                 {filteredGyms.map((g) => (
                   <tr
                     key={g.id}
-                    className="border-b border-navy-50 hover:bg-slate-50/80 transition-colors"
+                    className={cn(
+                      'border-b border-navy-50 hover:bg-slate-50/80 transition-colors',
+                      selectedOrgIds.includes(g.id) ? 'bg-blue-50/50' : ''
+                    )}
                   >
+                    <td className="px-3 py-3 text-center" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selectedOrgIds.includes(g.id)}
+                        onChange={() => handleToggleSelectOrg(g.id)}
+                        className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer accent-blue-600"
+                      />
+                    </td>
+
                     <td className="px-3 py-3">
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white shrink-0 shadow-sm">
@@ -507,7 +623,7 @@ export function GymsPage() {
                     </td>
 
                     <td className="px-3 py-3">
-                      <Badge variant="brand">{g.plan || 'Pro Growth'}</Badge>
+                      <Badge variant="brand">{g.plan || '—'}</Badge>
                     </td>
 
                     <td className="px-3 py-3">
@@ -539,7 +655,7 @@ export function GymsPage() {
                         {g.is_active ? (
                           <button
                             onClick={() => handleStatusChange(g.id, 'suspended')}
-                            title="Suspend Gym & Owner"
+                            title="Suspend Organization & Owner"
                             className="px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold text-xs flex items-center gap-1 transition-all"
                           >
                             <Icon name="shield-alert" size={13} />
@@ -548,7 +664,7 @@ export function GymsPage() {
                         ) : (
                           <button
                             onClick={() => handleStatusChange(g.id, 'active')}
-                            title="Activate Gym & Owner"
+                            title="Activate Organization & Owner"
                             className="px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold text-xs flex items-center gap-1 transition-all"
                           >
                             <Icon name="check" size={13} />
@@ -557,8 +673,16 @@ export function GymsPage() {
                         )}
 
                         <button
+                          onClick={() => handleOpenDeleteSingle(g)}
+                          title="Delete Organization"
+                          className="px-2 py-1.5 rounded-lg bg-slate-100 hover:bg-rose-50 text-slate-400 hover:text-rose-600 font-semibold text-xs flex items-center gap-1 transition-all"
+                        >
+                          <Icon name="trash-2" size={13} />
+                        </button>
+
+                        <button
                           onClick={() => setSelected(g)}
-                          title="View Gym 360 Overview"
+                          title="View Organization 360 Overview"
                           className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700"
                         >
                           <Icon name="chevron-right" size={16} />
@@ -572,10 +696,11 @@ export function GymsPage() {
           </div>
         ) : (
           <div className="p-8 text-center text-slate-400 text-xs font-semibold">
-            No gyms or owners found matching your search.
+            No organizations or owners found matching your search.
           </div>
         )}
       </div>
+
 
       {/* ───────────────────────────────────────────────────────────── */}
       {/* 3-STEP ONBOARDING WIZARD MODAL                                */}
@@ -591,7 +716,7 @@ export function GymsPage() {
                   <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
                     <Icon name="building-2" size={18} />
                   </div>
-                  <span>Onboard Gym &amp; Provision Tenant</span>
+                  <span>Onboard Organization &amp; Provision Tenant</span>
                 </h3>
                 <p className="text-xs font-medium text-slate-400 mt-0.5">
                   Tenant provisioning: profile setup, SaaS tier packaging, and POS subscription checkout.
@@ -642,21 +767,21 @@ export function GymsPage() {
               </div>
             )}
 
-            {/* ── STEP 1: GYM PROFILE & OWNER CREDENTIALS ────────────── */}
+            {/* ── STEP 1: ORGANIZATION PROFILE & OWNER CREDENTIALS ────── */}
             {wizardStep === 1 && (
               <div className="space-y-4 animate-fade-in">
-                {/* Gym Details */}
+                {/* Organization Details */}
                 <div>
                   <div className="text-[11px] font-bold text-blue-600 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
-                    <Icon name="building-2" size={13} /> Gym &amp; Location Details
+                    <Icon name="building-2" size={13} /> Organization &amp; Location Details
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="sm:col-span-2">
-                      <label className="text-xs font-bold text-slate-700 block mb-1">Gym / Business Name *</label>
+                      <label className="text-xs font-bold text-slate-700 block mb-1">Organization / Business Name *</label>
                       <input
                         type="text"
                         required
-                        placeholder="e.g. Iron Beast Fitness Club"
+                        placeholder="e.g. Acme Corporation"
                         value={onboardForm.gym_name}
                         onChange={(e) => setOnboardForm((p) => ({ ...p, gym_name: e.target.value }))}
                         className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-blue-500 outline-none"
@@ -722,12 +847,13 @@ export function GymsPage() {
                       <input
                         type="email"
                         required
-                        placeholder="e.g. vikram@beastfitness.com"
+                        placeholder="e.g. owner@enterprise.com"
                         value={onboardForm.owner_email}
                         onChange={(e) => setOnboardForm((p) => ({ ...p, owner_email: e.target.value }))}
                         className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-blue-500 outline-none"
                       />
                     </div>
+
 
                     <div>
                       <label className="text-xs font-bold text-slate-700 block mb-1">Phone Number</label>
@@ -779,7 +905,7 @@ export function GymsPage() {
                     type="button"
                     onClick={() => {
                       if (!onboardForm.gym_name.trim() || !onboardForm.owner_email.trim()) {
-                        setOnboardError('Please fill in Gym Name and Owner Email before continuing.');
+                        setOnboardError('Please fill in Organization Name and Owner Email before continuing.');
                         return;
                       }
                       setOnboardError('');
@@ -1282,16 +1408,16 @@ export function GymsPage() {
             </div>
 
             <div className="space-y-1">
-              <h3 className="text-xl font-black text-slate-900">Gym Onboarded Successfully! 🎉</h3>
+              <h3 className="text-xl font-black text-slate-900">Organization Onboarded Successfully! 🎉</h3>
               <p className="text-xs text-slate-400 font-medium">
-                SaaS Subscription &amp; GYM_OWNER credentials active.
+                SaaS Subscription &amp; Owner credentials active.
               </p>
             </div>
 
             {/* Credential Card */}
             <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-left space-y-2.5 text-xs font-semibold">
               <div className="flex justify-between items-center pb-2 border-b border-slate-200">
-                <span className="text-slate-400 font-bold uppercase text-[10px]">Gym Organization</span>
+                <span className="text-slate-400 font-bold uppercase text-[10px]">Organization</span>
                 <span className="text-slate-900 font-bold">{credentialCardData.gym_name}{credentialCardData.branch_name ? ` (${credentialCardData.branch_name})` : ''}</span>
               </div>
               <div className="flex justify-between items-center">
@@ -1328,7 +1454,7 @@ export function GymsPage() {
                 type="button"
                 onClick={() => {
                   const loginUrl = typeof window !== 'undefined' ? `${window.location.origin}/login` : '/login';
-                  const payload = `FIT CLUB GYM OWNER ONBOARDING CREDENTIALS:\n\nGym: ${credentialCardData.gym_name}\nPlan: ${credentialCardData.plan_name} (${credentialCardData.billing_cycle})\nPayment: ${credentialCardData.payment_method} - ₹${(credentialCardData.paid_amount || 0).toLocaleString()}\nLogin URL: ${loginUrl}\nRole: Gym Owner\nEmail: ${credentialCardData.owner_email}\nPassword: ${credentialCardData.temporary_password}\n\nPlease login and change your password upon first sign-in.`;
+                  const payload = `ORGANIZATION OWNER ONBOARDING CREDENTIALS:\n\nOrganization: ${credentialCardData.gym_name}\nPlan: ${credentialCardData.plan_name} (${credentialCardData.billing_cycle})\nPayment: ${credentialCardData.payment_method} - ₹${(credentialCardData.paid_amount || 0).toLocaleString()}\nLogin URL: ${loginUrl}\nRole: Organization Owner\nEmail: ${credentialCardData.owner_email}\nPassword: ${credentialCardData.temporary_password}\n\nPlease login and change your password upon first sign-in.`;
                   copyToClipboard(payload, 'credentials_sheet');
                 }}
                 className="w-full py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition-all"
@@ -1464,7 +1590,7 @@ export function GymsPage() {
           <div className="fixed inset-0 bg-navy-900/30 backdrop-blur-sm z-40" onClick={() => setSelected(null)} />
           <div className="fixed right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl z-50 overflow-y-auto animate-slide-in-right">
             <div className="sticky top-0 bg-white border-b border-navy-100 p-5 flex items-center justify-between">
-              <h3 className="text-base font-bold text-navy-900">Gym 360</h3>
+              <h3 className="text-base font-bold text-navy-900">Organization 360</h3>
               <button onClick={() => setSelected(null)} className="p-2 rounded-lg hover:bg-navy-100"><Icon name="x" size={18} className="text-navy-500" /></button>
             </div>
             <div className="p-5 space-y-5">
@@ -1484,7 +1610,7 @@ export function GymsPage() {
 
                 <div className="pt-2 border-t border-blue-100 flex justify-between items-center">
                   <span className="text-slate-500">Subscribed Tier:</span>
-                  <Badge variant="brand">{selected.plan || 'Pro Growth'}</Badge>
+                  <Badge variant="brand">{selected.plan || '—'}</Badge>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-slate-500">Billing &amp; Payment:</span>
@@ -1520,12 +1646,12 @@ export function GymsPage() {
                 <div className="grid grid-cols-2 gap-2">
                   {!selected.is_active && (
                     <button onClick={() => handleStatusChange(selected.id, 'active')} className="btn-primary flex items-center justify-center gap-1">
-                      <Icon name="check" size={14} /> Activate Gym
+                      <Icon name="check" size={14} /> Activate Organization
                     </button>
                   )}
                   {selected.is_active && (
                     <button onClick={() => handleStatusChange(selected.id, 'suspended')} className="btn-secondary text-danger-600 flex items-center justify-center gap-1">
-                      <Icon name="x" size={14} /> Suspend Gym
+                      <Icon name="x" size={14} /> Suspend Organization
                     </button>
                   )}
                 </div>
@@ -1566,6 +1692,74 @@ export function GymsPage() {
           executeActualOnboarding('Razorpay UPI');
         }}
       />
+
+      {/* ───────────────────────────────────────────────────────────── */}
+      {/* DELETE ORGANIZATIONS CONFIRMATION MODAL                       */}
+      {/* ───────────────────────────────────────────────────────────── */}
+      {deleteConfirmModal.open && (
+        <div className="fixed inset-0 bg-slate-950/75 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-[28px] p-6 sm:p-7 w-full max-w-md space-y-5 shadow-2xl border border-slate-100 animate-scale-in text-center">
+            <div className="w-14 h-14 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto shadow-sm">
+              <Icon name="alert-triangle" size={28} />
+            </div>
+
+            <div className="space-y-1.5">
+              <h3 className="text-lg font-black text-slate-900">
+                {deleteConfirmModal.orgIds.length === 1
+                  ? 'Delete Organization?'
+                  : `Delete ${deleteConfirmModal.orgIds.length} Organizations?`}
+              </h3>
+              <p className="text-xs text-slate-500 font-medium">
+                This action is permanent and will remove the organization branch and associated owner record from the database.
+              </p>
+            </div>
+
+            {deleteConfirmModal.gymNames.length > 0 && (
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-left max-h-36 overflow-y-auto space-y-1">
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                  Selected to be removed:
+                </div>
+                {deleteConfirmModal.gymNames.map((name, idx) => (
+                  <div key={idx} className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
+                    <span className="truncate">{name}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-2.5 pt-1">
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={() => setDeleteConfirmModal({ open: false, orgIds: [], gymNames: [] })}
+                className="btn-secondary py-2.5 text-xs font-bold"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={handleConfirmDelete}
+                className="py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-rose-600/20 transition-all cursor-pointer"
+              >
+                {deleting ? (
+                  <>
+                    <Icon name="refresh-cw" size={14} className="animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Icon name="trash-2" size={14} />
+                    <span>Confirm Delete</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+

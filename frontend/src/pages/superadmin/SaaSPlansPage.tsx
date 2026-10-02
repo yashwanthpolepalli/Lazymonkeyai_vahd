@@ -321,7 +321,7 @@ export function SaaSPlansPage() {
           </div>
           <h4 className="text-base font-bold text-slate-900 mb-1">No SaaS Plans Registered</h4>
           <p className="text-xs text-slate-500 max-w-sm mx-auto mb-4">
-            Create subscription tiers to enable gym businesses to subscribe and scale.
+            Create subscription tiers to enable organizations and businesses to subscribe and scale.
           </p>
           <button onClick={() => setCreateOpen(true)} className="btn-primary inline-flex items-center gap-2">
             <Icon name="plus" size={16} /> Create First Plan

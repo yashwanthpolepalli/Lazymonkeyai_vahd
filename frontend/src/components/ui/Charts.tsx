@@ -129,19 +129,30 @@ interface LineChartProps {
   area?: boolean;
 }
 
-export function LineChart({ data, labels, height = 180, color = '#2563eb', className, area = true }: LineChartProps) {
-  const max = Math.max(...data) * 1.1 || 1;
-  const min = Math.min(...data) * 0.9;
+export function LineChart({ data = [], labels = [], height = 180, color = '#2563eb', className, area = true }: LineChartProps) {
+  if (!data || data.length === 0) {
+    return (
+      <div className={cn('w-full flex items-center justify-center text-xs text-slate-400 font-medium', className)} style={{ height }}>
+        No chart data available
+      </div>
+    );
+  }
+
+  const validData = data.map((v) => (Number.isFinite(v) ? v : 0));
+  const max = Math.max(...validData, 1) * 1.1;
+  const min = Math.min(...validData, 0) * 0.9;
   const range = max - min || 1;
   const w = 100;
   const h = height;
-  const points = data.map((v, i) => {
-    const x = (i / (data.length - 1)) * w;
+
+  const points = validData.map((v, i) => {
+    const x = validData.length > 1 ? (i / (validData.length - 1)) * w : w / 2;
     const y = h - ((v - min) / range) * (h - 20) - 10;
-    return `${x},${y}`;
+    return `${Number.isFinite(x) ? x : 0},${Number.isFinite(y) ? y : h / 2}`;
   });
-  const pathD = `M ${points.join(' L ')}`;
-  const areaD = `${pathD} L ${w},${h} L 0,${h} Z`;
+
+  const pathD = points.length > 0 ? `M ${points.join(' L ')}` : '';
+  const areaD = pathD ? `${pathD} L ${w},${h} L 0,${h} Z` : '';
   const gid = `line-${color.replace('#', '')}`;
 
   return (
@@ -153,19 +164,42 @@ export function LineChart({ data, labels, height = 180, color = '#2563eb', class
             <stop offset="100%" stopColor={color} stopOpacity="0" />
           </linearGradient>
         </defs>
-        {area && <path d={areaD} fill={`url(#${gid})`} />}
-        <path d={pathD} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
-        {data.map((v, i) => {
-          const x = (i / (data.length - 1)) * w;
+        {area && areaD && <path d={areaD} fill={`url(#${gid})`} />}
+        {pathD && (
+          <path
+            d={pathD}
+            fill="none"
+            stroke={color}
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            vectorEffect="non-scaling-stroke"
+          />
+        )}
+        {validData.map((v, i) => {
+          const x = validData.length > 1 ? (i / (validData.length - 1)) * w : w / 2;
           const y = h - ((v - min) / range) * (h - 20) - 10;
-          return <circle key={i} cx={x} cy={y} r="1.5" fill={color} vectorEffect="non-scaling-stroke" />;
+          return (
+            <circle
+              key={i}
+              cx={Number.isFinite(x) ? x : 0}
+              cy={Number.isFinite(y) ? y : h / 2}
+              r="1.5"
+              fill={color}
+              vectorEffect="non-scaling-stroke"
+            />
+          );
         })}
       </svg>
-      <div className="flex justify-between mt-2">
-        {labels.map((l, i) => (
-          <span key={i} className="text-[10px] font-medium text-navy-400">{l}</span>
-        ))}
-      </div>
+      {labels && labels.length > 0 && (
+        <div className="flex justify-between mt-2">
+          {labels.map((l, i) => (
+            <span key={i} className="text-[10px] font-medium text-navy-400">
+              {l}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

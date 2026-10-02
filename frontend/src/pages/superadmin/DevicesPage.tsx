@@ -361,10 +361,10 @@ export function DevicesPage() {
               </div>
 
               <div>
-                <label className="font-bold text-slate-700 block mb-1">Gym Location / Zone</label>
+                <label className="font-bold text-slate-700 block mb-1">Facility Location / Zone</label>
                 <input
                   type="text"
-                  placeholder="e.g. VIP Entrance, Free Weights Area"
+                  placeholder="e.g. Main Entrance, Floor 1 Zone"
                   value={formData.location}
                   onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-brand-500 focus:bg-white"

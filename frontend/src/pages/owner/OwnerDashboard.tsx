@@ -44,9 +44,6 @@ export function OwnerDashboard() {
         userName={userName}
         gymName={gymName}
         branchName={branchName}
-        onAddCustomer={() => navigate('/owner/customers')}
-        onAddPayment={() => navigate('/owner/payments')}
-        onAddSalesInvoice={() => navigate('/owner/pos')}
       />
 
       {/* Level 1 & 2: Key Business Performance Cards with Student/Employee Switch */}

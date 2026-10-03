@@ -20,18 +20,29 @@ export const navConfig: Record<Role, NavItem[]> = {
   ],
   owner: [
     { label: 'Executive Overview', path: '/owner', icon: 'layout-grid' },
-    { label: 'Students', path: '/owner/customers', icon: 'users' },
-    { label: 'HRMS', path: '/owner/hrms', icon: 'users' },
+    { label: 'HRMS & Students', path: '/owner/hrms', icon: 'users' },
     { label: 'POS', path: '/owner/pos', icon: 'credit-card' },
     { label: 'Payments', path: '/owner/payments', icon: 'indian-rupee' },
     { label: 'IoT Devices', path: '/owner/iot', icon: 'cpu' },
     { label: 'Multi-Branch', path: '/owner/multi-branch', icon: 'git-branch' },
     { label: 'Settings', path: '/owner/settings', icon: 'settings' },
   ],
-
+  employee: [
+    { label: 'Dashboard', path: '/trainer', icon: 'layout-dashboard' },
+    { label: 'Students', path: '/trainer/customers', icon: 'users' },
+    { label: 'HRMS', path: '/trainer/hrms', icon: 'users' },
+    { label: 'AI Coach', path: '/trainer/ai-coach', icon: 'sparkles' },
+    { label: 'Profile', path: '/trainer/profile', icon: 'user' },
+  ],
+  student: [
+    { label: 'Home', path: '/app', icon: 'home' },
+    { label: 'Attendance', path: '/app/attendance', icon: 'calendar-check' },
+    { label: 'AI Coach', path: '/app/ai-coach', icon: 'sparkles' },
+    { label: 'Profile', path: '/app/profile', icon: 'user' },
+  ],
   trainer: [
     { label: 'Dashboard', path: '/trainer', icon: 'layout-dashboard' },
-    { label: 'My Customers', path: '/trainer/customers', icon: 'users' },
+    { label: 'Students', path: '/trainer/customers', icon: 'users' },
     { label: 'HRMS', path: '/trainer/hrms', icon: 'users' },
     { label: 'AI Coach', path: '/trainer/ai-coach', icon: 'sparkles' },
     { label: 'Profile', path: '/trainer/profile', icon: 'user' },
@@ -47,6 +58,8 @@ export const navConfig: Record<Role, NavItem[]> = {
 export const roleHomePath: Record<Role, string> = {
   super_admin: '/super-admin',
   owner: '/owner',
+  employee: '/trainer',
+  student: '/app',
   trainer: '/trainer',
   customer: '/app',
 };

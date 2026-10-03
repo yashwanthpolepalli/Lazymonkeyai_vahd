@@ -10,12 +10,9 @@ from sqlalchemy import func, case, and_, or_, desc
 from src.models.user import User
 from src.models.customer import Customer
 from src.models.membership import Membership
-from src.models.inbody import InBodyReport
-from src.models.workout import Workout, WorkoutSession
-from src.models.nutrition import NutritionLog
 from src.models.biometric import BiometricLog
 from src.models.biometric_device import BiometricDevice
-from src.models.gym_setting import GymBranch
+from src.models.settings import Branch as GymBranch
 from src.models.hrms import Employee
 from src.models.trainer import TrainerProfile
 from src.services.auth_service import _fetch_gym_context
@@ -177,8 +174,8 @@ class DashboardService:
         if not mem:
             mem = db.query(Membership).filter(Membership.customer_id == cust.id).order_by(Membership.created_at.desc()).first()
 
-        report = db.query(InBodyReport).filter(InBodyReport.customer_id == cust.id).order_by(InBodyReport.created_at.desc()).first()
-        workout = db.query(Workout).filter(Workout.customer_id == cust.id).order_by(Workout.created_at.desc()).first()
+        report = None
+        workout = None
         
         # Real Attendance calculation from Biometric Logs
         now = now_ist_naive()
@@ -195,14 +192,8 @@ class DashboardService:
         rate_percent = int((days_attended / float(window_days)) * 100) if window_days > 0 else 0
         rate_percent = min(100, rate_percent)
 
-        # Real Today Nutrition aggregation from database
-        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-        nutrition_logs = db.query(NutritionLog).filter(
-            NutritionLog.customer_id == cust.id,
-            NutritionLog.date >= today_start
-        ).all()
-        consumed_calories = float(sum(n.calories for n in nutrition_logs if n.calories)) if nutrition_logs else 0.0
-        protein_grams = float(sum(n.protein for n in nutrition_logs if n.protein)) if nutrition_logs else 0.0
+        consumed_calories = 0.0
+        protein_grams = 0.0
 
         # Dynamic Physiological Macro Target Calculation
         macro_targets = DashboardService.calculate_dynamic_macros(
@@ -658,21 +649,10 @@ class DashboardService:
         total_clients = len(assigned_customers)
         assigned_cids = [c.id for c in assigned_customers]
 
-        total_tests = (
-            db.query(InBodyReport)
-            .filter(InBodyReport.customer_id.in_(assigned_cids))
-            .count()
-            if assigned_cids else 0
-        )
+        total_tests = 0
 
         today_start = today_ist_start()
-        today_workouts = (
-            db.query(Workout)
-            .filter(Workout.customer_id.in_(assigned_cids), Workout.created_at >= today_start)
-            .all()
-            if assigned_cids else []
-        )
-        today_sessions = len(today_workouts)
+        today_sessions = 0
 
         now = now_ist_naive()
         thirty_days_ago = now - datetime.timedelta(days=30)
@@ -722,29 +702,6 @@ class DashboardService:
             })
 
         schedule_slots = []
-        for idx, w in enumerate(today_workouts):
-            cust = db.query(Customer).filter(Customer.id == w.customer_id).first() if w.customer_id else None
-            c_name = cust.full_name if cust else None
-            
-            stat_str = "Upcoming 🕒"
-            if w.status:
-                st_up = w.status.upper()
-                if st_up in ["COMPLETED", "DONE"]:
-                    stat_str = "Completed 🟢"
-                elif st_up in ["NO_SHOW", "MISSED", "CANCELLED"]:
-                    stat_str = "No Show 🔴"
-                elif st_up in ["SCHEDULED", "UPCOMING"]:
-                    stat_str = "Upcoming 🕒"
-                else:
-                    stat_str = w.status
-
-            w_title = w.name if w.name else (cust.goal if cust and cust.goal else None)
-            schedule_slots.append({
-                "time": getattr(w, "scheduled_time", None) or "Today",
-                "client": c_name,
-                "workout": w_title,
-                "status": stat_str
-            })
 
         messages_list = []
         copilot_history = []
@@ -880,27 +837,23 @@ class DashboardService:
         """Retrieve dynamic trainer KPIs from database user and session metrics."""
         assigned_cnt = db.query(func.count(Customer.id)).filter(Customer.trainer_id.isnot(None)).scalar() or db.query(func.count(Customer.id)).scalar() or 0
         today_start = today_ist_start()
-        today_sessions = db.query(func.count(WorkoutSession.id)).filter(WorkoutSession.started_at >= today_start).scalar() or 0
+        today_sessions = db.query(func.count(BiometricLog.id)).filter(BiometricLog.timestamp >= today_start).scalar() or 0
         avg_score = db.query(func.avg(Customer.fitness_score)).scalar()
         rating_str = f"{float(avg_score)/20:.1f}/5" if avg_score else "0.0/5"
 
         return [
             {"id": "assigned_clients", "title": "Assigned Clients", "value": assigned_cnt, "trend": "Active Clients", "icon": "users"},
-            {"id": "sessions_today", "title": "Sessions Today", "value": today_sessions, "trend": "Today", "icon": "dumbbell"},
+            {"id": "sessions_today", "title": "Sessions Today", "value": today_sessions, "trend": "Today", "icon": "users"},
             {"id": "avg_rating", "title": "Avg Client Rating", "value": rating_str, "trend": "Score", "icon": "star"}
         ]
 
     @staticmethod
     def get_customer_kpis(db: Session) -> List[Dict[str, Any]]:
-        """Retrieve dynamic customer KPIs directly from workout sessions and biometric logs."""
-        completed = db.query(func.count(WorkoutSession.id)).filter(WorkoutSession.status == "COMPLETED").scalar() or 0
-        total_vol = float(db.query(func.sum(WorkoutSession.total_volume_kg)).scalar() or 0.0)
-        burn_str = f"{total_vol/10:.0f} kcal" if total_vol > 0 else "0 kcal"
+        """Retrieve dynamic customer KPIs directly from biometric logs."""
         active_days = db.query(func.count(func.distinct(func.date(BiometricLog.timestamp)))).scalar() or 0
 
         return [
-            {"id": "workouts_completed", "title": "Workouts Completed", "value": completed, "trend": "Logged Sessions", "icon": "award"},
-            {"id": "calorie_burn", "title": "Calorie Burn", "value": burn_str, "trend": "Total Burned", "icon": "flame"},
+            {"id": "checkins_count", "title": "Total Check-ins", "value": active_days, "trend": "Logged Attendance", "icon": "award"},
             {"id": "current_streak", "title": "Current Streak", "value": f"{active_days} Days", "trend": "Check-ins", "icon": "zap"}
         ]
 

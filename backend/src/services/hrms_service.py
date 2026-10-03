@@ -15,7 +15,7 @@ from src.models.payroll import PayrollInvoice
 from src.models.customer import Customer
 from src.models.user import User
 from src.models.biometric import BiometricLog
-from src.models.gym_setting import GymBranch, GymSetting
+from src.models.settings import Branch as GymBranch, Setting as GymSetting
 
 IST = timezone(timedelta(hours=5, minutes=30))
 
@@ -185,17 +185,18 @@ class HrmsService:
         full_name = f"{first_name} {last_name}".strip() or "New Staff"
         email = str(payload.get("email") or "").strip()
         phone = str(payload.get("phone") or "").strip()
-        designation = str(payload.get("designation") or "Fitness Trainer").strip()
-        department = str(payload.get("department") or "Fitness & Training").strip()
+        designation = str(payload.get("designation") or "").strip()
+        department = str(payload.get("department") or "").strip()
         salary = float(payload.get("salary") or 0.0)
         gym_branch = str(payload.get("gym_branch") or "").strip()
 
         # Map department/designation to TrainerProfile role
-        role = "TRAINER"
-        if "Management" in department or "Director" in designation or "Owner" in designation:
-            role = "MANAGER" if "Operations" in department else "GYM_OWNER"
-        elif "Front Desk" in department or "Support" in department:
-            role = "STAFF"
+        role = str(payload.get("role") or "TRAINER").upper()
+        if not payload.get("role"):
+            if "Management" in department or "Director" in designation or "Owner" in designation:
+                role = "MANAGER" if "Operations" in department else "GYM_OWNER"
+            elif "Front Desk" in department or "Support" in department:
+                role = "STAFF"
 
         # Also register in TrainerProfile so both remain in sync
         from src.services.payroll_service import PayrollService
@@ -274,17 +275,59 @@ class HrmsService:
     @staticmethod
     def get_departments(db: Session) -> List[Dict[str, Any]]:
         depts = db.query(Department).order_by(Department.name.asc()).all()
+        employees = db.query(Employee).all()
+        trainers = db.query(TrainerProfile).all()
+        
         result = []
         for d in depts:
-            count = db.query(Employee).filter(Employee.department == d.name).count()
+            dept_name_lower = (d.name or "").strip().lower()
+            mapped_emp = []
+            
+            # Map from Employee records
+            for e in employees:
+                e_dept = (e.department or "").strip().lower()
+                if e_dept and e_dept == dept_name_lower:
+                    mapped_emp.append({
+                        "id": e.id,
+                        "name": f"{e.first_name or ''} {e.last_name or ''}".strip() or (e.email or "Employee"),
+                        "email": e.email or "",
+                        "code": e.code or "",
+                        "designation": e.designation or "",
+                        "department": d.name,
+                        "phone": e.phone or "",
+                        "status": e.status or ("Active" if e.is_active is not False else "Inactive"),
+                        "avatar": e.avatar or "",
+                        "joined_date": e.joined_date.isoformat() if e.joined_date else None,
+                    })
+            
+            # Map from TrainerProfile records
+            for t in trainers:
+                t_dept = (getattr(t, "department", None) or t.specialization or "").strip().lower()
+                if t_dept and t_dept == dept_name_lower:
+                    # Check if already added
+                    if not any(emp["email"].lower() == (t.email or "").lower() for emp in mapped_emp):
+                        mapped_emp.append({
+                            "id": t.id,
+                            "name": t.full_name or t.name or (t.email or "Staff"),
+                            "email": t.email or "",
+                            "code": f"EMP-{t.id[:4].upper()}" if t.id else "",
+                            "designation": t.job_designation or t.specialization or "",
+                            "department": d.name,
+                            "phone": t.phone or "",
+                            "status": "Active" if t.is_active is not False else "Inactive",
+                            "avatar": "",
+                            "joined_date": t.created_at.strftime('%Y-%m-%d') if t.created_at else None,
+                        })
+            
             result.append({
                 "id": d.id,
                 "name": d.name,
-                "code": d.code,
+                "code": d.code or "",
                 "description": d.description or "",
                 "head_name": d.head_name or "",
-                "is_active": d.is_active,
-                "employee_count": count
+                "is_active": d.is_active if d.is_active is not None else True,
+                "employee_count": len(mapped_emp),
+                "employees": mapped_emp
             })
         return result
 
@@ -300,21 +343,84 @@ class HrmsService:
         )
         db.add(dept)
         db.commit()
-        return {"message": "Department created successfully", "id": dept.id}
+        return {"message": "Department created successfully", "id": dept.id, "name": dept.name}
+
+    @staticmethod
+    def update_department(db: Session, dept_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        dept = db.query(Department).filter(Department.id == dept_id).first()
+        if not dept:
+            raise ValueError(f"Department with ID {dept_id} not found")
+        if "name" in payload:
+            old_name = dept.name
+            dept.name = str(payload["name"]).strip()
+            # Update associated employees
+            db.query(Employee).filter(Employee.department == old_name).update({"department": dept.name})
+        if "code" in payload:
+            dept.code = str(payload["code"]).strip()
+        if "description" in payload:
+            dept.description = str(payload["description"]).strip()
+        if "head_name" in payload:
+            dept.head_name = str(payload["head_name"]).strip()
+        if "is_active" in payload:
+            dept.is_active = bool(payload["is_active"])
+        db.commit()
+        return {"message": "Department updated successfully", "id": dept.id}
+
+    @staticmethod
+    def delete_department(db: Session, dept_id: str) -> Dict[str, Any]:
+        dept = db.query(Department).filter(Department.id == dept_id).first()
+        if not dept:
+            raise ValueError(f"Department with ID {dept_id} not found")
+        db.delete(dept)
+        db.commit()
+        return {"message": "Department deleted successfully"}
 
     @staticmethod
     def get_designations(db: Session) -> List[Dict[str, Any]]:
         desgs = db.query(Designation).order_by(Designation.title.asc()).all()
+        employees = db.query(Employee).all()
+        trainers = db.query(TrainerProfile).all()
+        
         result = []
         for d in desgs:
-            emp_count = db.query(Employee).filter(Employee.designation == d.title).count()
+            title_lower = (d.title or "").strip().lower()
+            mapped = []
+            
+            for e in employees:
+                e_desg = (e.designation or "").strip().lower()
+                if e_desg and e_desg == title_lower:
+                    mapped.append({
+                        "id": e.id,
+                        "name": f"{e.first_name or ''} {e.last_name or ''}".strip() or (e.email or "Employee"),
+                        "email": e.email or "",
+                        "code": e.code or "",
+                        "department": e.department or d.department or "",
+                        "status": e.status or ("Active" if e.is_active is not False else "Inactive"),
+                        "phone": e.phone or ""
+                    })
+            
+            for t in trainers:
+                t_desg = (t.job_designation or t.specialization or "").strip().lower()
+                if t_desg and t_desg == title_lower:
+                    if not any(emp["email"].lower() == (t.email or "").lower() for emp in mapped):
+                        mapped.append({
+                            "id": t.id,
+                            "name": t.full_name or t.name or (t.email or "Staff"),
+                            "email": t.email or "",
+                            "code": f"EMP-{t.id[:4].upper()}" if t.id else "",
+                            "department": d.department or "",
+                            "status": "Active" if t.is_active is not False else "Inactive",
+                            "phone": t.phone or ""
+                        })
+            
             result.append({
                 "id": d.id,
                 "title": d.title,
-                "department": d.department,
+                "department": d.department or "",
                 "level": d.level or "",
                 "description": d.description or "",
-                "employee_count": emp_count
+                "employee_count": len(mapped),
+                "employees": mapped
             })
         return result
 
@@ -329,7 +435,34 @@ class HrmsService:
         )
         db.add(desg)
         db.commit()
-        return {"message": "Designation created successfully", "id": desg.id}
+        return {"message": "Designation created successfully", "id": desg.id, "title": desg.title}
+
+    @staticmethod
+    def update_designation(db: Session, desg_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        desg = db.query(Designation).filter(Designation.id == desg_id).first()
+        if not desg:
+            raise ValueError(f"Designation with ID {desg_id} not found")
+        if "title" in payload:
+            old_title = desg.title
+            desg.title = str(payload["title"]).strip()
+            db.query(Employee).filter(Employee.designation == old_title).update({"designation": desg.title})
+        if "department" in payload:
+            desg.department = str(payload["department"]).strip()
+        if "level" in payload:
+            desg.level = str(payload["level"]).strip()
+        if "description" in payload:
+            desg.description = str(payload["description"]).strip()
+        db.commit()
+        return {"message": "Designation updated successfully", "id": desg.id}
+
+    @staticmethod
+    def delete_designation(db: Session, desg_id: str) -> Dict[str, Any]:
+        desg = db.query(Designation).filter(Designation.id == desg_id).first()
+        if not desg:
+            raise ValueError(f"Designation with ID {desg_id} not found")
+        db.delete(desg)
+        db.commit()
+        return {"message": "Designation deleted successfully"}
 
     @staticmethod
     def get_teams(db: Session) -> List[Dict[str, Any]]:

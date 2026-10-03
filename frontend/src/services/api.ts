@@ -29,7 +29,15 @@ export const api = {
         }
 
         const userRole = (res.role || '').toLowerCase();
-        const mappedRole = (userRole.includes('admin') ? 'super_admin' : userRole.includes('owner') ? 'owner' : userRole.includes('trainer') ? 'trainer' : 'customer') as User['role'];
+        const mappedRole = (
+          userRole.includes('admin')
+            ? 'super_admin'
+            : userRole.includes('owner')
+            ? 'owner'
+            : userRole.includes('employee') || userRole.includes('trainer') || userRole.includes('staff')
+            ? 'employee'
+            : 'student'
+        ) as User['role'];
 
         return {
           id: res.user_id || res.customer_id || '',
@@ -50,15 +58,23 @@ export const api = {
       try {
         const res = await apiClient.post<any>('/auth/signup', {
           ...data,
-          role: 'GYM_OWNER'
+          role: 'OWNER'
         });
 
         if (res && res.access_token) {
           localStorage.setItem('fitclub_token', res.access_token);
         }
 
-        const userRole = (res.role || 'GYM_OWNER').toLowerCase();
-        const role = (userRole.includes('admin') ? 'super_admin' : userRole.includes('owner') ? 'owner' : userRole.includes('trainer') ? 'trainer' : 'customer') as User['role'];
+        const userRole = (res.role || 'OWNER').toLowerCase();
+        const role = (
+          userRole.includes('admin')
+            ? 'super_admin'
+            : userRole.includes('owner')
+            ? 'owner'
+            : userRole.includes('employee') || userRole.includes('trainer') || userRole.includes('staff')
+            ? 'employee'
+            : 'student'
+        ) as User['role'];
 
         return {
           id: res.user_id || '',
@@ -80,7 +96,15 @@ export const api = {
         const res = await apiClient.get<any>('/auth/me');
         if (!res) return null;
         const userRole = (res.role || '').toLowerCase();
-        const role = (userRole.includes('admin') ? 'super_admin' : userRole.includes('owner') ? 'owner' : userRole.includes('trainer') ? 'trainer' : 'customer') as User['role'];
+        const role = (
+          userRole.includes('admin')
+            ? 'super_admin'
+            : userRole.includes('owner')
+            ? 'owner'
+            : userRole.includes('employee') || userRole.includes('trainer') || userRole.includes('staff')
+            ? 'employee'
+            : 'student'
+        ) as User['role'];
 
         return {
           id: res.user_id || res.customer_id || '',
@@ -132,37 +156,15 @@ export const api = {
     registerDevice: (payload: any): Promise<any> => apiClient.post('/biometrics/devices', payload),
     checkIn: (payload: any): Promise<any> => apiClient.post('/biometrics/check-in', payload),
   },
-  workouts: {
-    aiRecommendation: (): Promise<any> => apiClient.get('/workouts/recommendations'),
-    exercises: (): Promise<any[]> => apiClient.get('/workouts/exercises'),
-    todaySessions: (): Promise<any[]> => apiClient.get('/workouts/sessions/today'),
-  },
   payments: {
     all: (params?: any): Promise<any> => apiClient.get('/payments/audit', { params }),
     audit: (params?: any): Promise<any> => apiClient.get('/payments/audit', { params }),
     transactions: (params?: any): Promise<any> => apiClient.get('/payments/transactions', { params }),
-    membershipTransactions: (params?: any): Promise<any> => apiClient.get('/memberships/transactions', { params }),
+    membershipTransactions: (params?: any): Promise<any> => apiClient.get('/courses/transactions', { params }),
   },
   aiCoach: {
     recommendations: (): Promise<any[]> => apiClient.get('/customer/ai/recommendation'),
     chat: (message: string): Promise<any> => apiClient.post('/ai-coach/chat', { message }),
-  },
-  nutrition: {
-    summary: (): Promise<any> => apiClient.get('/nutrition/summary'),
-  },
-  foodScanner: {
-    analyze: (): Promise<any> => apiClient.post('/food-scanner/analyze'),
-  },
-  bodyComposition: {
-    get: (): Promise<any> => apiClient.get('/body-composition'),
-  },
-  health: {
-    connections: (): Promise<any[]> => apiClient.get('/health/connections'),
-    toggleConnection: (platform: string, connected?: boolean): Promise<any> =>
-      apiClient.post('/health/toggle-connection', { platform, connected }),
-    summary: (): Promise<any> => apiClient.get('/health/summary'),
-    readiness: (): Promise<any> => apiClient.get('/health/readiness'),
-    simulateSync: (payload?: any): Promise<any> => apiClient.post('/health/simulate-sync', payload || {}),
   },
   crm: {
     leads: (): Promise<any[]> => apiClient.get('/crm/leads'),
@@ -210,8 +212,6 @@ export const api = {
     settings: (): Promise<any> => apiClient.get('/superadmin/settings'),
     featureControls: (): Promise<Record<string, Record<string, boolean>>> => apiClient.get('/superadmin/feature-controls'),
     saveFeatureControls: (matrix: any): Promise<any> => apiClient.post('/superadmin/feature-controls', matrix),
-    nutritionPolicies: (): Promise<any[]> => apiClient.get('/superadmin/nutrition-policies'),
-    saveNutritionPolicy: (payload: any): Promise<any> => apiClient.post('/superadmin/nutrition-policies', payload),
   },
 };
 

@@ -485,7 +485,7 @@ export function InventoryPage({ embedded, onNavigateToPos }: InventoryPageProps 
 
   const [localVisibleColumns, setLocalVisibleColumns] = useState<string[]>(() => {
     try {
-      const saved = localStorage.getItem('gym_inventory_visible_columns_v6');
+      const saved = localStorage.getItem('inventory_visible_columns_v6') || localStorage.getItem('gym_inventory_visible_columns_v6');
       if (saved) return JSON.parse(saved);
     } catch {}
     return defaultLocalVisible;
@@ -493,7 +493,7 @@ export function InventoryPage({ embedded, onNavigateToPos }: InventoryPageProps 
 
   const [masterVisibleColumns, setMasterVisibleColumns] = useState<string[]>(() => {
     try {
-      const saved = localStorage.getItem('gym_master_catalog_visible_columns_v6');
+      const saved = localStorage.getItem('master_catalog_visible_columns_v6') || localStorage.getItem('gym_master_catalog_visible_columns_v6');
       if (saved) return JSON.parse(saved);
     } catch {}
     return defaultMasterVisible;
@@ -808,7 +808,7 @@ export function InventoryPage({ embedded, onNavigateToPos }: InventoryPageProps 
       const ws = XLSX.utils.json_to_sheet(exportRows, { header: getMasterExportHeaders() });
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Inventory Products');
-      XLSX.writeFile(wb, `gym_inventory_export_${new Date().toISOString().slice(0, 10)}.xlsx`);
+      XLSX.writeFile(wb, `inventory_export_${new Date().toISOString().slice(0, 10)}.xlsx`);
       triggerToast(`📥 Exported ${items.length} products to Excel successfully!`);
     } catch {
       triggerToast('❌ Export failed');
@@ -2067,12 +2067,12 @@ export function InventoryPage({ embedded, onNavigateToPos }: InventoryPageProps 
                     }}
                     onApplyPreset={(presetIds) => {
                       setLocalVisibleColumns(presetIds);
-                      localStorage.setItem('gym_inventory_visible_columns_v6', JSON.stringify(presetIds));
+                      localStorage.setItem('inventory_visible_columns_v6', JSON.stringify(presetIds));
                       triggerToast('✨ Applied column view preset!');
                     }}
                     onSave={() => {
                       localStorage.setItem(
-                        'gym_inventory_visible_columns_v6',
+                        'inventory_visible_columns_v6',
                         JSON.stringify(localVisibleColumns)
                       );
                       setIsColumnsMenuOpen(false);
@@ -2081,7 +2081,7 @@ export function InventoryPage({ embedded, onNavigateToPos }: InventoryPageProps 
                     onReset={() => {
                       setLocalVisibleColumns(defaultLocalVisible);
                       localStorage.setItem(
-                        'gym_inventory_visible_columns_v6',
+                        'inventory_visible_columns_v6',
                         JSON.stringify(defaultLocalVisible)
                       );
                       triggerToast('🔄 Reset columns to all 65 master fields.');

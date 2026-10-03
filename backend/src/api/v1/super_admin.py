@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Body
 from sqlalchemy.orm import Session
 from src.database.session import get_db
 from src.services.super_admin_service import SuperAdminService
-from src.services.gym_setting_service import GymSettingService
+from src.services.settings_service import SettingsService as GymSettingService
 
 router = APIRouter(prefix="/superadmin", tags=["Super Admin"])
 

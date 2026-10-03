@@ -9,7 +9,7 @@ import { api } from '@/services/api';
 import { apiClient } from '@/services/apiClient';
 import type { Member } from '@/types';
 import { cn } from '@/utils/cn';
-import { EnrollmentModal } from '@/components/EnrollmentModal';
+import { StudentEnrollmentModal } from '@/components/hrms/StudentEnrollmentModal';
 import { formatDateDDMMYY, getTodayISO, addDaysISO } from '@/utils/date';
 import { PaymentTerminalSelector, type PaymentDetailsPayload, type PaymentMethodType } from '@/components/payments/PaymentTerminalSelector';
 
@@ -188,7 +188,7 @@ export function MembersPage() {
   }, []);
 
   const fetchDynamicPlans = () => {
-    apiClient.get<PlanItem[]>('/memberships/plans')
+    apiClient.get<PlanItem[]>('/courses/plans')
       .then((res) => {
         if (Array.isArray(res)) {
           setPlans(res);
@@ -304,7 +304,7 @@ export function MembersPage() {
       setRenewalDurationDays(30);
     }
 
-    apiClient.get<PlanItem[]>('/memberships/plans')
+    apiClient.get<PlanItem[]>('/courses/plans')
       .then((res) => {
         if (Array.isArray(res)) {
           setPlans(res);
@@ -343,7 +343,7 @@ export function MembersPage() {
 
     try {
       for (const mId of selectedMemberIds) {
-        await apiClient.post(`/memberships/renew/${mId}`, {
+        await apiClient.post(`/courses/renew/${mId}`, {
           plan_name: finalPlanName,
           duration_days: renewalDurationDays,
           price: totalAmount,
@@ -501,7 +501,14 @@ export function MembersPage() {
         )}
       </div>
 
-      <EnrollmentModal open={enrollOpen} onClose={() => setEnrollOpen(false)} />
+      <StudentEnrollmentModal
+        open={enrollOpen}
+        onClose={() => setEnrollOpen(false)}
+        onSuccess={() => {
+          setEnrollOpen(false);
+          fetchMembers();
+        }}
+      />
 
       {/* Renewal Modal */}
       {renewalOpen && (

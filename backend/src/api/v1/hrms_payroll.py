@@ -23,7 +23,7 @@ from src.models.hrms import (
     Designation,
     Department
 )
-from src.models.gym_setting import GymSetting
+from src.models.settings import Setting as GymSetting
 
 router = APIRouter(prefix="/hrms/payroll", tags=["HRMS - Payroll & Compensation"])
 

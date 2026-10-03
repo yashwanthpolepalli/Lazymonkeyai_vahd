@@ -15,7 +15,7 @@ export function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
-  const [activeRole, setActiveRole] = useState<'admin' | 'owner' | 'trainer' | 'customer'>('owner');
+  const [activeRole, setActiveRole] = useState<'admin' | 'owner' | 'employee' | 'student' | 'trainer' | 'customer'>('owner');
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -44,22 +44,27 @@ export function LoginPage() {
     }
   };
 
-  const selectQuickRole = (role: 'admin' | 'owner' | 'trainer' | 'customer') => {
-    setActiveRole(role);
+  const selectQuickRole = (role: 'admin' | 'owner' | 'employee' | 'student' | 'trainer' | 'customer') => {
+    const normalizedRole = role === 'trainer' ? 'employee' : role === 'customer' ? 'student' : role;
+    setActiveRole(normalizedRole as any);
     setError('');
   };
 
-  const roleTitleMap = {
+  const roleTitleMap: Record<string, string> = {
     admin: 'Super Admin Portal',
     owner: 'Owner Portal',
-    trainer: 'EMP Portal',
-    customer: 'Student Portal',
+    employee: 'Employees Portal',
+    trainer: 'Employees Portal',
+    student: 'Students Portal',
+    customer: 'Students Portal',
   };
 
-  const roleButtonMap = {
-    admin: 'Sign In as Admin',
+  const roleButtonMap: Record<string, string> = {
+    admin: 'Sign In as Super Admin',
     owner: 'Sign In as Owner',
-    trainer: 'Sign In as EMP',
+    employee: 'Sign In as Employee',
+    trainer: 'Sign In as Employee',
+    student: 'Sign In as Student',
     customer: 'Sign In as Student',
   };
 
@@ -202,7 +207,7 @@ export function LoginPage() {
               {/* Email Input */}
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  {activeRole === 'owner' ? 'Owner Email' : activeRole === 'admin' ? 'Admin Email' : activeRole === 'trainer' ? 'EMP Email' : 'Student Email'}
+                  {activeRole === 'owner' ? 'Owner Email' : activeRole === 'admin' ? 'Super Admin Email' : (activeRole === 'employee' || activeRole === 'trainer') ? 'Employee Email' : 'Student Email'}
                 </label>
                 <div className="relative flex items-center">
                   <Icon name="mail" size={18} className="absolute left-3.5 text-blue-500 pointer-events-none" />
@@ -210,7 +215,15 @@ export function LoginPage() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder={activeRole === 'owner' ? 'owner@fitclub.com' : activeRole === 'admin' ? 'admin@fitclub.com' : activeRole === 'trainer' ? 'emp@fitclub.com' : 'student@fitclub.com'}
+                    placeholder={
+                      activeRole === 'owner'
+                        ? 'owner@vahd.ai'
+                        : activeRole === 'admin'
+                        ? 'admin@vahd.ai'
+                        : activeRole === 'employee' || activeRole === 'trainer'
+                        ? 'employee@vahd.ai'
+                        : 'student@vahd.ai'
+                    }
                     className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-2xl py-2.5 pl-10 pr-10 text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                   />
                   {isValidEmail && (
@@ -276,27 +289,27 @@ export function LoginPage() {
 
             </form>
 
-            {/* Quick Access Roles Selector (Admin, Owner, Trainer, Customer/Student) */}
+            {/* Quick Access Roles Selector (Super Admin, Owner, Employees, Students) */}
             <div className="mt-5 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 space-y-2">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Quick access roles</span>
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Select Portal Role (4 Roles)</span>
               <div className="grid grid-cols-4 gap-1.5">
                 <button
                   type="button"
                   onClick={() => selectQuickRole('admin')}
                   className={cn(
-                    'py-2 px-2 rounded-xl text-xs font-extrabold transition-all text-center',
+                    'py-2 px-1 text-center rounded-xl text-[11px] font-extrabold transition-all truncate',
                     activeRole === 'admin'
                       ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 scale-[1.02]'
                       : 'bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-950/40 dark:text-blue-300'
                   )}
                 >
-                  Admin
+                  Super Admin
                 </button>
                 <button
                   type="button"
                   onClick={() => selectQuickRole('owner')}
                   className={cn(
-                    'py-2 px-2 rounded-xl text-xs font-extrabold transition-all text-center',
+                    'py-2 px-1 text-center rounded-xl text-[11px] font-extrabold transition-all truncate',
                     activeRole === 'owner'
                       ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 scale-[1.02]'
                       : 'bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-950/40 dark:text-blue-300'
@@ -306,27 +319,27 @@ export function LoginPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => selectQuickRole('trainer')}
+                  onClick={() => selectQuickRole('employee')}
                   className={cn(
-                    'py-2 px-1 sm:px-2 rounded-xl text-xs font-extrabold transition-all text-center whitespace-nowrap',
-                    activeRole === 'trainer'
+                    'py-2 px-1 text-center rounded-xl text-[11px] font-extrabold transition-all truncate',
+                    activeRole === 'employee' || activeRole === 'trainer'
                       ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30 scale-[1.02]'
                       : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300'
                   )}
                 >
-                  EMP
+                  Employees
                 </button>
                 <button
                   type="button"
-                  onClick={() => selectQuickRole('customer')}
+                  onClick={() => selectQuickRole('student')}
                   className={cn(
-                    'py-2 px-2 rounded-xl text-xs font-extrabold transition-all text-center',
-                    activeRole === 'customer'
+                    'py-2 px-1 text-center rounded-xl text-[11px] font-extrabold transition-all truncate',
+                    activeRole === 'student' || activeRole === 'customer'
                       ? 'bg-orange-600 text-white shadow-md shadow-orange-600/30 scale-[1.02]'
                       : 'bg-orange-50 text-orange-700 hover:bg-orange-100 dark:bg-orange-950/40 dark:text-orange-300'
                   )}
                 >
-                  Student
+                  Students
                 </button>
               </div>
             </div>

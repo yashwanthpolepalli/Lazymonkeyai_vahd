@@ -18,9 +18,7 @@ from dotenv import load_dotenv
 
 from src.database.session import get_db
 from src.models.customer import Customer
-from src.models.nutrition import NutritionLog
 from src.utils.timezone import now_ist_naive, today_ist_start, today_ist_end, to_ist_str
-from src.services.nutrition_service import calculate_dynamic_user_targets
 from src.utils.gemini_config import get_gemini_key, get_primary_model, build_gemini_fallback_list, is_valid_gemini_key
 
 load_dotenv()
@@ -31,8 +29,6 @@ GEMINI_MODEL = get_primary_model()
 
 router = APIRouter(prefix="/ai", tags=["AI Coach"])
 
-# is_valid_gemini_key is imported from src.utils.gemini_config (shared utility)
-
 
 class CoachChatRequest(BaseModel):
     customer_id: str
@@ -42,7 +38,7 @@ class CoachChatRequest(BaseModel):
 @router.post("/coach-chat")
 def coach_chat(req: CoachChatRequest, db: Session = Depends(get_db)):
     """
-    Real-time dynamic AI Coach assistant using Gemini 2.0 Flash with live PostgreSQL customer context.
+    Real-time dynamic AI Coach assistant using Gemini with live PostgreSQL customer context.
     """
     customer_id = req.customer_id
     user_msg = req.message.strip()
@@ -50,35 +46,17 @@ def coach_chat(req: CoachChatRequest, db: Session = Depends(get_db)):
     # Fetch Customer Context
     customer = db.query(Customer).filter(Customer.id == customer_id).first()
     customer_name = customer.full_name if customer else "Member"
-
-    # Fetch Today's Dynamic Targets from User Profile / Biometrics
-    targets = calculate_dynamic_user_targets(customer, db=db) if customer else {}
-    target_cal = int(targets.get("calories") or 2000)
-    target_protein = int(targets.get("protein") or 140)
-
-    # Fetch Today's Nutrition Summary
-    today_start = today_ist_start()
-    today_logs = db.query(NutritionLog).filter(
-        NutritionLog.customer_id == customer_id,
-        NutritionLog.date >= today_start
-    ).all()
-
-    consumed_cal = sum(l.calories for l in today_logs)
-    consumed_protein = sum(l.protein for l in today_logs)
-    consumed_carbs = sum(l.carbs for l in today_logs)
-
-    rem_cal = max(0, target_cal - int(consumed_cal))
-    rem_protein = max(0, target_protein - int(consumed_protein))
+    goal = customer.goal if customer else "General Fitness"
+    fitness_level = customer.fitness_level if customer else "Active"
 
     # Always read fresh from .env at request-time
     current_key = get_gemini_key()
     current_model = get_primary_model()
 
     if not is_valid_gemini_key(current_key):
-        # Dynamic context-based response when key is missing or invalid
         return {
             "status": "FALLBACK",
-            "reply": f"Hi {customer_name}! Target: {target_cal} kcal, Protein: {target_protein}g. Logged today: {int(consumed_cal)} kcal. Configure GEMINI_API_KEY in .env for full AI conversation.",
+            "reply": f"Hi {customer_name}! Your fitness profile is active with goal: {goal}. Configure GEMINI_API_KEY in .env for full AI conversation.",
             "mode": "CONTEXTUAL_RULE_ENGINE"
         }
 

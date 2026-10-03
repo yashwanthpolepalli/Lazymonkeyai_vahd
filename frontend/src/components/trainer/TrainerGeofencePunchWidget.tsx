@@ -206,19 +206,32 @@ export function TrainerGeofencePunchWidget({ onPunchSuccess }: TrainerGeofencePu
       setVerifyState('COMPARING');
       setTimeout(async () => {
         const snapshot = captureVideoFrame(verifyVideoRef.current);
-        const frameToSend = snapshot || faceStatus.face_image || 'data:image/jpeg;base64,mockframe';
+        if (!snapshot) {
+          setVerifyState('ERROR');
+          setVerifyErrorMsg('Could not capture video frame from camera. Please ensure camera is active.');
+          return;
+        }
         try {
+          const devicePlatform = (navigator as any).userAgentData?.platform || navigator.platform || 'Web Browser';
           const res = await hrmsApi.verifyFace({
             employee_id: user?.id || '',
-            live_image_base64: frameToSend,
+            live_image_base64: snapshot,
             action,
-            user_role: 'TRAINER',
+            user_role: user?.role || 'TRAINER',
             branch: activeScheme?.branch_name || user?.branchName || '',
+            verification_type: 'FACE_BIOMETRIC',
+            method: 'LIVE_CAMERA_SCAN',
+            device_name: `${devicePlatform} (${window.innerWidth}x${window.innerHeight})`,
+            device_type: 'WEBCAM_FACE_SCANNER',
+            latitude: deviceCoords?.lat ?? activeScheme?.latitude ?? null,
+            longitude: deviceCoords?.lng ?? activeScheme?.longitude ?? null,
+            client_timestamp: new Date().toISOString(),
           });
 
           if (res.match) {
+            const score = res.confidence > 1 ? Math.round(res.confidence) : Math.round(res.confidence * 100);
             setVerifyState('SUCCESS');
-            setVerifyMatchScore(res.confidence ? Math.round(res.confidence * 100) : 98);
+            setVerifyMatchScore(score);
             if (action === 'CHECK_IN') {
               setPunchStatus({
                 isClockedIn: true,

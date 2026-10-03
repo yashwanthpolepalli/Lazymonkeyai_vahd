@@ -43,9 +43,51 @@ def delete_employee(emp_id: str, db: Session = Depends(get_db)):
 def get_departments(db: Session = Depends(get_db)):
     return HrmsService.get_departments(db)
 
+@router.post("/departments")
+def create_department(payload: dict, db: Session = Depends(get_db)):
+    try:
+        return HrmsService.create_department(db, payload)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.put("/departments/{dept_id}")
+def update_department(dept_id: str, payload: dict, db: Session = Depends(get_db)):
+    try:
+        return HrmsService.update_department(db, dept_id, payload)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.delete("/departments/{dept_id}")
+def delete_department(dept_id: str, db: Session = Depends(get_db)):
+    try:
+        return HrmsService.delete_department(db, dept_id)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 @router.get("/designations")
 def get_designations(db: Session = Depends(get_db)):
     return HrmsService.get_designations(db)
+
+@router.post("/designations")
+def create_designation(payload: dict, db: Session = Depends(get_db)):
+    try:
+        return HrmsService.create_designation(db, payload)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.put("/designations/{desg_id}")
+def update_designation(desg_id: str, payload: dict, db: Session = Depends(get_db)):
+    try:
+        return HrmsService.update_designation(db, desg_id, payload)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.delete("/designations/{desg_id}")
+def delete_designation(desg_id: str, db: Session = Depends(get_db)):
+    try:
+        return HrmsService.delete_designation(db, desg_id)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/teams")
 def get_teams(db: Session = Depends(get_db)):

@@ -141,7 +141,7 @@ export function EnrollmentModal({
   // Fetch dynamic plans, branches, and payment methods exclusively from database created by owner
   useEffect(() => {
     if (open) {
-      apiClient.get<PlanItem[]>('/memberships/plans')
+      apiClient.get<PlanItem[]>('/courses/plans')
         .then((fetchedPlans) => {
           if (Array.isArray(fetchedPlans)) {
             setPlans(fetchedPlans);
@@ -153,7 +153,7 @@ export function EnrollmentModal({
           setPlans([]);
         });
 
-      apiClient.get<any[]>('/gym/branches')
+      apiClient.get<any[]>('/settings/branches')
         .then((fetchedBranches) => {
           if (Array.isArray(fetchedBranches)) {
             setBranches(fetchedBranches);
@@ -163,7 +163,7 @@ export function EnrollmentModal({
           setBranches([]);
         });
 
-      apiClient.get<any[]>('/memberships/payment-methods')
+      apiClient.get<any[]>('/courses/payment-methods')
         .then((fetchedPm) => {
           if (Array.isArray(fetchedPm) && fetchedPm.length > 0) {
             const list = fetchedPm.map((p) => (typeof p === 'string' ? p : p.name));
@@ -1278,7 +1278,7 @@ export function EnrollmentModal({
                   try {
                     const activePm = customPaymentMethod.trim() || paymentMethod;
                     if (paymentMethod === 'Custom' && customPaymentMethod.trim()) {
-                      apiClient.post('/memberships/payment-methods', { name: customPaymentMethod.trim() }).catch(() => {});
+                      apiClient.post('/courses/payment-methods', { name: customPaymentMethod.trim() }).catch(() => {});
                     }
                     if (personType === 'trainer') {
                       await trainersApi.create({

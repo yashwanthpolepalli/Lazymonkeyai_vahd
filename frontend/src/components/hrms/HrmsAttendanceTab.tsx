@@ -55,17 +55,17 @@ function formatDate(iso: string): string {
 }
 
 function getRoleBadge(role?: string) {
-  const r = (role || 'CUSTOMER').toUpperCase();
-  if (r.includes('TRAINER')) {
-    return { label: 'Trainer', color: 'bg-purple-100 text-purple-700 border-purple-200' };
+  const r = (role || 'STUDENT').toUpperCase();
+  if (r.includes('ADMIN')) {
+    return { label: 'Super Admin', color: 'bg-blue-100 text-blue-700 border-blue-200' };
   }
   if (r.includes('OWNER')) {
-    return { label: 'Gym Owner', color: 'bg-emerald-100 text-emerald-700 border-emerald-200' };
+    return { label: 'Owner', color: 'bg-emerald-100 text-emerald-700 border-emerald-200' };
   }
-  if (r.includes('STAFF') || r.includes('MANAGER')) {
-    return { label: 'Staff Member', color: 'bg-amber-100 text-amber-700 border-amber-200' };
+  if (r.includes('EMPLOYEE') || r.includes('TRAINER') || r.includes('STAFF') || r.includes('MANAGER')) {
+    return { label: 'Employee', color: 'bg-purple-100 text-purple-700 border-purple-200' };
   }
-  return { label: 'Customer', color: 'bg-blue-100 text-blue-700 border-blue-200' };
+  return { label: 'Student', color: 'bg-orange-100 text-orange-700 border-orange-200' };
 }
 
 function getMethodBadge(event_type: string) {

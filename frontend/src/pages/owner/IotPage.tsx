@@ -4,15 +4,14 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { Icon } from '@/components/ui/Icon';
 import { BiometricsPage } from '@/pages/owner/BiometricsPage';
 import { CctvPage } from '@/pages/owner/CctvPage';
-import { BodyCompositionPage } from '@/pages/owner/BodyCompositionPage';
 import { api } from '@/services/api';
 
-export type IotSubTab = 'biometrics' | 'cctv' | 'body-composition';
+export type IotSubTab = 'biometrics' | 'cctv';
 
 export function IotPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const rawTab = searchParams.get('tab') as IotSubTab | null;
-  const initialTab: IotSubTab = (rawTab && ['biometrics', 'cctv', 'body-composition'].includes(rawTab))
+  const initialTab: IotSubTab = (rawTab && ['biometrics', 'cctv'].includes(rawTab))
     ? rawTab
     : 'biometrics';
 
@@ -50,7 +49,7 @@ export function IotPage() {
   }, []);
 
   useEffect(() => {
-    if (rawTab && ['biometrics', 'cctv', 'body-composition'].includes(rawTab)) {
+    if (rawTab && ['biometrics', 'cctv'].includes(rawTab)) {
       setActiveTab(rawTab);
     }
   }, [rawTab]);
@@ -76,20 +75,10 @@ export function IotPage() {
       desc: 'Real-time multi-camera security streams & floor monitoring',
       countBadge: '6 Online',
     },
-    {
-      id: 'body-composition',
-      label: 'Body Composition',
-      icon: 'ruler',
-      desc: 'InBody hardware integration, visceral fat & biometric scanning',
-      countBadge: 'InBody Sync',
-    },
   ];
 
   return (
     <div className="space-y-6 w-full pb-16">
-      {/* ───────────────────────────────────────────────────────────── */}
-      {/* 1. TOP HEADER & BREADCRUMB                                    */}
-      {/* ───────────────────────────────────────────────────────────── */}
       <PageHeader
         title="IoT & Smart Hardware Hub"
         breadcrumb={['Owner', 'IoT Hub', tabs.find((t) => t.id === activeTab)?.label || 'Hardware']}
@@ -103,11 +92,8 @@ export function IotPage() {
         }
       />
 
-      {/* ───────────────────────────────────────────────────────────── */}
-      {/* 2. SUB-TAB PILL SWITCHER                                      */}
-      {/* ───────────────────────────────────────────────────────────── */}
       <div className="bg-white border border-navy-100 rounded-2xl p-2 shadow-sm">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id;
             return (
@@ -159,9 +145,6 @@ export function IotPage() {
         </div>
       </div>
 
-      {/* ───────────────────────────────────────────────────────────── */}
-      {/* 3. ACTIVE TAB CONTENT VIEW                                    */}
-      {/* ───────────────────────────────────────────────────────────── */}
       <div className="animate-fade-in">
         {activeTab === 'biometrics' && (
           <div className="space-y-6">
@@ -172,12 +155,6 @@ export function IotPage() {
         {activeTab === 'cctv' && (
           <div className="space-y-6">
             <CctvPage />
-          </div>
-        )}
-
-        {activeTab === 'body-composition' && (
-          <div className="space-y-6">
-            <BodyCompositionPage />
           </div>
         )}
       </div>

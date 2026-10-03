@@ -98,9 +98,15 @@ export function Topbar() {
     navigate('/login');
   };
 
-  const roleLabel = user?.role
-    ? user.role.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase())
-    : 'Owner';
+  const roleLabelMap: Record<string, string> = {
+    super_admin: 'Super Admin',
+    owner: 'Owner',
+    employee: 'Employee',
+    trainer: 'Employee',
+    student: 'Student',
+    customer: 'Student',
+  };
+  const roleLabel = roleLabelMap[user?.role || 'owner'] || 'Owner';
 
   const unreadLeadCount = liveLeads.filter((l) => !l.read).length;
   const totalNotifBadge = 12 + unreadLeadCount;

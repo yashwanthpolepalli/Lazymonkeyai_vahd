@@ -15,8 +15,6 @@ const PrivacyPolicyPage = lazy(() => import('@/pages/PrivacyPolicyPage').then(m 
 // Owner pages
 const OwnerDashboard = lazy(() => import('@/pages/owner/OwnerDashboard').then(m => ({ default: m.OwnerDashboard })));
 const MembersPage = lazy(() => import('@/pages/owner/MembersPage').then(m => ({ default: m.MembersPage })));
-const FoodScannerPage = lazy(() => import('@/pages/owner/FoodScannerPage').then(m => ({ default: m.FoodScannerPage })));
-const HealthSyncPage = lazy(() => import('@/pages/owner/HealthSyncPage').then(m => ({ default: m.HealthSyncPage })));
 const CrmPage = lazy(() => import('@/pages/owner/CrmPage').then(m => ({ default: m.CrmPage })));
 const PosPage = lazy(() => import('@/pages/owner/PosPage').then(m => ({ default: m.PosPage })));
 const HrmsPage = lazy(() => import('@/pages/owner/HrmsPage').then(m => ({ default: m.HrmsPage })));
@@ -25,8 +23,6 @@ const IotPage = lazy(() => import('@/pages/owner/IotPage').then(m => ({ default:
 const MultiBranchPage = lazy(() => import('@/pages/owner/MultiBranchPage').then(m => ({ default: m.MultiBranchPage })));
 const SettingsPage = lazy(() => import('@/pages/owner/SettingsPage').then(m => ({ default: m.SettingsPage })));
 const ErpPage = lazy(() => import('@/pages/owner/ErpPage').then(m => ({ default: m.ErpPage })));
-const WorkoutsPage = lazy(() => import('@/pages/owner/WorkoutsPage').then(m => ({ default: m.WorkoutsPage })));
-const NutritionPage = lazy(() => import('@/pages/owner/NutritionPage').then(m => ({ default: m.NutritionPage })));
 
 // Trainer pages
 const TrainerDashboard = lazy(() => import('@/pages/trainer/TrainerDashboard').then(m => ({ default: m.TrainerDashboard })));
@@ -39,9 +35,6 @@ const TrainerProfilePage = lazy(() => import('@/pages/trainer/TrainerProfilePage
 // Customer pages
 const CustomerDashboard = lazy(() => import('@/pages/customer/CustomerDashboard').then(m => ({ default: m.CustomerDashboard })));
 const CustomerAttendancePage = lazy(() => import('@/pages/customer/CustomerAttendancePage').then(m => ({ default: m.CustomerAttendancePage })));
-const CustomerWorkoutsPage = lazy(() => import('@/pages/customer/CustomerWorkoutsPage').then(m => ({ default: m.CustomerWorkoutsPage })));
-const CustomerNutritionPage = lazy(() => import('@/pages/customer/CustomerNutritionPage').then(m => ({ default: m.CustomerNutritionPage })));
-const CustomerTransformationPage = lazy(() => import('@/pages/customer/CustomerTransformationPage').then(m => ({ default: m.CustomerTransformationPage })));
 const CustomerProfilePage = lazy(() => import('@/pages/customer/CustomerProfilePage').then(m => ({ default: m.CustomerProfilePage })));
 
 // SuperAdmin pages
@@ -96,14 +89,15 @@ function AppRoutes() {
           <Route path="customers" element={<MembersPage />} />
           <Route path="customers/:id" element={<Navigate to="/owner/customers" replace />} />
           <Route path="nutrition" element={<Navigate to="/owner" replace />} />
-          <Route path="food-scanner" element={<FoodScannerPage />} />
-          <Route path="body-composition" element={<Navigate to="/owner/iot?tab=body-composition" replace />} />
-          <Route path="health-sync" element={<HealthSyncPage />} />
+          <Route path="food-scanner" element={<Navigate to="/owner" replace />} />
+          <Route path="body-composition" element={<Navigate to="/owner" replace />} />
+          <Route path="health-sync" element={<Navigate to="/owner" replace />} />
           <Route path="crm" element={<CrmPage />} />
           <Route path="pos" element={<PosPage />} />
           <Route path="inventory" element={<Navigate to="/owner/pos?tab=inventory" replace />} />
           <Route path="purchase" element={<Navigate to="/owner/pos?tab=purchase" replace />} />
-          <Route path="memberships" element={<Navigate to="/owner/settings?tab=memberships" replace />} />
+          <Route path="memberships" element={<Navigate to="/owner/settings?tab=courses" replace />} />
+          <Route path="courses" element={<Navigate to="/owner/settings?tab=courses" replace />} />
           <Route path="attendance" element={<Navigate to="/owner/hrms?tab=attendance" replace />} />
           <Route path="trainers" element={<Navigate to="/owner/hrms?tab=trainers" replace />} />
           <Route path="hrms" element={<HrmsPage />} />
@@ -123,21 +117,21 @@ function AppRoutes() {
           <Route index element={<ErpPage />} />
         </Route>
 
-        {/* TRAINER ROUTES */}
-        <Route path="/trainer" element={<ProtectedRoute><RoleRedirect allowed={['trainer']} /></ProtectedRoute>}>
+        {/* EMPLOYEE / TRAINER ROUTES */}
+        <Route path="/trainer" element={<ProtectedRoute><RoleRedirect allowed={['employee', 'trainer']} /></ProtectedRoute>}>
           <Route index element={<TrainerDashboard />} />
           <Route path="customers" element={<MembersPage />} />
           <Route path="hrms" element={<TrainerHrmsPage />} />
           <Route path="attendance" element={<Navigate to="/trainer/hrms?tab=attendance" replace />} />
-          <Route path="nutrition" element={<NutritionPage />} />
+          <Route path="nutrition" element={<Navigate to="/trainer" replace />} />
           <Route path="progress" element={<ProgressPage />} />
           <Route path="messages" element={<MessagesPage />} />
           <Route path="ai-coach" element={<AiCoachPage />} />
           <Route path="profile" element={<TrainerProfilePage />} />
         </Route>
 
-        {/* CUSTOMER ROUTES */}
-        <Route path="/app" element={<ProtectedRoute><RoleRedirect allowed={['customer']} /></ProtectedRoute>}>
+        {/* STUDENT / CUSTOMER ROUTES */}
+        <Route path="/app" element={<ProtectedRoute><RoleRedirect allowed={['student', 'customer']} /></ProtectedRoute>}>
           <Route index element={<CustomerDashboard />} />
           <Route path="attendance" element={<CustomerAttendancePage />} />
           <Route path="workouts" element={<Navigate to="/app" replace />} />

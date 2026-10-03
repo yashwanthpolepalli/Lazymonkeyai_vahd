@@ -23,6 +23,19 @@ export interface EmployeeItem {
   created_at?: string;
 }
 
+export interface MappedEmployee {
+  id: string;
+  name: string;
+  email: string;
+  code?: string;
+  designation?: string;
+  department?: string;
+  phone?: string;
+  status?: string;
+  avatar?: string;
+  joined_date?: string;
+}
+
 export interface DepartmentItem {
   id: string;
   name: string;
@@ -31,6 +44,7 @@ export interface DepartmentItem {
   head_name: string;
   is_active: boolean;
   employee_count: number;
+  employees?: MappedEmployee[];
 }
 
 export interface DesignationItem {
@@ -40,6 +54,7 @@ export interface DesignationItem {
   level: string;
   description: string;
   employee_count: number;
+  employees?: MappedEmployee[];
 }
 
 export interface TeamItem {
@@ -349,9 +364,23 @@ export const hrmsApi = {
   deleteEmployee: (empId: string) =>
     apiClient.delete<{ message: string }>(`/hrms/employees/${empId}`),
 
-  // Organization
+  // Organization - Departments & Designations CRUD
   getDepartments: () => apiClient.get<DepartmentItem[]>('/hrms/departments'),
+  createDepartment: (payload: Partial<DepartmentItem>) =>
+    apiClient.post<{ message: string; id: string }>('/hrms/departments', payload),
+  updateDepartment: (deptId: string, payload: Partial<DepartmentItem>) =>
+    apiClient.put<{ message: string }>(`/hrms/departments/${deptId}`, payload),
+  deleteDepartment: (deptId: string) =>
+    apiClient.delete<{ message: string }>(`/hrms/departments/${deptId}`),
+
   getDesignations: () => apiClient.get<DesignationItem[]>('/hrms/designations'),
+  createDesignation: (payload: Partial<DesignationItem>) =>
+    apiClient.post<{ message: string; id: string }>('/hrms/designations', payload),
+  updateDesignation: (desgId: string, payload: Partial<DesignationItem>) =>
+    apiClient.put<{ message: string }>(`/hrms/designations/${desgId}`, payload),
+  deleteDesignation: (desgId: string) =>
+    apiClient.delete<{ message: string }>(`/hrms/designations/${desgId}`),
+
   getTeams: () => apiClient.get<TeamItem[]>('/hrms/teams'),
   getDocuments: (employee_id?: string) =>
     apiClient.get<DocumentItem[]>('/hrms/documents', { params: { employee_id } }),
@@ -499,6 +528,11 @@ export const hrmsApi = {
     action: 'CHECK_IN' | 'CHECK_OUT';
     user_role?: string;
     branch?: string;
+    verification_type?: string;
+    method?: string;
+    device_name?: string;
+    device_type?: string;
+    [key: string]: any;
   }) =>
     apiClient.post<{
       status: string;

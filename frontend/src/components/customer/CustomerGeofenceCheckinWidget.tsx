@@ -228,27 +228,42 @@ export function CustomerGeofenceCheckinWidget({ onCheckinSuccess }: CustomerGeof
       // Step 2: Capture live frame and compare with registered face profile
       setTimeout(async () => {
         const liveSnapshot = captureVideoFrame(verifyVideoRef.current);
-        const frameToSend = liveSnapshot || faceStatus.face_image || 'data:image/jpeg;base64,mockframe';
+        if (!liveSnapshot) {
+          setVerifyState('ERROR');
+          setVerifyErrorMsg('Could not capture video frame from webcam. Please make sure camera is active.');
+          return;
+        }
 
         try {
+          const devicePlatform = (navigator as any).userAgentData?.platform || navigator.platform || 'Web Browser';
           const res = await customerApi.verifyFace({
-            live_image_base64: frameToSend,
+            live_image_base64: liveSnapshot,
             action,
+            verification_type: 'FACE_BIOMETRIC',
+            method: 'LIVE_CAMERA_SCAN',
+            device_name: `${devicePlatform} (${window.innerWidth}x${window.innerHeight})`,
+            device_type: 'WEBCAM_FACE_SCANNER',
+            user_role: user?.role || 'CUSTOMER',
+            branch: activeScheme?.branch_name || user?.branchName || '',
+            latitude: activeScheme?.latitude ?? null,
+            longitude: activeScheme?.longitude ?? null,
+            client_timestamp: new Date().toISOString(),
           });
 
           if (res.match) {
-            setVerifyMatchScore(Math.round(res.confidence * 100));
+            const score = res.confidence > 1 ? Math.round(res.confidence) : Math.round(res.confidence * 100);
+            setVerifyMatchScore(score);
             setVerifyState('SUCCESS');
 
             if (action === 'CHECK_IN') {
               setCheckinStatus({
                 isCheckedIn: true,
-                checkInTime: res.time,
+                checkInTime: res.time || new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
               });
             } else {
               setCheckinStatus({
                 isCheckedIn: false,
-                checkOutTime: res.time,
+                checkOutTime: res.time || new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
               });
             }
 

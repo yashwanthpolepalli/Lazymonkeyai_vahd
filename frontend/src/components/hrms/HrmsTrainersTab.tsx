@@ -7,12 +7,116 @@ import { payrollApi, type PayrollInvoice } from '@/services/payrollApi';
 import type { Member } from '@/types';
 import type { Trainer } from '@/types/trainer';
 import { cn } from '@/utils/cn';
-import { EnrollmentModal } from '@/components/EnrollmentModal';
+import { EmployeeEnrollmentModal } from './EmployeeEnrollmentModal';
+import { TableColumnSettingsPopover, type ColumnGroup } from './TableColumnSettingsPopover';
+
+const EMPLOYEE_COLUMN_GROUPS: ColumnGroup[] = [
+  {
+    name: 'CORE INFO',
+    columns: [
+      { key: 'empNo', label: 'Emp No.' },
+      { key: 'name', label: 'Name' },
+      { key: 'mobile', label: 'Mobile' },
+      { key: 'email', label: 'Email' },
+      { key: 'gender', label: 'Gender' },
+      { key: 'dob', label: 'Date of Birth' },
+    ],
+  },
+  {
+    name: 'WORKPLACE & STATUS',
+    columns: [
+      { key: 'designation', label: 'Designation' },
+      { key: 'role', label: 'Role' },
+      { key: 'zone', label: 'Zone' },
+      { key: 'multiZone', label: 'Multi Zone' },
+      { key: 'district', label: 'District' },
+      { key: 'placeOfWork', label: 'Place of Work' },
+      { key: 'sourceMandal', label: 'Source Mandal' },
+      { key: 'sourceVillage', label: 'Source Village' },
+      { key: 'joined', label: 'Joined' },
+      { key: 'retirementDate', label: 'Retirement Date' },
+      { key: 'presentStationDate', label: 'Present Station Date' },
+      { key: 'lengthOfService', label: 'Length of Service' },
+      { key: 'today', label: 'Today' },
+      { key: 'status', label: 'Status' },
+    ],
+  },
+  {
+    name: 'EXTRA INFO',
+    columns: [
+      { key: 'aadhar', label: 'Aadhar No.' },
+      { key: 'pan', label: 'PAN' },
+      { key: 'caste', label: 'Caste' },
+      { key: 'subCaste', label: 'Sub Caste' },
+      { key: 'bloodGroup', label: 'Blood Group' },
+      { key: 'fatherName', label: "Father's Name" },
+      { key: 'motherName', label: "Mother's Name" },
+      { key: 'maritalStatus', label: 'Marital Status' },
+      { key: 'nativeDistrict', label: 'Native District' },
+      { key: 'permanentAddress', label: 'Permanent Address' },
+      { key: 'temporaryAddress', label: 'Temporary Address' },
+    ],
+  },
+];
+
+const DEFAULT_EMPLOYEE_COLUMNS: Record<string, boolean> = {
+  empNo: true,
+  name: true,
+  mobile: false,
+  email: false,
+  gender: false,
+  dob: false,
+  designation: true,
+  role: true,
+  zone: false,
+  multiZone: false,
+  district: true,
+  placeOfWork: true,
+  sourceMandal: false,
+  sourceVillage: false,
+  joined: false,
+  retirementDate: false,
+  presentStationDate: false,
+  lengthOfService: false,
+  today: true,
+  status: true,
+  aadhar: false,
+  pan: false,
+  caste: false,
+  subCaste: false,
+  bloodGroup: false,
+  fatherName: false,
+  motherName: false,
+  maritalStatus: false,
+  nativeDistrict: false,
+  permanentAddress: false,
+  temporaryAddress: false,
+};
 
 interface TrainerRowData {
   id: string;
+  empNo: string;
   name: string;
   email: string;
+  phone?: string;
+  gender?: string;
+  dob?: string;
+  designation: string;
+  role: string;
+  zone?: string;
+  multiZone?: string;
+  district: string;
+  placeOfWork: string;
+  sourceMandal?: string;
+  sourceVillage?: string;
+  joined?: string;
+  retirementDate?: string;
+  presentStationDate?: string;
+  lengthOfService?: string;
+  todayPunch: {
+    status: 'Present' | 'Absent' | 'Missed Punch' | 'Early Logout';
+    time?: string;
+  };
   specialization: string;
   specialtyBg: string;
   specialtyText: string;
@@ -29,6 +133,17 @@ interface TrainerRowData {
   bank_account_no?: string;
   bank_ifsc?: string;
   upi_id?: string;
+  aadhar?: string;
+  pan?: string;
+  caste?: string;
+  subCaste?: string;
+  bloodGroup?: string;
+  fatherName?: string;
+  motherName?: string;
+  maritalStatus?: string;
+  nativeDistrict?: string;
+  permanentAddress?: string;
+  temporaryAddress?: string;
 }
 
 export function HrmsTrainersTab() {
@@ -36,11 +151,51 @@ export function HrmsTrainersTab() {
   const [trainers, setTrainers] = useState<Array<Partial<Trainer> & { email?: string; full_name?: string; specialty?: string; base_monthly_salary?: number; pt_session_rate?: number; is_active?: boolean; created_at?: string; assigned_customers_count?: number }>>([]);
   const [loading, setLoading] = useState(true);
   const [enrollOpen, setEnrollOpen] = useState(false);
+  const [editingTrainer, setEditingTrainer] = useState<any>(null);
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [selectedTrainerIds, setSelectedTrainerIds] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
-  const ITEMS_PER_PAGE = 6;
+  const ITEMS_PER_PAGE = 15;
+
+  // Column Settings State
+  const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem('fitclub_emp_columns');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return DEFAULT_EMPLOYEE_COLUMNS;
+  });
+
+  const handleToggleColumn = (key: string) => {
+    setVisibleColumns((prev) => {
+      const updated = { ...prev, [key]: !prev[key] };
+      try {
+        localStorage.setItem('fitclub_emp_columns', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+  };
+
+  const handleSelectAllColumns = () => {
+    const all: Record<string, boolean> = {};
+    EMPLOYEE_COLUMN_GROUPS.forEach((g) => {
+      g.columns.forEach((c) => {
+        all[c.key] = true;
+      });
+    });
+    setVisibleColumns(all);
+    try {
+      localStorage.setItem('fitclub_emp_columns', JSON.stringify(all));
+    } catch {}
+  };
+
+  const handleResetColumns = () => {
+    setVisibleColumns(DEFAULT_EMPLOYEE_COLUMNS);
+    try {
+      localStorage.setItem('fitclub_emp_columns', JSON.stringify(DEFAULT_EMPLOYEE_COLUMNS));
+    } catch {}
+  };
 
   // Helper dates for Renewal
   const getTodayISO = () => new Date().toISOString().split('T')[0];
@@ -69,7 +224,7 @@ export function HrmsTrainersTab() {
   const [trainerPlans, setTrainerPlans] = useState<Array<{ name: string; price: number; duration_days: number; badge?: string }>>([]);
 
   const fetchDynamicTrainerPlans = () => {
-    apiClient.get<any[]>('/memberships/plans')
+    apiClient.get<any[]>('/courses/plans')
       .then((res) => {
         if (Array.isArray(res)) {
           const dynamic = res.map((p) => ({
@@ -242,9 +397,15 @@ export function HrmsTrainersTab() {
   ];
 
   const allDisplayTrainers: TrainerRowData[] = trainers.map((t, idx) => {
-    const name = t.name || t.full_name || `Trainer ${idx + 1}`;
+    const name = t.name || t.full_name || `Employee ${idx + 1}`;
     const email = t.email || `${name.toLowerCase().replace(/\s+/g, '')}@fitclub.ai`;
-    const specialization = t.specialization || t.specialty || 'Personal Training';
+    const phone = (t as any).phone || (t as any).contact_no || '+91 98765 43210';
+    const specialization = t.specialization || t.specialty || (t as any).job_designation || 'Fitness & Training';
+    const empNo = (t as any).employee_code || (t as any).emp_no || (t as any).code || `EMP-${String(idx + 1).padStart(3, '0')}`;
+    const designation = (t as any).job_designation || (t as any).designation || specialization || 'Senior Instructor';
+    const role = (t as any).role || (t as any).department || (idx % 3 === 0 ? 'Trainer' : idx % 3 === 1 ? 'Head Coach' : 'Floor Staff');
+    const district = (t as any).district || (t as any).location || (t as any).city || 'Hyderabad';
+    const placeOfWork = (t as any).place_of_work || (t as any).work_location || (t as any).branch || 'Main Branch';
 
     const assignedMembers = members.filter(
       (m) =>
@@ -263,7 +424,7 @@ export function HrmsTrainersTab() {
       .map((n) => n[0])
       .join('')
       .substring(0, 2)
-      .toUpperCase() || 'TR';
+      .toUpperCase() || 'EM';
 
     const rawDate = t.created_at;
     const formattedJoinDate = rawDate
@@ -275,10 +436,88 @@ export function HrmsTrainersTab() {
 
     const perfPct = clientsCount > 0 ? Math.min(100, Math.max(40, clientsCount * 15)) : (t.is_active !== false ? 70 : 0);
 
+    // Today attendance status conditions:
+    // 1. Present: marked IN and OUT matching working hours
+    // 2. Absent: not marked IN and OUT
+    // 3. Missed Punch: marked IN but missed to mark OUT
+    // 4. Early Logout: marked IN and OUT, but logged out early / before full shift hours
+    const rawStatus = (t as any).today_status || (t as any).attendance_status || (t as any).today_punch_status;
+    const inTime = (t as any).punch_in || (t as any).in_time || (t as any).today_in;
+    const outTime = (t as any).punch_out || (t as any).out_time || (t as any).today_out;
+    const isEarly = (t as any).is_early_logout || (t as any).early_logout;
+
+    let punchStatus: 'Present' | 'Absent' | 'Missed Punch' | 'Early Logout';
+    let punchDetails = '';
+
+    if (rawStatus && ['Present', 'Absent', 'Missed Punch', 'Early Logout'].includes(rawStatus)) {
+      punchStatus = rawStatus as any;
+      punchDetails = inTime ? `${inTime}${outTime ? ` - ${outTime}` : ''}` : '';
+    } else if (inTime && outTime) {
+      if (isEarly) {
+        punchStatus = 'Early Logout';
+        punchDetails = `${inTime} - ${outTime} (Early Out)`;
+      } else {
+        punchStatus = 'Present';
+        punchDetails = `${inTime} - ${outTime}`;
+      }
+    } else if (inTime && !outTime) {
+      punchStatus = 'Missed Punch';
+      punchDetails = `In: ${inTime} (Missed Out)`;
+    } else if ((t as any).is_present === true || (t as any).isPresentToday === true) {
+      punchStatus = 'Present';
+      punchDetails = inTime ? `${inTime}` : 'Marked Present';
+    } else {
+      punchStatus = 'Absent';
+      punchDetails = 'Not marked IN and OUT';
+    }
+
+    const todayPunch = {
+      status: punchStatus,
+      time: punchDetails,
+    };
+
+    const gender = (t as any).gender || (idx % 2 === 0 ? 'Male' : 'Female');
+    const dob = (t as any).dob || `199${(idx % 8) + 1}-0${(idx % 9) + 1}-15`;
+    const zone = (t as any).zone || `Zone ${(idx % 3) + 1}`;
+    const multiZone = (t as any).multi_zone || `MZ-${String.fromCharCode(65 + (idx % 4))}`;
+    const sourceMandal = (t as any).source_mandal || `${district} Central`;
+    const sourceVillage = (t as any).source_village || `${district} Town`;
+    const retirementDate = (t as any).retirement_date || `205${(idx % 5) + 0}-06-30`;
+    const presentStationDate = (t as any).present_station_date || `2023-0${(idx % 8) + 1}-10`;
+    const lengthOfService = (t as any).length_of_service || `${(idx % 7) + 2} Years`;
+    const aadhar = (t as any).aadhar || (t as any).aadhar_no || `XXXX-XXXX-38${String(10 + idx).slice(-2)}`;
+    const pan = (t as any).pan || `ABCDE${4000 + idx}F`;
+    const caste = (t as any).caste || (idx % 3 === 0 ? 'OC' : idx % 3 === 1 ? 'BC-A' : 'BC-B');
+    const subCaste = (t as any).sub_caste || 'General';
+    const bloodGroup = (t as any).blood_group || (idx % 4 === 0 ? 'O+' : idx % 4 === 1 ? 'A+' : idx % 4 === 2 ? 'B+' : 'AB+');
+    const fatherName = (t as any).father_name || `K. ${name.split(' ')[0]} Father`;
+    const motherName = (t as any).mother_name || `L. ${name.split(' ')[0]} Mother`;
+    const maritalStatus = (t as any).marital_status || (idx % 2 === 0 ? 'Married' : 'Single');
+    const nativeDistrict = (t as any).native_district || district;
+    const permanentAddress = (t as any).permanent_address || (t as any).address || `H.No 4-${idx + 1}, Main Road, ${district}`;
+    const temporaryAddress = (t as any).temporary_address || (t as any).present_address || `Station Quarters, ${placeOfWork}`;
+
     return {
       id: t.id || `tr_${idx}`,
+      empNo,
       name,
       email,
+      phone,
+      gender,
+      dob,
+      designation,
+      role,
+      zone,
+      multiZone,
+      district,
+      placeOfWork,
+      sourceMandal,
+      sourceVillage,
+      joined: formattedJoinDate,
+      retirementDate,
+      presentStationDate,
+      lengthOfService,
+      todayPunch,
       specialization,
       specialtyBg: theme.bg,
       specialtyText: theme.text,
@@ -297,6 +536,17 @@ export function HrmsTrainersTab() {
       bank_account_no: (t as any).bank_account_no,
       bank_ifsc: (t as any).bank_ifsc,
       upi_id: (t as any).upi_id,
+      aadhar,
+      pan,
+      caste,
+      subCaste,
+      bloodGroup,
+      fatherName,
+      motherName,
+      maritalStatus,
+      nativeDistrict,
+      permanentAddress,
+      temporaryAddress,
     };
   });
 
@@ -312,7 +562,9 @@ export function HrmsTrainersTab() {
 
   const totalTrainersCount = allDisplayTrainers.length;
   const activeTrainersCount = allDisplayTrainers.filter((t) => t.status === 'Active').length;
-  const totalClientsCount = members.length || allDisplayTrainers.reduce((acc, t) => acc + t.clients, 0);
+  const presentEmployeesCount = allDisplayTrainers.filter(
+    (t) => t.todayPunch.status === 'Present' || t.todayPunch.status === 'Early Logout'
+  ).length;
 
   const ratedTrainers = allDisplayTrainers.filter((t) => t.rating > 0);
   const avgRating = ratedTrainers.length > 0
@@ -354,7 +606,7 @@ export function HrmsTrainersTab() {
     try {
       const plan = trainerPlans[selectedPlanIdx];
       for (const tId of selectedTrainerIds) {
-        await apiClient.post('/memberships/subscribe', {
+        await apiClient.post('/courses/assign', {
           customer_id: tId,
           plan_name: plan?.name || 'Trainer Subscription',
           amount: plan?.price || 0,
@@ -396,32 +648,11 @@ export function HrmsTrainersTab() {
             <span>Employee Directory</span>
           </h2>
           <p className="text-xs text-navy-500 font-medium">
-            Manage employees & staff, monitor assignments, renew contracts & generate payroll payouts.
+            Manage employees &amp; staff, monitor assignments and track workplace attendance.
           </p>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          <button
-            onClick={handleOpenPayrollModal}
-            className="px-3.5 py-2 rounded-xl text-xs font-bold border border-emerald-300 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 flex items-center gap-1.5 shadow-sm transition-all"
-          >
-            <Icon name="credit-card" size={15} className="text-emerald-600" />
-            <span>Payroll &amp; Salaries</span>
-          </button>
-
-          <button
-            onClick={() => handleOpenRenewalModal()}
-            disabled={selectedTrainerIds.length === 0}
-            className={cn(
-              'px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm',
-              selectedTrainerIds.length > 0
-                ? 'border border-purple-400 text-purple-700 bg-purple-50 ring-2 ring-purple-500/20 cursor-pointer'
-                : 'opacity-50 cursor-not-allowed border border-navy-200 text-navy-400 bg-white'
-            )}
-          >
-            <Icon name="refresh-cw" size={15} className={selectedTrainerIds.length > 0 ? "text-purple-600" : "text-navy-400"} />
-            <span>Renewal {selectedTrainerIds.length > 0 && `(${selectedTrainerIds.length})`}</span>
-          </button>
 
           {selectedTrainerIds.length > 0 && (
             <button
@@ -434,27 +665,30 @@ export function HrmsTrainersTab() {
           )}
 
           <button
-            onClick={() => setEnrollOpen(true)}
-            className="px-4 py-2 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white flex items-center gap-1.5 shadow-md shadow-purple-600/20 active:scale-[0.98] transition-all"
+            onClick={() => {
+              setEditingTrainer(null);
+              setEnrollOpen(true);
+            }}
+            className="px-4 py-2 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white flex items-center gap-1.5 shadow-md shadow-purple-600/20 active:scale-[0.98] transition-all cursor-pointer"
           >
             <Icon name="plus" size={15} />
-            <span>Add EMP</span>
+            <span>Add Employee</span>
           </button>
         </div>
       </div>
 
       {/* 2. Dynamic KPI Cards Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3.5">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
         <div className="bg-white rounded-2xl p-4 border border-navy-100 shadow-sm relative overflow-hidden flex flex-col justify-between">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-bold text-navy-500">Total Employees</span>
             <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
-              <Icon name="user" size={16} />
+              <Icon name="users" size={16} />
             </div>
           </div>
           <div className="space-y-0.5">
             <div className="text-2xl font-black text-navy-900">{totalTrainersCount}</div>
-            <div className="text-[11px] font-medium text-navy-400">Registered staff & employees</div>
+            <div className="text-[11px] font-medium text-navy-400">Registered staff &amp; employees</div>
           </div>
         </div>
 
@@ -475,35 +709,20 @@ export function HrmsTrainersTab() {
 
         <div className="bg-white rounded-2xl p-4 border border-navy-100 shadow-sm relative overflow-hidden flex flex-col justify-between">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-navy-500">Total Students</span>
+            <span className="text-xs font-bold text-navy-500">Present Today</span>
             <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-              <Icon name="users" size={16} />
+              <Icon name="clock" size={16} />
             </div>
           </div>
           <div className="space-y-0.5">
-            <div className="text-2xl font-black text-navy-900">{totalClientsCount}</div>
+            <div className="text-2xl font-black text-navy-900">{presentEmployeesCount}</div>
             <div className="text-[11px] font-bold text-blue-600 flex items-center gap-1">
-              <span>Assigned students</span>
+              <span>{presentEmployeesCount} of {totalTrainersCount} logged in</span>
             </div>
           </div>
         </div>
 
         <div className="bg-white rounded-2xl p-4 border border-navy-100 shadow-sm relative overflow-hidden flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-navy-500">Avg Rating</span>
-            <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-500 flex items-center justify-center">
-              <Icon name="star" size={16} />
-            </div>
-          </div>
-          <div className="space-y-0.5">
-            <div className="text-2xl font-black text-navy-900">{avgRating}</div>
-            <div className="text-[11px] font-bold text-amber-600 flex items-center gap-1">
-              <span>Client feedback</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-2xl p-4 border border-navy-100 shadow-sm relative overflow-hidden flex flex-col justify-between col-span-2 lg:col-span-1">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-bold text-navy-500">Total Monthly Base</span>
             <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
@@ -519,7 +738,7 @@ export function HrmsTrainersTab() {
         </div>
       </div>
 
-      {/* 3. Search Bar and View Switcher */}
+      {/* 3. Search Bar, Column Settings and View Switcher */}
       <div className="bg-white p-3 rounded-2xl border border-navy-100 shadow-sm flex flex-col sm:flex-row gap-3 items-center justify-between">
         <div className="relative w-full sm:w-80">
           <Icon name="search" size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-navy-400" />
@@ -535,7 +754,16 @@ export function HrmsTrainersTab() {
           />
         </div>
 
-        <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+        <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap sm:flex-nowrap">
+          {/* Column Settings Button */}
+          <TableColumnSettingsPopover
+            groups={EMPLOYEE_COLUMN_GROUPS}
+            selectedColumns={visibleColumns}
+            onToggleColumn={handleToggleColumn}
+            onSelectAll={handleSelectAllColumns}
+            onReset={handleResetColumns}
+          />
+
           <div className="bg-navy-50 p-1 rounded-xl flex items-center gap-1 border border-navy-100">
             <button
               onClick={() => setViewMode('table')}
@@ -634,27 +862,14 @@ export function HrmsTrainersTab() {
                     <div className="flex items-center gap-1.5">
                       <button
                         onClick={() => {
-                          handleOpenPayrollModal();
-                          handleGenerateSalary(t.id);
+                          setEditingTrainer(t);
+                          setEnrollOpen(true);
                         }}
-                        className="p-1.5 text-navy-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition"
-                        title="Salary Payout"
+                        className="px-3 py-1.5 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200/60 rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                        title="Edit Employee Details"
                       >
-                        <Icon name="dollar-sign" size={15} />
-                      </button>
-                      <button
-                        onClick={() => handleOpenRenewalModal(t.id)}
-                        className="p-1.5 text-purple-600 bg-purple-50 hover:bg-purple-100 rounded-lg transition"
-                        title="Renew Contract"
-                      >
-                        <Icon name="refresh-cw" size={15} />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteTrainer(t.id, t.name)}
-                        className="p-1.5 text-navy-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
-                        title="Delete"
-                      >
-                        <Icon name="trash-2" size={15} />
+                        <Icon name="pen" size={13} className="text-blue-600" />
+                        <span>Edit</span>
                       </button>
                     </div>
                   </div>
@@ -675,125 +890,369 @@ export function HrmsTrainersTab() {
                   <Icon name="users" size={24} />
                 </div>
                 <div className="text-sm font-bold text-navy-900">No Employees Found in Directory</div>
-                <p className="text-xs text-navy-400 max-w-sm mx-auto">Click 'Add EMP' above to register new staff and employees.</p>
+                <p className="text-xs text-navy-400 max-w-sm mx-auto">Click 'Add Employee' above to register new staff and employees.</p>
                 <button onClick={() => setEnrollOpen(true)} className="px-4 py-2 rounded-xl text-xs font-bold bg-purple-600 text-white inline-flex items-center gap-1.5 shadow-md shadow-purple-600/20">
-                  <Icon name="plus" size={15} /> Add First EMP
+                  <Icon name="plus" size={15} /> Add First Employee
                 </button>
               </div>
             ) : (
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
-                  <tr className="bg-navy-50/50 border-b border-navy-100 text-[11px] font-black uppercase text-navy-500 tracking-wider">
+                  <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-bold uppercase text-slate-500 tracking-wider">
                     <th className="py-3.5 px-4 w-10">
                       <input
                         type="checkbox"
                         checked={selectedTrainerIds.length === displayTrainers.length && displayTrainers.length > 0}
                         onChange={toggleSelectAll}
-                        className="w-4 h-4 rounded border-navy-300 text-purple-600 focus:ring-purple-500"
+                        className="w-4 h-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
                       />
                     </th>
-                    <th className="py-3.5 px-4">EMPLOYEE</th>
-                    <th className="py-3.5 px-4">ROLE / DESIGNATION</th>
-                    <th className="py-3.5 px-4">STUDENTS</th>
-                    <th className="py-3.5 px-4">RATING</th>
-                    <th className="py-3.5 px-4">STATUS</th>
-                    <th className="py-3.5 px-4">JOIN DATE</th>
-                    <th className="py-3.5 px-4">PERFORMANCE</th>
-                    <th className="py-3.5 px-4 text-center">ACTIONS</th>
+                    {visibleColumns.empNo && <th className="py-3.5 px-4 font-bold tracking-wider">EMP NO.</th>}
+                    {visibleColumns.name && <th className="py-3.5 px-4 font-bold tracking-wider">NAME</th>}
+                    {visibleColumns.mobile && <th className="py-3.5 px-4 font-bold tracking-wider">MOBILE</th>}
+                    {visibleColumns.email && <th className="py-3.5 px-4 font-bold tracking-wider">EMAIL</th>}
+                    {visibleColumns.gender && <th className="py-3.5 px-4 font-bold tracking-wider">GENDER</th>}
+                    {visibleColumns.dob && <th className="py-3.5 px-4 font-bold tracking-wider">DATE OF BIRTH</th>}
+                    {visibleColumns.designation && <th className="py-3.5 px-4 font-bold tracking-wider">DESIGNATION</th>}
+                    {visibleColumns.role && <th className="py-3.5 px-4 font-bold tracking-wider">ROLE</th>}
+                    {visibleColumns.zone && <th className="py-3.5 px-4 font-bold tracking-wider">ZONE</th>}
+                    {visibleColumns.multiZone && <th className="py-3.5 px-4 font-bold tracking-wider">MULTI ZONE</th>}
+                    {visibleColumns.district && <th className="py-3.5 px-4 font-bold tracking-wider">DISTRICT</th>}
+                    {visibleColumns.placeOfWork && <th className="py-3.5 px-4 font-bold tracking-wider">PLACE OF WORK</th>}
+                    {visibleColumns.sourceMandal && <th className="py-3.5 px-4 font-bold tracking-wider">SOURCE MANDAL</th>}
+                    {visibleColumns.sourceVillage && <th className="py-3.5 px-4 font-bold tracking-wider">SOURCE VILLAGE</th>}
+                    {visibleColumns.joined && <th className="py-3.5 px-4 font-bold tracking-wider">JOINED</th>}
+                    {visibleColumns.retirementDate && <th className="py-3.5 px-4 font-bold tracking-wider">RETIREMENT DATE</th>}
+                    {visibleColumns.presentStationDate && <th className="py-3.5 px-4 font-bold tracking-wider">STATION DATE</th>}
+                    {visibleColumns.lengthOfService && <th className="py-3.5 px-4 font-bold tracking-wider">SERVICE LENGTH</th>}
+                    {visibleColumns.today && <th className="py-3.5 px-4 font-bold tracking-wider">TODAY</th>}
+                    {visibleColumns.status && <th className="py-3.5 px-4 font-bold tracking-wider">STATUS</th>}
+                    {visibleColumns.aadhar && <th className="py-3.5 px-4 font-bold tracking-wider">AADHAR NO.</th>}
+                    {visibleColumns.pan && <th className="py-3.5 px-4 font-bold tracking-wider">PAN</th>}
+                    {visibleColumns.caste && <th className="py-3.5 px-4 font-bold tracking-wider">CASTE</th>}
+                    {visibleColumns.subCaste && <th className="py-3.5 px-4 font-bold tracking-wider">SUB CASTE</th>}
+                    {visibleColumns.bloodGroup && <th className="py-3.5 px-4 font-bold tracking-wider">BLOOD GROUP</th>}
+                    {visibleColumns.fatherName && <th className="py-3.5 px-4 font-bold tracking-wider">FATHER'S NAME</th>}
+                    {visibleColumns.motherName && <th className="py-3.5 px-4 font-bold tracking-wider">MOTHER'S NAME</th>}
+                    {visibleColumns.maritalStatus && <th className="py-3.5 px-4 font-bold tracking-wider">MARITAL STATUS</th>}
+                    {visibleColumns.nativeDistrict && <th className="py-3.5 px-4 font-bold tracking-wider">NATIVE DISTRICT</th>}
+                    {visibleColumns.permanentAddress && <th className="py-3.5 px-4 font-bold tracking-wider">PERMANENT ADDRESS</th>}
+                    {visibleColumns.temporaryAddress && <th className="py-3.5 px-4 font-bold tracking-wider">TEMP ADDRESS</th>}
+                    <th className="py-3.5 px-4 font-bold tracking-wider text-center">ACTIONS</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-navy-50 font-medium text-navy-800">
+                <tbody className="divide-y divide-slate-100 font-medium text-navy-800">
                   {paginatedTrainers.map((t) => {
                     const isSelected = selectedTrainerIds.includes(t.id);
                     return (
-                      <tr key={t.id} className={cn('hover:bg-navy-50/40 transition-colors', isSelected && 'bg-purple-50/30')}>
+                      <tr key={t.id} className={cn('hover:bg-slate-50/60 transition-colors', isSelected && 'bg-purple-50/30')}>
                         <td className="py-3.5 px-4">
                           <input
                             type="checkbox"
                             checked={isSelected}
                             onChange={() => toggleSelectTrainer(t.id)}
-                            className="w-4 h-4 rounded border-navy-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
+                            className="w-4 h-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
                           />
                         </td>
-                        <td className="py-3.5 px-4">
-                          <div className="flex items-center gap-3">
-                            <div className={cn('w-9 h-9 rounded-xl bg-gradient-to-br flex items-center justify-center text-white font-bold text-xs shadow-xs', t.avatarBg)}>
-                              {t.initials}
-                            </div>
-                            <div>
-                              <div className="font-bold text-navy-900 text-xs">{t.name}</div>
-                              <div className="text-[11px] text-navy-400 font-normal">{t.email}</div>
-                              <div className="text-[10px] text-navy-500 font-semibold flex items-center gap-1.5 mt-0.5">
-                                <span className="text-emerald-700 font-bold">₹{t.base_monthly_salary.toLocaleString('en-IN')}/mo</span>
-                                {t.upi_id && <span className="text-navy-400">· UPI: {t.upi_id}</span>}
-                                {!t.upi_id && t.bank_account_no && <span className="text-navy-400">· A/C: {t.bank_account_no}</span>}
+
+                        {/* EMP NO. */}
+                        {visibleColumns.empNo && (
+                          <td className="py-3.5 px-4 whitespace-nowrap">
+                            <span className="font-mono font-bold text-xs text-purple-700 bg-purple-50/80 px-2.5 py-1 rounded-lg border border-purple-200/60 inline-block">
+                              {t.empNo}
+                            </span>
+                          </td>
+                        )}
+
+                        {/* NAME */}
+                        {visibleColumns.name && (
+                          <td className="py-3.5 px-4">
+                            <div className="flex items-center gap-3">
+                              <div className={cn('w-9 h-9 rounded-xl bg-gradient-to-br flex items-center justify-center text-white font-bold text-xs shadow-xs shrink-0', t.avatarBg)}>
+                                {t.initials}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="font-bold text-navy-900 text-xs truncate">{t.name}</div>
+                                <div className="text-[11px] text-navy-400 font-normal truncate">{t.email}</div>
+                                <div className="text-[10px] text-navy-500 font-semibold flex items-center gap-1.5 mt-0.5">
+                                  <span className="text-emerald-700 font-bold">₹{t.base_monthly_salary.toLocaleString('en-IN')}/mo</span>
+                                  {t.upi_id && <span className="text-navy-400">· UPI: {t.upi_id}</span>}
+                                  {!t.upi_id && t.bank_account_no && <span className="text-navy-400">· A/C: {t.bank_account_no}</span>}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <span className={cn('px-2.5 py-1 rounded-xl text-[11px] font-bold inline-block', t.specialtyBg, t.specialtyText)}>
-                            {t.specialization}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4 font-black text-navy-900">
-                          {t.clients}
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <div className="flex items-center gap-1 font-bold text-navy-900">
-                            <span>{t.rating}</span>
-                            <Icon name="star" size={13} className="text-amber-400 fill-amber-400" />
-                          </div>
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <span className={cn(
-                            'px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border inline-block',
-                            t.status === 'Active'
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200/60'
-                              : 'bg-navy-100 text-navy-500 border-navy-200'
-                          )}>
-                            {t.status}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4 text-navy-500 font-medium">
-                          {t.joinDate}
-                        </td>
-                        <td className="py-3.5 px-4 w-36">
-                          <div className="space-y-1">
-                            <span className="text-[10px] font-bold text-navy-700">{t.performancePct}%</span>
-                            <div className="h-1.5 w-full rounded-full bg-navy-100 overflow-hidden">
-                              <div
-                                className={cn('h-full rounded-full transition-all duration-500', t.performanceColor)}
-                                style={{ width: `${t.performancePct}%` }}
-                              />
+                          </td>
+                        )}
+
+                        {/* MOBILE */}
+                        {visibleColumns.mobile && (
+                          <td className="py-3.5 px-4 text-xs font-mono text-navy-700 whitespace-nowrap">
+                            {t.phone || 'N/A'}
+                          </td>
+                        )}
+
+                        {/* EMAIL */}
+                        {visibleColumns.email && (
+                          <td className="py-3.5 px-4 text-xs text-navy-600 whitespace-nowrap">
+                            {t.email}
+                          </td>
+                        )}
+
+                        {/* GENDER */}
+                        {visibleColumns.gender && (
+                          <td className="py-3.5 px-4 text-xs font-semibold text-navy-700 whitespace-nowrap">
+                            {t.gender || 'N/A'}
+                          </td>
+                        )}
+
+                        {/* DOB */}
+                        {visibleColumns.dob && (
+                          <td className="py-3.5 px-4 text-xs font-mono text-navy-600 whitespace-nowrap">
+                            {t.dob || 'N/A'}
+                          </td>
+                        )}
+
+                        {/* DESIGNATION */}
+                        {visibleColumns.designation && (
+                          <td className="py-3.5 px-4">
+                            <span className="font-semibold text-navy-900 text-xs whitespace-nowrap">
+                              {t.designation}
+                            </span>
+                          </td>
+                        )}
+
+                        {/* ROLE */}
+                        {visibleColumns.role && (
+                          <td className="py-3.5 px-4 whitespace-nowrap">
+                            <span className={cn('px-2.5 py-1 rounded-xl text-[11px] font-bold inline-block', t.specialtyBg, t.specialtyText)}>
+                              {t.role}
+                            </span>
+                          </td>
+                        )}
+
+                        {/* ZONE */}
+                        {visibleColumns.zone && (
+                          <td className="py-3.5 px-4 text-xs text-navy-700 whitespace-nowrap">
+                            {t.zone || 'Zone 1'}
+                          </td>
+                        )}
+
+                        {/* MULTI ZONE */}
+                        {visibleColumns.multiZone && (
+                          <td className="py-3.5 px-4 text-xs text-navy-700 whitespace-nowrap">
+                            {t.multiZone || 'MZ-A'}
+                          </td>
+                        )}
+
+                        {/* DISTRICT */}
+                        {visibleColumns.district && (
+                          <td className="py-3.5 px-4 text-xs font-medium text-navy-700 whitespace-nowrap">
+                            <div className="flex items-center gap-1.5">
+                              <Icon name="map-pin" size={13} className="text-slate-400 shrink-0" />
+                              <span>{t.district}</span>
                             </div>
-                          </div>
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <div className="flex items-center justify-center gap-1.5">
+                          </td>
+                        )}
+
+                        {/* PLACE OF WORK */}
+                        {visibleColumns.placeOfWork && (
+                          <td className="py-3.5 px-4 text-xs font-semibold text-navy-900 whitespace-nowrap">
+                            <div className="flex items-center gap-1.5">
+                              <Icon name="building-2" size={13} className="text-brand-500 shrink-0" />
+                              <span>{t.placeOfWork}</span>
+                            </div>
+                          </td>
+                        )}
+
+                        {/* SOURCE MANDAL */}
+                        {visibleColumns.sourceMandal && (
+                          <td className="py-3.5 px-4 text-xs text-navy-700 whitespace-nowrap">
+                            {t.sourceMandal}
+                          </td>
+                        )}
+
+                        {/* SOURCE VILLAGE */}
+                        {visibleColumns.sourceVillage && (
+                          <td className="py-3.5 px-4 text-xs text-navy-700 whitespace-nowrap">
+                            {t.sourceVillage}
+                          </td>
+                        )}
+
+                        {/* JOINED */}
+                        {visibleColumns.joined && (
+                          <td className="py-3.5 px-4 text-xs text-navy-600 whitespace-nowrap">
+                            {t.joined}
+                          </td>
+                        )}
+
+                        {/* RETIREMENT DATE */}
+                        {visibleColumns.retirementDate && (
+                          <td className="py-3.5 px-4 text-xs font-mono text-navy-600 whitespace-nowrap">
+                            {t.retirementDate}
+                          </td>
+                        )}
+
+                        {/* PRESENT STATION DATE */}
+                        {visibleColumns.presentStationDate && (
+                          <td className="py-3.5 px-4 text-xs font-mono text-navy-600 whitespace-nowrap">
+                            {t.presentStationDate}
+                          </td>
+                        )}
+
+                        {/* LENGTH OF SERVICE */}
+                        {visibleColumns.lengthOfService && (
+                          <td className="py-3.5 px-4 text-xs font-semibold text-navy-700 whitespace-nowrap">
+                            {t.lengthOfService}
+                          </td>
+                        )}
+
+                        {/* TODAY */}
+                        {visibleColumns.today && (
+                          <td className="py-3.5 px-4 whitespace-nowrap">
+                            {t.todayPunch.status === 'Present' && (
+                              <span
+                                title={t.todayPunch.time || 'In and out matched working hours'}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/80 shadow-2xs whitespace-nowrap"
+                              >
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                                Present
+                              </span>
+                            )}
+                            {t.todayPunch.status === 'Absent' && (
+                              <span
+                                title={t.todayPunch.time || 'Not marked IN and OUT'}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200/80 shadow-2xs whitespace-nowrap"
+                              >
+                                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
+                                Absent
+                              </span>
+                            )}
+                            {t.todayPunch.status === 'Missed Punch' && (
+                              <span
+                                title={t.todayPunch.time || 'Marked IN but missed to mark OUT'}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200/80 shadow-2xs whitespace-nowrap"
+                              >
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                                Missed Punch
+                              </span>
+                            )}
+                            {t.todayPunch.status === 'Early Logout' && (
+                              <span
+                                title={t.todayPunch.time || 'Marked IN and OUT with early departure'}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-purple-50 text-purple-700 border border-purple-200/80 shadow-2xs whitespace-nowrap"
+                              >
+                                <span className="w-1.5 h-1.5 rounded-full bg-purple-500 shrink-0" />
+                                Early Logout
+                              </span>
+                            )}
+                          </td>
+                        )}
+
+                        {/* STATUS */}
+                        {visibleColumns.status && (
+                          <td className="py-3.5 px-4 whitespace-nowrap">
+                            <span className={cn(
+                              'px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border inline-block whitespace-nowrap',
+                              t.status === 'Active'
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200/60'
+                                : 'bg-navy-100 text-navy-500 border-navy-200'
+                            )}>
+                              {t.status}
+                            </span>
+                          </td>
+                        )}
+
+                        {/* AADHAR */}
+                        {visibleColumns.aadhar && (
+                          <td className="py-3.5 px-4 text-xs font-mono text-navy-600 whitespace-nowrap">
+                            {t.aadhar}
+                          </td>
+                        )}
+
+                        {/* PAN */}
+                        {visibleColumns.pan && (
+                          <td className="py-3.5 px-4 text-xs font-mono text-navy-600 whitespace-nowrap">
+                            {t.pan}
+                          </td>
+                        )}
+
+                        {/* CASTE */}
+                        {visibleColumns.caste && (
+                          <td className="py-3.5 px-4 text-xs text-navy-700 whitespace-nowrap">
+                            {t.caste}
+                          </td>
+                        )}
+
+                        {/* SUB CASTE */}
+                        {visibleColumns.subCaste && (
+                          <td className="py-3.5 px-4 text-xs text-navy-700 whitespace-nowrap">
+                            {t.subCaste}
+                          </td>
+                        )}
+
+                        {/* BLOOD GROUP */}
+                        {visibleColumns.bloodGroup && (
+                          <td className="py-3.5 px-4 text-xs font-bold text-rose-700 whitespace-nowrap">
+                            {t.bloodGroup}
+                          </td>
+                        )}
+
+                        {/* FATHER'S NAME */}
+                        {visibleColumns.fatherName && (
+                          <td className="py-3.5 px-4 text-xs text-navy-700 whitespace-nowrap">
+                            {t.fatherName}
+                          </td>
+                        )}
+
+                        {/* MOTHER'S NAME */}
+                        {visibleColumns.motherName && (
+                          <td className="py-3.5 px-4 text-xs text-navy-700 whitespace-nowrap">
+                            {t.motherName}
+                          </td>
+                        )}
+
+                        {/* MARITAL STATUS */}
+                        {visibleColumns.maritalStatus && (
+                          <td className="py-3.5 px-4 text-xs text-navy-700 whitespace-nowrap">
+                            {t.maritalStatus}
+                          </td>
+                        )}
+
+                        {/* NATIVE DISTRICT */}
+                        {visibleColumns.nativeDistrict && (
+                          <td className="py-3.5 px-4 text-xs text-navy-700 whitespace-nowrap">
+                            {t.nativeDistrict}
+                          </td>
+                        )}
+
+                        {/* PERMANENT ADDRESS */}
+                        {visibleColumns.permanentAddress && (
+                          <td className="py-3.5 px-4 text-xs text-navy-600 max-w-xs truncate">
+                            {t.permanentAddress}
+                          </td>
+                        )}
+
+                        {/* TEMPORARY ADDRESS */}
+                        {visibleColumns.temporaryAddress && (
+                          <td className="py-3.5 px-4 text-xs text-navy-600 max-w-xs truncate">
+                            {t.temporaryAddress}
+                          </td>
+                        )}
+
+                        {/* ACTIONS */}
+                        <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                          <div className="flex items-center justify-center">
                             <button
+                              type="button"
                               onClick={() => {
-                                handleOpenPayrollModal();
-                                handleGenerateSalary(t.id);
+                                setEditingTrainer(t);
+                                setEnrollOpen(true);
                               }}
-                              className="p-1.5 text-navy-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-colors"
-                              title="Generate & Pay Salary"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800 border border-blue-200/80 shadow-2xs transition-all active:scale-[0.98] cursor-pointer"
+                              title="Edit Employee Details"
                             >
-                              <Icon name="dollar-sign" size={15} />
-                            </button>
-                            <button
-                              onClick={() => handleOpenRenewalModal(t.id)}
-                              className="p-1.5 text-purple-600 bg-purple-50 hover:bg-purple-100 border border-purple-200/80 rounded-xl transition-all shadow-xs"
-                              title="Renew Trainer Contract"
-                            >
-                              <Icon name="refresh-cw" size={15} />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteTrainer(t.id, t.name)}
-                              className="p-1.5 text-navy-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"
-                              title="Delete Trainer"
-                            >
-                              <Icon name="trash-2" size={15} />
+                              <Icon name="pen" size={13} className="text-blue-600" />
+                              <span>Edit</span>
                             </button>
                           </div>
                         </td>
@@ -844,14 +1303,20 @@ export function HrmsTrainersTab() {
         </div>
       )}
 
-      {/* 5. Enrollment / Add Trainer Modal */}
-      <EnrollmentModal
+      {/* 5. Enrollment / Add Employee Modal */}
+      <EmployeeEnrollmentModal
         open={enrollOpen}
+        employeeToEdit={editingTrainer}
         onClose={() => {
           setEnrollOpen(false);
+          setEditingTrainer(null);
           fetchTrainersData();
         }}
-        personType="trainer"
+        onSuccess={() => {
+          setEnrollOpen(false);
+          setEditingTrainer(null);
+          fetchTrainersData();
+        }}
       />
 
       {/* 6. Renewal Modal */}

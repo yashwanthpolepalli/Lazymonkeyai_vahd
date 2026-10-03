@@ -20,12 +20,14 @@ import {
   Share2, Image as ImageIcon, Copy, ExternalLink, HelpCircle, Layers, Palette, Instagram,
   Phone, PhoneCall, Flag, Mail, MessageCircle, FileText, Tag, Radio, Megaphone, Percent, Headphones,
   Trophy, Crown, Hourglass, Brain, Bed, QrCode, LayoutGrid, List, ShoppingBag,
+  Table,
   type LucideIcon,
 } from 'lucide-react';
 
 const iconMap: Record<string, LucideIcon> = {
   'grid': LayoutGrid,
   'layout-grid': LayoutGrid,
+  'table': Table,
   'list': List,
   'rows': List,
   'phone': Phone,

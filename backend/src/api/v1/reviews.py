@@ -17,11 +17,11 @@ def get_review_settings(
 
 @router.post("/ai-generate")
 def generate_ai_reviews(
-    payload: Dict[str, Any] = Body(...),
+    payload: Dict[str, Any] = Body(default_factory=dict),
     db: Session = Depends(get_db)
 ):
-    customer_id = payload.get("customer_id")
-    gym_name = payload.get("gym_name")
+    customer_id = payload.get("customer_id") if isinstance(payload, dict) else None
+    gym_name = payload.get("gym_name") if isinstance(payload, dict) else None
     suggestions = ReviewService.generate_ai_reviews(db, customer_id=customer_id, gym_name=gym_name)
     return {
         "suggestions": suggestions,

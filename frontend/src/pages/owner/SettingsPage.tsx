@@ -7,7 +7,7 @@ import { apiClient } from '@/services/apiClient';
 import { api } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { notifyModuleVisibilityChanged } from '@/config/navigation';
-import { MembershipsPage } from '@/pages/owner/MembershipsPage';
+import { CoursesPage } from '@/pages/owner/CoursesPage';
 import { ReportsPage } from '@/pages/owner/ReportsPage';
 import { CompanyManagement } from '@/components/erp/CompanyManagement';
 import { BillingSettingsTab } from '@/components/settings/BillingSettingsTab';
@@ -26,7 +26,13 @@ interface IntegrationApp {
   id: string;
   name: string;
   icon: string;
-  category: 'Health & Wearables' | 'Hardware Scanners' | 'Payments & SMS';
+  category:
+    | 'Hardware & Biometrics'
+    | 'Payments & Banking'
+    | 'Messaging & Alerts'
+    | 'Health & Wearables'
+    | 'Hardware Scanners'
+    | 'Payments & SMS';
   desc: string;
   connected: boolean;
   statusText: string;
@@ -38,9 +44,10 @@ export type SettingsTab =
   | 'General'
   | 'Profile'
   | 'ERP & Google Reviews'
+  | 'Courses'
   | 'Memberships'
   | 'Reports'
-  | 'Devices & BMI'
+  | 'Devices'
   | 'Notifications'
   | 'Security'
   | 'Billing'
@@ -54,10 +61,10 @@ export function SettingsPage() {
 
   const getInitialTab = (): SettingsTab => {
     if (rawTab === 'erp' || rawTab === 'company' || rawTab === 'reviews' || rawTab === 'google-reviews') return 'ERP & Google Reviews';
-    if (rawTab === 'memberships' || rawTab === 'plans') return 'Memberships';
+    if (rawTab === 'courses' || rawTab === 'memberships' || rawTab === 'plans') return 'Courses';
     if (rawTab === 'reports' || rawTab === 'analytics') return 'Reports';
     if (rawTab === 'profile') return 'Profile';
-    if (rawTab === 'devices' || rawTab === 'bmi') return 'Devices & BMI';
+    if (rawTab === 'devices' || rawTab === 'bmi' || rawTab === 'hardware') return 'Devices';
     if (rawTab === 'notifications') return 'Notifications';
     if (rawTab === 'security') return 'Security';
     if (rawTab === 'billing' || rawTab === 'plan') return 'Billing';
@@ -70,10 +77,10 @@ export function SettingsPage() {
   useEffect(() => {
     if (rawTab) {
       if (rawTab === 'erp' || rawTab === 'company' || rawTab === 'reviews' || rawTab === 'google-reviews') setActiveTab('ERP & Google Reviews');
-      else if (rawTab === 'memberships' || rawTab === 'plans') setActiveTab('Memberships');
+      else if (rawTab === 'courses' || rawTab === 'memberships' || rawTab === 'plans') setActiveTab('Courses');
       else if (rawTab === 'reports' || rawTab === 'analytics') setActiveTab('Reports');
       else if (rawTab === 'profile') setActiveTab('Profile');
-      else if (rawTab === 'devices' || rawTab === 'bmi') setActiveTab('Devices & BMI');
+      else if (rawTab === 'devices' || rawTab === 'bmi' || rawTab === 'hardware') setActiveTab('Devices');
       else if (rawTab === 'notifications') setActiveTab('Notifications');
       else if (rawTab === 'security') setActiveTab('Security');
       else if (rawTab === 'billing' || rawTab === 'plan') setActiveTab('Billing');
@@ -86,10 +93,10 @@ export function SettingsPage() {
     setActiveTab(tabId);
     const paramKey =
       tabId === 'ERP & Google Reviews' ? 'erp' :
-      tabId === 'Memberships' ? 'memberships' :
+      tabId === 'Courses' || tabId === 'Memberships' ? 'courses' :
       tabId === 'Reports' ? 'reports' :
       tabId === 'Profile' ? 'profile' :
-      tabId === 'Devices & BMI' ? 'devices' :
+      tabId === 'Devices' ? 'devices' :
       tabId === 'Notifications' ? 'notifications' :
       tabId === 'Security' ? 'security' :
       tabId === 'Billing' ? 'billing' :
@@ -117,14 +124,8 @@ export function SettingsPage() {
   const [ownerRole, setOwnerRole] = useState('Gym Owner');
   const [ownerAvatar, setOwnerAvatar] = useState<string>(() => user?.avatar || localStorage.getItem('fitclub_owner_avatar') || '');
 
-  // Devices & BMI Config State
+  // Devices & Hardware Config State
   const [esslUrl, setEsslUrl] = useState('');
-  const [inbodyUrl, setInbodyUrl] = useState('');
-  const [bmiUnderweightMax, setBmiUnderweightMax] = useState('18.5');
-  const [bmiNormalMax, setBmiNormalMax] = useState('24.9');
-  const [bmiOverweightMax, setBmiOverweightMax] = useState('29.9');
-  const [athleticBodyFatMale, setAthleticBodyFatMale] = useState('17.0');
-  const [athleticBodyFatFemale, setAthleticBodyFatFemale] = useState('24.0');
   const [deviceAutoSync, setDeviceAutoSync] = useState(true);
 
   // Security State
@@ -140,31 +141,27 @@ export function SettingsPage() {
     { id: '3', label: 'Membership Expiry Alert', desc: 'Automated 7-day & 3-day renewal reminder sequences', category: 'Member Alerts', enabled: true, channel: 'SMS & WhatsApp' },
     { id: '4', label: 'Low Inventory Stock Alert', desc: 'Notify branch manager when supplement or merch stock is below 5 units', category: 'Financial', enabled: true, channel: 'Push & Web' },
     { id: '5', label: 'AI Health & Attendance Insights', desc: 'Weekly automated performance & retention telemetry summary', category: 'Hardware & AI', enabled: true, channel: 'Email' },
-    { id: '6', label: 'Hardware Device Offline Alert', desc: 'Immediate notification when InBody or eSSL Biometric device drops connection', category: 'Hardware & AI', enabled: true, channel: 'Push & Web' },
+    { id: '6', label: 'Hardware Device Offline Alert', desc: 'Immediate notification when eSSL Biometric access device drops connection', category: 'Hardware & AI', enabled: true, channel: 'Push & Web' },
   ]);
 
   // Integrations State
   const [integrations, setIntegrations] = useState<IntegrationApp[]>([
-    { id: 'inbody', name: 'InBody 570 / 270 Scanner', icon: 'activity', category: 'Hardware Scanners', desc: 'Direct LAN/Wi-Fi bioelectrical impedance data sync', connected: true, statusText: 'Online', badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-    { id: 'essl', name: 'eSSL Biometric Gate Control', icon: 'lock', category: 'Hardware Scanners', desc: 'RFID fingerprint & facial recognition access control', connected: true, statusText: 'Online', badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-    { id: 'razorpay', name: 'Razorpay Payment Gateway', icon: 'credit-card', category: 'Payments & SMS', desc: 'UPI, Credit Cards, NetBanking & Auto-debit subscriptions', connected: true, statusText: 'Merchant Active', badgeColor: 'bg-brand-50 text-brand-700 border-brand-200' },
-    { id: 'whatsapp', name: 'WhatsApp Business API (Twilio)', icon: 'message-square', category: 'Payments & SMS', desc: 'Automated member notifications & renewal payment links', connected: true, statusText: 'Connected', badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-    { id: 'apple_health', name: 'Apple HealthKit', icon: 'heart', category: 'Health & Wearables', desc: 'Sync member step count, active calories & workout telemetry', connected: true, statusText: 'Syncing Active', badgeColor: 'bg-purple-50 text-purple-700 border-purple-200' },
-    { id: 'google_fit', name: 'Google Health Connect', icon: 'smartphone', category: 'Health & Wearables', desc: 'Android wearable activity & sleep data synchronization', connected: false, statusText: 'Disconnected', badgeColor: 'bg-navy-50 text-navy-600 border-navy-200' },
+    { id: 'essl', name: 'eSSL Biometric Gate Control', icon: 'lock', category: 'Hardware & Biometrics', desc: 'RFID fingerprint & facial recognition biometric access control sync', connected: true, statusText: 'Online', badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+    { id: 'razorpay', name: 'Razorpay Payment Gateway', icon: 'credit-card', category: 'Payments & Banking', desc: 'UPI, Credit Cards, NetBanking & Auto-debit subscriptions', connected: true, statusText: 'Merchant Active', badgeColor: 'bg-brand-50 text-brand-700 border-brand-200' },
+    { id: 'whatsapp', name: 'WhatsApp Business API (Twilio)', icon: 'message-square', category: 'Messaging & Alerts', desc: 'Automated student notifications & fee renewal payment links', connected: true, statusText: 'Connected', badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
   ]);
 
   const [billingInfo, setBillingInfo] = useState<any>(null);
 
-  // Load existing settings, owner profile, and BMI config from backend DB on mount
+  // Load existing settings, owner profile from backend DB on mount
   useEffect(() => {
     localStorage.removeItem('fitclub_enable_pos');
     localStorage.removeItem('fitclub_enable_inventory');
     Promise.all([
       apiClient.get<any>('/gym/settings').catch(() => null),
       api.auth.me().catch(() => null),
-      apiClient.get<any>('/bmi-config').catch(() => null),
       apiClient.get<any>('/gym/billing').catch(() => null),
-    ]).then(([gymRes, userRes, bmiRes, billingRes]) => {
+    ]).then(([gymRes, userRes, billingRes]) => {
       if (billingRes) {
         setBillingInfo(billingRes.billing || billingRes);
       }
@@ -175,7 +172,6 @@ export function SettingsPage() {
         if (gymRes.address) setGymAddress(gymRes.address);
         if (gymRes.gstin) setGstNumber(gymRes.gstin);
         if (gymRes.essl_bioserver_url) setEsslUrl(gymRes.essl_bioserver_url);
-        if (gymRes.inbody_url) setInbodyUrl(gymRes.inbody_url);
         notifyModuleVisibilityChanged();
       }
       if (userRes) {
@@ -190,14 +186,6 @@ export function SettingsPage() {
           localStorage.setItem('fitclub_owner_avatar', loadedAvatar);
           updateUser({ avatar: loadedAvatar });
         }
-      }
-      if (bmiRes && bmiRes.data) {
-        const d = bmiRes.data;
-        if (d.bmiUnderweightMax !== undefined) setBmiUnderweightMax(String(d.bmiUnderweightMax));
-        if (d.bmiNormalMax !== undefined) setBmiNormalMax(String(d.bmiNormalMax));
-        if (d.bmiOverweightMax !== undefined) setBmiOverweightMax(String(d.bmiOverweightMax));
-        if (d.bodyFatAthleticMaxMale !== undefined) setAthleticBodyFatMale(String(d.bodyFatAthleticMaxMale));
-        if (d.bodyFatAthleticMaxFemale !== undefined) setAthleticBodyFatFemale(String(d.bodyFatAthleticMaxFemale));
       }
     });
   }, []);
@@ -292,33 +280,7 @@ export function SettingsPage() {
   };
 
   const handleSaveSettings = async () => {
-    // 1. Save BMI Config thresholds to DB
-    try {
-      await apiClient.patch('/bmi-config', {
-        version: 'v1',
-        bmiUnderweightMax: parseFloat(bmiUnderweightMax),
-        bmiNormalMax: parseFloat(bmiNormalMax),
-        bmiOverweightMax: parseFloat(bmiOverweightMax),
-        bodyFatAthleticMaxMale: parseFloat(athleticBodyFatMale),
-        bodyFatAthleticMaxFemale: parseFloat(athleticBodyFatFemale),
-        bodyFatAthleticMaxOther: 20.0,
-      });
-    } catch (_err) {
-      // If patch 404s because no row exists yet, POST initial row
-      try {
-        await apiClient.post('/bmi-config', {
-          version: 'v1',
-          bmiUnderweightMax: parseFloat(bmiUnderweightMax),
-          bmiNormalMax: parseFloat(bmiNormalMax),
-          bmiOverweightMax: parseFloat(bmiOverweightMax),
-          bodyFatAthleticMaxMale: parseFloat(athleticBodyFatMale),
-          bodyFatAthleticMaxFemale: parseFloat(athleticBodyFatFemale),
-          bodyFatAthleticMaxOther: 20.0,
-        });
-      } catch (_err) {}
-    }
-
-    // 2. Save Gym Branch settings to DB
+    // Save Gym Branch settings to DB
     try {
       await apiClient.post('/gym/settings', {
         gym_name: gymName,
@@ -334,16 +296,16 @@ export function SettingsPage() {
     } catch (_err) {}
 
     setHasUnsavedChanges(false);
-    triggerToast('Settings and device thresholds saved successfully!');
+    triggerToast('Settings and device configurations saved successfully!');
   };
 
   const tabs = [
     { id: 'General', label: 'General', icon: 'settings' },
     { id: 'Profile', label: 'Profile & Owner', icon: 'user' },
     { id: 'ERP & Google Reviews', label: 'ERP & Google Reviews', icon: 'building-2' },
-    { id: 'Memberships', label: 'Memberships', icon: 'credit-card' },
+    { id: 'Courses', label: 'Courses', icon: 'book-open' },
     { id: 'Reports', label: 'Reports & Analytics', icon: 'file-bar-chart' },
-    { id: 'Devices & BMI', label: 'Devices & BMI', icon: 'activity' },
+    { id: 'Devices', label: 'Devices', icon: 'cpu' },
     { id: 'Notifications', label: 'Notifications', icon: 'bell' },
     { id: 'Security', label: 'Security', icon: 'shield' },
     { id: 'Billing', label: 'Billing & Plan', icon: 'credit-card' },
@@ -380,7 +342,7 @@ export function SettingsPage() {
               System Settings & Configurations
             </h1>
             <p className="text-navy-300 text-xs max-w-xl">
-              Configure gym brand profile, BMI scanner threshold parameters, automated member communication alerts, and hardware device integrations.
+              Configure gym brand profile, automated member communication alerts, and hardware device integrations.
             </p>
           </div>
 
@@ -703,33 +665,21 @@ export function SettingsPage() {
         </div>
       )}
 
-      {/* TAB 3: DEVICES & BMI CONFIG */}
-      {activeTab === 'Devices & BMI' && (
+      {/* TAB 3: DEVICES & ACCESS CONTROL */}
+      {activeTab === 'Devices' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-fade-in">
           <div className="lg:col-span-8 space-y-6">
-            {/* Card A: Hardware Server Integrations */}
+            {/* Card: Hardware Server Integrations */}
             <div className="card p-6 border border-navy-100 bg-white space-y-5 shadow-sm">
               <div className="flex items-center justify-between border-b border-navy-100 pb-3">
                 <div>
                   <h3 className="text-base font-bold text-navy-900">Hardware Gateway Server Connections</h3>
-                  <p className="text-xs text-navy-400">Endpoints for physical bioelectric scanners & eSSL access gates</p>
+                  <p className="text-xs text-navy-400">Endpoints for physical eSSL biometric access control turnstiles & gates</p>
                 </div>
                 <Badge variant="success" dot>Real Hardware API</Badge>
               </div>
 
               <div className="space-y-4">
-                <div>
-                  <label className="text-xs font-bold text-navy-700 mb-1 block">InBody Scanner Device Endpoint</label>
-                  <input
-                    type="text"
-                    value={inbodyUrl}
-                    onChange={(e) => { setInbodyUrl(e.target.value); setHasUnsavedChanges(true); }}
-                    className="input-field text-xs font-mono font-bold"
-                    placeholder="http://192.168.1.150:3000"
-                  />
-                  <span className="text-[10px] text-navy-400 mt-1 block">LAN socket or REST gateway URL for physical InBody 570 / 270 hardware.</span>
-                </div>
-
                 <div>
                   <label className="text-xs font-bold text-navy-700 mb-1 block">eSSL Biometric eBioserver URL</label>
                   <input
@@ -743,100 +693,23 @@ export function SettingsPage() {
                 </div>
               </div>
             </div>
-
-            {/* Card B: Database-Driven BMI Classification Config */}
-            <div className="card p-6 border border-brand-100 bg-white space-y-5 shadow-sm">
-              <div className="flex items-center justify-between border-b border-navy-100 pb-3">
-                <div>
-                  <h3 className="text-base font-bold text-navy-900">BMI Classification Threshold Parameters</h3>
-                  <p className="text-xs text-navy-400">Database-backed parameters for health categorization (DB table: <code className="font-mono text-brand-600">bmi_classification_config</code>)</p>
-                </div>
-                <span className="text-[11px] font-bold text-purple-700 bg-purple-50 px-2.5 py-1 rounded-lg border border-purple-200">
-                  Zero Hardcoded Constants
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="p-3.5 rounded-2xl bg-blue-50/60 border border-blue-200">
-                  <label className="text-xs font-bold text-blue-900 block mb-1">Underweight Ceiling</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={bmiUnderweightMax}
-                    onChange={(e) => { setBmiUnderweightMax(e.target.value); setHasUnsavedChanges(true); }}
-                    className="input-field text-sm font-bold bg-white text-blue-950"
-                  />
-                  <span className="text-[10px] text-blue-600 mt-1 block">BMI &lt; {bmiUnderweightMax}</span>
-                </div>
-
-                <div className="p-3.5 rounded-2xl bg-emerald-50/60 border border-emerald-200">
-                  <label className="text-xs font-bold text-emerald-900 block mb-1">Normal Range Ceiling</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={bmiNormalMax}
-                    onChange={(e) => { setBmiNormalMax(e.target.value); setHasUnsavedChanges(true); }}
-                    className="input-field text-sm font-bold bg-white text-emerald-950"
-                  />
-                  <span className="text-[10px] text-emerald-600 mt-1 block">{bmiUnderweightMax} to {bmiNormalMax}</span>
-                </div>
-
-                <div className="p-3.5 rounded-2xl bg-amber-50/60 border border-amber-200">
-                  <label className="text-xs font-bold text-amber-900 block mb-1">Overweight Ceiling</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={bmiOverweightMax}
-                    onChange={(e) => { setBmiOverweightMax(e.target.value); setHasUnsavedChanges(true); }}
-                    className="input-field text-sm font-bold bg-white text-amber-950"
-                  />
-                  <span className="text-[10px] text-amber-600 mt-1 block">{bmiNormalMax} to {bmiOverweightMax}</span>
-                </div>
-              </div>
-
-              <div className="pt-2 border-t border-navy-100 space-y-3">
-                <h4 className="text-xs font-bold text-navy-900">Gender Athletic Body Fat Cutoffs (%)</h4>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs font-semibold text-navy-600 block mb-1">Male Athletic Fat Ceiling (%)</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={athleticBodyFatMale}
-                      onChange={(e) => { setAthleticBodyFatMale(e.target.value); setHasUnsavedChanges(true); }}
-                      className="input-field text-xs font-bold"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-navy-600 block mb-1">Female Athletic Fat Ceiling (%)</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={athleticBodyFatFemale}
-                      onChange={(e) => { setAthleticBodyFatFemale(e.target.value); setHasUnsavedChanges(true); }}
-                      className="input-field text-xs font-bold"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
 
           <div className="lg:col-span-4 space-y-4">
             <div className="card p-5 border border-navy-100 bg-white space-y-3">
-              <h4 className="text-xs font-bold text-navy-900">Scanner Telemetry Status</h4>
+              <h4 className="text-xs font-bold text-navy-900">Gate Telemetry Status</h4>
               <div className="space-y-2 text-xs">
                 <div className="flex justify-between p-2 rounded-xl bg-navy-50">
-                  <span className="text-navy-500">InBody Protocol:</span>
+                  <span className="text-navy-500">eSSL Gate Protocol:</span>
                   <span className="font-bold text-navy-900">Direct TCP/LAN</span>
                 </div>
                 <div className="flex justify-between p-2 rounded-xl bg-navy-50">
-                  <span className="text-navy-500">Impedance Frequencies:</span>
-                  <span className="font-bold text-navy-900">5kHz, 50kHz, 250kHz</span>
+                  <span className="text-navy-500">Default Service Port:</span>
+                  <span className="font-bold text-navy-900">8080 / eBioserver</span>
                 </div>
                 <div className="flex justify-between p-2 rounded-xl bg-navy-50">
-                  <span className="text-navy-500">Fabricated Data:</span>
-                  <span className="font-bold text-emerald-600">Disabled (0%)</span>
+                  <span className="text-navy-500">Auto-Sync Status:</span>
+                  <span className="font-bold text-emerald-600">Active</span>
                 </div>
               </div>
             </div>
@@ -990,14 +863,14 @@ export function SettingsPage() {
 
       {/* TAB 7: INTEGRATIONS */}
       {activeTab === 'Integrations' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-fade-in">
-          <div className="lg:col-span-8 card p-6 border border-navy-100 bg-white space-y-5 shadow-sm">
+        <div className="space-y-6 animate-fade-in w-full">
+          <div className="card p-6 border border-navy-100 bg-white space-y-5 shadow-sm w-full">
             <div className="flex items-center justify-between border-b border-navy-100 pb-3">
               <div>
                 <h3 className="text-base font-bold text-navy-900">Third-Party Platform Integrations</h3>
-                <p className="text-xs text-navy-400">Connect hardware devices, payment gateways, and health ecosystems</p>
+                <p className="text-xs text-navy-400">Connect hardware devices, payment gateways, and notification gateways</p>
               </div>
-              <Badge variant="brand">6 Active Adapters</Badge>
+              <Badge variant="brand">{integrations.filter((i) => i.connected).length} Active Adapters</Badge>
             </div>
 
             <div className="space-y-3">
@@ -1006,24 +879,24 @@ export function SettingsPage() {
                   key={app.id}
                   className="flex items-center gap-4 p-4 rounded-2xl bg-navy-50/70 border border-navy-100 hover:bg-navy-50 transition-all"
                 >
-                  <div className="w-10 h-10 rounded-xl bg-white border border-navy-200 shadow-sm flex items-center justify-center text-brand-600">
+                  <div className="w-10 h-10 rounded-xl bg-white border border-navy-200 shadow-sm flex items-center justify-center text-brand-600 shrink-0">
                     <Icon name={app.icon} size={18} />
                   </div>
 
-                  <div className="flex-1 space-y-0.5">
+                  <div className="flex-1 space-y-0.5 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-bold text-navy-900">{app.name}</span>
                       <span className={cn('px-2 py-0.5 rounded-full text-[9px] font-bold border', app.badgeColor)}>
                         {app.statusText}
                       </span>
                     </div>
-                    <p className="text-xs text-navy-400">{app.desc}</p>
+                    <p className="text-xs text-navy-400 truncate">{app.desc}</p>
                   </div>
 
                   <button
                     onClick={() => handleToggleIntegration(app.id)}
                     className={cn(
-                      'btn-secondary text-xs py-1.5 px-3 font-bold',
+                      'btn-secondary text-xs py-1.5 px-4 font-bold shrink-0',
                       app.connected ? 'text-rose-700 hover:bg-rose-50 border-rose-200' : 'btn-primary text-white'
                     )}
                   >
@@ -1043,10 +916,10 @@ export function SettingsPage() {
         </div>
       )}
 
-      {/* TAB: MEMBERSHIPS */}
-      {activeTab === 'Memberships' && (
+      {/* TAB: COURSES */}
+      {(activeTab === 'Courses' || activeTab === 'Memberships') && (
         <div className="space-y-6 animate-fade-in">
-          <MembershipsPage embedded={true} />
+          <CoursesPage embedded={true} />
         </div>
       )}
 

@@ -8,7 +8,7 @@ import { payrollApi, type PayrollInvoice } from '@/services/payrollApi';
 import type { Member } from '@/types';
 import type { Trainer } from '@/types/trainer';
 import { cn } from '@/utils/cn';
-import { EnrollmentModal } from '@/components/EnrollmentModal';
+import { EmployeeEnrollmentModal } from '@/components/hrms/EmployeeEnrollmentModal';
 
 interface TrainerRowData {
   id: string;
@@ -37,6 +37,7 @@ export function TrainersPage() {
   const [trainers, setTrainers] = useState<Array<Partial<Trainer> & { email?: string; full_name?: string; specialty?: string; base_monthly_salary?: number; pt_session_rate?: number; is_active?: boolean; created_at?: string; assigned_customers_count?: number }>>([]);
   const [loading, setLoading] = useState(true);
   const [enrollOpen, setEnrollOpen] = useState(false);
+  const [editingTrainer, setEditingTrainer] = useState<any>(null);
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [selectedTrainerIds, setSelectedTrainerIds] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -69,7 +70,7 @@ export function TrainersPage() {
   const [trainerPlans, setTrainerPlans] = useState<Array<{ name: string; price: number; duration_days: number; badge?: string }>>([]);
 
   const fetchDynamicTrainerPlans = () => {
-    apiClient.get<any[]>('/memberships/plans')
+    apiClient.get<any[]>('/courses/plans')
       .then((res) => {
         if (Array.isArray(res)) {
           const dynamic = res.map((p) => ({
@@ -344,7 +345,7 @@ export function TrainersPage() {
     try {
       const plan = trainerPlans[selectedPlanIdx];
       for (const tId of selectedTrainerIds) {
-        await apiClient.post('/memberships/subscribe', {
+        await apiClient.post('/courses/assign', {
           customer_id: tId,
           plan_name: plan?.name || 'Trainer Subscription',
           amount: plan?.price || 0,
@@ -432,11 +433,14 @@ export function TrainersPage() {
           </button>
 
           <button
-            onClick={() => setEnrollOpen(true)}
-            className="btn-primary bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-2.5 px-4 rounded-xl flex items-center gap-2 shadow-sm shadow-blue-500/20 active:scale-[0.98] transition-all"
+            onClick={() => {
+              setEditingTrainer(null);
+              setEnrollOpen(true);
+            }}
+            className="btn-primary bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-2.5 px-4 rounded-xl flex items-center gap-2 shadow-sm shadow-blue-500/20 active:scale-[0.98] transition-all cursor-pointer"
           >
             <Icon name="plus" size={16} />
-            <span>Add EMP</span>
+            <span>Add Employee</span>
           </button>
           
           <button className="btn-secondary border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold py-2.5 px-3.5 rounded-xl flex items-center gap-2 shadow-xs">
@@ -763,14 +767,20 @@ export function TrainersPage() {
       </div>
 
 
-      {/* Enrollment / Add Trainer Modal */}
-      <EnrollmentModal
+      {/* Enrollment / Add Employee Modal */}
+      <EmployeeEnrollmentModal
         open={enrollOpen}
+        employeeToEdit={editingTrainer}
         onClose={() => {
           setEnrollOpen(false);
+          setEditingTrainer(null);
           fetchTrainersData();
         }}
-        personType="trainer"
+        onSuccess={() => {
+          setEnrollOpen(false);
+          setEditingTrainer(null);
+          fetchTrainersData();
+        }}
       />
 
       {/* Renewal Modal */}

@@ -4,7 +4,7 @@ import datetime
 from sqlalchemy.orm import Session
 from src.models.user import User
 from src.utils.security import create_access_token, hash_password, verify_password
-from src.models.gym_setting import GymSetting, GymBranch
+from src.models.settings import Setting as GymSetting, Branch as GymBranch
 from src.models.customer import Customer
 
 
@@ -137,29 +137,29 @@ class AuthService:
 
         user_role_up = (user.role or "").strip().upper()
 
-        # Normalize DB user role to canonical representation
+        # Normalize DB user role to canonical 4 roles
         if user_role_up in ["SUPER_ADMIN", "SUPERADMIN", "ADMIN"]:
             user_canonical_role = "SUPER_ADMIN"
-        elif user_role_up in ["GYM_OWNER", "OWNER", "MANAGER"]:
-            user_canonical_role = "GYM_OWNER"
-        elif user_role_up in ["TRAINER", "COACH"]:
-            user_canonical_role = "TRAINER"
-        elif user_role_up in ["CUSTOMER", "MEMBER"]:
-            user_canonical_role = "CUSTOMER"
+        elif user_role_up in ["OWNER", "GYM_OWNER", "MANAGER"]:
+            user_canonical_role = "OWNER"
+        elif user_role_up in ["EMPLOYEE", "EMPLOYEES", "TRAINER", "COACH", "STAFF", "EMP"]:
+            user_canonical_role = "EMPLOYEE"
+        elif user_role_up in ["STUDENT", "STUDENTS", "CUSTOMER", "MEMBER"]:
+            user_canonical_role = "STUDENT"
         else:
             user_canonical_role = user_role_up
 
-        # Enforce strict 1:1 role validation matching selected login portal
+        # Enforce strict 1:1 role validation matching selected login portal (Super Admin / Owner / Employees / Students)
         if role:
             r_up = role.strip().upper()
             if r_up in ["ADMIN", "SUPER_ADMIN", "SUPERADMIN"]:
                 req_canonical_role = "SUPER_ADMIN"
             elif r_up in ["OWNER", "GYM_OWNER"]:
-                req_canonical_role = "GYM_OWNER"
-            elif r_up in ["TRAINER", "COACH"]:
-                req_canonical_role = "TRAINER"
-            elif r_up in ["CUSTOMER", "MEMBER"]:
-                req_canonical_role = "CUSTOMER"
+                req_canonical_role = "OWNER"
+            elif r_up in ["EMPLOYEE", "EMPLOYEES", "TRAINER", "COACH", "STAFF", "EMP"]:
+                req_canonical_role = "EMPLOYEE"
+            elif r_up in ["STUDENT", "STUDENTS", "CUSTOMER", "MEMBER"]:
+                req_canonical_role = "STUDENT"
             else:
                 req_canonical_role = r_up
 
@@ -293,14 +293,14 @@ class AuthService:
         role_up = str(raw_role or "").upper()
         if role_up in ["SUPER_ADMIN", "SUPERADMIN", "ADMIN"]:
             mapped_role = "SUPER_ADMIN"
-        elif role_up in ["GYM_OWNER", "OWNER", "MANAGER"]:
-            mapped_role = "GYM_OWNER"
-        elif role_up in ["TRAINER", "COACH"]:
-            mapped_role = "TRAINER"
+        elif role_up in ["OWNER", "GYM_OWNER", "MANAGER"]:
+            mapped_role = "OWNER"
+        elif role_up in ["EMPLOYEE", "EMPLOYEES", "TRAINER", "COACH", "STAFF", "EMP"]:
+            mapped_role = "EMPLOYEE"
         else:
-            mapped_role = "CUSTOMER"
+            mapped_role = "STUDENT"
 
-        if mapped_role in ["SUPER_ADMIN", "GYM_OWNER", "TRAINER"]:
+        if mapped_role in ["SUPER_ADMIN", "OWNER", "EMPLOYEE"]:
             display_name = user.full_name or (cust.full_name if cust else "") or ""
         else:
             display_name = (cust.full_name if cust else "") or user.full_name or ""

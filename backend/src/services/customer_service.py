@@ -7,12 +7,10 @@ from src.utils.timezone import now_ist_naive, today_ist_start, to_ist_str
 from src.models.user import User
 from src.models.customer import Customer
 from src.models.membership import Membership
-from src.models.nutrition import NutritionLog
 from src.models.biometric import BiometricLog
-from src.models.inbody import InBodyReport
 from src.utils.email import generate_enrollment_password, send_enrollment_email
 from src.utils.security import hash_password
-from src.models.gym_setting import GymBranch
+from src.models.settings import Branch as GymBranch
 
 from src.models.biometric_device import BiometricDevice
 
@@ -20,22 +18,6 @@ class CustomerService:
 
     @staticmethod
     def _format_customer(c: Customer, db: Session) -> dict:
-        from src.services.nutrition_service import calculate_dynamic_user_targets
-        targets = calculate_dynamic_user_targets(c, db=db)
-
-        # Aggregate today's consumed macros from DB NutritionLog
-        today_start = today_ist_start()
-        logs = db.query(NutritionLog).filter(
-            NutritionLog.customer_id == c.id,
-            NutritionLog.date >= today_start
-        ).all()
-
-        consumed_cal = sum(l.calories for l in logs)
-        consumed_protein = sum(l.protein for l in logs)
-        consumed_carbs = sum(l.carbs for l in logs)
-        consumed_fat = sum(l.fats for l in logs)
-        consumed_water = sum(l.water for l in logs)
-
         now = now_ist_naive()
 
         # Trainer Name Lookup from DB
@@ -57,10 +39,9 @@ class CustomerService:
         ).count()
         attendance_pct = min(100, int((logs_count / 30.0) * 100)) if logs_count > 0 else 0
 
-        # Dynamic Biometric & InBody Device Sync Detection (Strict DB check)
-        inbody_count = db.query(InBodyReport).filter(InBodyReport.customer_id == c.id).count()
+        # Dynamic Biometric Sync Detection (Strict DB check)
         biometric_count = db.query(BiometricLog).filter(BiometricLog.customer_id == c.id).count()
-        is_completed = bool(biometric_count > 0 or inbody_count > 0)
+        is_completed = bool(biometric_count > 0)
         biometric_status = "Completed" if is_completed else "Pending"
 
         # Dynamic KYC Completeness Calculation
@@ -115,16 +96,16 @@ class CustomerService:
             "fitness_level": c.fitness_level or "",
             "training_preference": c.training_preference or "",
             "goal": c.goal or "",
-            "target_calories": targets["calories"],
-            "target_protein": targets["protein"],
-            "target_carbs": targets["carbs"],
-            "target_fat": targets["fat"],
-            "target_water": targets["water"],
-            "consumed_calories": int(consumed_cal),
-            "consumed_protein": int(consumed_protein),
-            "consumed_carbs": int(consumed_carbs),
-            "consumed_fat": int(consumed_fat),
-            "consumed_water": round(consumed_water, 1),
+            "target_calories": c.target_calories or 0,
+            "target_protein": c.target_protein or 0,
+            "target_carbs": c.target_carbs or 0,
+            "target_fat": c.target_fat or 0,
+            "target_water": c.target_water or 0,
+            "consumed_calories": 0,
+            "consumed_protein": 0,
+            "consumed_carbs": 0,
+            "consumed_fat": 0,
+            "consumed_water": 0.0,
             "target_weight": c.target_weight,
             "days_per_week": c.days_per_week,
             "session_duration_minutes": c.session_duration_minutes,
@@ -157,7 +138,7 @@ class CustomerService:
         owner_id: Optional[str] = None
     ) -> List[dict]:
         from sqlalchemy import or_, func
-        from src.models.gym_setting import GymBranch
+        from src.models.settings import Branch as GymBranch
 
         query = db.query(Customer)
 
@@ -316,21 +297,6 @@ class CustomerService:
                 calc_water = round(max(0.0, 100.0 - calc_fat_pct - 16.0), 1)
                 calc_score = max(40, min(100, int(100 - (abs(calc_bmi - 22.0) * 3.5))))
 
-            inbody_id = f"inb_{uuid.uuid4().hex[:8]}"
-            rep = InBodyReport(
-                id=inbody_id,
-                customer_id=customer_id,
-                weight=actual_weight if actual_weight > 0 else None,
-                bmi=calc_bmi or (cust.bmi if cust.bmi else None),
-                skeletal_muscle_mass=calc_muscle_mass,
-                body_fat_percentage=calc_fat_pct,
-                body_fat_mass=calc_fat_mass,
-                basal_metabolic_rate=calc_bmr,
-                body_water=calc_water,
-                score=calc_score or (cust.fitness_score if cust.fitness_score else None),
-            )
-            db.add(rep)
-
             if calc_bmi:
                 cust.bmi = calc_bmi
             if calc_score:
@@ -377,7 +343,7 @@ class CustomerService:
         from sqlalchemy import func
         user = db.query(User).filter(func.lower(User.email) == clean_email).first()
         # Resolve Branch & Gym Owner
-        from src.models.gym_setting import GymBranch
+        from src.models.settings import Branch as GymBranch
         owner_hint = data.get("owner_id")
         branch_ref = (data.get("branch_id") or data.get("branch") or data.get("primary_gym_location") or data.get("branch_name") or data.get("location") or "").strip()
         matched_branch = None

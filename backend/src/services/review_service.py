@@ -39,8 +39,8 @@ class ReviewService:
                 if mem and mem.plan_name:
                     membership_plan = mem.plan_name
 
-                if cust.workouts:
-                    workout_count = len(cust.workouts)
+                if getattr(cust, "biometric_logs", None):
+                    workout_count = len(cust.biometric_logs)
 
                 if not gym_name and cust.primary_gym_location:
                     gym_name = cust.primary_gym_location

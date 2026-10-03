@@ -12,15 +12,14 @@ from sqlalchemy import text
 from src.config.settings import settings
 from src.database.session import engine, get_db
 from src.database.base import Base
+import src.models
 from src.api.v1.router import api_router
 
 from src.database.db_migrate import run_database_migrations
-from src.services.exercise_seed_service import seed_master_exercises_and_templates
-from src.database.session import SessionLocal
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
-    description="FIT CLUB Gym Management Enterprise Platform Backend API",
+    description="VAHD Enterprise Platform Backend API",
     version="2.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
@@ -28,18 +27,12 @@ app = FastAPI(
 
 @app.on_event("startup")
 def on_startup():
-    """Run database migrations and master exercise seeding asynchronously on server startup."""
+    """Run database migrations asynchronously on server startup."""
     try:
         Base.metadata.create_all(bind=engine)
         run_database_migrations()
     except Exception as e:
         print(f"⚠️ [Startup Warning] Database migration alert: {e}")
-
-    try:
-        with SessionLocal() as seed_db:
-            seed_master_exercises_and_templates(seed_db)
-    except Exception as se:
-        print(f"⚠️ [Seed Warning] Exercise seeding skipped: {se}")
 
 
 app.add_middleware(

@@ -104,7 +104,6 @@ interface DailySummary {
 }
 
 const posTabs = ['Invoices History', 'Quick Sale', 'Inventory', 'Purchase', 'Recent Sales', 'Daily Summary'];
-const categories = ['All', 'Supplements', 'Nutrition', 'Accessories', 'Merchandise'];
 
 export function PosPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -164,6 +163,23 @@ export function PosPage() {
   const [products, setProducts] = useState<POSProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
+
+  const categories = useMemo(() => {
+    const dynamicCats = Array.from(
+      new Set(
+        products
+          .map((p) => (p.category || p.category_name || '').trim())
+          .filter(Boolean)
+      )
+    ).sort();
+    return ['All', ...dynamicCats];
+  }, [products]);
+
+  useEffect(() => {
+    if (activeCat !== 'All' && !categories.includes(activeCat)) {
+      setActiveCat('All');
+    }
+  }, [categories, activeCat]);
 
   // Cart State matching Screenshots
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -499,7 +515,7 @@ export function PosPage() {
         <div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight">Point of Sale (POS)</h1>
           <p className="text-xs text-slate-500 font-medium">
-            Fast terminal checkout for supplements, accessories, gear, day passes, and memberships.
+            Fast terminal checkout for items, products, and services.
           </p>
         </div>
 
@@ -574,23 +590,25 @@ export function PosPage() {
                 </div>
 
                 {/* Category Pills */}
-                <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
-                  {categories.map((cat) => (
-                    <button
-                      key={cat}
-                      type="button"
-                      onClick={() => setActiveCat(cat)}
-                      className={cn(
-                        'px-4 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer',
-                        activeCat === cat
-                          ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
-                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                      )}
-                    >
-                      {cat}
-                    </button>
-                  ))}
-                </div>
+                {categories.length > 1 && (
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
+                    {categories.map((cat) => (
+                      <button
+                        key={cat}
+                        type="button"
+                        onClick={() => setActiveCat(cat)}
+                        className={cn(
+                          'px-4 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer',
+                          activeCat === cat
+                            ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        )}
+                      >
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Product Cards Grid matching Screenshot 1 */}

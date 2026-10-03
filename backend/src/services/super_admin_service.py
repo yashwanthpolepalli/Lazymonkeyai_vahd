@@ -13,7 +13,7 @@ from sqlalchemy import func, desc, or_
 from src.models.user import User
 from src.models.customer import Customer
 from src.models.membership import Membership
-from src.models.gym_setting import GymBranch, FeatureControl
+from src.models.settings import Branch as GymBranch, FeatureControl
 from src.models.biometric_device import BiometricDevice
 from src.models.super_admin import SaaSPlan, PlatformAuditLog, AiJobLog, PlatformSetting, SupportTicket, PlatformAlert, AiModelRouting
 from src.models.payroll import PayrollInvoice

@@ -159,7 +159,7 @@ export function OwnerClockInOutWidget({ onPunchSuccess }: OwnerClockInOutWidgetP
     try {
       const targetEmpId = isPunchingForSelf ? (user?.id || 'owner_user') : selectedEmpId;
       const targetEmp = employees.find((e) => e.id === targetEmpId);
-      const empName = isPunchingForSelf ? (user?.name || 'Gym Owner') : (targetEmp?.full_name || 'Staff Member');
+      const empName = isPunchingForSelf ? (user?.name || 'Owner') : (targetEmp?.full_name || 'Employee');
 
       const payload = {
         employee_id: targetEmpId,
@@ -167,7 +167,7 @@ export function OwnerClockInOutWidget({ onPunchSuccess }: OwnerClockInOutWidgetP
         method,
         latitude: deviceCoords?.lat ?? activeScheme?.latitude,
         longitude: deviceCoords?.lng ?? activeScheme?.longitude,
-        user_role: isPunchingForSelf ? 'GYM_OWNER' : (targetEmp?.designation?.toUpperCase() || 'STAFF'),
+        user_role: isPunchingForSelf ? 'OWNER' : (targetEmp?.designation?.toUpperCase() || 'EMPLOYEE'),
         branch: activeScheme?.branch_name || user?.branchName || '',
         note: `Manual portal punch via ${method} (${action})`,
       };

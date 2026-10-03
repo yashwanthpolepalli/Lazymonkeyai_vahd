@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { Badge } from '@/components/ui/Badge';
 import { Icon } from '@/components/ui/Icon';
 import { ProgressRing } from '@/components/ui/ProgressRing';
 import { KpiCard } from '@/components/ui/KpiCard';
@@ -18,7 +17,6 @@ import { CustomerGoogleReviewCard } from '@/components/customer/CustomerGoogleRe
 import { AttendanceSummary } from '@/components/customer/AttendanceSummary';
 import { cn } from '@/utils/cn';
 import { getISTGreeting } from '@/utils/date';
-
 
 export function CustomerDashboard() {
   const navigate = useNavigate();
@@ -100,7 +98,7 @@ export function CustomerDashboard() {
         <div className="relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
           <div>
             <div className="flex items-center gap-2 mb-2"><span className="text-2xl">👋</span><h2 className="text-xl font-bold">Welcome back, {userName}!</h2></div>
-            <p className="text-brand-100 text-sm max-w-md mb-4">{dashboard?.readiness?.message || 'Your membership and attendance metrics are live and synchronized.'}</p>
+            <p className="text-brand-100 text-sm max-w-md mb-4">Your membership and attendance metrics are live and synchronized.</p>
             <div className="flex flex-wrap gap-4">
               <div className="flex items-center gap-2">
                 <Icon name="activity" size={16} className="text-brand-200" />
@@ -116,18 +114,18 @@ export function CustomerDashboard() {
           </div>
           <div className="flex flex-col items-center justify-center shrink-0">
             <ProgressRing
-              value={dashboard?.readiness?.score ?? 85}
+              value={85}
               max={100}
               size={96}
               strokeWidth={8}
               color="#ffffff"
               trackColor="rgba(255,255,255,0.25)"
-              label={`${dashboard?.readiness?.score ?? 85}%`}
+              label="85%"
               textColor="text-white"
               labelClassName="text-xl font-black text-white tracking-tight"
             />
             <span className="mt-2 text-[11px] font-bold text-white bg-white/20 backdrop-blur-md px-3 py-0.5 rounded-full uppercase tracking-wider text-center shadow-xs">
-              {dashboard?.readiness?.label || 'Prime Member'}
+              Prime Member
             </span>
           </div>
         </div>
@@ -191,5 +189,3 @@ export function CustomerDashboard() {
     </div>
   );
 }
-
-

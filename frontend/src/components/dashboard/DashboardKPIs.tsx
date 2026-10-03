@@ -19,9 +19,7 @@ export function DashboardKPIs({ summary }: DashboardKPIsProps) {
     monthlyBase: 0,
   });
 
-  const formatINR = (val: number) => {
-    return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(val);
-  };
+
 
   useEffect(() => {
     const fetchEmployeeData = async () => {
@@ -68,7 +66,6 @@ export function DashboardKPIs({ summary }: DashboardKPIsProps) {
   const presentStudents = summary?.checkins_today ?? 0;
   const leaveStudents = 0;
   const absentStudents = Math.max(0, totalStudents - presentStudents - leaveStudents);
-  const totalRevenue = summary?.today_revenue ?? 0;
 
   const studentKpis = [
     {
@@ -110,16 +107,6 @@ export function DashboardKPIs({ summary }: DashboardKPIsProps) {
       icon: 'user-x',
       accentColor: 'text-rose-600',
       bgColor: 'bg-rose-50',
-    },
-    {
-      id: 'total_revenue',
-      label: 'TOTAL REVENUE',
-      value: formatINR(totalRevenue),
-      change: '↑ Today collections',
-      isUp: true,
-      icon: 'indian-rupee',
-      accentColor: 'text-emerald-600',
-      bgColor: 'bg-emerald-50',
     },
   ];
 
@@ -164,16 +151,6 @@ export function DashboardKPIs({ summary }: DashboardKPIsProps) {
       accentColor: 'text-rose-600',
       bgColor: 'bg-rose-50',
     },
-    {
-      id: 'emp_revenue',
-      label: 'TOTAL REVENUE',
-      value: formatINR(totalRevenue),
-      change: '↑ Today collections',
-      isUp: true,
-      icon: 'indian-rupee',
-      accentColor: 'text-emerald-600',
-      bgColor: 'bg-emerald-50',
-    },
   ];
 
   const currentKpis = activeView === 'students' ? studentKpis : employeeKpis;
@@ -215,8 +192,8 @@ export function DashboardKPIs({ summary }: DashboardKPIsProps) {
         </span>
       </div>
 
-      {/* 5 KPI Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      {/* 4 KPI Metric Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {currentKpis.map((kpi) => (
           <div
             key={kpi.id}

@@ -307,13 +307,13 @@ export function LoginPage() {
                   type="button"
                   onClick={() => selectQuickRole('trainer')}
                   className={cn(
-                    'py-2 px-2 rounded-xl text-xs font-extrabold transition-all text-center',
+                    'py-2 px-1 sm:px-2 rounded-xl text-xs font-extrabold transition-all text-center whitespace-nowrap',
                     activeRole === 'trainer'
                       ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30 scale-[1.02]'
                       : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300'
                   )}
                 >
-                  Trainer
+                  Emp/staff
                 </button>
                 <button
                   type="button"

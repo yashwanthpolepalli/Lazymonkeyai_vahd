@@ -8,28 +8,27 @@ const __dirname = path.dirname(__filename);
 
 export default defineConfig({
   plugins: [react()],
-  esbuild: {
-    // Provide tsconfigRaw directly to bypass tsconfck file watcher recursion on macOS
-    tsconfigRaw: JSON.stringify({
-      compilerOptions: {
-        target: 'ES2020',
-        useDefineForClassFields: true,
-        lib: ['ES2020', 'DOM', 'DOM.Iterable'],
-        module: 'ESNext',
-        skipLibCheck: true,
-        jsx: 'react-jsx',
-        moduleResolution: 'bundler',
-        allowImportingTsExtensions: true,
-        isolatedModules: true,
-        moduleDetection: 'force',
-        noEmit: true,
-      },
-    }),
+  optimizeDeps: {
+    include: [
+      'react',
+      'react-dom',
+      'react-router-dom',
+      'lucide-react',
+      'recharts',
+      'sonner',
+      'clsx',
+      'tailwind-merge',
+      'framer-motion',
+    ],
   },
   server: {
     host: '0.0.0.0',
     port: 5173,
     strictPort: true,
+    watch: {
+      usePolling: false,
+      ignored: ['**/node_modules/**', '**/.git/**', '**/dist/**'],
+    },
     proxy: {
       '/api': {
         target: 'http://127.0.0.1:8000',

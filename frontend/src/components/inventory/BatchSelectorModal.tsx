@@ -163,8 +163,8 @@ export function BatchSelectorModal({
         selling_price: Number(newBatch.selling_price) || 0,
         cost_price: Number(newBatch.cost_price) || 0,
         remaining_quantity: Number(newBatch.remaining_quantity) || 0,
-        warehouse_name: newBatch.warehouse_name || selWh?.name,
-        warehouse_id: newBatch.warehouse_id,
+        warehouse_name: newBatch.warehouse_name || selWh?.name || undefined,
+        warehouse_id: newBatch.warehouse_id || undefined,
       });
       onClose();
     } catch (err: any) {

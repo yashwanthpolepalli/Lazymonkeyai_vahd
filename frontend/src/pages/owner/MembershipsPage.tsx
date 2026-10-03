@@ -48,121 +48,8 @@ export interface TrainingProgramView {
   };
 }
 
-const PROGRAM_PRESETS: Array<{
-  id: string;
-  name: string;
-  category: string;
-  categoryLabel: string;
-  isCombo?: boolean;
-  badge: string;
-  color: string;
-  features: string[];
-  prices: { d30: number; d90: number; d180: number; d365: number };
-}> = [
-  {
-    id: 'prog_strength_cardio',
-    name: 'Strength Training + Cardio',
-    category: 'strength_cardio',
-    categoryLabel: 'Strength + Cardio Combo',
-    isCombo: true,
-    badge: 'Popular Combo',
-    color: 'from-emerald-500 to-teal-600',
-    features: ['Weight Training Floor Access', 'HIIT Circuit & Cardio Zone', 'Fat Burn & Stamina Tracking', 'Certified Trainer Guidance', 'Locker & Shower Access'],
-    prices: { d30: 3500, d90: 9000, d180: 16500, d365: 29000 },
-  },
-  {
-    id: 'prog_strength_zumba',
-    name: 'Strength Training + Zumba',
-    category: 'strength_zumba',
-    categoryLabel: 'Strength + Zumba Combo',
-    isCombo: true,
-    badge: 'Best Seller',
-    color: 'from-rose-500 to-pink-600',
-    features: ['Full Weight Training Floor Access', 'Unlimited Zumba Dance Classes', 'Muscle Toning & Aerobic Burn', 'Music-Synced Group Sessions', 'Diet Assessment'],
-    prices: { d30: 3800, d90: 9800, d180: 18000, d365: 32000 },
-  },
-  {
-    id: 'prog_cardio_zumba',
-    name: 'Cardio + Zumba Fitness',
-    category: 'cardio_zumba',
-    categoryLabel: 'Cardio + Zumba Combo',
-    isCombo: true,
-    badge: 'High Burn',
-    color: 'from-amber-500 to-orange-600',
-    features: ['Cardio Zone & Spin Bikes', 'High-Energy Zumba Classes', 'Aerobic Calorie Burn', 'Heart Rate Monitoring', 'Locker Access'],
-    prices: { d30: 3200, d90: 8200, d180: 15000, d365: 26000 },
-  },
-  {
-    id: 'prog_gym',
-    name: 'General Gym & Fitness Access',
-    category: 'gym',
-    categoryLabel: 'Gym Access',
-    isCombo: false,
-    badge: 'All-Access',
-    color: 'from-blue-500 to-indigo-600',
-    features: ['Full Gym Floor & Free Weights', 'Cardio Zone Access', 'Locker & Shower Access', 'Free Fitness Assessment'],
-    prices: { d30: 1500, d90: 3500, d180: 6500, d365: 10000 },
-  },
-  {
-    id: 'prog_zumba',
-    name: 'Zumba Dance Fitness',
-    category: 'zumba',
-    categoryLabel: 'Zumba',
-    isCombo: false,
-    badge: 'Popular',
-    color: 'from-pink-500 to-rose-600',
-    features: ['High-Energy Dance Classes', 'Aerobic Cardio Burn', 'Certified Instructors', 'Music-Synced Workouts'],
-    prices: { d30: 2500, d90: 6500, d180: 12000, d365: 22000 },
-  },
-  {
-    id: 'prog_pt',
-    name: 'Personal Training (PT) Pro Coaching',
-    category: 'pt',
-    categoryLabel: 'Personal Training',
-    isCombo: false,
-    badge: 'VIP 1-on-1',
-    color: 'from-amber-600 to-yellow-600',
-    features: ['1-on-1 Dedicated Master Trainer', 'Custom Workout & Diet Blueprint', 'Bi-weekly Body Composition Analysis', 'Priority Slot Booking'],
-    prices: { d30: 5000, d90: 13500, d180: 24000, d365: 42000 },
-  },
-  {
-    id: 'prog_strength',
-    name: 'Strength & Functional Training',
-    category: 'strength',
-    categoryLabel: 'Strength Training',
-    isCombo: false,
-    badge: 'Hardcore',
-    color: 'from-teal-500 to-emerald-600',
-    features: ['Olympic Lifting & Power Racks', 'Kettlebell & Functional Rig', 'HIIT Strength Conditioning', 'Progressive Overload Tracking'],
-    prices: { d30: 3000, d90: 7800, d180: 14500, d365: 26000 },
-  },
-  {
-    id: 'prog_yoga',
-    name: 'Yoga, Pilates & Mind-Body Mobility',
-    category: 'yoga',
-    categoryLabel: 'Yoga & Pilates',
-    isCombo: false,
-    badge: 'Wellness',
-    color: 'from-purple-500 to-violet-600',
-    features: ['Mind-Body Balance', 'Mat Pilates & Core Stability', 'Breathing & Stress Relief', 'Certified Master Instructors'],
-    prices: { d30: 2200, d90: 5800, d180: 10500, d365: 19000 },
-  },
-];
 
-const SUGGESTED_PERKS = [
-  'Full Gym Floor Access',
-  'Cardio Zone & Treadmills',
-  'Weight Training & Squat Racks',
-  'Zumba Group Classes',
-  'HIIT Functional Circuit',
-  'Certified Trainer Guidance',
-  'Locker & Shower Access',
-  'AI Nutrition & Diet Plan',
-  'InBody Composition Scan',
-  'Priority Slot Booking',
-  'Dedicated 1-on-1 Coach',
-  'Recovery & Stretching Area',
-];
+
 
 export function MembershipsPage({ embedded = false }: { embedded?: boolean }) {
   const [members, setMembers] = useState<Member[]>([]);
@@ -219,104 +106,62 @@ export function MembershipsPage({ embedded = false }: { embedded?: boolean }) {
     fetchPlansAndMembers();
   }, []);
 
-  // Build structured training programs and combos from DB plans and presets
+  // Build structured training programs purely from owner-created DB plans (no hardcoded presets)
   const structuredPrograms: TrainingProgramView[] = (() => {
+    if (!rawPlans.length) return [];
+
+    // Group DB plans by their canonical program name (strip duration suffixes like "- Monthly", "- Quarterly" etc.)
+    const groupMap = new Map<string, MembershipPlanItem[]>();
+
+    rawPlans.forEach((plan) => {
+      // Derive the base program name by stripping common duration suffixes
+      const baseName = plan.name
+        .replace(/\s*[-–]\s*(monthly|quarterly|6[- ]?month|yearly|annual|30d?|90d?|180d?|365d?)\s*$/i, '')
+        .trim();
+      const key = `${(plan.category || 'general').toLowerCase().trim()}::${baseName.toLowerCase().trim()}`;
+      if (!groupMap.has(key)) groupMap.set(key, []);
+      groupMap.get(key)!.push(plan);
+    });
+
     const list: TrainingProgramView[] = [];
 
-    // Map each preset with matched DB plans if present
-    PROGRAM_PRESETS.forEach((preset) => {
-      const matchedDbPlans = rawPlans.filter((p) => {
-        const cat = (p.category || '').toLowerCase();
-        const name = p.name.toLowerCase();
-        if (preset.category === 'gym') {
-          return cat === 'gym' || cat === 'general' || cat === '' || name.includes('monthly') || name.includes('quaterly') || name.includes('quarterly') || name.includes('yearly') || name.includes('gold') || name.includes('gym');
-        }
-        if (preset.category === 'strength_cardio') {
-          return cat === 'strength_cardio' || cat === 'cardio_strength' || (name.includes('strength') && name.includes('cardio'));
-        }
-        if (preset.category === 'strength_zumba') {
-          return cat === 'strength_zumba' || (name.includes('strength') && name.includes('zumba'));
-        }
-        if (preset.category === 'cardio_zumba') {
-          return cat === 'cardio_zumba' || (name.includes('cardio') && name.includes('zumba'));
-        }
-        return cat === preset.category || name.includes(preset.category);
-      });
-
-      const p30 = matchedDbPlans.find((p) => (p.duration_days || 30) === 30);
-      const p90 = matchedDbPlans.find((p) => (p.duration_days || 30) === 90);
-      const p180 = matchedDbPlans.find((p) => (p.duration_days || 30) === 180);
-      const p365 = matchedDbPlans.find((p) => (p.duration_days || 30) === 365);
-
-      list.push({
-        id: preset.id,
-        name: preset.name,
-        category: preset.category,
-        categoryLabel: preset.categoryLabel,
-        isCombo: preset.isCombo,
-        badge: matchedDbPlans.find((p) => p.badge)?.badge || preset.badge,
-        color: preset.color,
-        features: matchedDbPlans[0]?.features?.length ? matchedDbPlans[0].features : preset.features,
-        prices: {
-          d30: p30 ? p30.price : preset.prices.d30,
-          d90: p90 ? p90.price : preset.prices.d90,
-          d180: p180 ? p180.price : preset.prices.d180,
-          d365: p365 ? p365.price : preset.prices.d365,
-        },
-        dbPlanIds: {
-          d30: p30?.id,
-          d90: p90?.id,
-          d180: p180?.id,
-          d365: p365?.id,
-        },
-      });
-    });
-
-    // Check if owner added custom plans that don't match any preset
-    const handledDbIds = new Set(
-      list.flatMap((p) => Object.values(p.dbPlanIds || {}).filter(Boolean) as string[])
-    );
-
-    const customPlans = rawPlans.filter((p) => {
-      if (!p.id || handledDbIds.has(p.id)) return false;
-      const lower = p.name.toLowerCase();
-      return !lower.includes('monthly') && !lower.includes('quaterly') && !lower.includes('yearly');
-    });
-
-    // Group custom plans by name/category
-    const customGroups = new Map<string, MembershipPlanItem[]>();
-    customPlans.forEach((cp) => {
-      const key = (cp.category || cp.name).toLowerCase().trim();
-      if (!customGroups.has(key)) customGroups.set(key, []);
-      customGroups.get(key)!.push(cp);
-    });
-
-    customGroups.forEach((groupPlans, key) => {
+    groupMap.forEach((groupPlans) => {
       const first = groupPlans[0];
+      const baseName = first.name
+        .replace(/\s*[-–]\s*(monthly|quarterly|6[- ]?month|yearly|annual|30d?|90d?|180d?|365d?)\s*$/i, '')
+        .trim();
+
       const p30 = groupPlans.find((p) => (p.duration_days || 30) === 30);
       const p90 = groupPlans.find((p) => (p.duration_days || 30) === 90);
       const p180 = groupPlans.find((p) => (p.duration_days || 30) === 180);
       const p365 = groupPlans.find((p) => (p.duration_days || 30) === 365);
-      const base = first.price || 2000;
+      const basePrice = (p30 || first).price || 0;
 
-      const isComboVal = first.is_combo !== undefined
-        ? Boolean(first.is_combo || first.isCombo)
-        : ((first.category || '').includes('_') || first.name.includes('+'));
+      const isComboVal = Boolean(
+        first.is_combo || first.isCombo ||
+        (first.category || '').includes('_') ||
+        baseName.includes('+')
+      );
+
+      const category = (first.category || 'general').trim();
+      const categoryLabel = category
+        .replace(/_/g, ' ')
+        .replace(/\b\w/g, (l) => l.toUpperCase());
 
       list.push({
-        id: `custom_${key}`,
-        name: first.name,
-        category: first.category || 'custom',
-        categoryLabel: (first.category || 'Custom Program').replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()),
+        id: first.id || `prog_${category}_${baseName.replace(/\s+/g, '_').toLowerCase()}`,
+        name: baseName,
+        category,
+        categoryLabel,
         isCombo: isComboVal,
-        badge: first.badge || (isComboVal ? 'Combo Pack' : ''),
-        color: first.color || 'from-indigo-500 to-cyan-600',
-        features: first.features?.length ? first.features : ['Full Access & Dedicated Support', 'Gym Floor & Facilities', 'Locker & Assessment'],
+        badge: first.badge || '',
+        color: first.color || (isComboVal ? 'from-rose-500 to-pink-600' : 'from-blue-500 to-indigo-600'),
+        features: first.features?.length ? first.features : [],
         prices: {
-          d30: p30 ? p30.price : base,
-          d90: p90 ? p90.price : Math.round((base * 2.6) / 50) * 50,
-          d180: p180 ? p180.price : Math.round((base * 4.8) / 50) * 50,
-          d365: p365 ? p365.price : Math.round((base * 8.8) / 50) * 50,
+          d30: p30 ? p30.price : basePrice,
+          d90: p90 ? p90.price : Math.round((basePrice * 2.6) / 50) * 50,
+          d180: p180 ? p180.price : Math.round((basePrice * 4.8) / 50) * 50,
+          d365: p365 ? p365.price : Math.round((basePrice * 8.8) / 50) * 50,
         },
         dbPlanIds: {
           d30: p30?.id,
@@ -328,6 +173,7 @@ export function MembershipsPage({ embedded = false }: { embedded?: boolean }) {
     });
 
     return list;
+
   })();
 
   const handleAddCustomCategory = () => {
@@ -353,19 +199,18 @@ export function MembershipsPage({ embedded = false }: { embedded?: boolean }) {
 
   const openCreateModal = () => {
     setEditingProgramId(null);
-    const defaultPreset = PROGRAM_PRESETS[0];
     setProgramForm({
-      name: defaultPreset.name,
-      category: defaultPreset.category,
-      categoryLabel: defaultPreset.categoryLabel,
-      isCombo: true,
-      badge: defaultPreset.badge,
-      color: defaultPreset.color,
-      features: defaultPreset.features.join(', '),
-      price_30d: String(defaultPreset.prices.d30),
-      price_90d: String(defaultPreset.prices.d90),
-      price_180d: String(defaultPreset.prices.d180),
-      price_365d: String(defaultPreset.prices.d365),
+      name: '',
+      category: 'general',
+      categoryLabel: 'General',
+      isCombo: false,
+      badge: '',
+      color: 'from-blue-500 to-indigo-600',
+      features: '',
+      price_30d: '',
+      price_90d: '',
+      price_180d: '',
+      price_365d: '',
       dbPlanIds: {},
     });
     setModalOpen(true);
@@ -390,25 +235,6 @@ export function MembershipsPage({ embedded = false }: { embedded?: boolean }) {
     setModalOpen(true);
   };
 
-  const handleApplyPreset = (presetId: string) => {
-    const preset = PROGRAM_PRESETS.find((p) => p.id === presetId);
-    if (!preset) return;
-    setProgramForm((prev) => ({
-      ...prev,
-      name: preset.name,
-      category: preset.category,
-      categoryLabel: preset.categoryLabel,
-      isCombo: Boolean(preset.isCombo),
-      badge: preset.badge,
-      color: preset.color,
-      features: preset.features.join(', '),
-      price_30d: String(preset.prices.d30),
-      price_90d: String(preset.prices.d90),
-      price_180d: String(preset.prices.d180),
-      price_365d: String(preset.prices.d365),
-    }));
-  };
-
   const handleAutoCalculatePrices = (basePrice: number) => {
     if (!basePrice || isNaN(basePrice)) return;
     setProgramForm((prev) => ({
@@ -419,18 +245,6 @@ export function MembershipsPage({ embedded = false }: { embedded?: boolean }) {
     }));
   };
 
-  const handleAddPerkTag = (perk: string) => {
-    const currentFeatures = programForm.features
-      .split(',')
-      .map((f) => f.trim())
-      .filter(Boolean);
-    if (!currentFeatures.includes(perk)) {
-      setProgramForm((prev) => ({
-        ...prev,
-        features: [...currentFeatures, perk].join(', '),
-      }));
-    }
-  };
 
   const handleSaveProgram = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -509,7 +323,6 @@ export function MembershipsPage({ embedded = false }: { embedded?: boolean }) {
 
   const filteredPrograms = structuredPrograms.filter((p) => {
     if (filterCategory === 'all') return true;
-    if (filterCategory === 'combos') return p.isCombo;
     return p.category.toLowerCase() === filterCategory.toLowerCase();
   });
 
@@ -641,17 +454,15 @@ export function MembershipsPage({ embedded = false }: { embedded?: boolean }) {
             </p>
           </div>
 
-          {/* Category Filter Pills */}
+          {/* Dynamic Category Filter Pills — from owner-created programs only */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
             {[
               { id: 'all', label: 'All Programs' },
-              { id: 'combos', label: 'Combos & Hybrid' },
-              { id: 'strength_cardio', label: 'Strength + Cardio' },
-              { id: 'strength_zumba', label: 'Strength + Zumba' },
-              { id: 'cardio_zumba', label: 'Cardio + Zumba' },
-              { id: 'gym', label: 'Gym Access' },
-              { id: 'zumba', label: 'Zumba' },
-              { id: 'pt', label: 'Personal Training' },
+              ...Array.from(
+                new Map(
+                  structuredPrograms.map((p) => [p.category, { id: p.category, label: p.categoryLabel }])
+                ).values()
+              ),
             ].map((cat) => {
               const isActive = filterCategory === cat.id;
               return (
@@ -790,7 +601,7 @@ export function MembershipsPage({ embedded = false }: { embedded?: boolean }) {
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Strength Training + Cardio"
+                    placeholder="Enter program name"
                     value={programForm.name}
                     onChange={(e) => setProgramForm({ ...programForm, name: e.target.value })}
                     className="input-field"
@@ -815,7 +626,7 @@ export function MembershipsPage({ embedded = false }: { embedded?: boolean }) {
                       <div className="flex gap-2">
                         <input
                           type="text"
-                          placeholder="e.g. CrossFit, Boxing, Aerobics"
+                          placeholder="Enter category name"
                           value={newCatName}
                           onChange={(e) => setNewCatName(e.target.value)}
                           className="input-field text-xs py-1.5 flex-1 bg-white"
@@ -851,29 +662,24 @@ export function MembershipsPage({ embedded = false }: { embedded?: boolean }) {
                       }}
                       className="input-field text-xs py-2"
                     >
-                      <optgroup label="Multi-Discipline Combos">
-                        <option value="strength_cardio">Strength Training + Cardio (Combo)</option>
-                        <option value="strength_zumba">Strength + Zumba (Combo)</option>
-                        <option value="cardio_zumba">Cardio + Zumba (Combo)</option>
-                      </optgroup>
-                      <optgroup label="Single Discipline Programs">
-                        <option value="gym">General Gym Access</option>
-                        <option value="zumba">Zumba Dance Fitness</option>
-                        <option value="pt">Personal Training (PT)</option>
-                        <option value="strength">Strength Training</option>
-                        <option value="cardio">Cardio Endurance</option>
-                        <option value="yoga">Yoga & Pilates</option>
-                        <option value="custom">Custom Program</option>
-                      </optgroup>
-                      {customCategories.length > 0 && (
-                        <optgroup label="Custom Created Categories">
-                          {customCategories.map((cc) => (
-                            <option key={cc.value} value={cc.value}>
-                              {cc.label} {cc.isCombo ? '(Combo)' : ''}
-                            </option>
-                          ))}
-                        </optgroup>
-                      )}
+                      {/* Existing categories from owner's DB programs */}
+                      {Array.from(
+                        new Map(
+                          structuredPrograms.map((p) => [p.category, { value: p.category, label: p.categoryLabel, isCombo: p.isCombo }])
+                        ).values()
+                      ).map((cat) => (
+                        <option key={cat.value} value={cat.value}>
+                          {cat.label}{cat.isCombo ? ' (Combo)' : ''}
+                        </option>
+                      ))}
+                      {/* Custom categories added by owner */}
+                      {customCategories
+                        .filter((cc) => !structuredPrograms.some((p) => p.category === cc.value))
+                        .map((cc) => (
+                          <option key={cc.value} value={cc.value}>
+                            {cc.label} {cc.isCombo ? '(Combo)' : ''}
+                          </option>
+                        ))}
                       <option value="__add_new__">+ Add New Category...</option>
                     </select>
                   )}
@@ -938,7 +744,7 @@ export function MembershipsPage({ embedded = false }: { embedded?: boolean }) {
                     <input
                       type="number"
                       required
-                      placeholder="3500"
+                      placeholder="0"
                       value={programForm.price_30d}
                       onChange={(e) => {
                         const val = e.target.value;
@@ -952,7 +758,7 @@ export function MembershipsPage({ embedded = false }: { embedded?: boolean }) {
                     <input
                       type="number"
                       required
-                      placeholder="9000"
+                      placeholder="0"
                       value={programForm.price_90d}
                       onChange={(e) => setProgramForm({ ...programForm, price_90d: e.target.value })}
                       className="input-field text-xs py-1.5"
@@ -963,7 +769,7 @@ export function MembershipsPage({ embedded = false }: { embedded?: boolean }) {
                     <input
                       type="number"
                       required
-                      placeholder="16500"
+                      placeholder="0"
                       value={programForm.price_180d}
                       onChange={(e) => setProgramForm({ ...programForm, price_180d: e.target.value })}
                       className="input-field text-xs py-1.5"
@@ -974,7 +780,7 @@ export function MembershipsPage({ embedded = false }: { embedded?: boolean }) {
                     <input
                       type="number"
                       required
-                      placeholder="29000"
+                      placeholder="0"
                       value={programForm.price_365d}
                       onChange={(e) => setProgramForm({ ...programForm, price_365d: e.target.value })}
                       className="input-field text-xs py-1.5"
@@ -983,30 +789,16 @@ export function MembershipsPage({ embedded = false }: { embedded?: boolean }) {
                 </div>
               </div>
 
-              {/* Features & Suggested Perks */}
+              {/* Features */}
               <div>
                 <label className="text-xs font-semibold text-navy-700 mb-1 block">Features / Inclusions (Comma Separated)</label>
                 <input
                   type="text"
-                  placeholder="Weight Floor Access, HIIT Circuit, Zumba Classes, Trainer Guidance"
+                  placeholder="Features separated by commas"
                   value={programForm.features}
                   onChange={(e) => setProgramForm({ ...programForm, features: e.target.value })}
-                  className="input-field text-xs py-2 mb-2"
+                  className="input-field text-xs py-2"
                 />
-
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-[10px] font-semibold text-navy-400">+ Quick Add:</span>
-                  {SUGGESTED_PERKS.slice(0, 6).map((perk) => (
-                    <button
-                      key={perk}
-                      type="button"
-                      onClick={() => handleAddPerkTag(perk)}
-                      className="text-[10px] font-medium bg-navy-100 hover:bg-brand-50 hover:text-brand-600 px-2 py-0.5 rounded-md text-navy-600 transition-colors"
-                    >
-                      + {perk}
-                    </button>
-                  ))}
-                </div>
               </div>
 
               {/* Badge & Color Theme */}
@@ -1015,7 +807,7 @@ export function MembershipsPage({ embedded = false }: { embedded?: boolean }) {
                   <label className="text-xs font-semibold text-navy-700 mb-1 block">Badge Label (Optional)</label>
                   <input
                     type="text"
-                    placeholder="e.g. Popular Combo, Best Seller, VIP"
+                    placeholder="Optional badge label"
                     value={programForm.badge}
                     onChange={(e) => setProgramForm({ ...programForm, badge: e.target.value })}
                     className="input-field text-xs py-2"
@@ -1028,13 +820,13 @@ export function MembershipsPage({ embedded = false }: { embedded?: boolean }) {
                     onChange={(e) => setProgramForm({ ...programForm, color: e.target.value })}
                     className="input-field text-xs py-2"
                   >
-                    <option value="from-emerald-500 to-teal-600">Emerald / Teal (Strength + Cardio)</option>
-                    <option value="from-rose-500 to-pink-600">Rose / Pink (Strength + Zumba)</option>
-                    <option value="from-amber-500 to-orange-600">Amber / Orange (Cardio + Zumba)</option>
-                    <option value="from-blue-500 to-indigo-600">Blue / Indigo (Gym All-Access)</option>
-                    <option value="from-purple-500 to-violet-600">Purple / Violet (Yoga & Wellness)</option>
-                    <option value="from-amber-600 to-yellow-600">Amber / Gold (VIP Personal Training)</option>
-                    <option value="from-indigo-500 to-cyan-600">Indigo / Cyan (Custom Program)</option>
+                    <option value="from-emerald-500 to-teal-600">Emerald / Teal</option>
+                    <option value="from-rose-500 to-pink-600">Rose / Pink</option>
+                    <option value="from-amber-500 to-orange-600">Amber / Orange</option>
+                    <option value="from-blue-500 to-indigo-600">Blue / Indigo</option>
+                    <option value="from-purple-500 to-violet-600">Purple / Violet</option>
+                    <option value="from-amber-600 to-yellow-600">Amber / Gold</option>
+                    <option value="from-indigo-500 to-cyan-600">Indigo / Cyan</option>
                   </select>
                 </div>
               </div>

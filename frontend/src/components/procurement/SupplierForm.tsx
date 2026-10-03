@@ -527,7 +527,7 @@ export function SupplierForm({ supplierId, onClose, onSaved }: SupplierFormProps
                   <button
                     type="button"
                     disabled={isVerifyingGst}
-                    onClick={handleVerifyGstin}
+                    onClick={() => handleVerifyGstin()}
                     className="px-3.5 h-9 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-bold text-xs shrink-0 shadow-sm transition-all disabled:opacity-50 flex items-center gap-1.5"
                   >
                     {isVerifyingGst ? "Fetching..." : "Verify & Auto-Fill"}

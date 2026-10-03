@@ -16,6 +16,8 @@ from src.models.nutrition import NutritionLog
 from src.models.biometric import BiometricLog
 from src.models.biometric_device import BiometricDevice
 from src.models.gym_setting import GymBranch
+from src.models.hrms import Employee
+from src.models.trainer import TrainerProfile
 from src.services.auth_service import _fetch_gym_context
 
 
@@ -309,7 +311,6 @@ class DashboardService:
         if current_user:
             role = (current_user.role or "").strip().upper()
             if role in ["GYM_OWNER", "OWNER"]:
-                from sqlalchemy import or_
                 cust_query = cust_query.filter(
                     or_(
                         Customer.owner_id == current_user.id,
@@ -321,7 +322,6 @@ class DashboardService:
                     cust_query = cust_query.filter(Customer.branch_id == current_user.branch_id)
 
         if branch_id:
-            from sqlalchemy import or_
             cust_query = cust_query.filter(
                 or_(
                     Customer.branch_id == branch_id,
@@ -399,40 +399,148 @@ class DashboardService:
             else:
                 healthy_count += 1
 
-        recent_logs = log_query.order_by(BiometricLog.timestamp.desc()).limit(15).all()
+        # Query only check-in and check-out logs
+        recent_logs = (
+            log_query.filter(
+                or_(
+                    BiometricLog.direction.ilike("%in%"),
+                    BiometricLog.direction.ilike("%out%"),
+                    BiometricLog.direction.ilike("%exit%"),
+                    BiometricLog.direction.ilike("%entry%")
+                )
+            )
+            .order_by(BiometricLog.timestamp.desc())
+            .limit(25)
+            .all()
+        )
+
         recent_checkins = []
         for log in recent_logs:
-            cust = db.query(Customer).filter(Customer.id == log.customer_id).first() if log.customer_id else None
-            user_obj = None
-            if not cust and log.customer_id:
-                user_obj = db.query(User).filter(User.id == log.customer_id).first()
+            meta = log.meta_data or {}
+            uid = meta.get("user_id") or meta.get("employee_id")
+            cid = log.customer_id or meta.get("customer_id")
 
-            member_mem = None
-            days_remaining = None
-            due_amount = None
-            attendance_rate = None
+            # Determine whether this log is for a Customer/Student or Employee/Staff
+            is_explicit_customer = (
+                (log.customer_id is not None and not str(log.customer_id).startswith("emp_"))
+                or str(log.user_role or "").upper() in ["CUSTOMER", "STUDENT", "MEMBER"]
+                or str(meta.get("action", "")).startswith("CUSTOMER_")
+                or (cid and str(cid).startswith("cust_"))
+            )
 
-            if cust:
-                member_mem = db.query(Membership).filter(
-                    Membership.customer_id == cust.id,
-                    Membership.status == "ACTIVE"
-                ).first()
+            is_explicit_employee = (
+                (log.customer_id is None)
+                and (
+                    str(log.user_role or "").upper() in ["TRAINER", "STAFF", "EMPLOYEE", "GYM_OWNER", "ADMIN", "COACH", "MANAGER"]
+                    or str(meta.get("user_role", "")).upper() in ["TRAINER", "STAFF", "EMPLOYEE", "GYM_OWNER", "ADMIN", "COACH", "MANAGER"]
+                    or (uid and (str(uid).startswith("emp_") or str(uid).startswith("tr_")))
+                    or log.device_type == "GEOFENCE_ESS"
+                )
+            )
 
-                if member_mem and member_mem.expiry_date:
-                    days_remaining = max(0, (member_mem.expiry_date - now).days)
-                due_amount = float(member_mem.due_amount) if member_mem and member_mem.due_amount else 0.0
+            if is_explicit_customer and not is_explicit_employee:
+                is_employee = False
+            elif is_explicit_employee:
+                is_employee = True
+            else:
+                is_employee = log.customer_id is None
 
-                days_attended = customer_days_map.get(cust.id, 0)
-                window_d = max(1, min(30, (now - (cust.created_at or thirty_days_ago)).days or 1))
-                attendance_rate = int((days_attended / float(window_d)) * 100)
+            resolved_role = "EMPLOYEE" if is_employee else "STUDENT"
 
-            cust_name = cust.full_name if cust else (user_obj.full_name if user_obj and getattr(user_obj, "full_name", None) else (user_obj.name if user_obj and getattr(user_obj, "name", None) else None))
+            # 1. Resolve Student (Customer)
+            if not is_employee:
+                cust = None
+                if cid:
+                    cust = db.query(Customer).filter(
+                        (Customer.id == cid) | (Customer.id == f"cust_{cid}")
+                    ).first()
+                if not cust and uid:
+                    cust = db.query(Customer).filter(
+                        (Customer.user_id == uid) | (Customer.id == uid)
+                    ).first()
+
+                cust_name = (
+                    (cust.full_name if cust and cust.full_name else None)
+                    or meta.get("customer_name")
+                    or meta.get("user_name")
+                    or "Student"
+                )
+                display_id = cust.id if cust else (cid or (uid if uid and str(uid).startswith("cust_") else "STUDENT"))
+
+                member_mem = None
+                days_remaining = None
+                due_amount = None
+                attendance_rate = None
+                if cust:
+                    member_mem = db.query(Membership).filter(
+                        Membership.customer_id == cust.id,
+                        Membership.status == "ACTIVE"
+                    ).first()
+                    if member_mem and member_mem.expiry_date:
+                        days_remaining = max(0, (member_mem.expiry_date - now).days)
+                    due_amount = float(member_mem.due_amount) if member_mem and member_mem.due_amount else 0.0
+
+                    days_attended = customer_days_map.get(cust.id, 0)
+                    window_d = max(1, min(30, (now - (cust.created_at or thirty_days_ago)).days or 1))
+                    attendance_rate = int((days_attended / float(window_d)) * 100)
+
+            # 2. Resolve Employee / Staff / Trainer
+            else:
+                user_obj = None
+                if uid:
+                    user_obj = db.query(User).filter(User.id == uid).first()
+
+                emp_filters = []
+                if user_obj:
+                    if user_obj.email:
+                        emp_filters.append(Employee.email.ilike(user_obj.email.strip()))
+                    emp_filters.append(Employee.id == f"emp_{user_obj.id}")
+                if uid:
+                    emp_filters.append(Employee.id == uid)
+                    emp_filters.append(Employee.code == uid)
+                    emp_filters.append(Employee.id == f"emp_{uid}")
+
+                emp_obj = db.query(Employee).filter(or_(*emp_filters)).first() if emp_filters else None
+
+                trainer_filters = []
+                if user_obj:
+                    trainer_filters.append(TrainerProfile.user_id == user_obj.id)
+                    if user_obj.email:
+                        trainer_filters.append(TrainerProfile.email.ilike(user_obj.email.strip()))
+                if uid:
+                    trainer_filters.append(TrainerProfile.id == uid)
+                    trainer_filters.append(TrainerProfile.user_id == uid)
+
+                trainer_obj = db.query(TrainerProfile).filter(or_(*trainer_filters)).first() if trainer_filters else None
+
+                if emp_obj and (emp_obj.first_name or emp_obj.last_name):
+                    cust_name = f"{emp_obj.first_name} {emp_obj.last_name or ''}".strip()
+                elif trainer_obj and trainer_obj.full_name:
+                    cust_name = trainer_obj.full_name
+                elif user_obj and (getattr(user_obj, "full_name", None) or getattr(user_obj, "name", None)):
+                    cust_name = getattr(user_obj, "full_name", None) or getattr(user_obj, "name", None)
+                elif meta.get("user_name") and meta.get("user_name") != "Staff Member":
+                    cust_name = meta.get("user_name")
+                else:
+                    cust_name = "Staff Member"
+
+                display_id = (
+                    emp_obj.code if (emp_obj and emp_obj.code)
+                    else (emp_obj.id if emp_obj
+                    else (trainer_obj.id if trainer_obj
+                    else (user_obj.id if user_obj
+                    else (uid or "EMP"))))
+                )
+                member_mem = None
+                days_remaining = None
+                due_amount = None
+                attendance_rate = None
 
             recent_checkins.append({
                 "eventId": log.id,
-                "customerId": log.customer_id or None,
-                "customerName": cust_name or "Member",
-                "userRole": log.user_role or ("CUSTOMER" if cust else "STAFF"),
+                "customerId": display_id,
+                "customerName": cust_name,
+                "userRole": resolved_role,
                 "direction": log.direction or "CHECK_IN",
                 "status": log.status or "SUCCESS",
                 "avatarUrl": cust.profile_image if cust else None,

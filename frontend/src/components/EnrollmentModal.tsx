@@ -598,14 +598,30 @@ export function EnrollmentModal({
                   </div>
                 </div>
 
-                {/* Categorized Filter Bar (All Programs, Training Programs, Combos, Classes, PT) */}
+                {/* Dynamic Category Filter Bar — derived from owner-created plans */}
                 {(() => {
+                  // Build unique categories from actual DB plans only
+                  const seenCategories = new Set<string>();
+                  const dynamicCategories: { id: string; label: string; isCombo: boolean }[] = [];
+
+                  workoutPrograms.forEach((prog) => {
+                    const catKey = prog.category || 'general';
+                    if (!seenCategories.has(catKey)) {
+                      seenCategories.add(catKey);
+                      dynamicCategories.push({
+                        id: catKey,
+                        label: prog.categoryLabel,
+                        isCombo: Boolean(prog.isCombo),
+                      });
+                    }
+                  });
+
+                  // Only show category filter if there are 2+ distinct categories
+                  if (dynamicCategories.length < 2) return null;
+
                   const filterOptions = [
-                    { id: 'all', label: 'All Programs', icon: 'layers' },
-                    { id: 'training', label: 'Training Programs', icon: 'activity' },
-                    { id: 'combos', label: 'Combos & Hybrid', icon: 'flame' },
-                    { id: 'classes', label: 'Group Classes & Dance', icon: 'zap' },
-                    { id: 'pt', label: '1-on-1 PT Coaching', icon: 'award' },
+                    { id: 'all', label: 'All Programs', isCombo: false },
+                    ...dynamicCategories,
                   ];
 
                   return (
@@ -628,7 +644,11 @@ export function EnrollmentModal({
                                   : 'bg-white text-navy-600 border-navy-200 hover:border-navy-300 hover:bg-navy-50'
                               )}
                             >
-                              <Icon name={opt.icon} size={13} className={isActive ? 'text-white' : 'text-navy-500'} />
+                              <Icon
+                                name={opt.id === 'all' ? 'layers' : opt.isCombo ? 'flame' : 'activity'}
+                                size={13}
+                                className={isActive ? 'text-white' : 'text-navy-500'}
+                              />
                               <span>{opt.label}</span>
                             </button>
                           );
@@ -677,10 +697,8 @@ export function EnrollmentModal({
                 {(() => {
                   const filteredPrograms = workoutPrograms.filter((p) => {
                     if (selectedProgramCategory !== 'all') {
-                      if (selectedProgramCategory === 'combos' && !p.isCombo) return false;
-                      if (selectedProgramCategory === 'training' && (p.isCombo || p.programType !== 'training')) return false;
-                      if (selectedProgramCategory === 'classes' && (p.isCombo || p.programType !== 'classes')) return false;
-                      if (selectedProgramCategory === 'pt' && (p.isCombo || p.programType !== 'pt')) return false;
+                      // Match by exact category value as stored in DB
+                      if ((p.category || 'general') !== selectedProgramCategory) return false;
                     }
                     if (planSearchQuery.trim()) {
                       const q = planSearchQuery.toLowerCase();

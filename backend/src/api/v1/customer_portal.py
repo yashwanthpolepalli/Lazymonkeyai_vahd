@@ -870,11 +870,12 @@ def register_customer_face(
     action_label = payload.get("action") or "FACE_ENROLLMENT"
 
     expires_at = now_dt + datetime.timedelta(days=90)
+    actual_role = (cust.user.role.upper() if (cust.user and cust.user.role and cust.user.role.upper() not in ["CUSTOMER", "STUDENT", "MEMBER"]) else "CUSTOMER")
 
     bio_log = BiometricLog(
         id=f"bio_reg_{uuid.uuid4().hex[:8]}",
         customer_id=cust.id,
-        user_role="CUSTOMER",
+        user_role=actual_role,
         event_type=event_type,
         device_type=device_type,
         device_id=device_id,
@@ -972,6 +973,7 @@ def verify_customer_face_punch(
     # Validate Geofencing with HRMS service
     from src.services.hrms_service import HrmsService
     hrms_svc = HrmsService()
+    actual_role = (cust.user.role.upper() if (cust.user and cust.user.role and cust.user.role.upper() not in ["CUSTOMER", "STUDENT", "MEMBER"]) else "CUSTOMER")
     try:
         punch_res = hrms_svc.record_punch(
             db=db,
@@ -980,7 +982,7 @@ def verify_customer_face_punch(
             latitude=float(latitude) if latitude is not None else None,
             longitude=float(longitude) if longitude is not None else None,
             method="FACE_ID",
-            user_role="CUSTOMER",
+            user_role=actual_role,
             branch=branch_name,
             note=f"Customer Face ID Verified ({round(confidence * 100, 1)}% Match)",
         )
@@ -991,7 +993,7 @@ def verify_customer_face_punch(
     bio_punch = BiometricLog(
         id=f"bio_punch_{uuid.uuid4().hex[:8]}",
         customer_id=cust.id,
-        user_role="CUSTOMER",
+        user_role=actual_role,
         event_type="FACE_ID_CHECKIN",
         device_type="MOBILE_APP_MLKIT",
         device_id=payload.get("device_id") or f"mob_cam_{cust.id[:6]}",

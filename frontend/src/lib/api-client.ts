@@ -311,6 +311,7 @@ export interface Warehouse {
   id: string;
   tenant_id: string;
   name: string;
+  code?: string | null;
   warehouse_type: string;
   capacity: string | null;
   manager_name: string | null;
@@ -4734,7 +4735,7 @@ export const inventoryApi = {
 
 
   // Batch & Serial Numbers
-  getBatches: (params?: { search?: string; product_id?: string; warehouse_id?: string; status?: string }) =>
+  getBatches: (params?: { search?: string; product_id?: string; warehouse_id?: string; status?: string; company_id?: string }) =>
     request<InventoryBatch[]>("GET", "/inventory/batches", undefined, params as Record<string, any>),
   createBatch: (data: Record<string, unknown>) => request<InventoryBatch>("POST", "/inventory/batches", data),
   updateBatch: (id: string, data: Record<string, unknown>) => request<InventoryBatch>("PATCH", `/inventory/batches/${id}`, data),

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Icon } from '@/components/ui/Icon';
 import type { LiveActivityItem } from '@/types/dashboard';
 import { hrmsApi } from '@/services/hrmsApi';
+import { trainersApi } from '@/services/trainersApi';
 import { cn } from '@/utils/cn';
 
 interface LiveGymActivityProps {
@@ -12,14 +13,58 @@ interface LiveGymActivityProps {
 interface EnrichedActivityItem {
   id: string;
   role: 'Student' | 'Employee';
-  action: 'Check-in' | 'Check-out' | 'Payment';
+  action: 'Check-in' | 'Check-out';
   name: string;
-  customerId?: string;
+  customerId: string;
   location: string;
   device: string;
   time: string;
-  fullDateStr?: string;
-  status: 'success' | 'warning' | 'info';
+  fullDateStr: string;
+  status: 'success' | 'warning';
+  _sortTime: number;
+}
+
+/** Derive whether a biometric log entry is Employee or Student purely from backend data */
+function resolveRole(roleUpper: string, rawCustId: string): 'Employee' | 'Student' {
+  if (
+    roleUpper === 'STUDENT' ||
+    roleUpper === 'CUSTOMER' ||
+    roleUpper === 'MEMBER' ||
+    (rawCustId.startsWith('cust_') && !rawCustId.startsWith('cust_usr_'))
+  ) {
+    return 'Student';
+  }
+  if (
+    roleUpper === 'EMPLOYEE' ||
+    roleUpper === 'TRAINER' ||
+    roleUpper === 'STAFF' ||
+    roleUpper === 'COACH' ||
+    roleUpper === 'ADMIN' ||
+    roleUpper === 'GYM_OWNER' ||
+    roleUpper === 'OWNER' ||
+    roleUpper === 'MANAGER'
+  ) {
+    return 'Employee';
+  }
+  // Fallback: if no customer ID prefix → treat as employee (staff have no cust_ id)
+  return rawCustId.startsWith('emp_') || rawCustId.startsWith('tr_') || !rawCustId
+    ? 'Employee'
+    : 'Student';
+}
+
+/** Format ISO timestamp to time string and short date string */
+function formatTimestamp(timestamp?: string, fallbackTime?: string): { time: string; fullDateStr: string; sortTime: number } {
+  if (timestamp) {
+    try {
+      const d = new Date(timestamp);
+      return {
+        time: d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }),
+        fullDateStr: d.toLocaleDateString([], { month: 'short', day: 'numeric' }),
+        sortTime: d.getTime(),
+      };
+    } catch (_) { /* fall through */ }
+  }
+  return { time: fallbackTime || '', fullDateStr: '', sortTime: Date.now() };
 }
 
 export function LiveGymActivity({ activity }: LiveGymActivityProps) {
@@ -29,92 +74,114 @@ export function LiveGymActivity({ activity }: LiveGymActivityProps) {
   const [employeeAttendance, setEmployeeAttendance] = useState<any[]>([]);
 
   useEffect(() => {
-    hrmsApi.getAttendance()
-      .then((res) => {
-        if (Array.isArray(res)) {
-          setEmployeeAttendance(res);
-        }
-      })
-      .catch(() => {});
+    // Load HRMS attendance to supplement biometric data
+    Promise.all([
+      hrmsApi.getAttendance().catch(() => []),
+      hrmsApi.getEmployees().catch(() => []),
+      trainersApi.list().catch(() => []),
+    ]).then(([attendance, _emps, _trainers]) => {
+      if (Array.isArray(attendance)) setEmployeeAttendance(attendance);
+    }).catch(() => {});
   }, []);
 
   const handleScroll = (direction: 'up' | 'down') => {
     if (scrollRef.current) {
-      const scrollAmount = direction === 'up' ? -150 : 150;
-      scrollRef.current.scrollBy({ top: scrollAmount, behavior: 'smooth' });
+      scrollRef.current.scrollBy({ top: direction === 'up' ? -150 : 150, behavior: 'smooth' });
     }
   };
 
-  // Combine and unify student and employee live attendance logs from DB
+  /** Build unified activity list — only CHECK_IN and CHECK_OUT events */
   const unifiedActivity: EnrichedActivityItem[] = useMemo(() => {
     const list: EnrichedActivityItem[] = [];
 
-    // 1. Process passed activity (Student & live biometric logs from DB)
+    // ── 1. Biometric logs from backend (primary source of truth) ──────────────
     (activity || []).forEach((item) => {
       const dir = (item.direction || '').toUpperCase();
-      const desc = item.description || '';
-      const isLogout = dir.includes('OUT') || dir.includes('EXIT') || item.type === 'checkout' || desc.toLowerCase().includes('exit') || desc.toLowerCase().includes('out');
-      const isStaff = (item.userRole && !item.userRole.toLowerCase().includes('cust') && !item.userRole.toLowerCase().includes('student')) || desc.toLowerCase().includes('staff') || desc.toLowerCase().includes('trainer');
+      const isLogout = dir.includes('OUT') || dir.includes('EXIT') || item.type === 'checkout';
+      // Skip ENROLL and other non-attendance events
+      if (!dir.includes('IN') && !dir.includes('OUT') && !dir.includes('EXIT') && !dir.includes('ENTRY') && item.type !== 'checkin' && item.type !== 'checkout') return;
 
-      let timeFormatted = item.time;
-      let fullDateStr = '';
-      if (item.timestamp) {
-        try {
-          const d = new Date(item.timestamp);
-          timeFormatted = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
-          fullDateStr = d.toLocaleDateString([], { month: 'short', day: 'numeric' });
-        } catch (_e) {
-          timeFormatted = item.time || 'Just now';
-        }
+      const roleUpper = (item.userRole || '').toUpperCase();
+      const rawCustId = (item.customerId || '').trim();
+      const role = resolveRole(roleUpper, rawCustId);
+
+      // Display ID: strip cust_usr_ prefix for employees
+      let displayCustomerId = rawCustId;
+      if (role === 'Employee' && displayCustomerId.startsWith('cust_usr_')) {
+        displayCustomerId = displayCustomerId.replace('cust_', '');
       }
 
+      // Name: use exactly what backend resolved — no generic overrides
+      const displayName = (item.title || '').trim();
+      if (!displayName) return; // skip if backend sent no name
+
+      const { time, fullDateStr, sortTime } = formatTimestamp(item.timestamp, item.time);
+      const desc = item.description || '';
+
       list.push({
-        id: item.id || `act-${Math.random()}`,
-        role: isStaff ? 'Employee' : 'Student',
+        id: item.id || `act-${Math.random().toString(36).slice(2)}`,
+        role,
         action: isLogout ? 'Check-out' : 'Check-in',
-        name: item.title?.replace(/Gym Member/i, 'Student') || 'Student Member',
-        customerId: item.customerId || '',
-        location: item.location || desc.split('·')[0]?.trim() || 'Main Branch',
-        device: item.device || desc.split('·')[1]?.trim() || 'AI Face Terminal',
-        time: timeFormatted,
-        fullDateStr: fullDateStr,
+        name: displayName,
+        customerId: displayCustomerId,
+        location: item.location || desc.split('·')[0]?.trim() || '',
+        device: item.device || desc.split('·')[1]?.trim() || '',
+        time,
+        fullDateStr,
         status: isLogout ? 'warning' : 'success',
+        _sortTime: sortTime,
       });
     });
 
-    // 2. Process employee attendance logs (Check-in and Check-out from HRMS)
+    // ── 2. HRMS attendance logs (supplement — deduped against biometric) ──────
     employeeAttendance.forEach((emp) => {
-      if (emp.check_in) {
+      const empDate = emp.date ? new Date(emp.date) : new Date();
+      const empName = (emp.employee_name || '').trim();
+      const empId = emp.employee_id || emp.employee_code || emp.id || '';
+
+      if (!empName) return; // skip unknown employees
+
+      const processEntry = (timeStr: string, action: 'Check-in' | 'Check-out') => {
+        const [h, m, s] = String(timeStr).split(':');
+        const dt = new Date(empDate);
+        if (h) dt.setHours(parseInt(h, 10), parseInt(m || '0', 10), parseInt(s || '0', 10));
+
+        // Deduplicate: skip if already in list within 5 minutes for same employee+action
+        const isDupe = list.some(
+          (l) =>
+            l.role === 'Employee' &&
+            l.name.toLowerCase() === empName.toLowerCase() &&
+            l.action === action &&
+            Math.abs(l._sortTime - dt.getTime()) < 5 * 60 * 1000
+        );
+        if (isDupe) return;
+
+        const formattedTime = timeStr.includes(':') ? timeStr.slice(0, 8) : timeStr;
+        const fullDateStr = emp.date
+          ? new Date(emp.date).toLocaleDateString([], { month: 'short', day: 'numeric' })
+          : '';
+
         list.push({
-          id: `emp-in-${emp.id}`,
+          id: `hrms-${action === 'Check-in' ? 'in' : 'out'}-${emp.id || empName}`,
           role: 'Employee',
-          action: 'Check-in',
-          name: emp.employee_name || 'Staff Member',
-          customerId: emp.employee_id || emp.employee_code || (emp.id ? `EMP-${String(emp.id).slice(0, 6)}` : ''),
-          location: emp.department || 'Operations',
-          device: 'Geofence / ESS Portal',
-          time: emp.check_in.includes(':') ? emp.check_in.slice(0, 8) : emp.check_in,
-          fullDateStr: emp.date ? new Date(emp.date).toLocaleDateString([], { month: 'short', day: 'numeric' }) : 'Today',
-          status: 'success',
+          action,
+          name: empName,
+          customerId: String(empId),
+          location: emp.department || '',
+          device: '',
+          time: formattedTime,
+          fullDateStr,
+          status: action === 'Check-out' ? 'warning' : 'success',
+          _sortTime: dt.getTime(),
         });
-      }
-      if (emp.check_out) {
-        list.push({
-          id: `emp-out-${emp.id}`,
-          role: 'Employee',
-          action: 'Check-out',
-          name: emp.employee_name || 'Staff Member',
-          customerId: emp.employee_id || emp.employee_code || (emp.id ? `EMP-${String(emp.id).slice(0, 6)}` : ''),
-          location: emp.department || 'Operations',
-          device: 'Geofence / ESS Portal',
-          time: emp.check_out.includes(':') ? emp.check_out.slice(0, 8) : emp.check_out,
-          fullDateStr: emp.date ? new Date(emp.date).toLocaleDateString([], { month: 'short', day: 'numeric' }) : 'Today',
-          status: 'warning',
-        });
-      }
+      };
+
+      if (emp.check_in) processEntry(emp.check_in, 'Check-in');
+      if (emp.check_out) processEntry(emp.check_out, 'Check-out');
     });
 
-    return list;
+    // Sort newest first
+    return list.sort((a, b) => b._sortTime - a._sortTime);
   }, [activity, employeeAttendance]);
 
   const filteredItems = useMemo(() => {
@@ -168,15 +235,15 @@ export function LiveGymActivity({ activity }: LiveGymActivityProps) {
               ))}
             </div>
 
-            {/* Vertical Scroll Buttons */}
+            {/* Scroll Buttons */}
             {filteredItems.length > 4 && (
               <div className="flex items-center gap-0.5 bg-navy-50 border border-navy-100 rounded-lg p-0.5 shadow-2xs">
                 <button
                   type="button"
                   onClick={() => handleScroll('up')}
                   title="Scroll Up"
-                  className="p-1 rounded-md text-navy-500 hover:text-navy-900 hover:bg-white transition-all cursor-pointer"
                   aria-label="Scroll Up"
+                  className="p-1 rounded-md text-navy-500 hover:text-navy-900 hover:bg-white transition-all cursor-pointer"
                 >
                   <Icon name="chevron-up" size={14} />
                 </button>
@@ -184,8 +251,8 @@ export function LiveGymActivity({ activity }: LiveGymActivityProps) {
                   type="button"
                   onClick={() => handleScroll('down')}
                   title="Scroll Down"
-                  className="p-1 rounded-md text-navy-500 hover:text-navy-900 hover:bg-white transition-all cursor-pointer"
                   aria-label="Scroll Down"
+                  className="p-1 rounded-md text-navy-500 hover:text-navy-900 hover:bg-white transition-all cursor-pointer"
                 >
                   <Icon name="chevron-down" size={14} />
                 </button>
@@ -198,7 +265,7 @@ export function LiveGymActivity({ activity }: LiveGymActivityProps) {
         {filteredItems.length === 0 ? (
           <div className="py-10 text-center text-xs font-semibold text-navy-400 space-y-1">
             <Icon name="activity" size={24} className="mx-auto text-navy-300 mb-2" />
-            <div>No live activity events matching filter recorded today.</div>
+            <div>No check-in / check-out events found.</div>
           </div>
         ) : (
           <div
@@ -206,13 +273,14 @@ export function LiveGymActivity({ activity }: LiveGymActivityProps) {
             className="max-h-[380px] overflow-y-auto space-y-2.5 pr-1.5 scroll-smooth overscroll-contain"
           >
             {filteredItems.map((item) => {
-              const initials = (item.name || 'U')
+              // Generate initials purely from real name
+              const initials = item.name
                 .split(' ')
                 .filter(Boolean)
                 .map((w) => w[0])
                 .join('')
                 .slice(0, 2)
-                .toUpperCase() || 'U';
+                .toUpperCase();
 
               const isCheckout = item.action === 'Check-out';
               const isEmployee = item.role === 'Employee';
@@ -223,11 +291,13 @@ export function LiveGymActivity({ activity }: LiveGymActivityProps) {
                   className="flex items-center justify-between p-3 rounded-xl hover:bg-navy-50/90 transition-all group border border-navy-100/70 hover:border-navy-200 bg-white shadow-2xs hover:shadow-xs"
                 >
                   <div className="flex items-center gap-3.5 min-w-0">
-                    {/* Avatar with Status Indicator */}
+                    {/* Avatar */}
                     <div className="relative shrink-0">
                       <div className={cn(
                         'w-10 h-10 rounded-xl flex items-center justify-center text-white font-extrabold text-xs shadow-xs uppercase',
-                        isEmployee ? 'bg-gradient-to-tr from-indigo-600 to-purple-600' : 'bg-gradient-to-tr from-blue-600 to-cyan-600'
+                        isEmployee
+                          ? 'bg-gradient-to-tr from-indigo-600 to-purple-600'
+                          : 'bg-gradient-to-tr from-blue-600 to-cyan-600'
                       )}>
                         {initials}
                       </div>
@@ -239,33 +309,36 @@ export function LiveGymActivity({ activity }: LiveGymActivityProps) {
                       </div>
                     </div>
 
-                    {/* Member Details */}
+                    {/* Details */}
                     <div className="min-w-0 space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
+                        {/* Real name from DB */}
                         <h4 className="text-xs font-extrabold text-navy-900 group-hover:text-brand-600 transition-colors truncate">
                           {item.name}
                         </h4>
 
-                        {/* Customer / Member ID from DB */}
+                        {/* Real ID from DB */}
                         {item.customerId && (
                           <span className="px-1.5 py-0.5 rounded-md text-[10px] font-mono font-semibold bg-navy-100/80 text-navy-700 border border-navy-200/70">
                             ID: {item.customerId}
                           </span>
                         )}
 
-                        {/* Role Tag */}
+                        {/* Role Badge — driven entirely by backend resolved_role */}
                         <span className={cn(
                           'px-1.5 py-0.5 rounded-md text-[9px] font-extrabold uppercase tracking-wider',
-                          isEmployee ? 'bg-purple-50 text-purple-700 border border-purple-200/60' : 'bg-blue-50 text-blue-700 border border-blue-200/60'
+                          isEmployee
+                            ? 'bg-purple-50 text-purple-700 border border-purple-200/60'
+                            : 'bg-blue-50 text-blue-700 border border-blue-200/60'
                         )}>
                           {item.role}
                         </span>
 
-                        {/* Check-in / Check-out Status Badge */}
+                        {/* Check-in / Check-out Badge */}
                         <span className={cn(
                           'px-2 py-0.5 rounded-md text-[9px] font-extrabold uppercase tracking-wider inline-flex items-center gap-1',
-                          isCheckout 
-                            ? 'bg-amber-50 text-amber-800 border border-amber-200/80' 
+                          isCheckout
+                            ? 'bg-amber-50 text-amber-800 border border-amber-200/80'
                             : 'bg-emerald-50 text-emerald-800 border border-emerald-200/80'
                         )}>
                           <span className={cn('w-1.5 h-1.5 rounded-full', isCheckout ? 'bg-amber-500' : 'bg-emerald-500')} />
@@ -273,20 +346,30 @@ export function LiveGymActivity({ activity }: LiveGymActivityProps) {
                         </span>
                       </div>
 
-                      {/* Device & Location Information */}
-                      <p className="text-[11px] font-medium text-navy-500 truncate flex items-center gap-1.5">
-                        <span className="font-semibold text-navy-700">{item.location}</span>
-                        <span className="text-navy-300">·</span>
-                        <span className="text-navy-400">{item.device}</span>
-                      </p>
+                      {/* Device & Location — only rendered when present in DB */}
+                      {(item.location || item.device) && (
+                        <p className="text-[11px] font-medium text-navy-500 truncate flex items-center gap-1.5">
+                          {item.location && (
+                            <span className="font-semibold text-navy-700">{item.location}</span>
+                          )}
+                          {item.location && item.device && (
+                            <span className="text-navy-300">·</span>
+                          )}
+                          {item.device && (
+                            <span className="text-navy-400">{item.device}</span>
+                          )}
+                        </p>
+                      )}
                     </div>
                   </div>
 
-                  {/* DB Timestamp Display */}
+                  {/* Timestamp */}
                   <div className="shrink-0 ml-3 text-right">
-                    <div className="text-xs font-mono font-bold text-navy-800 bg-navy-50/90 group-hover:bg-white px-2.5 py-1 rounded-lg border border-navy-100 group-hover:border-navy-200 transition-colors shadow-2xs">
-                      {item.time}
-                    </div>
+                    {item.time && (
+                      <div className="text-xs font-mono font-bold text-navy-800 bg-navy-50/90 group-hover:bg-white px-2.5 py-1 rounded-lg border border-navy-100 group-hover:border-navy-200 transition-colors shadow-2xs">
+                        {item.time}
+                      </div>
+                    )}
                     {item.fullDateStr && (
                       <span className="text-[10px] font-medium text-navy-400 block mt-0.5">
                         {item.fullDateStr}
@@ -300,12 +383,12 @@ export function LiveGymActivity({ activity }: LiveGymActivityProps) {
         )}
       </div>
 
-      {/* Footer Navigation */}
+      {/* Footer */}
       <div className="pt-3 border-t border-navy-100/80 flex items-center justify-between text-xs">
         <span className="font-bold text-navy-400 inline-flex items-center gap-1.5">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Real-time biometric attendance sync active
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          Real-time biometric attendance sync active
         </span>
-
         <button
           type="button"
           onClick={() => navigate('/owner/members')}

@@ -15,7 +15,6 @@ const PrivacyPolicyPage = lazy(() => import('@/pages/PrivacyPolicyPage').then(m 
 // Owner pages
 const OwnerDashboard = lazy(() => import('@/pages/owner/OwnerDashboard').then(m => ({ default: m.OwnerDashboard })));
 const MembersPage = lazy(() => import('@/pages/owner/MembersPage').then(m => ({ default: m.MembersPage })));
-const Customer360Page = lazy(() => import('@/pages/owner/Customer360Page').then(m => ({ default: m.Customer360Page })));
 const FoodScannerPage = lazy(() => import('@/pages/owner/FoodScannerPage').then(m => ({ default: m.FoodScannerPage })));
 const HealthSyncPage = lazy(() => import('@/pages/owner/HealthSyncPage').then(m => ({ default: m.HealthSyncPage })));
 const CrmPage = lazy(() => import('@/pages/owner/CrmPage').then(m => ({ default: m.CrmPage })));
@@ -95,7 +94,7 @@ function AppRoutes() {
         <Route path="/owner" element={<ProtectedRoute><RoleRedirect allowed={['owner']} /></ProtectedRoute>}>
           <Route index element={<OwnerDashboard />} />
           <Route path="customers" element={<MembersPage />} />
-          <Route path="customers/:id" element={<Customer360Page />} />
+          <Route path="customers/:id" element={<Navigate to="/owner/customers" replace />} />
           <Route path="nutrition" element={<Navigate to="/owner" replace />} />
           <Route path="food-scanner" element={<FoodScannerPage />} />
           <Route path="body-composition" element={<Navigate to="/owner/iot?tab=body-composition" replace />} />

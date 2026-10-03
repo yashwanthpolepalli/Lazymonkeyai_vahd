@@ -18,9 +18,10 @@ export const dashboardApi = {
     const totalMembers = (res?.radarHealthy || 0) + (res?.radarAttention || 0) + (res?.radarHighRisk || 0);
 
     return {
+      userName: res?.userName || '',
       gym: {
-        name: res?.gymName || 'Fit Club',
-        branch: res?.branchName || branch || 'Main Branch',
+        name: res?.gymName || '',
+        branch: res?.branchName || branch || '',
       },
       summary: {
         total_members: totalMembers,

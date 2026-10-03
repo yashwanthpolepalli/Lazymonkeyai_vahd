@@ -210,3 +210,30 @@ export function isSlotPassed(dateInput?: string | Date | null, startTime?: strin
 
   return false;
 }
+
+/**
+ * Returns dynamic greeting ("Good Morning", "Good Afternoon", "Good Evening") based on IST time (UTC+5:30).
+ * - 04:00 to 11:59 -> Good Morning
+ * - 12:00 to 16:59 -> Good Afternoon
+ * - 17:00 to 03:59 -> Good Evening
+ */
+export function getISTGreeting(): string {
+  try {
+    const istNow = getISTNow();
+    const hours = istNow.getHours();
+
+    if (hours >= 4 && hours < 12) {
+      return 'Good Morning';
+    } else if (hours >= 12 && hours < 17) {
+      return 'Good Afternoon';
+    } else {
+      return 'Good Evening';
+    }
+  } catch (_e) {
+    const hour = new Date().getHours();
+    if (hour >= 4 && hour < 12) return 'Good Morning';
+    if (hour >= 12 && hour < 17) return 'Good Afternoon';
+    return 'Good Evening';
+  }
+}
+

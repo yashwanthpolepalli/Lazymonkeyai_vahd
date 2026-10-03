@@ -393,10 +393,10 @@ export function HrmsTrainersTab() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-black text-navy-900 tracking-tight flex items-center gap-2">
-            <span>Trainer & Coach Directory</span>
+            <span>Employee Directory</span>
           </h2>
           <p className="text-xs text-navy-500 font-medium">
-            Manage fitness trainers, monitor client assignments, renew contracts & generate payroll payouts.
+            Manage employees & staff, monitor assignments, renew contracts & generate payroll payouts.
           </p>
         </div>
 
@@ -438,7 +438,7 @@ export function HrmsTrainersTab() {
             className="px-4 py-2 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white flex items-center gap-1.5 shadow-md shadow-purple-600/20 active:scale-[0.98] transition-all"
           >
             <Icon name="plus" size={15} />
-            <span>Add Trainer</span>
+            <span>Add EMP</span>
           </button>
         </div>
       </div>
@@ -447,20 +447,20 @@ export function HrmsTrainersTab() {
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3.5">
         <div className="bg-white rounded-2xl p-4 border border-navy-100 shadow-sm relative overflow-hidden flex flex-col justify-between">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-navy-500">Total Trainers</span>
+            <span className="text-xs font-bold text-navy-500">Total Employees</span>
             <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
               <Icon name="user" size={16} />
             </div>
           </div>
           <div className="space-y-0.5">
             <div className="text-2xl font-black text-navy-900">{totalTrainersCount}</div>
-            <div className="text-[11px] font-medium text-navy-400">Registered coaching staff</div>
+            <div className="text-[11px] font-medium text-navy-400">Registered staff & employees</div>
           </div>
         </div>
 
         <div className="bg-white rounded-2xl p-4 border border-navy-100 shadow-sm relative overflow-hidden flex flex-col justify-between">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-navy-500">Active Trainers</span>
+            <span className="text-xs font-bold text-navy-500">Active Employees</span>
             <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
               <Icon name="user-check" size={16} />
             </div>
@@ -468,14 +468,14 @@ export function HrmsTrainersTab() {
           <div className="space-y-0.5">
             <div className="text-2xl font-black text-navy-900">{activeTrainersCount}</div>
             <div className="text-[11px] font-bold text-emerald-600 flex items-center gap-1">
-              <span>{activeTrainersCount} on floor</span>
+              <span>{activeTrainersCount} on duty</span>
             </div>
           </div>
         </div>
 
         <div className="bg-white rounded-2xl p-4 border border-navy-100 shadow-sm relative overflow-hidden flex flex-col justify-between">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-navy-500">Total Clients</span>
+            <span className="text-xs font-bold text-navy-500">Total Students</span>
             <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
               <Icon name="users" size={16} />
             </div>
@@ -483,7 +483,7 @@ export function HrmsTrainersTab() {
           <div className="space-y-0.5">
             <div className="text-2xl font-black text-navy-900">{totalClientsCount}</div>
             <div className="text-[11px] font-bold text-blue-600 flex items-center gap-1">
-              <span>Assigned members</span>
+              <span>Assigned students</span>
             </div>
           </div>
         </div>
@@ -525,7 +525,7 @@ export function HrmsTrainersTab() {
           <Icon name="search" size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-navy-400" />
           <input
             type="text"
-            placeholder="Search trainers by name, specialty, email..."
+            placeholder="Search employees by name, role, email..."
             value={searchQuery}
             onChange={(e) => {
               setSearchQuery(e.target.value);
@@ -674,10 +674,10 @@ export function HrmsTrainersTab() {
                 <div className="w-12 h-12 rounded-full bg-navy-50 text-navy-400 flex items-center justify-center mx-auto">
                   <Icon name="users" size={24} />
                 </div>
-                <div className="text-sm font-bold text-navy-900">No Trainers Found in Directory</div>
-                <p className="text-xs text-navy-400 max-w-sm mx-auto">Click 'Add Trainer' above to register personal trainers.</p>
+                <div className="text-sm font-bold text-navy-900">No Employees Found in Directory</div>
+                <p className="text-xs text-navy-400 max-w-sm mx-auto">Click 'Add EMP' above to register new staff and employees.</p>
                 <button onClick={() => setEnrollOpen(true)} className="px-4 py-2 rounded-xl text-xs font-bold bg-purple-600 text-white inline-flex items-center gap-1.5 shadow-md shadow-purple-600/20">
-                  <Icon name="plus" size={15} /> Add First Trainer
+                  <Icon name="plus" size={15} /> Add First EMP
                 </button>
               </div>
             ) : (
@@ -692,9 +692,9 @@ export function HrmsTrainersTab() {
                         className="w-4 h-4 rounded border-navy-300 text-purple-600 focus:ring-purple-500"
                       />
                     </th>
-                    <th className="py-3.5 px-4">TRAINER</th>
-                    <th className="py-3.5 px-4">SPECIALIZATION</th>
-                    <th className="py-3.5 px-4">CLIENTS</th>
+                    <th className="py-3.5 px-4">EMPLOYEE</th>
+                    <th className="py-3.5 px-4">ROLE / DESIGNATION</th>
+                    <th className="py-3.5 px-4">STUDENTS</th>
                     <th className="py-3.5 px-4">RATING</th>
                     <th className="py-3.5 px-4">STATUS</th>
                     <th className="py-3.5 px-4">JOIN DATE</th>
@@ -808,7 +808,7 @@ export function HrmsTrainersTab() {
           {/* Table Footer Pagination */}
           <div className="p-4 bg-navy-50/50 border-t border-navy-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-semibold text-navy-500">
             <div>
-              Showing {displayTrainers.length > 0 ? startIndex + 1 : 0} to {Math.min(startIndex + ITEMS_PER_PAGE, displayTrainers.length)} of {displayTrainers.length} trainers
+              Showing {displayTrainers.length > 0 ? startIndex + 1 : 0} to {Math.min(startIndex + ITEMS_PER_PAGE, displayTrainers.length)} of {displayTrainers.length} employees
             </div>
             <div className="flex items-center gap-1">
               <button

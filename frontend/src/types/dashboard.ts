@@ -55,6 +55,7 @@ export interface QuickActionItem {
 }
 
 export interface DashboardData {
+  userName?: string;
   gym: {
     name: string;
     branch: string;

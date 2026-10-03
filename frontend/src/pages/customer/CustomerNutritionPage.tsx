@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { apiClient } from '@/services/apiClient';
+import { getISTGreeting } from '@/utils/date';
 
 interface NutritionOverviewData {
   user_name: string;
@@ -312,7 +313,7 @@ export function CustomerNutritionPage() {
             <span>AI Personal Nutrition Engine</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight flex items-center gap-2">
-            Good Morning, {user_name}! 👋
+            {getISTGreeting()}, {user_name}! 👋
           </h1>
           <p className="text-xs sm:text-sm text-slate-300 font-medium max-w-xl">
             Stay consistent with your nutrition. Real-time AI macro optimization tailored strictly to your profile.

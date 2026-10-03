@@ -10,6 +10,14 @@ export const trainersApi = {
       return [];
     }
   },
+  getAll: async (): Promise<Trainer[]> => {
+    try {
+      const res = await apiClient.get<Trainer[]>('/trainers');
+      return Array.isArray(res) ? res : [];
+    } catch (_err) {
+      return [];
+    }
+  },
   get: async (id: string): Promise<Trainer | null> => {
     try {
       return await apiClient.get<Trainer>(`/trainers/${id}`);

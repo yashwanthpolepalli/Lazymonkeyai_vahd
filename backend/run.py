@@ -71,9 +71,7 @@ if __name__ == "__main__":
         "src.main:app",
         "--host", "0.0.0.0",
         "--port", "8000",
-        "--reload",
-        "--reload-dir", src_dir,
-        "--log-level", "warning",
+        "--log-level", "info",
     ]
 
     try:

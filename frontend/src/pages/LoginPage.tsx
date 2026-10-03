@@ -5,6 +5,7 @@ import { Logo } from '@/components/layout/Logo';
 import { useAuth } from '@/context/AuthContext';
 import { roleHomePath } from '@/config/navigation';
 import { cn } from '@/utils/cn';
+import { getISTGreeting } from '@/utils/date';
 
 export function LoginPage() {
   const { login } = useAuth();
@@ -50,15 +51,15 @@ export function LoginPage() {
 
   const roleTitleMap = {
     admin: 'Super Admin Portal',
-    owner: 'Gym Owner Portal',
-    trainer: 'Trainer Portal',
+    owner: 'Owner Portal',
+    trainer: 'EMP Portal',
     customer: 'Customer Portal',
   };
 
   const roleButtonMap = {
     admin: 'Sign In as Admin',
-    owner: 'Sign In as Gym Owner',
-    trainer: 'Sign In as Trainer',
+    owner: 'Sign In as Owner',
+    trainer: 'Sign In as EMP',
     customer: 'Sign In as Customer',
   };
 
@@ -183,7 +184,7 @@ export function LoginPage() {
                 {`${roleTitleMap[activeRole]} 👋`}
               </h2>
               <p className="text-xs sm:text-sm font-medium text-slate-400">
-                {`Enter your credentials to access your ${activeRole} portal`}
+                {`${getISTGreeting()}! Enter your credentials to access your ${activeRole} portal.`}
               </p>
             </div>
 
@@ -201,7 +202,7 @@ export function LoginPage() {
               {/* Email Input */}
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  {activeRole === 'owner' ? 'Owner Email' : activeRole === 'admin' ? 'Admin Email' : activeRole === 'trainer' ? 'Trainer Email' : 'Customer Email'}
+                  {activeRole === 'owner' ? 'Owner Email' : activeRole === 'admin' ? 'Admin Email' : activeRole === 'trainer' ? 'EMP Email' : 'Customer Email'}
                 </label>
                 <div className="relative flex items-center">
                   <Icon name="mail" size={18} className="absolute left-3.5 text-blue-500 pointer-events-none" />
@@ -209,7 +210,7 @@ export function LoginPage() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder={activeRole === 'owner' ? 'owner@fitclub.com' : activeRole === 'admin' ? 'admin@fitclub.com' : activeRole === 'trainer' ? 'trainer@fitclub.com' : 'customer@fitclub.com'}
+                    placeholder={activeRole === 'owner' ? 'owner@fitclub.com' : activeRole === 'admin' ? 'admin@fitclub.com' : activeRole === 'trainer' ? 'emp@fitclub.com' : 'customer@fitclub.com'}
                     className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-2xl py-2.5 pl-10 pr-10 text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                   />
                   {isValidEmail && (
@@ -313,7 +314,7 @@ export function LoginPage() {
                       : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300'
                   )}
                 >
-                  Emp/staff
+                  EMP
                 </button>
                 <button
                   type="button"

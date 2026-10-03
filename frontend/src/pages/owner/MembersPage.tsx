@@ -447,52 +447,43 @@ export function MembersPage() {
   return (
     <div className="space-y-6 animate-fade-in pb-8">
       <PageHeader
-        title="Members & Customers"
-        breadcrumb={['Owner', activeTab === 'members' ? 'Members' : 'Gym Slot Bookings']}
+        title="Students"
+        breadcrumb={['Owner', 'Students']}
         actions={
           <div className="flex items-center gap-2">
-            {activeTab === 'members' && (
-              <>
-                {selectedMemberIds.length > 0 && (
-                  <div className="flex items-center gap-2 mr-1">
-                    <button
-                      onClick={() => handleBatchToggleVideos(true)}
-                      className="btn-secondary flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 border-emerald-300 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800"
-                      title="Enable workout videos for selected members"
-                    >
-                      <Icon name="play" size={13} className="text-emerald-600 fill-emerald-600" /> Unlock Videos ({selectedMemberIds.length})
-                    </button>
-                    <button
-                      onClick={() => handleBatchToggleVideos(false)}
-                      className="btn-secondary flex items-center gap-1.5 text-xs font-semibold text-amber-700 bg-amber-50 border-amber-300 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-800"
-                      title="Lock workout videos for selected members"
-                    >
-                      <Icon name="lock" size={13} className="text-amber-600" /> Lock Videos ({selectedMemberIds.length})
-                    </button>
-                  </div>
-                )}
+            {selectedMemberIds.length > 0 && (
+              <div className="flex items-center gap-2 mr-1">
                 <button
-                  onClick={handleOpenRenewalModal}
-                  disabled={selectedMemberIds.length === 0}
-                  className={cn(
-                    'btn-secondary flex items-center gap-2 text-sm font-semibold transition-all',
-                    selectedMemberIds.length > 0
-                      ? 'border-brand-500 text-brand-600 bg-brand-50 ring-2 ring-brand-500/20 shadow-glow'
-                      : 'opacity-50 cursor-not-allowed'
-                  )}
+                  onClick={() => handleBatchToggleVideos(true)}
+                  className="btn-secondary flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 border-emerald-300 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800"
+                  title="Enable workout videos for selected students"
                 >
-                  <Icon name="refresh-cw" size={16} /> Renewal {selectedMemberIds.length > 0 && `(${selectedMemberIds.length})`}
+                  <Icon name="play" size={13} className="text-emerald-600 fill-emerald-600" /> Unlock Videos ({selectedMemberIds.length})
                 </button>
-                <button onClick={() => setEnrollOpen(true)} className="btn-primary flex items-center gap-2">
-                  <Icon name="plus" size={16} /> Add Member
+                <button
+                  onClick={() => handleBatchToggleVideos(false)}
+                  className="btn-secondary flex items-center gap-1.5 text-xs font-semibold text-amber-700 bg-amber-50 border-amber-300 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-800"
+                  title="Lock workout videos for selected students"
+                >
+                  <Icon name="lock" size={13} className="text-amber-600" /> Lock Videos ({selectedMemberIds.length})
                 </button>
-              </>
+              </div>
             )}
-            {activeTab === 'slots' && (
-              <button onClick={fetchSlotBookings} className="btn-secondary flex items-center gap-2 text-sm">
-                <Icon name="refresh-cw" size={16} className={cn(slotsLoading && 'animate-spin')} /> Refresh Bookings
-              </button>
-            )}
+            <button
+              onClick={handleOpenRenewalModal}
+              disabled={selectedMemberIds.length === 0}
+              className={cn(
+                'btn-secondary flex items-center gap-2 text-sm font-semibold transition-all',
+                selectedMemberIds.length > 0
+                  ? 'border-brand-500 text-brand-600 bg-brand-50 ring-2 ring-brand-500/20 shadow-glow'
+                  : 'opacity-50 cursor-not-allowed'
+              )}
+            >
+              <Icon name="refresh-cw" size={16} /> Renewal {selectedMemberIds.length > 0 && `(${selectedMemberIds.length})`}
+            </button>
+            <button onClick={() => setEnrollOpen(true)} className="btn-primary flex items-center gap-2">
+              <Icon name="plus" size={16} /> Add Student
+            </button>
           </div>
         }
       />
@@ -509,7 +500,7 @@ export function MembersPage() {
           )}
         >
           <Icon name="users" size={16} />
-          <span>Members Directory</span>
+          <span>Students Directory</span>
           <span className="px-2 py-0.5 rounded-full text-[10px] bg-navy-100 text-navy-600 font-bold">
             {members.length}
           </span>
@@ -540,55 +531,55 @@ export function MembersPage() {
 
       {activeTab === 'members' ? (
         <div className="card p-4">
-          <div className="flex flex-col sm:flex-row gap-3 mb-4">
-            <div className="relative flex-1">
-              <Icon name="search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-navy-400" />
-              <input
-                type="text"
-                placeholder="Search by name, phone or email..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="input-field pl-9"
-              />
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {filters.map((f) => (
-                <button
-                  key={f}
-                  onClick={() => setFilter(f)}
-                  className={cn(
-                    'px-3 py-2 rounded-lg text-xs font-semibold transition-all',
-                    filter === f ? 'bg-brand-600 text-white' : 'bg-navy-50 text-navy-500 hover:bg-navy-100'
-                  )}
-                >
-                  {f}
-                </button>
-              ))}
-            </div>
+        <div className="flex flex-col sm:flex-row gap-3 mb-4">
+          <div className="relative flex-1">
+            <Icon name="search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-navy-400" />
+            <input
+              type="text"
+              placeholder="Search students by name, phone or email..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="input-field pl-9"
+            />
           </div>
+          <div className="flex flex-wrap gap-2">
+            {filters.map((f) => (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                className={cn(
+                  'px-3 py-2 rounded-lg text-xs font-semibold transition-all',
+                  filter === f ? 'bg-brand-600 text-white' : 'bg-navy-50 text-navy-500 hover:bg-navy-100'
+                )}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
+        </div>
 
-          {loading ? (
-            <SkeletonTable rows={8} cols={10} />
-          ) : filtered.length === 0 ? (
-            <EmptyState icon="!" title="No members found" description="Try adjusting your search or filters." />
-          ) : (
-            <div className="overflow-x-auto -mx-4 px-4">
-              <table className="w-full min-w-[1050px]">
-                <thead>
-                  <tr className="border-b border-navy-100">
-                    <th className="px-3 py-3 w-10 text-center">
-                      <input
-                        type="checkbox"
-                        checked={filtered.length > 0 && selectedMemberIds.length === filtered.length}
-                        onChange={handleSelectAll}
-                        className="w-4 h-4 rounded border-navy-300 text-brand-600 focus:ring-brand-500 cursor-pointer"
-                      />
-                    </th>
-                    {['Member', 'Membership', 'Status', 'Attendance', 'Workout Videos', 'Last Visit', 'Expiry', 'Revenue', 'Risk', ''].map((h) => (
-                      <th key={h} className="text-left text-xs font-semibold text-navy-400 uppercase tracking-wider px-3 py-3">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
+        {loading ? (
+          <SkeletonTable rows={8} cols={10} />
+        ) : filtered.length === 0 ? (
+          <EmptyState icon="!" title="No students found" description="Try adjusting your search or filters." />
+        ) : (
+          <div className="overflow-x-auto -mx-4 px-4">
+            <table className="w-full min-w-[1050px]">
+              <thead>
+                <tr className="border-b border-navy-100">
+                  <th className="px-3 py-3 w-10 text-center">
+                    <input
+                      type="checkbox"
+                      checked={filtered.length > 0 && selectedMemberIds.length === filtered.length}
+                      onChange={handleSelectAll}
+                      className="w-4 h-4 rounded border-navy-300 text-brand-600 focus:ring-brand-500 cursor-pointer"
+                    />
+                  </th>
+                  {['Student', 'Program / Membership', 'Status', 'Attendance', 'Workout Videos', 'Last Visit', 'Expiry', 'Revenue', 'Risk', ''].map((h) => (
+                    <th key={h} className="text-left text-xs font-semibold text-navy-400 uppercase tracking-wider px-3 py-3">{h}</th>
+                  ))}
+                </tr>
+              </thead>
                 <tbody>
                   {filtered.map((m) => {
                     const name = m.name || (m as any).full_name || 'Member';

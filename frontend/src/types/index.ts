@@ -10,7 +10,9 @@ export interface User {
   avatar: string;
   gymId?: string;
   gymName?: string;
+  gym_name?: string;
   branchName?: string;
+  branch_name?: string;
 }
 
 export interface KpiCard {

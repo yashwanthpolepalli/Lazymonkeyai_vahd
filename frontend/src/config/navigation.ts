@@ -20,9 +20,8 @@ export const navConfig: Record<Role, NavItem[]> = {
   ],
   owner: [
     { label: 'Executive Overview', path: '/owner', icon: 'layout-grid' },
-    { label: 'Customers', path: '/owner/customers', icon: 'users' },
+    { label: 'Students', path: '/owner/customers', icon: 'users' },
     { label: 'HRMS', path: '/owner/hrms', icon: 'users' },
-    { label: 'Sales & CRM', path: '/owner/crm', icon: 'trending-up' },
     { label: 'POS', path: '/owner/pos', icon: 'credit-card' },
     { label: 'Payments', path: '/owner/payments', icon: 'indian-rupee' },
     { label: 'IoT Devices', path: '/owner/iot', icon: 'cpu' },

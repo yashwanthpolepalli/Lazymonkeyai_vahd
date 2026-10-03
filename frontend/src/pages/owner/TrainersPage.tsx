@@ -436,7 +436,7 @@ export function TrainersPage() {
             className="btn-primary bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-2.5 px-4 rounded-xl flex items-center gap-2 shadow-sm shadow-blue-500/20 active:scale-[0.98] transition-all"
           >
             <Icon name="plus" size={16} />
-            <span>Add Trainer</span>
+            <span>Add EMP</span>
           </button>
           
           <button className="btn-secondary border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold py-2.5 px-3.5 rounded-xl flex items-center gap-2 shadow-xs">

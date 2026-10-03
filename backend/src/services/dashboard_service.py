@@ -473,13 +473,19 @@ class DashboardService:
             weekly_attendance_chart.append(int(att_by_day.get(d_key, 0) or 0))
 
         peak_daily_revenue = max(weekly_revenue_chart) if (weekly_revenue_chart and max(weekly_revenue_chart) > 0) else today_revenue
-        gym_ctx = _fetch_gym_context(db)
+        gym_ctx = _fetch_gym_context(db, current_user)
+        user_name = (
+            (current_user.full_name if current_user and getattr(current_user, "full_name", None) else None)
+            or (current_user.name if current_user and getattr(current_user, "name", None) else None)
+            or None
+        )
         today_mem_sales = float(sum(m.paid_amount for m in today_mems if m.paid_amount and getattr(m, "plan_type", None) != "RENEWAL"))
         today_ren_sales = float(sum(m.paid_amount for m in today_mems if m.paid_amount and getattr(m, "plan_type", None) == "RENEWAL"))
 
         return {
             "gymName": gym_ctx.get("gym_name", None),
             "branchName": gym_ctx.get("branch_name", None),
+            "userName": user_name,
             "currentlyInside": currently_inside,
             "todayAttendance": today_attendance,
             "todayRevenue": today_revenue,

@@ -183,246 +183,58 @@ export function EnrollmentModal({
     }
   }, [open]);
 
-  // Build dynamic workout programs combining core offerings with owner configured database plans
+  // Build dynamic workout programs strictly from owner configured database plans
   const workoutPrograms = (() => {
-    const strengthCardioPlans = plans.filter((p) => {
-      const cat = (p.category || '').toLowerCase();
-      const name = p.name.toLowerCase();
-      return cat === 'strength_cardio' || cat === 'cardio_strength' || (name.includes('strength') && name.includes('cardio'));
-    });
+    if (!Array.isArray(plans) || plans.length === 0) {
+      return [];
+    }
 
-    const strengthZumbaPlans = plans.filter((p) => {
-      const cat = (p.category || '').toLowerCase();
-      const name = p.name.toLowerCase();
-      return cat === 'strength_zumba' || (name.includes('strength') && name.includes('zumba'));
-    });
-
-    const cardioZumbaPlans = plans.filter((p) => {
-      const cat = (p.category || '').toLowerCase();
-      const name = p.name.toLowerCase();
-      return cat === 'cardio_zumba' || (name.includes('cardio') && name.includes('zumba'));
-    });
-
-    const gymPlans = plans.filter((p) => {
-      const cat = (p.category || '').toLowerCase();
-      const name = p.name.toLowerCase();
-      return (cat === 'gym' || cat === 'general' || cat === '' || name.includes('monthly') || name.includes('quaterly') || name.includes('quarterly') || name.includes('yearly') || name.includes('gold') || name.includes('gym')) && !name.includes('+');
-    });
-
-    const zumbaPlans = plans.filter((p) => {
-      const cat = (p.category || '').toLowerCase();
-      const name = p.name.toLowerCase();
-      return (cat === 'zumba' || name.includes('zumba') || name.includes('dance')) && !name.includes('+') && !name.includes('strength') && !name.includes('cardio');
-    });
-
-    const ptPlans = plans.filter((p) => {
-      const cat = (p.category || '').toLowerCase();
-      const name = p.name.toLowerCase();
-      return cat === 'pt' || cat === 'personal_training' || name.includes('personal') || name.includes('pt');
-    });
-
-    const strengthPlans = plans.filter((p) => {
-      const cat = (p.category || '').toLowerCase();
-      const name = p.name.toLowerCase();
-      return (cat === 'strength' || cat === 'weight_lifting' || name.includes('strength') || name.includes('lifting') || name.includes('cross')) && !name.includes('+') && !name.includes('cardio') && !name.includes('zumba');
-    });
-
-    const yogaPlans = plans.filter((p) => {
-      const cat = (p.category || '').toLowerCase();
-      const name = p.name.toLowerCase();
-      return cat === 'yoga' || cat === 'pilates' || cat === 'aerobics' || name.includes('yoga') || name.includes('pilates');
-    });
-
-    const getExactOrScaledPrice = (matchedPlans: PlanItem[], days: number, defaultBasePrice: number) => {
-      const exact = matchedPlans.find((p) => (p.duration_days || 30) === days);
-      if (exact && typeof exact.price === 'number' && exact.price > 0) {
-        const periodLabel = days === 30 ? 'month' : days === 90 ? '3 months' : days === 180 ? '6 months' : days === 365 ? 'year' : `${days} days`;
-        return { price: exact.price, periodLabel, durationDays: days };
-      }
-
-      const monthlyPlan = matchedPlans.find((p) => (p.duration_days || 30) === 30);
-      const basePrice = (monthlyPlan && monthlyPlan.price > 0) ? monthlyPlan.price : defaultBasePrice;
-
-      let multiplier = 1;
-      let periodLabel = 'month';
-
-      if (days === 30) {
-        multiplier = 1;
-        periodLabel = 'month';
-      } else if (days === 90) {
-        multiplier = 2.6;
-        periodLabel = '3 months';
-      } else if (days === 180) {
-        multiplier = 4.8;
-        periodLabel = '6 months';
-      } else if (days === 365) {
-        multiplier = 8.8;
-        periodLabel = 'year';
-      } else {
-        multiplier = (days / 30) * 0.95;
-        periodLabel = `${days} days`;
-      }
-
-      const calculatedPrice = Math.round((basePrice * multiplier) / 50) * 50;
-      return { price: calculatedPrice, periodLabel, durationDays: days };
-    };
-
-    const list = [
-      {
-        id: 'prog_strength_cardio',
-        name: 'Strength Training + Cardio',
-        category: 'strength_cardio',
-        categoryLabel: 'Strength + Cardio Combo',
-        programType: 'combos' as const,
-        isCombo: true,
-        badge: strengthCardioPlans.find((p) => p.badge)?.badge || 'Popular Combo',
-        color: 'from-emerald-500 to-teal-600',
-        features: strengthCardioPlans[0]?.features?.length ? strengthCardioPlans[0].features : ['Weight Training Floor Access', 'HIIT Circuit & Cardio Zone', 'Fat Burn & Stamina Tracking', 'Certified Trainer Guidance', 'Locker & Shower Access'],
-        getPriceForDuration: (days: number) => getExactOrScaledPrice(strengthCardioPlans, days, 3500),
-      },
-      {
-        id: 'prog_strength_zumba',
-        name: 'Strength Training + Zumba',
-        category: 'strength_zumba',
-        categoryLabel: 'Strength + Zumba Combo',
-        programType: 'combos' as const,
-        isCombo: true,
-        badge: strengthZumbaPlans.find((p) => p.badge)?.badge || 'Best Seller',
-        color: 'from-rose-500 to-pink-600',
-        features: strengthZumbaPlans[0]?.features?.length ? strengthZumbaPlans[0].features : ['Full Weight Training Floor Access', 'Unlimited Zumba Dance Classes', 'Muscle Toning & Aerobic Burn', 'Music-Synced Group Sessions', 'Diet Assessment'],
-        getPriceForDuration: (days: number) => getExactOrScaledPrice(strengthZumbaPlans, days, 3800),
-      },
-      {
-        id: 'prog_cardio_zumba',
-        name: 'Cardio + Zumba Fitness',
-        category: 'cardio_zumba',
-        categoryLabel: 'Cardio + Zumba Combo',
-        programType: 'combos' as const,
-        isCombo: true,
-        badge: cardioZumbaPlans.find((p) => p.badge)?.badge || 'High Burn',
-        color: 'from-amber-500 to-orange-600',
-        features: cardioZumbaPlans[0]?.features?.length ? cardioZumbaPlans[0].features : ['Cardio Zone & Spin Bikes', 'High-Energy Zumba Classes', 'Aerobic Calorie Burn', 'Heart Rate Monitoring', 'Locker Access'],
-        getPriceForDuration: (days: number) => getExactOrScaledPrice(cardioZumbaPlans, days, 3200),
-      },
-      {
-        id: 'prog_gym',
-        name: 'General Gym & Fitness Access',
-        category: 'gym',
-        categoryLabel: 'Gym All-Access',
-        programType: 'training' as const,
-        isCombo: false,
-        badge: gymPlans.find((p) => p.badge)?.badge || 'All-Access',
-        color: 'from-blue-500 to-indigo-600',
-        features: ['Full Gym Floor & Equipment', 'Cardio & Free Weights Zone', 'Locker & Shower Access', 'Free Fitness Assessment'],
-        getPriceForDuration: (days: number) => getExactOrScaledPrice(gymPlans, days, 1500),
-      },
-      {
-        id: 'prog_strength',
-        name: 'Strength & Functional Training',
-        category: 'strength',
-        categoryLabel: 'Strength Training',
-        programType: 'training' as const,
-        isCombo: false,
-        badge: strengthPlans.find((p) => p.badge)?.badge || '',
-        color: 'from-teal-500 to-emerald-600',
-        features: ['Olympic Lifting & Squat Racks', 'Kettlebell & Functional Zone', 'HIIT Circuit Training', 'Strength Progression Tracking'],
-        getPriceForDuration: (days: number) => getExactOrScaledPrice(strengthPlans, days, 3000),
-      },
-      {
-        id: 'prog_zumba',
-        name: 'Zumba Dance Fitness',
-        category: 'zumba',
-        categoryLabel: 'Zumba Dance Class',
-        programType: 'classes' as const,
-        isCombo: false,
-        badge: zumbaPlans.find((p) => p.badge)?.badge || 'Popular',
-        color: 'from-pink-500 to-rose-600',
-        features: zumbaPlans[0]?.features?.length ? zumbaPlans[0].features : ['High-Energy Dance Classes', 'Aerobic Cardio Burn', 'Certified Instructors', 'Music-Synced Workouts'],
-        getPriceForDuration: (days: number) => getExactOrScaledPrice(zumbaPlans, days, 2500),
-      },
-      {
-        id: 'prog_yoga',
-        name: 'Yoga, Pilates & Mind-Body Mobility',
-        category: 'yoga',
-        categoryLabel: 'Yoga & Pilates Class',
-        programType: 'classes' as const,
-        isCombo: false,
-        badge: yogaPlans.find((p) => p.badge)?.badge || '',
-        color: 'from-purple-500 to-violet-600',
-        features: ['Mind-Body Balance Drills', 'Mat Pilates & Core Stability', 'Breathing & Stress Relief', 'Certified Master Instructors'],
-        getPriceForDuration: (days: number) => getExactOrScaledPrice(yogaPlans, days, 2200),
-      },
-      {
-        id: 'prog_pt',
-        name: 'Personal Training (PT) & Pro Coaching',
-        category: 'pt',
-        categoryLabel: '1-on-1 PT Coaching',
-        programType: 'pt' as const,
-        isCombo: false,
-        badge: ptPlans.find((p) => p.badge)?.badge || 'VIP 1-on-1',
-        color: 'from-amber-600 to-yellow-600',
-        features: ['1-on-1 Dedicated Trainer', 'Custom Workout & Diet Plan', 'Bi-weekly Body Composition', 'Priority Slot Booking'],
-        getPriceForDuration: (days: number) => getExactOrScaledPrice(ptPlans, days, 5000),
-      },
-    ];
-
-    // Merge any custom owner plans from database
-    const handledPlanNames = new Set([
-      ...strengthCardioPlans.map((p) => p.name.toLowerCase()),
-      ...strengthZumbaPlans.map((p) => p.name.toLowerCase()),
-      ...cardioZumbaPlans.map((p) => p.name.toLowerCase()),
-      ...gymPlans.map((p) => p.name.toLowerCase()),
-      ...zumbaPlans.map((p) => p.name.toLowerCase()),
-      ...ptPlans.map((p) => p.name.toLowerCase()),
-      ...strengthPlans.map((p) => p.name.toLowerCase()),
-      ...yogaPlans.map((p) => p.name.toLowerCase()),
-    ]);
-
-    plans.forEach((cp) => {
+    return plans.map((cp) => {
       const lowerName = (cp.name || '').toLowerCase();
-      if (
-        !handledPlanNames.has(lowerName) &&
-        !lowerName.includes('monthly') &&
-        !lowerName.includes('quaterly') &&
-        !lowerName.includes('quarterly') &&
-        !lowerName.includes('yearly')
-      ) {
-        handledPlanNames.add(lowerName);
-        const isCombo = cp.is_combo !== undefined
-          ? Boolean(cp.is_combo || cp.isCombo)
-          : Boolean((cp.category || '').includes('_') || cp.name.includes('+'));
-        const isClass = (cp.category || '').includes('dance') || (cp.category || '').includes('yoga') || (cp.category || '').includes('zumba');
-        const isPt = (cp.category || '').includes('pt') || (cp.category || '').includes('trainer');
-        const programType = isCombo ? 'combos' : isClass ? 'classes' : isPt ? 'pt' : 'training';
+      const isCombo = cp.is_combo !== undefined
+        ? Boolean(cp.is_combo || cp.isCombo)
+        : Boolean((cp.category || '').includes('_') || cp.name.includes('+'));
+      const isClass = (cp.category || '').includes('dance') || (cp.category || '').includes('yoga') || (cp.category || '').includes('zumba');
+      const isPt = (cp.category || '').includes('pt') || (cp.category || '').includes('trainer');
+      const programType = isCombo ? 'combos' : isClass ? 'classes' : isPt ? 'pt' : 'training';
 
-        list.push({
-          id: `custom_${cp.id || lowerName.replace(/\s+/g, '_')}`,
-          name: cp.name,
-          category: cp.category || 'custom',
-          categoryLabel: (cp.category || 'Custom Program').replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()),
-          programType,
-          isCombo,
-          badge: cp.badge || (isCombo ? 'Combo Pack' : ''),
-          color: cp.color || 'from-indigo-500 to-cyan-600',
-          features: cp.features?.length ? cp.features : ['Full Access & Dedicated Support', 'Gym Floor & Facilities', 'Locker & Assessment'],
-          getPriceForDuration: (days: number) => {
-            if ((cp.duration_days || 30) === days) {
-              const periodLabel = days === 30 ? 'month' : days === 90 ? '3 months' : days === 180 ? '6 months' : days === 365 ? 'year' : `${days} days`;
-              return { price: cp.price, periodLabel, durationDays: days };
-            }
-            return getExactOrScaledPrice([cp], days, cp.price || 2000);
-          },
-        });
-      }
+      const color = cp.color || (
+        isCombo ? 'from-rose-500 to-pink-600' :
+        isClass ? 'from-purple-500 to-violet-600' :
+        isPt ? 'from-amber-600 to-yellow-600' :
+        'from-blue-500 to-indigo-600'
+      );
+
+      return {
+        id: cp.id || `plan_${lowerName.replace(/\s+/g, '_')}`,
+        name: cp.name,
+        category: cp.category || 'general',
+        categoryLabel: (cp.category || 'Membership Plan').replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()),
+        programType,
+        isCombo,
+        badge: cp.badge || (isCombo ? 'Combo Pack' : ''),
+        color,
+        features: cp.features?.length ? cp.features : ['Gym Floor & Facilities Access', 'Locker & Assessment'],
+        getPriceForDuration: (days: number) => {
+          if ((cp.duration_days || 30) === days) {
+            const periodLabel = days === 30 ? 'month' : days === 90 ? '3 months' : days === 180 ? '6 months' : days === 365 ? 'year' : `${days} days`;
+            return { price: cp.price, periodLabel, durationDays: days };
+          }
+          const baseDuration = cp.duration_days || 30;
+          let multiplier = days === 30 ? 1 : days === 90 ? 2.6 : days === 180 ? 4.8 : days === 365 ? 8.8 : (days / baseDuration);
+          const basePrice = cp.price || 0;
+          const calculatedPrice = Math.round((basePrice * multiplier) / 50) * 50;
+          const periodLabel = days === 30 ? 'month' : days === 90 ? '3 months' : days === 180 ? '6 months' : days === 365 ? 'year' : `${days} days`;
+          return { price: calculatedPrice, periodLabel, durationDays: days };
+        },
+      };
     });
-
-    return list;
   })();
 
   const currentProgram = workoutPrograms.find((p) => p.id === selectedProgramId) || workoutPrograms[0];
   const currentActivePricing = currentProgram
     ? currentProgram.getPriceForDuration(selectedDurationDays)
-    : { price: 1500, periodLabel: 'month', durationDays: selectedDurationDays };
+    : { price: 0, periodLabel: 'month', durationDays: selectedDurationDays };
 
   // Handle Start Date change with dynamic expiry recalculation
   const handleStartDateChange = (newStartDate: string) => {
@@ -657,7 +469,7 @@ export function EnrollmentModal({
               <Icon name="user-plus" size={20} className="text-white" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-navy-900">{personType === 'trainer' ? 'New Trainer' : 'New Member'} Enrollment</h2>
+              <h2 className="text-base font-bold text-navy-900">{personType === 'trainer' ? 'New Employee' : 'New Student'} Enrollment</h2>
               <p className="text-xs text-navy-400">Step {step + 1} of {steps.length} · {steps[step]}</p>
             </div>
           </div>
@@ -688,15 +500,12 @@ export function EnrollmentModal({
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="text-sm font-semibold text-navy-700 mb-1.5 block">Full Name</label><input type="text" placeholder="Enter name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input-field" /></div>
                 <div><label className="text-sm font-semibold text-navy-700 mb-1.5 block">Phone</label><input type="text" placeholder="+91 ..." value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="input-field" /></div>
-                <div><label className="text-sm font-semibold text-navy-700 mb-1.5 block">Email</label><input type="email" placeholder="email@fitclub.ai" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="input-field" /></div>
-                {personType === 'member' ? (
+                <div className={personType === 'trainer' ? 'col-span-2' : ''}><label className="text-sm font-semibold text-navy-700 mb-1.5 block">Email</label><input type="email" placeholder="email@fitclub.ai" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="input-field" /></div>
+                {personType === 'member' && (
                   <div><label className="text-sm font-semibold text-navy-700 mb-1.5 block">Age</label><input type="number" placeholder="25" value={form.age} onChange={(e) => setForm({ ...form, age: e.target.value })} className="input-field" /></div>
-                ) : (
-                  <div><label className="text-sm font-semibold text-navy-700 mb-1.5 block">Experience Level</label><select value={form.experience} onChange={(e) => setForm({ ...form, experience: e.target.value })} className="input-field"><option value="">Select experience</option><option value="Beginner (1-2 yrs)">Beginner (1-2 yrs)</option><option value="Intermediate (3-5 yrs)">Intermediate (3-5 yrs)</option><option value="Senior (5+ yrs)">Senior (5+ yrs)</option><option value="Master Trainer (8+ yrs)">Master Trainer (8+ yrs)</option></select></div>
                 )}
                 <div><label className="text-sm font-semibold text-navy-700 mb-1.5 block">Gender</label><select value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })} className="input-field"><option value="">Select gender</option><option value="Male">Male</option><option value="Female">Female</option><option value="Other">Other</option></select></div>
-                <div><label className="text-sm font-semibold text-navy-700 mb-1.5 block">{personType === 'trainer' ? 'Specialization' : 'Fitness Goal'}</label><select value={form.goal} onChange={(e) => setForm({ ...form, goal: e.target.value })} className="input-field"><option value="">{personType === 'trainer' ? 'Select specialization' : 'Select goal'}</option><option value="Weight Loss">Weight Loss</option><option value="Muscle Building">Muscle Building</option><option value="General Fitness">General Fitness</option><option value="Endurance">Endurance</option><option value="Flexibility">Flexibility</option><option value="Personal Training">Personal Training</option><option value="Zumba & Dance">Zumba & Dance</option><option value="Strength & Power">Strength & Power</option><option value="Cardio HIIT">Cardio HIIT</option></select></div>
-                <div className="col-span-2"><label className="text-sm font-semibold text-navy-700 mb-1.5 block">Primary Gym Location / Branch</label><select value={form.branch} onChange={(e) => setForm({ ...form, branch: e.target.value })} className="input-field"><option value="">Select gym branch</option>{branches.length > 0 ? (branches.map((b) => (<option key={b.id} value={b.branch_name}>{b.branch_name} {b.city ? `(${b.city})` : ''}</option>))) : (<><option value="Main Branch - Downtown">Main Branch - Downtown</option><option value="Westside Fitness Club">Westside Fitness Club</option><option value="Eastside Strength Center">Eastside Strength Center</option></>)}</select></div>
+                <div><label className="text-sm font-semibold text-navy-700 mb-1.5 block">Branch</label><select value={form.branch} onChange={(e) => setForm({ ...form, branch: e.target.value })} className="input-field"><option value="">Select branch</option>{branches.length > 0 ? (branches.map((b) => (<option key={b.id} value={b.branch_name}>{b.branch_name} {b.city ? `(${b.city})` : ''}</option>))) : (<><option value="Main Branch - Downtown">Main Branch - Downtown</option><option value="Westside Fitness Club">Westside Fitness Club</option><option value="Eastside Strength Center">Eastside Strength Center</option></>)}</select></div>
               </div>
               <button onClick={() => setStep(1)} disabled={!form.name || !form.phone} className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">Continue <Icon name="chevron-right" size={16} /></button>
             </div>
@@ -718,16 +527,6 @@ export function EnrollmentModal({
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold text-navy-700 mb-1.5 block">PT Session Rate (₹ / session)</label>
-                    <input
-                      type="number"
-                      placeholder="e.g. 500"
-                      value={form.pt_session_rate}
-                      onChange={(e) => setForm({ ...form, pt_session_rate: e.target.value })}
-                      className="input-field"
-                    />
-                  </div>
-                  <div>
                     <label className="text-xs font-semibold text-navy-700 mb-1.5 block">Date of Joining</label>
                     <input
                       type="date"
@@ -736,11 +535,11 @@ export function EnrollmentModal({
                       className="input-field text-xs py-2"
                     />
                   </div>
-                  <div>
+                  <div className="col-span-2">
                     <label className="text-xs font-semibold text-navy-700 mb-1.5 block">UPI ID (Optional)</label>
                     <input
                       type="text"
-                      placeholder="e.g. trainer@okaxis"
+                      placeholder="e.g. emp@okaxis"
                       value={form.upi_id}
                       onChange={(e) => setForm({ ...form, upi_id: e.target.value })}
                       className="input-field"
@@ -1065,7 +864,7 @@ export function EnrollmentModal({
               <div className="space-y-4 animate-fade-in">
                 <div className="card p-4 bg-emerald-50/60 border border-emerald-200/80 space-y-3">
                   <div className="text-xs font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
-                    <Icon name="credit-card" size={14} /> Trainer Compensation Terms
+                    <Icon name="credit-card" size={14} /> EMP Compensation Terms
                   </div>
                   <div className="grid grid-cols-2 gap-3 text-xs">
                     <div>
@@ -1073,14 +872,10 @@ export function EnrollmentModal({
                       <div className="text-base font-extrabold text-slate-900">₹{Number(form.salary || 0).toLocaleString('en-IN')}</div>
                     </div>
                     <div>
-                      <span className="text-slate-500 font-medium">PT Session Rate:</span>
-                      <div className="text-base font-extrabold text-slate-900">₹{Number(form.pt_session_rate || 0).toLocaleString('en-IN')} / session</div>
-                    </div>
-                    <div>
                       <span className="text-slate-500 font-medium">Date of Joining:</span>
                       <div className="font-bold text-slate-800">{formatDateDDMMYY(form.join_date)}</div>
                     </div>
-                    <div>
+                    <div className="col-span-2">
                       <span className="text-slate-500 font-medium">Payout Method:</span>
                       <div className="font-bold text-slate-800">{form.upi_id ? `UPI (${form.upi_id})` : form.bank_account_no ? `Bank A/C (${form.bank_account_no})` : 'Direct Payout'}</div>
                     </div>
@@ -1089,7 +884,7 @@ export function EnrollmentModal({
 
                 <div>
                   <label className="text-sm font-semibold text-navy-700 mb-2 block">
-                    Preferred Trainer Payout Mode
+                    Preferred EMP Payout Mode
                   </label>
                   <div className="flex flex-wrap gap-2">
                     {[
@@ -1432,27 +1227,24 @@ export function EnrollmentModal({
           {/* Step 4: Review */}
           {step === 4 && (
             <div className="space-y-4 animate-fade-in">
-              <h3 className="text-base font-bold text-navy-900 text-center">Review & Confirm {personType === 'trainer' ? 'Trainer' : 'Member'}</h3>
+              <h3 className="text-base font-bold text-navy-900 text-center">Review & Confirm {personType === 'trainer' ? 'EMP' : 'Member'}</h3>
               <div className="card p-4 space-y-2 text-sm">
                 <div className="flex justify-between"><span className="text-navy-400">Name</span><span className="font-semibold text-navy-900">{form.name || '—'}</span></div>
                 <div className="flex justify-between"><span className="text-navy-400">Phone</span><span className="font-semibold text-navy-900">{form.phone || '—'}</span></div>
                 <div className="flex justify-between"><span className="text-navy-400">Email</span><span className="font-semibold text-navy-900">{form.email || '—'}</span></div>
                 {personType === 'trainer' ? (
                   <>
-                    <div className="flex justify-between"><span className="text-navy-400">Specialty</span><span className="font-semibold text-navy-900">{form.goal || 'Personal Training'}</span></div>
-                    <div className="flex justify-between"><span className="text-navy-400">Experience</span><span className="font-semibold text-navy-900">{form.experience || 'Intermediate'}</span></div>
+                    <div className="flex justify-between"><span className="text-navy-400">Branch</span><span className="font-semibold text-navy-900">{form.branch || '—'}</span></div>
                     <div className="flex justify-between"><span className="text-navy-400">Date of Joining</span><span className="font-bold text-emerald-600">{formatDateDDMMYY(form.join_date)}</span></div>
                     <div className="flex justify-between"><span className="text-navy-400">Base Monthly Salary</span><span className="font-bold text-slate-900">₹{Number(form.salary || 0).toLocaleString('en-IN')}/mo</span></div>
-                    <div className="flex justify-between"><span className="text-navy-400">PT Session Rate</span><span className="font-semibold text-slate-900">₹{Number(form.pt_session_rate || 0).toLocaleString('en-IN')}</span></div>
                     <div className="flex justify-between"><span className="text-navy-400">Bank Account</span><span className="font-semibold text-slate-900">{form.bank_account_no ? `${form.bank_account_no} (${form.bank_ifsc || 'IFSC N/A'})` : '—'}</span></div>
                     <div className="flex justify-between"><span className="text-navy-400">UPI ID</span><span className="font-semibold text-slate-900">{form.upi_id || '—'}</span></div>
                   </>
                 ) : (
                   <>
                     <div className="flex justify-between"><span className="text-navy-400">Age / Gender</span><span className="font-semibold text-navy-900">{form.age || '—'} / {form.gender}</span></div>
-                    <div className="flex justify-between"><span className="text-navy-400">Goal</span><span className="font-semibold text-navy-900">{form.goal}</span></div>
-                    <div className="flex justify-between"><span className="text-navy-400">Branch</span><span className="font-semibold text-navy-900">{form.branch}</span></div>
-                    <div className="flex justify-between"><span className="text-navy-400">Program & Plan</span><span className="font-semibold text-navy-900">{currentProgram?.name} — {durationLabel} (₹{subtotal.toLocaleString('en-IN')})</span></div>
+                    <div className="flex justify-between"><span className="text-navy-400">Branch</span><span className="font-semibold text-navy-900">{form.branch || '—'}</span></div>
+                    <div className="flex justify-between"><span className="text-navy-400">Program & Plan</span><span className="font-semibold text-navy-900">{currentProgram?.name || 'Standard Membership'} — {durationLabel} (₹{subtotal.toLocaleString('en-IN')})</span></div>
                     <div className="flex justify-between"><span className="text-navy-400">Plan Validity</span><span className="font-semibold text-navy-900">{startDate} to {expiryDate}</span></div>
                     <div className="flex justify-between"><span className="text-navy-400">Expiry (DD-MM-YY)</span><span className="font-bold text-brand-600">{formatDateDDMMYY(expiryDate)}</span></div>
                     <div className="flex justify-between"><span className="text-navy-400">Payment Method</span><span className="font-bold text-brand-600">{activePaymentMethod}</span></div>

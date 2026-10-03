@@ -17,6 +17,7 @@ import type {
 import { CustomerGoogleReviewCard } from '@/components/customer/CustomerGoogleReviewCard';
 import { AttendanceSummary } from '@/components/customer/AttendanceSummary';
 import { cn } from '@/utils/cn';
+import { getISTGreeting } from '@/utils/date';
 
 
 export function CustomerDashboard() {
@@ -66,7 +67,7 @@ export function CustomerDashboard() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <PageHeader title={`Good morning, ${userName}`} breadcrumb={['Customer', 'Home']} />
+        <PageHeader title={`${getISTGreeting()}, ${userName}`} breadcrumb={['Customer', 'Home']} />
         <Skeleton className="h-44 w-full rounded-2xl" />
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
@@ -80,7 +81,7 @@ export function CustomerDashboard() {
   if (error) {
     return (
       <div className="space-y-6">
-        <PageHeader title={`Good morning, ${userName}`} breadcrumb={['Customer', 'Home']} />
+        <PageHeader title={`${getISTGreeting()}, ${userName}`} breadcrumb={['Customer', 'Home']} />
         <ErrorState message={error} onRetry={fetchDashboard} />
       </div>
     );
@@ -89,7 +90,7 @@ export function CustomerDashboard() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title={dashboard?.greeting || `Good evening, ${userName} 👋`}
+        title={dashboard?.greeting || `${getISTGreeting()}, ${userName} 👋`}
         subtitle={dashboard?.subtitle || "Here is your attendance and member portal overview today."}
         breadcrumb={['Customer', 'Home']}
       />

@@ -164,7 +164,7 @@ export function HrmsPage() {
       {activeCategory === 'Employee Management' && (
         <div className="flex items-center gap-2 overflow-x-auto pb-1">
           {[
-            { id: 'trainers', label: 'Trainers & Coaches', icon: 'user-cog' },
+            { id: 'trainers', label: 'EMP Directory', icon: 'user-cog' },
             { id: 'departments', label: 'Departments', icon: 'building-2' },
             { id: 'designations', label: 'Designations', icon: 'award' },
             { id: 'teams', label: 'Teams', icon: 'users-2' },
@@ -202,8 +202,8 @@ export function HrmsPage() {
       {activeCategory === 'Employee Management' && activeSubTab === 'departments' && (
         <div className="space-y-5 animate-fade-in">
           <div>
-            <h2 className="text-xl font-black text-navy-900 tracking-tight">Gym Departments</h2>
-            <p className="text-xs text-navy-500">Organizational units across gym floor, management, and fitness coaching.</p>
+            <h2 className="text-xl font-black text-navy-900 tracking-tight">Departments</h2>
+            <p className="text-xs text-navy-500">Organizational units across operations, management, and staff.</p>
           </div>
 
           {departments.length === 0 ? (

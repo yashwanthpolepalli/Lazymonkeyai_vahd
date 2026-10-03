@@ -399,10 +399,13 @@ class DashboardService:
             else:
                 healthy_count += 1
 
-        recent_logs = log_query.order_by(BiometricLog.timestamp.desc()).limit(10).all()
+        recent_logs = log_query.order_by(BiometricLog.timestamp.desc()).limit(15).all()
         recent_checkins = []
         for log in recent_logs:
             cust = db.query(Customer).filter(Customer.id == log.customer_id).first() if log.customer_id else None
+            user_obj = None
+            if not cust and log.customer_id:
+                user_obj = db.query(User).filter(User.id == log.customer_id).first()
 
             member_mem = None
             days_remaining = None
@@ -423,13 +426,19 @@ class DashboardService:
                 window_d = max(1, min(30, (now - (cust.created_at or thirty_days_ago)).days or 1))
                 attendance_rate = int((days_attended / float(window_d)) * 100)
 
+            cust_name = cust.full_name if cust else (user_obj.full_name if user_obj and getattr(user_obj, "full_name", None) else (user_obj.name if user_obj and getattr(user_obj, "name", None) else None))
+
             recent_checkins.append({
                 "eventId": log.id,
                 "customerId": log.customer_id or None,
-                "customerName": cust.full_name if cust else None,
+                "customerName": cust_name or "Member",
+                "userRole": log.user_role or ("CUSTOMER" if cust else "STAFF"),
+                "direction": log.direction or "CHECK_IN",
+                "status": log.status or "SUCCESS",
                 "avatarUrl": cust.profile_image if cust else None,
-                "method": log.device_type or log.event_type or None,
-                "zone": getattr(log, "location", None) or log.device_name or log.device_id or None,
+                "method": log.device_type or log.event_type or "Biometric",
+                "zone": getattr(log, "location", None) or log.device_name or log.device_id or "Main Entrance",
+                "deviceName": log.device_name or log.device_id or None,
                 "timestamp": log.timestamp.isoformat() if log.timestamp else now.isoformat(),
                 "fitnessScore": cust.fitness_score if cust and cust.fitness_score is not None else None,
                 "attendanceRate": attendance_rate,

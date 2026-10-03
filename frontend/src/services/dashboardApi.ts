@@ -7,13 +7,23 @@ export const dashboardApi = {
     /* eslint-disable @typescript-eslint/no-explicit-any */
     const res = await apiClient.get<any>(`/dashboard/owner${query}`);
 
-    const liveActivity = (res?.recentCheckIns || []).map((item: any) => ({
-      id: item.eventId || `act-${Math.random()}`,
-      type: item.method && item.method.toLowerCase().includes('face') ? 'checkin' : 'payment',
-      title: item.customerName || 'Gym Member',
-      description: `${item.zone || 'Entrance'} · ${item.method || 'Check-in'}`,
-      time: item.timestamp ? new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now',
-    }));
+    const liveActivity = (res?.recentCheckIns || []).map((item: any) => {
+      const isLogout = item.direction && (item.direction.toUpperCase().includes('OUT') || item.direction.toUpperCase().includes('EXIT'));
+      return {
+        id: item.eventId || `act-${Math.random()}`,
+        type: isLogout ? 'checkout' : 'checkin',
+        title: item.customerName || 'Student Member',
+        customerId: item.customerId || '',
+        userRole: item.userRole || 'Student',
+        direction: item.direction || (isLogout ? 'CHECK_OUT' : 'CHECK_IN'),
+        status: item.status || 'SUCCESS',
+        description: `${item.zone || 'Main Branch'} · ${item.method || 'Biometric Scanner'}`,
+        device: item.deviceName || item.method || 'Biometric Scanner',
+        location: item.zone || 'Main Branch',
+        timestamp: item.timestamp,
+        time: item.timestamp ? new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) : 'Just now',
+      };
+    });
 
     const totalMembers = (res?.radarHealthy || 0) + (res?.radarAttention || 0) + (res?.radarHighRisk || 0);
 

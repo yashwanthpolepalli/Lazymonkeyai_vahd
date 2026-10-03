@@ -53,14 +53,14 @@ export function LoginPage() {
     admin: 'Super Admin Portal',
     owner: 'Owner Portal',
     trainer: 'EMP Portal',
-    customer: 'Customer Portal',
+    customer: 'Student Portal',
   };
 
   const roleButtonMap = {
     admin: 'Sign In as Admin',
     owner: 'Sign In as Owner',
     trainer: 'Sign In as EMP',
-    customer: 'Sign In as Customer',
+    customer: 'Sign In as Student',
   };
 
   return (
@@ -202,7 +202,7 @@ export function LoginPage() {
               {/* Email Input */}
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  {activeRole === 'owner' ? 'Owner Email' : activeRole === 'admin' ? 'Admin Email' : activeRole === 'trainer' ? 'EMP Email' : 'Customer Email'}
+                  {activeRole === 'owner' ? 'Owner Email' : activeRole === 'admin' ? 'Admin Email' : activeRole === 'trainer' ? 'EMP Email' : 'Student Email'}
                 </label>
                 <div className="relative flex items-center">
                   <Icon name="mail" size={18} className="absolute left-3.5 text-blue-500 pointer-events-none" />
@@ -210,7 +210,7 @@ export function LoginPage() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder={activeRole === 'owner' ? 'owner@fitclub.com' : activeRole === 'admin' ? 'admin@fitclub.com' : activeRole === 'trainer' ? 'emp@fitclub.com' : 'customer@fitclub.com'}
+                    placeholder={activeRole === 'owner' ? 'owner@fitclub.com' : activeRole === 'admin' ? 'admin@fitclub.com' : activeRole === 'trainer' ? 'emp@fitclub.com' : 'student@fitclub.com'}
                     className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-2xl py-2.5 pl-10 pr-10 text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                   />
                   {isValidEmail && (
@@ -276,7 +276,7 @@ export function LoginPage() {
 
             </form>
 
-            {/* Quick Access Roles Selector (Admin, Owner, Trainer, Customer) */}
+            {/* Quick Access Roles Selector (Admin, Owner, Trainer, Customer/Student) */}
             <div className="mt-5 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 space-y-2">
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Quick access roles</span>
               <div className="grid grid-cols-4 gap-1.5">
@@ -326,7 +326,7 @@ export function LoginPage() {
                       : 'bg-orange-50 text-orange-700 hover:bg-orange-100 dark:bg-orange-950/40 dark:text-orange-300'
                   )}
                 >
-                  Customer
+                  Student
                 </button>
               </div>
             </div>

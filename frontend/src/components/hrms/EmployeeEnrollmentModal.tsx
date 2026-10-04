@@ -889,6 +889,15 @@ export function EmployeeEnrollmentModal({
       setErrorMsg('Contact Number is required.');
       return;
     }
+    if (!personalEmail.trim()) {
+      setErrorMsg('Personal Email ID is required.');
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(personalEmail.trim())) {
+      setErrorMsg('Please enter a valid Email address.');
+      return;
+    }
 
     setLoading(true);
     setErrorMsg(null);
@@ -897,7 +906,7 @@ export function EmployeeEnrollmentModal({
     const names = name.trim().split(' ');
     const firstName = names[0] || name.trim();
     const lastName = names.slice(1).join(' ') || '';
-    const safeEmail = personalEmail.trim().toLowerCase() || `${firstName.toLowerCase()}.${Date.now().toString().slice(-4)}@workplace.local`;
+    const safeEmail = personalEmail.trim().toLowerCase();
 
     const payload = {
       code: employeeCode,
@@ -1377,7 +1386,7 @@ export function EmployeeEnrollmentModal({
                 {/* Row 7: Contact No & Personal Email ID */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-blue-200">
                   <div className="p-1.5 flex items-center gap-2">
-                    <span className="font-bold text-blue-950 shrink-0">Contact No:</span>
+                    <span className="font-bold text-blue-950 shrink-0">Contact No:<span className="text-rose-500 ml-0.5">*</span></span>
                     <input
                       type="tel"
                       required
@@ -1388,9 +1397,10 @@ export function EmployeeEnrollmentModal({
                     />
                   </div>
                   <div className="p-1.5 flex items-center gap-2">
-                    <span className="font-bold text-blue-950 shrink-0">Personal Email ID:</span>
+                    <span className="font-bold text-blue-950 shrink-0">Personal Email ID:<span className="text-rose-500 ml-0.5">*</span></span>
                     <input
                       type="email"
+                      required
                       value={personalEmail}
                       onChange={(e) => setPersonalEmail(e.target.value)}
                       placeholder="email@domain.com"

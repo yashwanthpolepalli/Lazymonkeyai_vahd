@@ -49,6 +49,7 @@ export function StudentEnrollmentModal({
   const [fullName, setFullName] = useState('');
   const [fatherName, setFatherName] = useState('');
   const [motherName, setMotherName] = useState('');
+  const [studentEmail, setStudentEmail] = useState('');
 
   // College / Form Branding (Editable Name, Subtitle, and Logo)
   const [collegeName, setCollegeName] = useState<string>(() => {
@@ -203,6 +204,7 @@ export function StudentEnrollmentModal({
       setFullName(studentToEdit.full_name || studentToEdit.name || '');
       setFatherName(meta.father_name || '');
       setMotherName(meta.mother_name || '');
+      setStudentEmail(studentToEdit.email || meta.email || '');
 
       const perm = meta.permanent_address || {};
       setPermDoorNo(perm.door_no || '');
@@ -258,6 +260,7 @@ export function StudentEnrollmentModal({
       setFullName('');
       setFatherName('');
       setMotherName('');
+      setStudentEmail('');
       setPermDoorNo('');
       setPermStreet('');
       setPermVillage('');
@@ -400,6 +403,15 @@ export function StudentEnrollmentModal({
       setErrorMsg('Full Name is required (as per SSC).');
       return;
     }
+    if (!studentEmail.trim()) {
+      setErrorMsg('Student Email Address is required.');
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(studentEmail.trim())) {
+      setErrorMsg('Please enter a valid Student Email address.');
+      return;
+    }
     const finalMobile = permMobile.trim() || presMobile.trim();
     if (!finalMobile) {
       setErrorMsg('Mobile number is required.');
@@ -418,11 +430,11 @@ export function StudentEnrollmentModal({
     setErrorMsg(null);
 
     const aadharJoined = aadharNumber.join('');
-    const emailFormatted = `${fullName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'student'}_${Date.now().toString().slice(-4)}@student.vahd.ai`;
+    const validEmail = studentEmail.trim().toLowerCase();
 
     const studentPayload = {
       full_name: fullName.toUpperCase().trim(),
-      email: emailFormatted,
+      email: validEmail,
       phone: finalMobile,
       gender: gender.toLowerCase(),
       age: age ? parseInt(age, 10) : undefined,
@@ -440,6 +452,7 @@ export function StudentEnrollmentModal({
         academic_year: academicYear,
         course: selectedFinalCourse,
         medium: selectedFinalMedium,
+        email: validEmail,
         father_name: fatherName.toUpperCase(),
         mother_name: motherName.toUpperCase(),
         permanent_address: {
@@ -507,6 +520,7 @@ export function StudentEnrollmentModal({
       fullName,
       fatherName,
       motherName,
+      studentEmail,
       permDoorNo,
       permStreet,
       permVillage,
@@ -857,6 +871,25 @@ export function StudentEnrollmentModal({
                   className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl font-semibold uppercase tracking-wider text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500"
                 />
               </div>
+
+              <div>
+                <label className="block font-bold text-slate-800 dark:text-slate-200 mb-1">
+                  4. Student Email Address <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-blue-600 dark:text-blue-400">
+                    <Icon name="mail" size={15} />
+                  </div>
+                  <input
+                    type="email"
+                    required
+                    value={studentEmail}
+                    onChange={(e) => setStudentEmail(e.target.value)}
+                    placeholder="student.email@example.com"
+                    className="w-full pl-10 pr-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl font-semibold text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 shadow-2xs"
+                  />
+                </div>
+              </div>
             </div>
 
             {/* Right 3-4 Cols: Photo / Biometric Live Capture Box */}
@@ -928,10 +961,10 @@ export function StudentEnrollmentModal({
             </div>
           </div>
 
-          {/* 4. Permanent Postal Address */}
+          {/* 5. Permanent Postal Address */}
           <div className="border border-slate-200 dark:border-slate-700 rounded-2xl p-4 bg-white dark:bg-slate-800/40 space-y-3">
             <span className="font-extrabold text-slate-900 dark:text-white text-xs block underline uppercase tracking-wide">
-              4. Permanent Postal Address:
+              5. Permanent Postal Address:
             </span>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div>
@@ -1009,11 +1042,11 @@ export function StudentEnrollmentModal({
             </div>
           </div>
 
-          {/* 5. Present Address for Correspondence */}
+          {/* 6. Present Address for Correspondence */}
           <div className="border border-slate-200 dark:border-slate-700 rounded-2xl p-4 bg-white dark:bg-slate-800/40 space-y-3">
             <div className="flex items-center justify-between">
               <span className="font-extrabold text-slate-900 dark:text-white text-xs underline uppercase tracking-wide">
-                5. Present Address for Correspondence:
+                6. Present Address for Correspondence:
               </span>
               <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-blue-600 dark:text-blue-400">
                 <input

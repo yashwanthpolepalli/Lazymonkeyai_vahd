@@ -597,12 +597,41 @@ class CustomerService:
         if not cust:
             return False
         
-        db.query(Membership).filter(Membership.customer_id == customer_id).delete()
-        user_id = cust.user_id
-        db.delete(cust)
+        # 1. Clean up related courses & student enrollment mappings
+        try:
+            from src.models.course import StudentCourse
+            db.query(StudentCourse).filter(StudentCourse.customer_id == customer_id).delete(synchronize_session=False)
+        except Exception:
+            pass
+
+        # 2. Clean up biometric logs
+        try:
+            from src.models.biometric import BiometricLog
+            db.query(BiometricLog).filter(BiometricLog.customer_id == customer_id).delete(synchronize_session=False)
+        except Exception:
+            pass
+
+        # 3. Clean up memberships
+        try:
+            db.query(Membership).filter(Membership.customer_id == customer_id).delete(synchronize_session=False)
+        except Exception:
+            pass
         
+        user_id = cust.user_id
+
+        # 4. Delete customer record and flush so foreign keys on users table are removed
+        db.delete(cust)
+        db.flush()
+        
+        # 5. Delete linked user account if exists
         if user_id:
-            db.query(User).filter(User.id == user_id).delete()
+            try:
+                user_obj = db.query(User).filter(User.id == user_id).first()
+                if user_obj:
+                    db.delete(user_obj)
+                    db.flush()
+            except Exception:
+                pass
 
         db.commit()
         return True

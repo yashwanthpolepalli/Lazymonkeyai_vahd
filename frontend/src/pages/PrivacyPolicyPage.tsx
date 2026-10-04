@@ -84,7 +84,7 @@ export function PrivacyPolicyPage() {
           <p className="text-slate-600 leading-relaxed text-sm">
             Depending on your role (Facility Owner, Staff / Trainer, Member / Student, or SuperAdmin), we collect and process the following specific categories of information:
           </p>
-          
+
           <div className="space-y-3">
             <div className="border border-slate-200 rounded-2xl p-4 bg-white shadow-xs">
               <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
@@ -414,7 +414,7 @@ export function PrivacyPolicyPage() {
               <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">Data Protection Officer</span>
               <h5 className="font-bold text-slate-900 text-sm">Yashwanth Polepalli</h5>
               <p className="text-xs text-blue-600 mt-1">
-                <a href="mailto:polepalliyashwanth@gmail.com" className="hover:underline">polepalliyashwanth@gmail.com</a>
+                <a href="mailto:roufbaig123@gmail.com" className="hover:underline">roufbaig123@gmail.com</a>
               </p>
             </div>
 
@@ -469,7 +469,7 @@ export function PrivacyPolicyPage() {
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          
+
           <div className="flex items-center gap-3">
             <Logo size="sm" />
             <div className="hidden sm:block h-5 w-[1px] bg-slate-200" />
@@ -544,7 +544,7 @@ export function PrivacyPolicyPage() {
       {/* Main Content Layout with Sticky Sidebar */}
       <div className="max-w-6xl mx-auto px-4 sm:px-8 py-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          
+
           {/* LEFT SIDEBAR: Table of Contents */}
           <aside className="lg:col-span-4 sticky top-24 hidden lg:block bg-white border border-slate-200 rounded-3xl p-5 shadow-xs space-y-3">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -561,11 +561,10 @@ export function PrivacyPolicyPage() {
                   <button
                     key={sec.id}
                     onClick={() => scrollToSection(sec.id)}
-                    className={`w-full text-left flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition ${
-                      isSelected
+                    className={`w-full text-left flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition ${isSelected
                         ? 'bg-blue-50 text-blue-700 border border-blue-200/80 shadow-2xs'
                         : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center gap-2 truncate">
                       <span className="text-[10px] font-black text-slate-400 font-mono w-4">{sec.number}</span>

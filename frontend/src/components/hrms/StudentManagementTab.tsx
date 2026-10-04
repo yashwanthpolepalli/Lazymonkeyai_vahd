@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import { apiClient } from '@/services/apiClient';
 import { cn } from '@/utils/cn';
-import { StudentEnrollmentModal, DEGREE_COURSES } from './StudentEnrollmentModal';
+import { StudentEnrollmentModal } from './StudentEnrollmentModal';
 import { printStudentAdmissionForm } from '@/lib/student-print-helper';
 import { TableColumnSettingsPopover, ColumnGroup } from './TableColumnSettingsPopover';
 
@@ -99,7 +99,6 @@ interface StudentItem {
   code?: string;
   gender?: string;
   age?: number;
-  goal?: string;
   status?: string;
   profile_image?: string;
   face_image?: string;
@@ -111,6 +110,7 @@ interface StudentItem {
 
 export function StudentManagementTab() {
   const [students, setStudents] = useState<StudentItem[]>([]);
+  const [availableCourses, setAvailableCourses] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedCourse, setSelectedCourse] = useState<string>('All');
@@ -180,9 +180,16 @@ export function StudentManagementTab() {
   const fetchStudents = async () => {
     setLoading(true);
     try {
-      const res = await apiClient.get<any[]>('/customers');
+      const [res, coursesRes] = await Promise.all([
+        apiClient.get<any[]>('/customers').catch(() => []),
+        apiClient.get<any[]>('/courses').catch(() => []),
+      ]);
       if (Array.isArray(res)) {
         setStudents(res);
+      }
+      if (Array.isArray(coursesRes)) {
+        const names = coursesRes.map((c: any) => c.name).filter(Boolean);
+        setAvailableCourses(names);
       }
     } catch {
       setStudents([]);
@@ -236,12 +243,21 @@ export function StudentManagementTab() {
     setEnrollModalOpen(true);
   };
 
+  const getStudentCourse = (s: StudentItem | null | undefined): string => {
+    if (!s) return '';
+    const meta = s.meta_data || {};
+    if (meta.course && typeof meta.course === 'string' && meta.course.trim().length > 0) {
+      return meta.course.trim();
+    }
+    return '';
+  };
+
   // Filter students based on search and course filter
   const filteredStudents = students.filter((s) => {
-    const meta = s.meta_data || {};
-    const sCourse = meta.course || s.goal || '';
+    const sCourse = getStudentCourse(s);
     const matchesCourse = selectedCourse === 'All' || sCourse.toLowerCase().includes(selectedCourse.toLowerCase());
 
+    const meta = s.meta_data || {};
     const sName = (s.full_name || s.name || '').toLowerCase();
     const sPhone = (s.phone || '').toLowerCase();
     const sCode = (s.member_code || s.code || s.id || '').toLowerCase();
@@ -314,12 +330,12 @@ export function StudentManagementTab() {
     }
   };
 
-  // Dynamic list of unique courses extracted from student records & predefined options
+  // Dynamic list of unique courses extracted from course settings & enrolled students
   const dynamicCourses = Array.from(
     new Set([
-      ...DEGREE_COURSES,
+      ...availableCourses,
       ...students
-        .map((s) => s.meta_data?.course || (s.goal && !s.goal.startsWith('Student Admission') ? s.goal.split('(')[0].trim() : ''))
+        .map((s) => getStudentCourse(s))
         .filter((c): c is string => !!c && typeof c === 'string' && c.trim().length > 0)
     ])
   );
@@ -409,6 +425,34 @@ export function StudentManagementTab() {
             />
           </div>
 
+          {/* Course Filter Dropdown */}
+          <div className="relative min-w-[200px] sm:w-64">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-blue-600 dark:text-blue-400">
+              <Icon name="book-open" size={14} />
+            </div>
+            <select
+              value={selectedCourse}
+              onChange={(e) => setSelectedCourse(e.target.value)}
+              className="w-full pl-9 pr-8 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none cursor-pointer shadow-xs"
+            >
+              <option value="All">All Courses ({students.length})</option>
+              {dynamicCourses.map((c) => {
+                const count = students.filter((s) => {
+                  const sCourse = getStudentCourse(s);
+                  return sCourse.toLowerCase().includes(c.toLowerCase());
+                }).length;
+                return (
+                  <option key={c} value={c}>
+                    {c} ({count})
+                  </option>
+                );
+              })}
+            </select>
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-400">
+              <Icon name="chevron-down" size={14} />
+            </div>
+          </div>
+
           {/* Action Buttons, Column Settings & View Mode Switcher */}
           <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
             {/* View Mode Toggle: Icons only */}
@@ -470,45 +514,6 @@ export function StudentManagementTab() {
               <span>Enroll Student</span>
             </button>
           </div>
-        </div>
-
-        {/* Course Filter Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pt-1 pb-0.5 scrollbar-none">
-          <button
-            type="button"
-            onClick={() => setSelectedCourse('All')}
-            className={cn(
-              'px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap',
-              selectedCourse === 'All'
-                ? 'bg-blue-600 text-white shadow-xs'
-                : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100'
-            )}
-          >
-            All Courses ({students.length})
-          </button>
-          {dynamicCourses.map((c) => {
-            const count = students.filter((s) => {
-              const meta = s.meta_data || {};
-              const sCourse = meta.course || s.goal || '';
-              return sCourse.toLowerCase().includes(c.toLowerCase());
-            }).length;
-
-            return (
-              <button
-                key={c}
-                type="button"
-                onClick={() => setSelectedCourse(c)}
-                className={cn(
-                  'px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap',
-                  selectedCourse === c
-                    ? 'bg-blue-600 text-white shadow-xs'
-                    : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100'
-                )}
-              >
-                {c} ({count})
-              </button>
-            );
-          })}
         </div>
       </div>
 
@@ -646,11 +651,11 @@ export function StudentManagementTab() {
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
                 {filteredStudents.map((s, idx) => {
                   const meta = s.meta_data || {};
-                  const sCourse = meta.course || s.goal || 'B.Sc. (M.P.Cs)';
-                  const sMedium = meta.medium || 'English';
-                  const sRole = meta.batch || meta.category || 'Degree Student';
-                  const sDistrict = meta.district || meta.city || 'Hyderabad';
-                  const sPlaceOfWork = meta.campus || meta.place_of_work || meta.branch || 'Main Campus';
+                  const sCourse = getStudentCourse(s);
+                  const sMedium = meta.medium || '—';
+                  const sRole = meta.batch || meta.category || 'Student';
+                  const sDistrict = meta.district || meta.city || meta.permanent_address?.district || '—';
+                  const sPlaceOfWork = meta.campus || meta.place_of_work || meta.branch || '—';
                   const isSelected = selectedIds.has(s.id);
                   const studentNo = s.member_code || s.code || `STU-${String(idx + 1).padStart(3, '0')}`;
 
@@ -1026,9 +1031,9 @@ export function StudentManagementTab() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredStudents.map((s) => {
             const meta = s.meta_data || {};
-            const sCourse = meta.course || s.goal || 'B.Sc. (M.P.Cs)';
-            const sMedium = meta.medium || 'English';
-            const sFather = meta.father_name || 'Father Info';
+            const sCourse = getStudentCourse(s);
+            const sMedium = meta.medium || '';
+            const sFather = meta.father_name || '';
             const photoSrc = s.face_image || s.profile_image;
             const isSelected = selectedIds.has(s.id);
 
@@ -1201,7 +1206,7 @@ export function StudentManagementTab() {
                       affiliation: meta.affiliation,
                       collegeLogo: meta.college_logo,
                       academicYear: meta.academic_year,
-                      course: meta.course || selectedStudentForView.goal,
+                      course: getStudentCourse(selectedStudentForView),
                       medium: meta.medium,
                       fullName: selectedStudentForView.full_name || selectedStudentForView.name,
                       fatherName: meta.father_name,
@@ -1259,10 +1264,10 @@ export function StudentManagementTab() {
                 <div>
                   <span className="text-[11px] text-slate-400 font-bold uppercase">Course Enrolled:</span>
                   <div className="text-base font-black text-blue-700">
-                    {selectedStudentForView.meta_data?.course || selectedStudentForView.goal || 'B.Sc. (M.P.Cs)'}
+                    {getStudentCourse(selectedStudentForView)}
                   </div>
                   <span className="text-xs font-semibold text-slate-500">
-                    Medium: {selectedStudentForView.meta_data?.medium || 'English'} • Academic Year: {selectedStudentForView.meta_data?.academic_year || '2026 - 2027'}
+                    {selectedStudentForView.meta_data?.medium ? `Medium: ${selectedStudentForView.meta_data.medium}` : ''} {selectedStudentForView.meta_data?.academic_year ? `• Academic Year: ${selectedStudentForView.meta_data.academic_year}` : ''}
                   </span>
                 </div>
                 {(selectedStudentForView.face_image || selectedStudentForView.profile_image) && (

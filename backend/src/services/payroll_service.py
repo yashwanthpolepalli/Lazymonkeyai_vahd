@@ -234,10 +234,12 @@ class PayrollService:
         if not trainer:
             raise ValueError(f"Trainer '{trainer_id}' not found.")
         
-        customers = db.query(Customer).filter((Customer.trainer_id == trainer.id) | (Customer.trainer_id == trainer.user_id)).all()
-        for c in customers:
-            c.trainer_id = None
-            
+        # Clean up related payroll invoices
+        try:
+            db.query(PayrollInvoice).filter(PayrollInvoice.trainer_id == trainer.id).delete(synchronize_session=False)
+        except Exception:
+            pass
+
         db.delete(trainer)
         db.commit()
 

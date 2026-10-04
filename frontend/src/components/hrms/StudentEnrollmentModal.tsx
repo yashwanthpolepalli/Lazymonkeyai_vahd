@@ -4,7 +4,7 @@ import { apiClient } from '@/services/apiClient';
 import { cn } from '@/utils/cn';
 import { printStudentAdmissionForm } from '@/lib/student-print-helper';
 
-interface StudentEnrollmentModalProps {
+export interface StudentEnrollmentModalProps {
   isOpen?: boolean;
   open?: boolean;
   onClose: () => void;
@@ -12,14 +12,14 @@ interface StudentEnrollmentModalProps {
   studentToEdit?: any | null;
 }
 
-export const DEGREE_COURSES = [
-  'B.Sc. (M.P.C)',
-  'B.Sc. (M.P.Cs)',
-  'B.Sc. (M.S.Cs)',
-  'B.Sc. (B.Z.C)',
-  'B.Com (Gen)',
-  'B.A. (H.E.P)',
-] as const;
+export interface CourseOptionItem {
+  id?: string;
+  name: string;
+  period?: string;
+  duration_days?: number;
+  price?: number;
+  department?: string;
+}
 
 export function StudentEnrollmentModal({
   isOpen,
@@ -29,15 +29,20 @@ export function StudentEnrollmentModal({
   studentToEdit,
 }: StudentEnrollmentModalProps) {
   const visible = isOpen ?? open ?? false;
-  if (!visible) return null;
 
   const currentYear = new Date().getFullYear();
   const defaultAcademicYear = `${currentYear} - ${currentYear + 1}`;
+
+  // Dynamic Courses & Languages strictly from Settings / Database
+  const [coursesList, setCoursesList] = useState<CourseOptionItem[]>([]);
+  const [languagesList, setLanguagesList] = useState<string[]>([]);
 
   const [course, setCourse] = useState<string>('');
   const [customCourse, setCustomCourse] = useState<string>('');
   const [isCustomCourse, setIsCustomCourse] = useState<boolean>(false);
   const [medium, setMedium] = useState<string>('');
+  const [customMedium, setCustomMedium] = useState<string>('');
+  const [isCustomMedium, setIsCustomMedium] = useState<boolean>(false);
   const [academicYear, setAcademicYear] = useState<string>(defaultAcademicYear);
 
   // Form Fields
@@ -129,6 +134,27 @@ export function StudentEnrollmentModal({
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  // Fetch available courses and languages from Settings API on modal open
+  useEffect(() => {
+    if (!visible) return;
+
+    apiClient.get<CourseOptionItem[]>('/courses')
+      .then((res) => {
+        if (Array.isArray(res)) {
+          setCoursesList(res);
+        }
+      })
+      .catch(() => {});
+
+    apiClient.get<string[]>('/courses/languages')
+      .then((res) => {
+        if (Array.isArray(res)) {
+          setLanguagesList(res);
+        }
+      })
+      .catch(() => {});
+  }, [visible]);
+
   // Pre-fill form dynamically when editing an existing student, or reset to empty
   useEffect(() => {
     if (studentToEdit) {
@@ -137,18 +163,42 @@ export function StudentEnrollmentModal({
       if (meta.affiliation) setAffiliation(meta.affiliation);
       if (meta.college_logo) setCollegeLogo(meta.college_logo);
 
-      const targetCourse = meta.course || studentToEdit.goal || '';
-      setCourse(targetCourse);
-      const isPredefined = DEGREE_COURSES.includes(targetCourse as any);
-      if (targetCourse && !isPredefined) {
-        setIsCustomCourse(true);
-        setCustomCourse(targetCourse);
+      const targetCourse = meta.course || '';
+      if (targetCourse) {
+        setCourse(targetCourse);
+        const knownCourseNames = coursesList.map((c) => c.name.toLowerCase().trim());
+        const isKnown = knownCourseNames.includes(targetCourse.toLowerCase().trim());
+        if (!isKnown && coursesList.length > 0) {
+          setIsCustomCourse(true);
+          setCustomCourse(targetCourse);
+        } else {
+          setIsCustomCourse(false);
+          setCustomCourse('');
+        }
       } else {
+        setCourse('');
         setIsCustomCourse(false);
         setCustomCourse('');
       }
 
-      setMedium(meta.medium || '');
+      const targetMedium = meta.medium || '';
+      if (targetMedium) {
+        setMedium(targetMedium);
+        const knownLangs = languagesList.map((l) => l.toLowerCase().trim());
+        const isKnownLang = knownLangs.includes(targetMedium.toLowerCase().trim());
+        if (!isKnownLang && languagesList.length > 0) {
+          setIsCustomMedium(true);
+          setCustomMedium(targetMedium);
+        } else {
+          setIsCustomMedium(false);
+          setCustomMedium('');
+        }
+      } else {
+        setMedium('');
+        setIsCustomMedium(false);
+        setCustomMedium('');
+      }
+
       setAcademicYear(meta.academic_year || defaultAcademicYear);
       setFullName(studentToEdit.full_name || studentToEdit.name || '');
       setFatherName(meta.father_name || '');
@@ -202,6 +252,8 @@ export function StudentEnrollmentModal({
       setCustomCourse('');
       setIsCustomCourse(false);
       setMedium('');
+      setCustomMedium('');
+      setIsCustomMedium(false);
       setAcademicYear(defaultAcademicYear);
       setFullName('');
       setFatherName('');
@@ -354,12 +406,19 @@ export function StudentEnrollmentModal({
       return;
     }
 
+    const selectedFinalCourse = isCustomCourse ? customCourse.trim() : course.trim();
+    if (!selectedFinalCourse) {
+      setErrorMsg('Please select or specify a Degree / Course.');
+      return;
+    }
+
+    const selectedFinalMedium = isCustomMedium ? customMedium.trim() : medium.trim();
+
     setLoading(true);
     setErrorMsg(null);
 
     const aadharJoined = aadharNumber.join('');
     const emailFormatted = `${fullName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'student'}_${Date.now().toString().slice(-4)}@student.vahd.ai`;
-    const selectedFinalCourse = isCustomCourse ? customCourse.trim() : course.trim();
 
     const studentPayload = {
       full_name: fullName.toUpperCase().trim(),
@@ -368,7 +427,7 @@ export function StudentEnrollmentModal({
       gender: gender.toLowerCase(),
       age: age ? parseInt(age, 10) : undefined,
       role: 'STUDENT',
-      goal: selectedFinalCourse ? `${selectedFinalCourse}${medium ? ` (${medium} Medium)` : ''}` : 'Student Admission',
+      goal: selectedFinalCourse ? `${selectedFinalCourse}${selectedFinalMedium ? ` (${selectedFinalMedium} Medium)` : ''}` : 'Student Admission',
       profile_image: photoBase64 || undefined,
       face_image: photoBase64 || undefined,
       face_registered: !!photoBase64,
@@ -380,7 +439,7 @@ export function StudentEnrollmentModal({
         college_logo: collegeLogo || undefined,
         academic_year: academicYear,
         course: selectedFinalCourse,
-        medium,
+        medium: selectedFinalMedium,
         father_name: fatherName.toUpperCase(),
         mother_name: motherName.toUpperCase(),
         permanent_address: {
@@ -435,13 +494,16 @@ export function StudentEnrollmentModal({
   };
 
   const handlePrint = () => {
+    const selectedFinalCourse = isCustomCourse ? customCourse.trim() : course.trim();
+    const selectedFinalMedium = isCustomMedium ? customMedium.trim() : medium.trim();
+
     printStudentAdmissionForm({
       collegeName,
       affiliation,
       collegeLogo,
       academicYear,
-      course: isCustomCourse ? customCourse : course,
-      medium,
+      course: selectedFinalCourse,
+      medium: selectedFinalMedium,
       fullName,
       fatherName,
       motherName,
@@ -477,6 +539,8 @@ export function StudentEnrollmentModal({
       photoBase64,
     });
   };
+
+  if (!visible) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/70 backdrop-blur-sm overflow-y-auto animate-fade-in">
@@ -541,14 +605,14 @@ export function StudentEnrollmentModal({
                   <button
                     type="button"
                     onClick={handleSaveBranding}
-                    className="px-3 py-1 bg-white text-blue-900 rounded-lg text-xs font-black flex items-center gap-1.5 shadow-sm hover:bg-blue-50 transition"
+                    className="px-3 py-1 bg-white text-blue-900 rounded-lg text-xs font-black flex items-center gap-1.5 shadow-sm hover:bg-blue-50 transition cursor-pointer"
                   >
                     <Icon name="check" size={13} /> Save Header
                   </button>
                   <button
                     type="button"
                     onClick={() => logoInputRef.current?.click()}
-                    className="px-2.5 py-1 bg-white/20 hover:bg-white/30 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition"
+                    className="px-2.5 py-1 bg-white/20 hover:bg-white/30 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
                   >
                     <Icon name="upload" size={12} /> {collegeLogo ? 'Change Logo' : 'Upload Logo'}
                   </button>
@@ -559,7 +623,7 @@ export function StudentEnrollmentModal({
                         setCollegeLogo(null);
                         localStorage.removeItem('ssdc_college_logo');
                       }}
-                      className="px-2.5 py-1 bg-rose-500/30 hover:bg-rose-500/50 text-rose-100 rounded-lg text-xs font-bold transition"
+                      className="px-2.5 py-1 bg-rose-500/30 hover:bg-rose-500/50 text-rose-100 rounded-lg text-xs font-bold transition cursor-pointer"
                     >
                       Remove Logo
                     </button>
@@ -567,7 +631,7 @@ export function StudentEnrollmentModal({
                   <button
                     type="button"
                     onClick={() => setEditingHeader(false)}
-                    className="px-2.5 py-1 text-blue-200 hover:text-white text-xs font-bold transition"
+                    className="px-2.5 py-1 text-blue-200 hover:text-white text-xs font-bold transition cursor-pointer"
                   >
                     Cancel
                   </button>
@@ -582,7 +646,7 @@ export function StudentEnrollmentModal({
                   <button
                     type="button"
                     onClick={() => setEditingHeader(true)}
-                    className="px-2 py-0.5 rounded-lg bg-white/15 hover:bg-white/25 text-white text-[11px] font-bold flex items-center gap-1 border border-white/20 transition"
+                    className="px-2 py-0.5 rounded-lg bg-white/15 hover:bg-white/25 text-white text-[11px] font-bold flex items-center gap-1 border border-white/20 transition cursor-pointer"
                     title="Edit Form Name & Logo"
                   >
                     <Icon name="edit" size={11} />
@@ -626,116 +690,127 @@ export function StudentEnrollmentModal({
             </div>
           )}
 
-          {/* College Header & Course Selector Box */}
-          <div className="border-2 border-slate-800 dark:border-slate-600 rounded-2xl p-4 bg-slate-50/50 dark:bg-slate-800/40 space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-700 pb-2">
+          {/* Academic Header & Dynamic Medium + Course Dropdown Selectors */}
+          <div className="border-2 border-slate-800 dark:border-slate-600 rounded-2xl p-4 bg-slate-50/60 dark:bg-slate-800/40 space-y-3.5 shadow-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-700 pb-2.5">
               <span className="font-extrabold uppercase tracking-wide text-slate-900 dark:text-white text-xs">
                 APPLICATION FORM FOR ADMISSION TO DEGREE / COURSE FOR:
               </span>
-              <input
-                type="text"
-                value={academicYear}
-                onChange={(e) => setAcademicYear(e.target.value)}
-                placeholder="Academic Year (e.g. 2026 - 2027)"
-                className="w-40 px-2 py-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-xs font-bold text-center text-blue-700 dark:text-blue-400"
-              />
-            </div>
-
-            {/* Courses Matrix + Custom Course Support */}
-            <div className="space-y-2 pt-1">
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                {DEGREE_COURSES.map((c) => (
-                  <label
-                    key={c}
-                    className={cn(
-                      'flex items-center gap-2.5 p-2.5 rounded-xl border cursor-pointer font-bold text-xs transition',
-                      !isCustomCourse && course === c
-                        ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                        : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:border-blue-400'
-                    )}
-                  >
-                    <input
-                      type="radio"
-                      name="degree_course"
-                      checked={!isCustomCourse && course === c}
-                      onChange={() => {
-                        setCourse(c);
-                        setIsCustomCourse(false);
-                      }}
-                      className="sr-only"
-                    />
-                    <span className={cn(
-                      'w-4 h-4 rounded border flex items-center justify-center text-[10px]',
-                      !isCustomCourse && course === c ? 'bg-white text-blue-600 font-black' : 'border-slate-400'
-                    )}>
-                      {!isCustomCourse && course === c && '✓'}
-                    </span>
-                    <span>{c}</span>
-                  </label>
-                ))}
-                
-                <label
-                  className={cn(
-                    'flex items-center gap-2.5 p-2.5 rounded-xl border cursor-pointer font-bold text-xs transition',
-                    isCustomCourse
-                      ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                      : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:border-blue-400'
-                  )}
-                >
-                  <input
-                    type="radio"
-                    name="degree_course"
-                    checked={isCustomCourse}
-                    onChange={() => setIsCustomCourse(true)}
-                    className="sr-only"
-                  />
-                  <span className={cn(
-                    'w-4 h-4 rounded border flex items-center justify-center text-[10px]',
-                    isCustomCourse ? 'bg-white text-blue-600 font-black' : 'border-slate-400'
-                  )}>
-                    {isCustomCourse && '✓'}
-                  </span>
-                  <span>+ Other / Custom Course</span>
-                </label>
-              </div>
-
-              {isCustomCourse && (
-                <div className="pt-1">
-                  <input
-                    type="text"
-                    value={customCourse}
-                    onChange={(e) => setCustomCourse(e.target.value)}
-                    placeholder="Enter Course / Degree Program Name (e.g. B.Tech Computer Science)"
-                    className="w-full px-3.5 py-2 bg-white dark:bg-slate-900 border border-blue-400 rounded-xl text-xs font-bold text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* Medium Selector */}
-            <div className="flex flex-wrap items-center gap-4 pt-2 border-t border-slate-200 dark:border-slate-700">
-              <span className="font-extrabold text-slate-700 dark:text-slate-300 underline">Medium of Instruction:</span>
-              <div className="flex items-center gap-3">
-                {['English', 'Telugu', 'Hindi'].map((m) => (
-                  <label key={m} className="flex items-center gap-1.5 cursor-pointer font-bold text-xs">
-                    <input
-                      type="radio"
-                      name="medium"
-                      checked={medium === m}
-                      onChange={() => setMedium(m)}
-                      className="accent-blue-600"
-                    />
-                    <span>{m}</span>
-                  </label>
-                ))}
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400">Academic Year:</span>
                 <input
                   type="text"
-                  value={['English', 'Telugu', 'Hindi'].includes(medium) ? '' : medium}
-                  onChange={(e) => setMedium(e.target.value)}
-                  placeholder="Other Medium"
-                  className="px-2.5 py-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-xs font-medium w-32"
+                  value={academicYear}
+                  onChange={(e) => setAcademicYear(e.target.value)}
+                  placeholder="Academic Year (e.g. 2026 - 2027)"
+                  className="w-36 px-2.5 py-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-xs font-bold text-center text-blue-700 dark:text-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
+            </div>
+
+            {/* Side-by-Side Dropdowns: Medium of Instruction & Course Program (Right Side) */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-3 pt-1">
+              
+              {/* Left Box: Medium of Instruction Dropdown (5 cols) */}
+              <div className="md:col-span-5 space-y-1.5">
+                <label className="block font-bold text-slate-800 dark:text-slate-200 text-xs">
+                  Medium of Instruction: <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative">
+                  <select
+                    value={isCustomMedium ? '__custom__' : (medium || '')}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === '__custom__') {
+                        setIsCustomMedium(true);
+                        setMedium(customMedium);
+                      } else {
+                        setIsCustomMedium(false);
+                        setMedium(val);
+                      }
+                    }}
+                    className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none pr-8 cursor-pointer shadow-xs"
+                  >
+                    <option value="">-- Select Medium of Instruction --</option>
+                    {languagesList.map((lang) => (
+                      <option key={lang} value={lang}>
+                        {lang}
+                      </option>
+                    ))}
+                    <option value="__custom__">+ Other / Custom Medium</option>
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-500">
+                    <Icon name="chevron-down" size={14} />
+                  </div>
+                </div>
+
+                {isCustomMedium && (
+                  <div className="pt-1 animate-fade-in">
+                    <input
+                      type="text"
+                      value={customMedium}
+                      onChange={(e) => {
+                        setCustomMedium(e.target.value);
+                        setMedium(e.target.value);
+                      }}
+                      placeholder="Enter Medium (e.g. Sanskrit, Kannada, Urdu)"
+                      className="w-full px-3 py-1.5 bg-white dark:bg-slate-900 border border-blue-400 rounded-lg text-xs font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
+                      autoFocus
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Right Box: Degree / Course Dropdown with Duration (7 cols) */}
+              <div className="md:col-span-7 space-y-1.5">
+                <label className="block font-bold text-slate-800 dark:text-slate-200 text-xs">
+                  Degree / Course Program (with Duration): <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative">
+                  <select
+                    value={isCustomCourse ? '__custom__' : (course || '')}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === '__custom__') {
+                        setIsCustomCourse(true);
+                        setCourse(customCourse);
+                      } else {
+                        setIsCustomCourse(false);
+                        setCourse(val);
+                      }
+                    }}
+                    className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none pr-8 cursor-pointer shadow-xs"
+                  >
+                    <option value="">-- Select Course / Program --</option>
+                    {coursesList.map((c) => (
+                      <option key={c.id || c.name} value={c.name}>
+                        {c.name} {c.period ? `(${c.period})` : ''}
+                      </option>
+                    ))}
+                    <option value="__custom__">+ Other / Custom Course</option>
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-500">
+                    <Icon name="chevron-down" size={14} />
+                  </div>
+                </div>
+
+                {isCustomCourse && (
+                  <div className="pt-1 animate-fade-in">
+                    <input
+                      type="text"
+                      value={customCourse}
+                      onChange={(e) => {
+                        setCustomCourse(e.target.value);
+                        setCourse(e.target.value);
+                      }}
+                      placeholder="Enter Course / Degree Program Name (e.g. B.Tech Computer Science)"
+                      className="w-full px-3 py-1.5 bg-white dark:bg-slate-900 border border-blue-400 rounded-lg text-xs font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
+                      autoFocus
+                    />
+                  </div>
+                )}
+              </div>
+
             </div>
           </div>
 

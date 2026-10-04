@@ -55,6 +55,81 @@ def create_payment_method(payload: dict, db: Session = Depends(get_db)):
 
 
 # ============================================================
+# LANGUAGES & MEDIUMS OF INSTRUCTION
+# ============================================================
+
+@router.get("/languages")
+def get_course_languages(db: Session = Depends(get_db)):
+    """
+    Returns active medium of instruction languages dynamically configured by owner.
+    """
+    return CourseService.get_languages(db)
+
+
+@router.post("/languages")
+def add_course_language(payload: dict, db: Session = Depends(get_db)):
+    """
+    Adds a new medium of instruction language to settings.
+    """
+    lang_name = payload.get("name") or payload.get("language") or ""
+    if not lang_name.strip():
+        raise HTTPException(status_code=400, detail="Language name is required")
+    return CourseService.add_language(db, lang_name)
+
+
+@router.delete("/languages/{lang_name}")
+def delete_course_language(lang_name: str, db: Session = Depends(get_db)):
+    """
+    Removes a medium of instruction language from settings.
+    """
+    return CourseService.delete_language(db, lang_name)
+
+
+# ============================================================
+# COURSE CLASSIFICATIONS / TYPES (DYNAMIC DATABASE)
+# ============================================================
+
+@router.get("/classifications")
+def get_classifications(db: Session = Depends(get_db)):
+    """
+    Returns active course types/classifications dynamically configured in DB.
+    """
+    return CourseService.get_classifications(db)
+
+
+@router.post("/classifications")
+def create_classification(payload: dict, db: Session = Depends(get_db)):
+    """
+    Adds a new course type/classification.
+    """
+    val = payload.get("value") or payload.get("label") or payload.get("name") or ""
+    lbl = payload.get("label") or val
+    if not val.strip():
+        raise HTTPException(status_code=400, detail="Classification value is required")
+    return CourseService.add_classification(db, val, lbl)
+
+
+@router.put("/classifications/{class_id}")
+def update_classification(class_id: str, payload: dict, db: Session = Depends(get_db)):
+    """
+    Updates an existing course type/classification.
+    """
+    val = payload.get("value") or payload.get("name") or ""
+    lbl = payload.get("label") or val
+    if not val.strip():
+        raise HTTPException(status_code=400, detail="Classification value is required")
+    return CourseService.update_classification(db, class_id, val, lbl)
+
+
+@router.delete("/classifications/{class_id}")
+def delete_classification(class_id: str, db: Session = Depends(get_db)):
+    """
+    Removes a course type/classification.
+    """
+    return CourseService.delete_classification(db, class_id)
+
+
+# ============================================================
 # COURSES / DEGREE PLANS
 # ============================================================
 

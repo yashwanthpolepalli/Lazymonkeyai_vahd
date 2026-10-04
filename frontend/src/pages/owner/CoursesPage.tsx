@@ -55,20 +55,17 @@ export interface TrainingProgramView {
   tierPlanIds: Record<number, string>; // maps duration_days -> DB plan ID
 }
 
+export interface CourseClassificationItem {
+  id: string;
+  value: string;
+  label: string;
+}
+
 const DEFAULT_DURATION_TIERS: DurationTierConfig[] = [
   { id: 'tier_30', name: '1 Month', days: 30, multiplier: 1.0, suffix: '30D' },
   { id: 'tier_90', name: '3 Months', days: 90, multiplier: 2.6, suffix: '90D' },
   { id: 'tier_180', name: '6 Months', days: 180, multiplier: 4.8, suffix: '180D' },
   { id: 'tier_365', name: '1 Year', days: 365, multiplier: 8.8, suffix: '365D' },
-];
-
-const COURSE_CLASSIFICATIONS = [
-  { value: 'Core Subject', label: 'Core / Mandatory Subject' },
-  { value: 'Professional Elective', label: 'Professional Elective' },
-  { value: 'Open Elective', label: 'Open / Interdisciplinary Elective' },
-  { value: 'Integrated Degree', label: 'Integrated / Dual Degree Program' },
-  { value: 'Skill & Certification', label: 'Skill & Certification Track' },
-  { value: 'Lab & Workshop', label: 'Laboratory & Practical Workshop' },
 ];
 
 const STORAGE_TIERS_KEY = 'course_duration_tiers_v3';
@@ -93,6 +90,14 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
       localStorage.setItem('courses_display_view_mode', mode);
     } catch {}
   };
+
+  // Dynamic Classifications State (Editable & Database Driven)
+  const [classifications, setClassifications] = useState<CourseClassificationItem[]>([]);
+  const [classificationManagerOpen, setClassificationManagerOpen] = useState(false);
+  const [editingClassification, setEditingClassification] = useState<CourseClassificationItem | null>(null);
+  const [newClassValue, setNewClassValue] = useState('');
+  const [newClassLabel, setNewClassLabel] = useState('');
+  const [classLoading, setClassLoading] = useState(false);
 
   // Dynamic Duration Tiers State
   const [durationTiers, setDurationTiers] = useState<DurationTierConfig[]>(() => {
@@ -122,6 +127,12 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
   const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
   const [newCatCode, setNewCatCode] = useState('');
   const [newCatName, setNewCatName] = useState('');
+
+  // Mediums of Instruction / Languages State
+  const [languages, setLanguages] = useState<string[]>([]);
+  const [languageManagerOpen, setLanguageManagerOpen] = useState(false);
+  const [newLanguageInput, setNewLanguageInput] = useState('');
+  const [langLoading, setLangLoading] = useState(false);
 
   // Tiers Manager Modal State
   const [tierManagerOpen, setTierManagerOpen] = useState(false);
@@ -173,21 +184,117 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
     }
   };
 
+  const handleAddLanguage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const clean = newLanguageInput.trim();
+    if (!clean) return;
+    setLangLoading(true);
+    try {
+      const res = await apiClient.post<string[]>('/courses/languages', { name: clean });
+      if (Array.isArray(res)) {
+        setLanguages(res);
+      } else {
+        setLanguages((prev) => Array.from(new Set([...prev, clean])));
+      }
+      setNewLanguageInput('');
+    } catch (err) {
+      console.error('Failed to add language', err);
+    } finally {
+      setLangLoading(false);
+    }
+  };
+
+  const handleDeleteLanguage = async (langName: string) => {
+    if (!confirm(`Are you sure you want to remove "${langName}" from mediums of instruction?`)) return;
+    try {
+      const res = await apiClient.delete<string[]>(`/courses/languages/${encodeURIComponent(langName)}`);
+      if (Array.isArray(res)) {
+        setLanguages(res);
+      } else {
+        setLanguages((prev) => prev.filter((l) => l !== langName));
+      }
+    } catch (err) {
+      console.error('Failed to delete language', err);
+    }
+  };
+
+  const handleAddClassification = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const val = newClassValue.trim();
+    const lbl = newClassLabel.trim() || val;
+    if (!val) return;
+    setClassLoading(true);
+    try {
+      if (editingClassification) {
+        const res = await apiClient.put<CourseClassificationItem[]>(
+          `/courses/classifications/${editingClassification.id}`,
+          { value: val, label: lbl }
+        );
+        if (Array.isArray(res)) setClassifications(res);
+        setEditingClassification(null);
+      } else {
+        const res = await apiClient.post<CourseClassificationItem[]>(
+          '/courses/classifications',
+          { value: val, label: lbl }
+        );
+        if (Array.isArray(res)) setClassifications(res);
+      }
+      setNewClassValue('');
+      setNewClassLabel('');
+    } catch (err) {
+      console.error('Failed to save classification', err);
+    } finally {
+      setClassLoading(false);
+    }
+  };
+
+  const handleEditClassification = (item: CourseClassificationItem) => {
+    setEditingClassification(item);
+    setNewClassValue(item.value);
+    setNewClassLabel(item.label);
+  };
+
+  const handleDeleteClassification = async (item: CourseClassificationItem) => {
+    if (!confirm(`Are you sure you want to delete classification "${item.label}"?`)) return;
+    try {
+      const res = await apiClient.delete<CourseClassificationItem[]>(
+        `/courses/classifications/${item.id}`
+      );
+      if (Array.isArray(res)) setClassifications(res);
+      else setClassifications((prev) => prev.filter((c) => c.id !== item.id));
+      if (editingClassification?.id === item.id) {
+        setEditingClassification(null);
+        setNewClassValue('');
+        setNewClassLabel('');
+      }
+    } catch (err) {
+      console.error('Failed to delete classification', err);
+    }
+  };
+
   const fetchPlansAndMembers = async () => {
     setLoading(true);
     try {
-      const [membersRes, plansRes, deptsRes] = await Promise.all([
+      const [membersRes, plansRes, deptsRes, langsRes, classRes] = await Promise.all([
         api.customers.list().catch(() => []),
         apiClient.get<MembershipPlanItem[]>('/courses/plans').catch(() => []),
         hrmsApi.getDepartments().catch(() => []),
+        apiClient.get<string[]>('/courses/languages').catch(() => []),
+        apiClient.get<CourseClassificationItem[]>('/courses/classifications').catch(() => []),
       ]);
 
       const fetchedMembers = Array.isArray(membersRes) ? membersRes : [];
       const fetchedPlans = Array.isArray(plansRes) ? plansRes : [];
       const fetchedDepts = Array.isArray(deptsRes) ? deptsRes : [];
+      const fetchedLangs = Array.isArray(langsRes) ? langsRes : [];
+      const fetchedClasses = Array.isArray(classRes) ? classRes : [];
 
       setMembers(fetchedMembers);
       setRawPlans(fetchedPlans);
+      setLanguages(fetchedLangs);
+      if (fetchedClasses.length > 0) {
+        setClassifications(fetchedClasses);
+      }
 
       // Merge departments from HRMS into branch categories if not already present
       const existingCodes = new Set(categories.map((c) => c.code.toUpperCase()));
@@ -209,37 +316,44 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
       }
 
       // Auto-discover duration tiers from plans
-      const knownDays = new Set(durationTiers.map((t) => t.days));
-      const newTiers: DurationTierConfig[] = [];
-      fetchedPlans.forEach((plan) => {
-        const days = plan.duration_days;
-        if (days && days > 0 && !knownDays.has(days)) {
-          knownDays.add(days);
-          let name = `${days} Days`;
-          let suffix = `${days}D`;
-          let multiplier = Number((days / 30).toFixed(1));
-          if (days === 30) name = '1 Month';
-          else if (days === 60) name = '2 Months';
-          else if (days === 90) name = '3 Months';
-          else if (days === 180) name = '6 Months';
-          else if (days === 365) name = '1 Year';
-          else if (days === 730) name = '2 Years';
-          else if (days === 1095) name = '3 Years';
-          else if (days === 1460) name = '4 Years';
+      setDurationTiers((prevTiers) => {
+        const knownDays = new Set(prevTiers.map((t) => t.days));
+        const newTiers: DurationTierConfig[] = [];
+        fetchedPlans.forEach((plan) => {
+          const days = plan.duration_days;
+          if (days && days > 0 && !knownDays.has(days)) {
+            knownDays.add(days);
+            let name = `${days} Days`;
+            let suffix = `${days}D`;
+            let multiplier = Number((days / 30).toFixed(1));
+            if (days === 30) name = '1 Month';
+            else if (days === 60) name = '2 Months';
+            else if (days === 90) name = '3 Months';
+            else if (days === 180) name = '6 Months';
+            else if (days === 365) name = '1 Year';
+            else if (days === 730) name = '2 Years';
+            else if (days === 1095) name = '3 Years';
+            else if (days === 1460) name = '4 Years';
 
-          newTiers.push({
-            id: `tier_${days}`,
-            name,
-            days,
-            multiplier,
-            suffix,
-          });
+            newTiers.push({
+              id: `tier_${days}`,
+              name,
+              days,
+              multiplier,
+              suffix,
+            });
+          }
+        });
+
+        if (newTiers.length > 0) {
+          const merged = [...prevTiers, ...newTiers].sort((a, b) => a.days - b.days);
+          try {
+            localStorage.setItem(STORAGE_TIERS_KEY, JSON.stringify(merged));
+          } catch {}
+          return merged;
         }
+        return prevTiers;
       });
-
-      if (newTiers.length > 0) {
-        saveDurationTiers([...durationTiers, ...newTiers]);
-      }
     } catch (err) {
       console.error('Failed to load courses data', err);
     } finally {
@@ -301,10 +415,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
 
       let classification = 'Core Subject';
       if (first.badge) {
-        const badge = first.badge;
-        if (COURSE_CLASSIFICATIONS.some((c) => c.value.toLowerCase() === badge.toLowerCase())) {
-          classification = badge;
-        }
+        classification = first.badge;
       } else if (isComboVal) {
         classification = 'Integrated Degree';
       }
@@ -604,9 +715,18 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
       .filter(Boolean);
 
     try {
-      for (const tier of durationTiers) {
+      const activeTiers = durationTiers.filter((tier) => {
         const tierPrice = Number(programForm.tierPrices[tier.days]) || 0;
-        if (tierPrice <= 0 && !editingProgramId) continue;
+        return tierPrice > 0 || editingProgramId;
+      });
+
+      // If user provided no specific tier price (>0), create at least with the primary duration tier
+      const tiersToProcess = activeTiers.length > 0
+        ? activeTiers
+        : [durationTiers[0] || { id: 'tier_365', name: '1 Year', days: 365, multiplier: 1, suffix: '365D' }];
+
+      for (const tier of tiersToProcess) {
+        const tierPrice = Number(programForm.tierPrices[tier.days]) || 0;
 
         const payload = {
           name: `${programForm.name} - ${tier.name}`,
@@ -614,8 +734,8 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
           price: tierPrice,
           duration_days: tier.days,
           features: featuresList,
-          badge: programForm.classification || programForm.badge,
-          color: programForm.color,
+          badge: programForm.classification || programForm.badge || 'Core Subject',
+          color: programForm.color || 'from-blue-600 to-indigo-700',
           is_combo: Boolean(programForm.isCombo || programForm.classification === 'Integrated Degree'),
         };
 
@@ -628,7 +748,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
       }
 
       setModalOpen(false);
-      fetchPlansAndMembers();
+      await fetchPlansAndMembers();
     } catch (_err) {
       console.error('Save course error', _err);
     }
@@ -638,13 +758,16 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
     if (!confirm(`Are you sure you want to delete the "${prog.name}" course and all its fee tiers?`)) return;
     try {
       const idsToDelete = Object.values(prog.tierPlanIds || {}).filter(Boolean);
+      if (idsToDelete.length === 0 && prog.id) {
+        idsToDelete.push(prog.id);
+      }
       for (const id of idsToDelete) {
         await apiClient.delete(`/courses/plans/${id}`).catch(() => {});
       }
       if (editingProgramId === prog.id) {
         setModalOpen(false);
       }
-      fetchPlansAndMembers();
+      await fetchPlansAndMembers();
     } catch (_err) {
       console.error('Delete course error', _err);
     }
@@ -734,6 +857,22 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
           <div className="flex items-center gap-2.5 self-start sm:self-auto flex-wrap">
             <button
               type="button"
+              onClick={() => setClassificationManagerOpen(true)}
+              className="px-3.5 py-2 rounded-xl text-xs font-bold border border-navy-200 bg-white hover:bg-navy-50 text-navy-700 flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+            >
+              <Icon name="tag" size={15} className="text-purple-600" />
+              <span>Classifications ({classifications.length})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setLanguageManagerOpen(true)}
+              className="px-3.5 py-2 rounded-xl text-xs font-bold border border-navy-200 bg-white hover:bg-navy-50 text-navy-700 flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+            >
+              <Icon name="globe" size={15} className="text-blue-600" />
+              <span>Mediums / Languages ({languages.length})</span>
+            </button>
+            <button
+              type="button"
               onClick={handleOpenTierManager}
               className="px-3.5 py-2 rounded-xl text-xs font-bold border border-navy-200 bg-white hover:bg-navy-50 text-navy-700 flex items-center gap-1.5 shadow-xs transition cursor-pointer"
             >
@@ -750,7 +889,23 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
           title="Courses, Degree Programs & Fee Structure"
           breadcrumb={['Owner', 'Courses']}
           actions={
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setClassificationManagerOpen(true)}
+                className="px-3.5 py-2 rounded-xl text-xs font-bold border border-navy-200 bg-white hover:bg-navy-50 text-navy-700 flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+              >
+                <Icon name="tag" size={15} className="text-purple-600" />
+                <span>Classifications ({classifications.length})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setLanguageManagerOpen(true)}
+                className="px-3.5 py-2 rounded-xl text-xs font-bold border border-navy-200 bg-white hover:bg-navy-50 text-navy-700 flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+              >
+                <Icon name="globe" size={15} className="text-blue-600" />
+                <span>Mediums / Languages ({languages.length})</span>
+              </button>
               <button
                 type="button"
                 onClick={handleOpenTierManager}
@@ -979,7 +1134,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
                     <span className="text-xs text-navy-500 font-medium">
                       <span className="font-bold text-navy-800">{enrolledCount}</span> students enrolled
                     </span>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1.5">
                       <button
                         onClick={() => openEditModal(prog)}
                         className="btn-ghost text-xs flex items-center gap-1 hover:bg-brand-50 hover:text-brand-600 cursor-pointer"
@@ -988,9 +1143,9 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
                       </button>
                       <button
                         onClick={() => handleDeleteProgram(prog)}
-                        className="btn-ghost text-xs text-danger-600 hover:text-danger-700 hover:bg-danger-50 flex items-center gap-1 cursor-pointer"
+                        className="btn-ghost text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 flex items-center gap-1 cursor-pointer"
                       >
-                        <Icon name="trash-2" size={13} /> Delete
+                        <Icon name="trash" size={13} /> Delete
                       </button>
                     </div>
                   </div>
@@ -1094,22 +1249,22 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
                       </td>
 
                       <td className="py-3 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1">
+                        <div className="flex items-center justify-end gap-1.5">
                           <button
                             type="button"
                             onClick={() => openEditModal(prog)}
-                            className="p-1.5 rounded-lg hover:bg-brand-50 text-navy-400 hover:text-brand-600 transition cursor-pointer"
-                            title="Edit Fees"
+                            className="p-1.5 rounded-lg hover:bg-brand-50 text-navy-500 hover:text-brand-600 border border-navy-200/70 hover:border-brand-300 transition cursor-pointer shadow-xs"
+                            title="Edit Course & Fee Structure"
                           >
                             <Icon name="edit" size={13} />
                           </button>
                           <button
                             type="button"
                             onClick={() => handleDeleteProgram(prog)}
-                            className="p-1.5 rounded-lg hover:bg-rose-50 text-navy-400 hover:text-rose-600 transition cursor-pointer"
+                            className="p-1.5 rounded-lg hover:bg-rose-50 text-rose-500 hover:text-rose-700 border border-rose-200 hover:border-rose-400 transition cursor-pointer shadow-xs"
                             title="Delete Course"
                           >
-                            <Icon name="trash-2" size={13} />
+                            <Icon name="trash" size={13} />
                           </button>
                         </div>
                       </td>
@@ -1155,15 +1310,24 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-navy-700">Course Type / Classification</label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-navy-700">Course Type / Classification</label>
+                    <button
+                      type="button"
+                      onClick={() => setClassificationManagerOpen(true)}
+                      className="text-[11px] font-bold text-purple-600 hover:text-purple-700 flex items-center gap-0.5 cursor-pointer"
+                    >
+                      <Icon name="plus" size={10} /> Manage Types
+                    </button>
+                  </div>
                   <select
                     value={programForm.classification}
                     onChange={(e) => setProgramForm({ ...programForm, classification: e.target.value })}
                     className="input-field text-xs py-2 font-bold"
                   >
-                    {COURSE_CLASSIFICATIONS.map((c) => (
-                      <option key={c.value} value={c.value}>
-                        {c.label}
+                    {classifications.map((c) => (
+                      <option key={c.id || c.value} value={c.value}>
+                        {c.label || c.value}
                       </option>
                     ))}
                   </select>
@@ -1609,6 +1773,231 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Medium of Instruction / Languages Manager Modal */}
+      {languageManagerOpen && (
+        <div className="fixed inset-0 bg-navy-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-lg space-y-4 shadow-2xl animate-scale-in border border-navy-100 max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-navy-100 pb-3 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 shadow-xs">
+                  <Icon name="globe" size={20} />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-navy-900">Mediums of Instruction / Languages</h3>
+                  <p className="text-xs text-navy-500">Configure languages available in student admission forms</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setLanguageManagerOpen(false)}
+                className="w-8 h-8 rounded-full hover:bg-navy-50 flex items-center justify-center text-navy-400 hover:text-navy-600 transition cursor-pointer"
+              >
+                <Icon name="x" size={16} />
+              </button>
+            </div>
+
+            {/* Add New Language Form */}
+            <form onSubmit={handleAddLanguage} className="flex items-center gap-2 shrink-0">
+              <input
+                type="text"
+                placeholder="Add new language (e.g. Sanskrit, Tamil, French)..."
+                value={newLanguageInput}
+                onChange={(e) => setNewLanguageInput(e.target.value)}
+                className="flex-1 px-3.5 py-2.5 rounded-xl border border-navy-200 text-xs font-semibold text-navy-900 focus:outline-none focus:ring-2 focus:ring-brand-500 shadow-xs"
+              />
+              <button
+                type="submit"
+                disabled={!newLanguageInput.trim() || langLoading}
+                className="btn-primary text-xs flex items-center gap-1.5 py-2.5 px-4 disabled:opacity-50 cursor-pointer shrink-0"
+              >
+                <Icon name="plus" size={14} />
+                <span>Add Medium</span>
+              </button>
+            </form>
+
+            {/* Languages List */}
+            <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+              <div className="text-[11px] font-bold text-navy-400 uppercase tracking-wider">
+                Configured Languages ({languages.length})
+              </div>
+              {languages.length === 0 ? (
+                <div className="text-center py-6 text-xs text-navy-400 italic bg-navy-50/50 rounded-2xl border border-dashed border-navy-200">
+                  No languages configured. Add one above.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {languages.map((lang) => (
+                    <div
+                      key={lang}
+                      className="flex items-center justify-between p-3 rounded-xl border border-navy-100 bg-navy-50/60 hover:bg-navy-50 transition shadow-xs"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Icon name="globe" size={14} className="text-blue-500" />
+                        <span className="text-xs font-bold text-navy-800">{lang}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteLanguage(lang)}
+                        className="text-navy-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-white transition cursor-pointer"
+                        title={`Delete ${lang}`}
+                      >
+                        <Icon name="trash-2" size={13} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="pt-3 border-t border-navy-100 flex justify-end shrink-0">
+              <button
+                type="button"
+                onClick={() => setLanguageManagerOpen(false)}
+                className="btn-secondary text-xs px-4 py-2 cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Course Type / Classification Manager Modal (Add, Edit, Delete) */}
+      {classificationManagerOpen && (
+        <div className="fixed inset-0 bg-navy-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-lg space-y-4 shadow-2xl animate-scale-in border border-navy-100 max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-navy-100 pb-3 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-purple-50 flex items-center justify-center text-purple-600 shadow-xs">
+                  <Icon name="tag" size={20} />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-navy-900">Manage Course Classifications</h3>
+                  <p className="text-xs text-navy-500">Add, edit, or delete course types and classifications</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setClassificationManagerOpen(false);
+                  setEditingClassification(null);
+                  setNewClassValue('');
+                  setNewClassLabel('');
+                }}
+                className="w-8 h-8 rounded-full hover:bg-navy-50 flex items-center justify-center text-navy-400 hover:text-navy-600 transition cursor-pointer"
+              >
+                <Icon name="x" size={16} />
+              </button>
+            </div>
+
+            {/* Add / Edit Form */}
+            <form onSubmit={handleAddClassification} className="bg-navy-50/70 p-4 rounded-2xl border border-navy-100 space-y-2.5 shrink-0 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-navy-900">
+                  {editingClassification ? `Editing: ${editingClassification.label || editingClassification.value}` : 'Add New Classification'}
+                </span>
+                {editingClassification && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingClassification(null);
+                      setNewClassValue('');
+                      setNewClassLabel('');
+                    }}
+                    className="text-[11px] font-bold text-navy-500 hover:text-navy-700 cursor-pointer"
+                  >
+                    Cancel Edit
+                  </button>
+                )}
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] font-bold text-navy-600 uppercase mb-1 block">Short Code / Value *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Honors Degree"
+                    value={newClassValue}
+                    onChange={(e) => setNewClassValue(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-navy-200 text-xs font-bold text-navy-900 focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white shadow-xs"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-navy-600 uppercase mb-1 block">Display Label (Optional)</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Honors & Research Track"
+                    value={newClassLabel}
+                    onChange={(e) => setNewClassLabel(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-navy-200 text-xs font-semibold text-navy-900 focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white shadow-xs"
+                  />
+                </div>
+              </div>
+              <button
+                type="submit"
+                disabled={!newClassValue.trim() || classLoading}
+                className="w-full py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition disabled:opacity-50 cursor-pointer"
+              >
+                <Icon name={editingClassification ? 'check' : 'plus'} size={14} />
+                <span>{editingClassification ? 'Update Classification' : 'Add Classification'}</span>
+              </button>
+            </form>
+
+            {/* Classifications List */}
+            <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+              <div className="text-[11px] font-bold text-navy-400 uppercase tracking-wider">
+                Configured Classifications ({classifications.length})
+              </div>
+              <div className="space-y-2">
+                {classifications.map((item) => (
+                  <div
+                    key={item.id || item.value}
+                    className="flex items-center justify-between p-3 rounded-xl border border-navy-100 bg-navy-50/60 hover:bg-navy-50 transition shadow-xs"
+                  >
+                    <div>
+                      <div className="font-bold text-navy-900 text-xs">{item.label}</div>
+                      <div className="text-[10px] text-navy-400 font-mono">Value: {item.value}</div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => handleEditClassification(item)}
+                        className="p-1.5 rounded-lg hover:bg-brand-50 text-navy-500 hover:text-brand-600 transition cursor-pointer"
+                        title="Edit Classification"
+                      >
+                        <Icon name="edit" size={13} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteClassification(item)}
+                        className="p-1.5 rounded-lg hover:bg-rose-50 text-rose-500 hover:text-rose-700 transition cursor-pointer"
+                        title="Delete Classification"
+                      >
+                        <Icon name="trash" size={13} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-navy-100 flex justify-end shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setClassificationManagerOpen(false);
+                  setEditingClassification(null);
+                  setNewClassValue('');
+                  setNewClassLabel('');
+                }}
+                className="btn-secondary text-xs px-4 py-2 cursor-pointer"
+              >
+                Done
+              </button>
+            </div>
           </div>
         </div>
       )}

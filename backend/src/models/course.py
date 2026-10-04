@@ -44,3 +44,23 @@ class StudentCourse(Base):
     meta_data = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=now_ist_naive)
     updated_at = Column(DateTime, default=now_ist_naive, onupdate=now_ist_naive)
+
+
+class CourseLanguage(Base):
+    __tablename__ = "course_languages"
+
+    id = Column(String, primary_key=True, index=True)
+    name = Column(String, nullable=False, unique=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=now_ist_naive)
+
+
+class CourseClassification(Base):
+    __tablename__ = "course_classifications"
+
+    id = Column(String, primary_key=True, index=True)
+    value = Column(String, nullable=False, unique=True)
+    label = Column(String, nullable=False)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=now_ist_naive)
+

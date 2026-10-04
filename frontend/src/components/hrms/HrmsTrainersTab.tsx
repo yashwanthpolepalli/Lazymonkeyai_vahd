@@ -1241,7 +1241,7 @@ export function HrmsTrainersTab() {
 
                         {/* ACTIONS */}
                         <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                          <div className="flex items-center justify-center">
+                          <div className="flex items-center justify-center gap-1.5">
                             <button
                               type="button"
                               onClick={() => {
@@ -1253,6 +1253,14 @@ export function HrmsTrainersTab() {
                             >
                               <Icon name="pen" size={13} className="text-blue-600" />
                               <span>Edit</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteTrainer(t.id, t.name)}
+                              className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-all cursor-pointer"
+                              title="Delete Employee Record"
+                            >
+                              <Icon name="trash-2" size={15} />
                             </button>
                           </div>
                         </td>

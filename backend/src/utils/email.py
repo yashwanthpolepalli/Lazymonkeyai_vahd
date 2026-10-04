@@ -8,7 +8,7 @@ def generate_enrollment_password(full_name: str, phone: str) -> str:
     """
     Generates dynamic credentials per owner specification:
     Password = First 4 characters of full name (lowercase) + Last 4 digits of phone number
-    Example: Name='Polepalli Yashwanth', Phone='+448688179467' → 'pole9467'
+    Example: Name='butter', Phone='+4486881111' → 'butt1111'
     """
     clean_name = re.sub(r'[^a-zA-Z]', '', full_name or '').lower()
     first_4 = clean_name[:4].ljust(4, 'x')

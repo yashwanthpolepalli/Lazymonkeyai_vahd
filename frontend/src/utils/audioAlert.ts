@@ -81,7 +81,7 @@ export interface LiveLeadNotification {
 }
 
 // Global broadcast channel & local storage synchronization for instant multi-tab alerts
-const BROADCAST_KEY = 'FITCLUB_LIVE_LEADS_STREAM';
+const BROADCAST_KEY = 'VAHD_LIVE_LEADS_STREAM';
 
 export function broadcastNewLeadAlert(lead: Omit<LiveLeadNotification, 'id' | 'timestamp' | 'read'>) {
   const newLead: LiveLeadNotification = {
@@ -99,13 +99,13 @@ export function broadcastNewLeadAlert(lead: Omit<LiveLeadNotification, 'id' | 't
     const existing: LiveLeadNotification[] = JSON.parse(localStorage.getItem(BROADCAST_KEY) || '[]');
     const updated = [newLead, ...existing].slice(0, 50);
     localStorage.setItem(BROADCAST_KEY, JSON.stringify(updated));
-    localStorage.setItem('FITCLUB_LATEST_LEAD_PING', JSON.stringify({ lead: newLead, pingTime: Date.now() }));
+    localStorage.setItem('VAHD_LATEST_LEAD_PING', JSON.stringify({ lead: newLead, pingTime: Date.now() }));
   } catch (e) {
     console.error('Failed to store lead in localStorage:', e);
   }
 
   // 3. Dispatch window CustomEvent
-  window.dispatchEvent(new CustomEvent('fitclub:new_lead', { detail: newLead }));
+  window.dispatchEvent(new CustomEvent('vahd:new_lead', { detail: newLead }));
   return newLead;
 }
 

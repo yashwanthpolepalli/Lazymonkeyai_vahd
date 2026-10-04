@@ -736,7 +736,7 @@ export function InventoryPage({ embedded, onNavigateToPos }: InventoryPageProps 
       const ws = XLSX.utils.json_to_sheet(sampleRows, { header: getMasterExportHeaders() });
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Sample Products');
-      XLSX.writeFile(wb, 'fitclub_product_master_sample_template.xlsx');
+      XLSX.writeFile(wb, 'vahd_product_master_sample_template.xlsx');
       triggerToast('📥 Sample Excel template downloaded with all 70 headers!');
     } catch {
       triggerToast('❌ Failed to download sample Excel');

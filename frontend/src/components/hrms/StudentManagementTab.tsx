@@ -126,7 +126,7 @@ export function StudentManagementTab() {
   // Column visibility state
   const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>(() => {
     try {
-      const saved = localStorage.getItem('fitclub_student_columns');
+      const saved = localStorage.getItem('vahd_student_columns');
       if (saved) {
         return { ...DEFAULT_STUDENT_COLUMNS, ...JSON.parse(saved) };
       }
@@ -140,7 +140,7 @@ export function StudentManagementTab() {
     setVisibleColumns((prev) => {
       const updated = { ...prev, [key]: !prev[key] };
       try {
-        localStorage.setItem('fitclub_student_columns', JSON.stringify(updated));
+        localStorage.setItem('vahd_student_columns', JSON.stringify(updated));
       } catch (e) {
         console.error(e);
       }
@@ -157,7 +157,7 @@ export function StudentManagementTab() {
     });
     setVisibleColumns(allTrue);
     try {
-      localStorage.setItem('fitclub_student_columns', JSON.stringify(allTrue));
+      localStorage.setItem('vahd_student_columns', JSON.stringify(allTrue));
     } catch (e) {
       console.error(e);
     }
@@ -166,7 +166,7 @@ export function StudentManagementTab() {
   const handleResetColumns = () => {
     setVisibleColumns(DEFAULT_STUDENT_COLUMNS);
     try {
-      localStorage.setItem('fitclub_student_columns', JSON.stringify(DEFAULT_STUDENT_COLUMNS));
+      localStorage.setItem('vahd_student_columns', JSON.stringify(DEFAULT_STUDENT_COLUMNS));
     } catch (e) {
       console.error(e);
     }

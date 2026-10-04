@@ -500,7 +500,7 @@ export function EnrollmentModal({
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="text-sm font-semibold text-navy-700 mb-1.5 block">Full Name</label><input type="text" placeholder="Enter name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input-field" /></div>
                 <div><label className="text-sm font-semibold text-navy-700 mb-1.5 block">Phone</label><input type="text" placeholder="+91 ..." value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="input-field" /></div>
-                <div className={personType === 'trainer' ? 'col-span-2' : ''}><label className="text-sm font-semibold text-navy-700 mb-1.5 block">Email</label><input type="email" placeholder="email@fitclub.ai" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="input-field" /></div>
+                <div className={personType === 'trainer' ? 'col-span-2' : ''}><label className="text-sm font-semibold text-navy-700 mb-1.5 block">Email</label><input type="email" placeholder="email@example.com" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="input-field" /></div>
                 {personType === 'member' && (
                   <div><label className="text-sm font-semibold text-navy-700 mb-1.5 block">Age</label><input type="number" placeholder="25" value={form.age} onChange={(e) => setForm({ ...form, age: e.target.value })} className="input-field" /></div>
                 )}

@@ -8,7 +8,7 @@ from src.models.hrms import (
     Employee, Department, Designation, Team, EmployeeDocument,
     EmployeeAttendance, LeaveRequest, PayrollRecord,
     RecruitmentJob, JobApplicant, EmployeePerformance, ExitRequest,
-    GeofenceScheme, LeaveType, EmployeeLeaveBalance
+    GeofenceScheme, LeaveType, EmployeeLeaveBalance, AttendanceCorrection
 )
 from src.models.trainer import TrainerProfile
 from src.models.payroll import PayrollInvoice
@@ -54,22 +54,12 @@ class HrmsService:
         for idx, t in enumerate(trainers, start=1):
             full_name = (t.full_name or "").strip()
             parts = full_name.split(" ", 1)
-            first_name = parts[0] if parts else "Staff"
+            first_name = parts[0] if parts else ""
             last_name = parts[1] if len(parts) > 1 else ""
 
-            role = (t.role or "TRAINER").upper()
-            if role == "GYM_OWNER":
-                dept = "Executive Management"
-                desg = t.specialization or "Gym Owner / Director"
-            elif role == "MANAGER":
-                dept = "Operations & Management"
-                desg = t.specialization or "Gym Operations Manager"
-            elif role == "STAFF":
-                dept = "Front Desk & Customer Support"
-                desg = t.specialization or "Front Desk Executive"
-            else:
-                dept = "Fitness & Training"
-                desg = t.specialization or "Fitness Coach & Trainer"
+            role = (t.role or "").upper()
+            dept = getattr(t, "department", None) or ""
+            desg = t.job_designation or t.specialization or role
 
             status = "Active" if t.is_active else "Inactive"
             salary = float(t.base_monthly_salary or 0.0)
@@ -86,7 +76,7 @@ class HrmsService:
                 existing_emp.phone = t.phone or existing_emp.phone or ""
                 existing_emp.gender = t.gender or existing_emp.gender
                 existing_emp.designation = desg
-                existing_emp.department = dept
+                existing_emp.department = dept or existing_emp.department
                 existing_emp.status = status
                 existing_emp.salary = salary
                 existing_emp.gym_branch = t.primary_gym_location or existing_emp.gym_branch or ""
@@ -112,13 +102,13 @@ class HrmsService:
                     gender=t.gender,
                     designation=desg,
                     department=dept,
-                    reporting_manager="Director / Owner",
+                    reporting_manager="",
                     joined_date=joined,
-                    employment_type=role.title() if role in ["MANAGER", "STAFF"] else "Full-Time",
+                    employment_type=role.title() if role else "Full-Time",
                     status=status,
                     salary=salary,
                     avatar="",
-                    gym_branch=t.primary_gym_location or "Main Branch",
+                    gym_branch=t.primary_gym_location or "",
                     skills=[t.specialization] if t.specialization else []
                 )
                 db.add(new_emp)
@@ -822,36 +812,36 @@ class HrmsService:
                         (Employee.email.ilike(owner_user.email)) | (Employee.id == f"emp_{owner_user.id}")
                     ).first()
                     if not emp:
-                        full_name = getattr(owner_user, "full_name", None) or getattr(owner_user, "name", None) or "Gym Owner / Director"
+                        full_name = getattr(owner_user, "full_name", None) or getattr(owner_user, "name", None) or owner_user.email
                         unique_code = f"EMP-{uuid.uuid4().hex[:4].upper()}"
                         emp = Employee(
                             id=f"emp_{owner_user.id}",
                             code=unique_code,
                             first_name=full_name,
                             email=owner_user.email,
-                            designation="Gym Owner / Management",
-                            department="Executive Management",
+                            designation="Owner",
+                            department="",
                             status="Active"
                         )
                         db.add(emp)
                         db.flush()
 
             if not emp:
-                full_name = "Gym Owner / Director" if "owner" in employee_id.lower() or "admin" in employee_id.lower() or user_role_upper == "GYM_OWNER" else "Staff Member"
+                full_name = employee_id
                 unique_code = f"EMP-{uuid.uuid4().hex[:4].upper()}"
                 emp = Employee(
                     id=f"emp_{uuid.uuid4().hex[:8]}",
                     code=unique_code,
                     first_name=full_name,
-                    email=f"{employee_id or 'owner'}@fitclub.ai" if "@" not in employee_id else employee_id,
-                    designation="Gym Owner / Management" if ("owner" in employee_id.lower() or user_role_upper == "GYM_OWNER") else "Fitness Trainer",
-                    department="Executive Management" if ("owner" in employee_id.lower() or user_role_upper == "GYM_OWNER") else "Fitness & Training",
+                    email=employee_id if "@" in employee_id else f"{employee_id}@lazymonkey.ai",
+                    designation="",
+                    department="",
                     status="Active"
                 )
                 db.add(emp)
                 db.flush()
 
-            display_name = f"{emp.first_name} {emp.last_name or ''}".strip()
+            display_name = f"{emp.first_name} {emp.last_name or ''}".strip() or emp.email
 
             # Record in EmployeeAttendance
             att = db.query(EmployeeAttendance).filter(
@@ -946,6 +936,189 @@ class HrmsService:
             "is_within_geofence": is_within_geofence,
             "method": method,
             "employee_name": display_name
+        }
+
+    # -------------------------------------------------------------
+    # 3B. ATTENDANCE CORRECTIONS & APPROVALS METHODS
+    # -------------------------------------------------------------
+    @staticmethod
+    def get_attendance_corrections(
+        db: Session,
+        date_str: Optional[str] = None,
+        status: Optional[str] = None,
+        person_type: Optional[str] = None,
+        department: Optional[str] = None,
+        district: Optional[str] = None,
+        reason: Optional[str] = None,
+        search: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        query = db.query(AttendanceCorrection)
+
+        if date_str and date_str.strip():
+            try:
+                if "/" in date_str:
+                    d_obj = datetime.strptime(date_str.strip(), "%d/%m/%Y").date()
+                else:
+                    d_obj = datetime.strptime(date_str.strip(), "%Y-%m-%d").date()
+                query = query.filter(AttendanceCorrection.date == d_obj)
+            except Exception:
+                pass
+
+        if status and status.strip() and status.lower() != "all":
+            query = query.filter(AttendanceCorrection.status.ilike(status.strip()))
+
+        if person_type and person_type.strip() and person_type.upper() != "ALL":
+            query = query.filter(AttendanceCorrection.person_type.ilike(person_type.strip()))
+
+        if department and department.strip() and department.lower() != "all":
+            query = query.filter(AttendanceCorrection.department.ilike(f"%{department.strip()}%"))
+
+        if district and district.strip() and district.lower() != "all" and "all district" not in district.lower():
+            query = query.filter(
+                (AttendanceCorrection.district.ilike(f"%{district.strip()}%")) |
+                (AttendanceCorrection.place.ilike(f"%{district.strip()}%"))
+            )
+
+        if reason and reason.strip() and reason.lower() != "all" and "all reason" not in reason.lower():
+            query = query.filter(AttendanceCorrection.reason.ilike(f"%{reason.strip()}%"))
+
+        if search and search.strip():
+            s = f"%{search.strip()}%"
+            query = query.filter(
+                (AttendanceCorrection.person_name.ilike(s)) |
+                (AttendanceCorrection.person_code.ilike(s)) |
+                (AttendanceCorrection.designation.ilike(s)) |
+                (AttendanceCorrection.place.ilike(s)) |
+                (AttendanceCorrection.district.ilike(s)) |
+                (AttendanceCorrection.department.ilike(s))
+            )
+
+        records = query.order_by(AttendanceCorrection.created_at.desc()).all()
+        result = []
+        for r in records:
+            result.append({
+                "id": r.id,
+                "person_type": r.person_type or "EMPLOYEE",
+                "person_id": r.person_id or "",
+                "person_name": r.person_name,
+                "person_code": r.person_code or "",
+                "designation": r.designation or "",
+                "department": r.department or "",
+                "district": r.district or "",
+                "place": r.place or "",
+                "date": r.date.strftime("%Y-%m-%d") if r.date else "",
+                "date_formatted": r.date.strftime("%d/%m/%Y") if r.date else "",
+                "in_time": r.in_time or "",
+                "out_time": r.out_time or "",
+                "reason": r.reason or "",
+                "reason_details": r.reason_details or "",
+                "status": r.status or "Pending",
+                "avatar": r.avatar or "",
+                "approved_by": r.approved_by or "",
+                "approved_at": r.approved_at.isoformat() if r.approved_at else None,
+                "rejection_reason": r.rejection_reason or "",
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            })
+        return result
+
+    @staticmethod
+    def get_attendance_corrections_stats(db: Session, date_str: Optional[str] = None) -> Dict[str, int]:
+        query = db.query(AttendanceCorrection)
+        if date_str and date_str.strip():
+            try:
+                if "/" in date_str:
+                    d_obj = datetime.strptime(date_str.strip(), "%d/%m/%Y").date()
+                else:
+                    d_obj = datetime.strptime(date_str.strip(), "%Y-%m-%d").date()
+                query = query.filter(AttendanceCorrection.date == d_obj)
+            except Exception:
+                pass
+
+        all_recs = query.all()
+        total = len(all_recs)
+        pending = sum(1 for r in all_recs if (r.status or "").lower() == "pending")
+        approved = sum(1 for r in all_recs if (r.status or "").lower() == "approved")
+        rejected = sum(1 for r in all_recs if (r.status or "").lower() == "rejected")
+        present = approved if approved > 0 else total
+
+        return {
+            "total_records": total,
+            "pending": pending,
+            "approved": approved,
+            "rejected": rejected,
+            "present": present
+        }
+
+    @staticmethod
+    def approve_attendance_correction(db: Session, correction_id: str, approved_by: str = "Admin") -> Dict[str, Any]:
+        corr = db.query(AttendanceCorrection).filter(AttendanceCorrection.id == correction_id).first()
+        if not corr:
+            raise ValueError("Attendance correction request not found")
+        corr.status = "Approved"
+        corr.approved_by = approved_by
+        corr.approved_at = datetime.utcnow()
+        db.commit()
+        return {"message": "Attendance correction approved successfully", "id": corr.id, "status": corr.status}
+
+    @staticmethod
+    def reject_attendance_correction(db: Session, correction_id: str, rejection_reason: Optional[str] = None) -> Dict[str, Any]:
+        corr = db.query(AttendanceCorrection).filter(AttendanceCorrection.id == correction_id).first()
+        if not corr:
+            raise ValueError("Attendance correction request not found")
+        corr.status = "Rejected"
+        corr.rejection_reason = rejection_reason or "Rejected by administrator"
+        db.commit()
+        return {"message": "Attendance correction rejected", "id": corr.id, "status": corr.status}
+
+    @staticmethod
+    def batch_approve_attendance_corrections(db: Session, correction_ids: List[str], approved_by: str = "Admin") -> Dict[str, Any]:
+        records = db.query(AttendanceCorrection).filter(AttendanceCorrection.id.in_(correction_ids)).all()
+        count = 0
+        for r in records:
+            r.status = "Approved"
+            r.approved_by = approved_by
+            r.approved_at = datetime.utcnow()
+            count += 1
+        db.commit()
+        return {"message": f"Successfully approved {count} attendance records", "count": count}
+
+    @staticmethod
+    def create_attendance_correction(db: Session, payload: Dict[str, Any]) -> Dict[str, Any]:
+        today = datetime.now(IST).date()
+        rec_date = today
+        if payload.get("date"):
+            try:
+                rec_date = datetime.strptime(str(payload["date"])[:10], "%Y-%m-%d").date()
+            except Exception:
+                pass
+
+        corr = AttendanceCorrection(
+            id=f"corr_{uuid.uuid4().hex[:8]}",
+            person_type=str(payload.get("person_type") or "EMPLOYEE").upper(),
+            person_id=payload.get("person_id") or None,
+            person_name=str(payload.get("person_name") or "").strip(),
+            person_code=str(payload.get("person_code") or "").strip(),
+            designation=str(payload.get("designation") or "").strip(),
+            department=str(payload.get("department") or "").strip(),
+            district=str(payload.get("district") or "").strip(),
+            place=str(payload.get("place") or "").strip(),
+            date=rec_date,
+            in_time=str(payload.get("in_time") or "").strip(),
+            out_time=str(payload.get("out_time") or "").strip(),
+            reason=str(payload.get("reason") or "").strip(),
+            reason_details=str(payload.get("reason_details") or "").strip(),
+            status="Pending",
+            avatar=str(payload.get("avatar") or "").strip(),
+            created_at=datetime.utcnow()
+        )
+        db.add(corr)
+        db.commit()
+        db.refresh(corr)
+        return {
+            "id": corr.id,
+            "person_name": corr.person_name,
+            "status": corr.status,
+            "message": "Attendance correction request submitted successfully"
         }
 
 

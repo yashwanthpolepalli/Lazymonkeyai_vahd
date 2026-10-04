@@ -242,7 +242,7 @@ export function TrainersPage() {
 
   const displayTrainers: TrainerRowData[] = trainers.map((t, idx) => {
     const name = t.name || t.full_name || `Trainer ${idx + 1}`;
-    const email = t.email || `${name.toLowerCase().replace(/\s+/g, '')}@fitclub.ai`;
+    const email = t.email || `${name.toLowerCase().replace(/\s+/g, '')}@vahd.ai`;
     const specialization = t.specialization || t.specialty || 'Personal Training';
 
     const assignedMembers = members.filter(

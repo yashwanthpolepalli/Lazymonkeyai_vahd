@@ -1,7 +1,21 @@
 import { apiClient } from './apiClient';
 import type { Member } from '@/types/member';
 
+export interface CustomerView extends Partial<Member> {
+  id: string;
+  name: string;
+  phone?: string;
+  email?: string;
+  member_id?: string;
+  batch?: string;
+  [key: string]: any;
+}
+export type { Member };
+
 export const membersApi = {
+  getCustomers: async (params?: Record<string, string>): Promise<Member[]> => {
+    return membersApi.list(params);
+  },
   list: async (params?: Record<string, string>): Promise<Member[]> => {
     const query = params ? `?${new URLSearchParams(params).toString()}` : '';
     /* eslint-disable @typescript-eslint/no-explicit-any */

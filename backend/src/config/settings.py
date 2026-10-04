@@ -36,8 +36,8 @@ def construct_db_url() -> str:
     return f"sqlite:///{sqlite_path}"
 
 class Settings(BaseSettings):
-    PROJECT_NAME: str = os.getenv("GYM_NAME", "FIT CLUB Gym Management Platform")
-    GYM_NAME: str = os.getenv("GYM_NAME", "FIT CLUB")
+    PROJECT_NAME: str = os.getenv("GYM_NAME", "VAHD Enterprise Management Platform")
+    GYM_NAME: str = os.getenv("GYM_NAME", "VAHD Enterprise")
     GYM_PLATFORM_TAGLINE: str = os.getenv("GYM_PLATFORM_TAGLINE", "AI Enterprise Platform")
     API_V1_STR: str = "/api"
     SECRET_KEY: Optional[str] = os.getenv("SECRET_KEY")

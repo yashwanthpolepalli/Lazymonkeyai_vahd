@@ -8,6 +8,7 @@ import { HrmsAttendanceTab } from '@/components/hrms/HrmsAttendanceTab';
 import { HrmsGeofencePortal } from '@/components/hrms/HrmsGeofencePortal';
 import { HrmsLeaveTab } from '@/components/hrms/HrmsLeaveTab';
 import { HrmsPayrollTab } from '@/components/hrms/HrmsPayrollTab';
+import { HrmsAttendanceCorrectionsTab } from '@/components/hrms/HrmsAttendanceCorrectionsTab';
 import { StudentManagementTab } from '@/components/hrms/StudentManagementTab';
 import { cn } from '@/utils/cn';
 import {
@@ -405,6 +406,8 @@ export function HrmsPage() {
           {/* Conditional View */}
           {activeSubTab === 'geofence_portal' || activeSubTab === 'geofence' ? (
             <HrmsGeofencePortal onSuccessToast={triggerToast} />
+          ) : activeSubTab === 'corrections' || activeSubTab === 'attendance-approve' || activeSubTab === 'approvals' ? (
+            <HrmsAttendanceCorrectionsTab onSuccessToast={triggerToast} />
           ) : (
             <HrmsAttendanceTab attendanceLogs={attendanceLogs} />
           )}

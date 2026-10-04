@@ -47,7 +47,7 @@ export function CustomerGoogleReviewCard() {
     try {
       const res: any = await apiClient.post('/reviews/ai-generate', {
         customer_id: user?.id,
-        gym_name: gymName || reviewSettings?.gym_name || 'FitClub Gym'
+        gym_name: gymName || reviewSettings?.gym_name || 'VAHD Enterprise'
       });
       if (res?.suggestions && Array.isArray(res.suggestions)) {
         setSuggestions(res.suggestions);

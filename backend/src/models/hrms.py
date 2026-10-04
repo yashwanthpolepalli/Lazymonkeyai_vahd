@@ -415,3 +415,30 @@ class PayGrade(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+class AttendanceCorrection(Base):
+    __tablename__ = "hrms_attendance_corrections"
+    __table_args__ = {'extend_existing': True}
+
+    id = Column(String, primary_key=True, default=lambda: f"corr_{uuid.uuid4().hex[:8]}")
+    person_type = Column(String, nullable=False, default="EMPLOYEE")  # 'EMPLOYEE' | 'STUDENT'
+    person_id = Column(String, nullable=True)
+    person_name = Column(String, nullable=False)
+    person_code = Column(String, nullable=True)  # Employee Code or Roll No
+    designation = Column(String, nullable=True)  # e.g., 'Veterinary Assistant', 'B.Tech Student'
+    department = Column(String, nullable=True)  # e.g., 'VA', 'CSE', 'Animal Husbandry'
+    district = Column(String, nullable=True)  # e.g., 'Warangal', 'Adilabad', 'Rangareddy', 'Mancherial', 'Nirmal'
+    place = Column(String, nullable=True)  # e.g., 'PVC Bhanjipet', 'DLDA Rangareddy', 'PVC Rangapet', 'Campus Main'
+    date = Column(Date, nullable=False, default=date.today)
+    in_time = Column(String, nullable=True)  # e.g., '08:04:01'
+    out_time = Column(String, nullable=True)  # e.g., '17:30:00'
+    reason = Column(String, nullable=False, default="Official Duty")  # 'Vaccination', 'Official Duty', 'Case Treatment', 'On-Duty', 'Others'
+    reason_details = Column(Text, nullable=True)
+    status = Column(String, nullable=False, default="Pending")  # 'Pending', 'Approved', 'Rejected'
+    avatar = Column(String, nullable=True)
+    approved_by = Column(String, nullable=True)
+    approved_at = Column(DateTime, nullable=True)
+    rejection_reason = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+

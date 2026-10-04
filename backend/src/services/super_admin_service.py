@@ -641,9 +641,9 @@ class SuperAdminService:
         log = PlatformAuditLog(
             id=f"audit_{uuid.uuid4().hex[:12]}",
             actor_name=actor_info.get("name") if actor_info else "Super Admin",
-            actor_email=actor_info.get("email") if actor_info else "superadmin@fitclub.com",
+            actor_email=actor_info.get("email") if actor_info else "superadmin@vahd.com",
             organization_id="PLATFORM",
-            organization_name="Fit Club Platform",
+            organization_name="VAHD Platform",
             action="RESET_OWNER_CREDENTIALS",
             resource_type="owner_credentials",
             resource_id=user.id,
@@ -695,7 +695,7 @@ class SuperAdminService:
         log = PlatformAuditLog(
             id=f"audit_{uuid.uuid4().hex[:12]}",
             actor_name=actor_info.get("name") if actor_info else "Super Admin",
-            actor_email=actor_info.get("email") if actor_info else "superadmin@fitclub.com",
+            actor_email=actor_info.get("email") if actor_info else "superadmin@vahd.com",
             organization_id=clean_id,
             organization_name=gym_name,
             action="DELETE_ORGANIZATION",
@@ -743,9 +743,9 @@ class SuperAdminService:
             log = PlatformAuditLog(
                 id=f"audit_{uuid.uuid4().hex[:12]}",
                 actor_name=actor_info.get("name") if actor_info else "Super Admin",
-                actor_email=actor_info.get("email") if actor_info else "superadmin@fitclub.com",
+                actor_email=actor_info.get("email") if actor_info else "superadmin@vahd.com",
                 organization_id="PLATFORM",
-                organization_name="Fit Club Platform",
+                organization_name="VAHD Platform",
                 action="BULK_DELETE_ORGANIZATIONS",
                 resource_type="organizations",
                 resource_id=",".join(org_ids),
@@ -775,9 +775,9 @@ class SuperAdminService:
         log = PlatformAuditLog(
             id=f"audit_{uuid.uuid4().hex[:12]}",
             actor_name=actor_info.get("name") if actor_info else "Super Admin",
-            actor_email=actor_info.get("email") if actor_info else "superadmin@fitclub.com",
+            actor_email=actor_info.get("email") if actor_info else "superadmin@vahd.com",
             organization_id="PLATFORM",
-            organization_name="Fit Club Platform",
+            organization_name="VAHD Platform",
             action="CHANGE_OWNER_STATUS",
             resource_type="owner_credentials",
             resource_id=user.id,
@@ -940,10 +940,10 @@ class SuperAdminService:
 
             # Also seed recent realistic telemetry job logs
             initial_jobs = [
-                AiJobLog(job_number="JOB-9041", organization_name="FitClub Flagship", task_type="Food Scanner Vision", provider="OpenAI", model_name="gpt-4o", status="completed", duration_seconds=1.12, credits_consumed=2, tokens_used=840, created_at=now_ist_naive()),
-                AiJobLog(job_number="JOB-9042", organization_name="FitClub Indiranagar", task_type="InBody Sheet OCR", provider="Google", model_name="gemini-3.6-flash", status="completed", duration_seconds=0.78, credits_consumed=1, tokens_used=420, created_at=now_ist_naive()),
-                AiJobLog(job_number="JOB-9043", organization_name="FitClub Koramangala", task_type="AI Coach Workout Plan", provider="Anthropic", model_name="claude-3-5-sonnet", status="completed", duration_seconds=0.94, credits_consumed=3, tokens_used=1250, created_at=now_ist_naive()),
-                AiJobLog(job_number="JOB-9044", organization_name="FitClub Flagship", task_type="Flyer AI Generator", provider="Black Forest Labs", model_name="flux-1-pro", status="completed", duration_seconds=2.31, credits_consumed=5, tokens_used=2400, created_at=now_ist_naive()),
+                AiJobLog(job_number="JOB-9041", organization_name="VAHD Flagship", task_type="Food Scanner Vision", provider="OpenAI", model_name="gpt-4o", status="completed", duration_seconds=1.12, credits_consumed=2, tokens_used=840, created_at=now_ist_naive()),
+                AiJobLog(job_number="JOB-9042", organization_name="VAHD Indiranagar", task_type="InBody Sheet OCR", provider="Google", model_name="gemini-3.6-flash", status="completed", duration_seconds=0.78, credits_consumed=1, tokens_used=420, created_at=now_ist_naive()),
+                AiJobLog(job_number="JOB-9043", organization_name="VAHD Koramangala", task_type="AI Coach Workout Plan", provider="Anthropic", model_name="claude-3-5-sonnet", status="completed", duration_seconds=0.94, credits_consumed=3, tokens_used=1250, created_at=now_ist_naive()),
+                AiJobLog(job_number="JOB-9044", organization_name="VAHD Flagship", task_type="Flyer AI Generator", provider="Black Forest Labs", model_name="flux-1-pro", status="completed", duration_seconds=2.31, credits_consumed=5, tokens_used=2400, created_at=now_ist_naive()),
             ]
             for j in initial_jobs:
                 db.add(j)
@@ -986,7 +986,7 @@ class SuperAdminService:
                 {
                     "id": j.id,
                     "job_number": j.job_number,
-                    "organization": j.organization_name or "FitClub Gym",
+                    "organization": j.organization_name or "VAHD Enterprise",
                     "task": j.task_type,
                     "provider": j.provider or "AI Gateway",
                     "model": j.model_name or "LLM",
@@ -1063,7 +1063,7 @@ class SuperAdminService:
         job_num = f"JOB-{random.randint(1000, 9999)}"
         job = AiJobLog(
             job_number=job_num,
-            organization_name="FitClub Admin Test",
+            organization_name="VAHD Admin Test",
             task_type=f"Test {capability.replace('_', ' ').title()}",
             provider=provider,
             model_name=model_id,

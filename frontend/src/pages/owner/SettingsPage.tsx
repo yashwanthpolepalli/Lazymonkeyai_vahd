@@ -122,7 +122,7 @@ export function SettingsPage() {
   const [ownerEmail, setOwnerEmail] = useState(() => user?.email || '');
   const [ownerPhone, setOwnerPhone] = useState('');
   const [ownerRole, setOwnerRole] = useState('Gym Owner');
-  const [ownerAvatar, setOwnerAvatar] = useState<string>(() => user?.avatar || localStorage.getItem('fitclub_owner_avatar') || '');
+  const [ownerAvatar, setOwnerAvatar] = useState<string>(() => user?.avatar || localStorage.getItem('vahd_owner_avatar') || '');
 
   // Devices & Hardware Config State
   const [esslUrl, setEsslUrl] = useState('');
@@ -155,8 +155,8 @@ export function SettingsPage() {
 
   // Load existing settings, owner profile from backend DB on mount
   useEffect(() => {
-    localStorage.removeItem('fitclub_enable_pos');
-    localStorage.removeItem('fitclub_enable_inventory');
+    localStorage.removeItem('vahd_enable_pos');
+    localStorage.removeItem('vahd_enable_inventory');
     Promise.all([
       apiClient.get<any>('/gym/settings').catch(() => null),
       api.auth.me().catch(() => null),
@@ -183,7 +183,7 @@ export function SettingsPage() {
         const loadedAvatar = (userRes as any).avatar_url || (userRes as any).avatar;
         if (loadedAvatar) {
           setOwnerAvatar(loadedAvatar);
-          localStorage.setItem('fitclub_owner_avatar', loadedAvatar);
+          localStorage.setItem('vahd_owner_avatar', loadedAvatar);
           updateUser({ avatar: loadedAvatar });
         }
       }
@@ -221,7 +221,7 @@ export function SettingsPage() {
       const result = event.target?.result as string;
       if (result) {
         setOwnerAvatar(result);
-        localStorage.setItem('fitclub_owner_avatar', result);
+        localStorage.setItem('vahd_owner_avatar', result);
         updateUser({ avatar: result });
         setHasUnsavedChanges(true);
         triggerToast('📸 Profile photo uploaded successfully!');
@@ -232,7 +232,7 @@ export function SettingsPage() {
 
   const handleRemoveAvatar = () => {
     setOwnerAvatar('');
-    localStorage.removeItem('fitclub_owner_avatar');
+    localStorage.removeItem('vahd_owner_avatar');
     updateUser({ avatar: '' });
     if (avatarInputRef.current) {
       avatarInputRef.current.value = '';
@@ -248,7 +248,7 @@ export function SettingsPage() {
       avatar: ownerAvatar,
     });
     if (ownerAvatar) {
-      localStorage.setItem('fitclub_owner_avatar', ownerAvatar);
+      localStorage.setItem('vahd_owner_avatar', ownerAvatar);
     }
     setHasUnsavedChanges(false);
     triggerToast('✅ Owner profile and photo updated successfully!');
@@ -290,8 +290,8 @@ export function SettingsPage() {
         enable_pos: true,
         enable_inventory: true,
       });
-      localStorage.removeItem('fitclub_enable_pos');
-      localStorage.removeItem('fitclub_enable_inventory');
+      localStorage.removeItem('vahd_enable_pos');
+      localStorage.removeItem('vahd_enable_inventory');
       notifyModuleVisibilityChanged();
     } catch (_err) {}
 
@@ -428,7 +428,7 @@ export function SettingsPage() {
                 <label className="text-xs font-bold text-navy-700 mb-1.5 block">Support Email Address</label>
                 <input
                   type="email"
-                  placeholder="e.g. contact@fitclub.ai"
+                  placeholder="e.g. contact@vahd.ai"
                   value={gymEmail}
                   onChange={(e) => { setGymEmail(e.target.value); setHasUnsavedChanges(true); }}
                   className="input-field text-xs font-bold"

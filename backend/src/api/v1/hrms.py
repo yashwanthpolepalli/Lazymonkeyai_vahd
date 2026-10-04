@@ -122,6 +122,71 @@ def delete_geofence_scheme(scheme_id: str, db: Session = Depends(get_db)):
 def get_attendance(date: Optional[str] = None, db: Session = Depends(get_db)):
     return HrmsService.get_attendance_logs(db, selected_date=date)
 
+@router.get("/attendance/corrections")
+def get_attendance_corrections(
+    date: Optional[str] = Query(None),
+    status: Optional[str] = Query(None),
+    person_type: Optional[str] = Query(None),
+    department: Optional[str] = Query(None),
+    district: Optional[str] = Query(None),
+    reason: Optional[str] = Query(None),
+    search: Optional[str] = Query(None),
+    db: Session = Depends(get_db)
+):
+    return HrmsService.get_attendance_corrections(
+        db,
+        date_str=date,
+        status=status,
+        person_type=person_type,
+        department=department,
+        district=district,
+        reason=reason,
+        search=search
+    )
+
+@router.get("/attendance/corrections/stats")
+def get_attendance_corrections_stats(
+    date: Optional[str] = Query(None),
+    db: Session = Depends(get_db)
+):
+    return HrmsService.get_attendance_corrections_stats(db, date_str=date)
+
+@router.post("/attendance/corrections")
+def create_attendance_correction(payload: dict, db: Session = Depends(get_db)):
+    try:
+        return HrmsService.create_attendance_correction(db, payload)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.put("/attendance/corrections/{correction_id}/approve")
+def approve_attendance_correction(correction_id: str, payload: dict = None, db: Session = Depends(get_db)):
+    approved_by = (payload or {}).get("approved_by", "Administrator")
+    try:
+        return HrmsService.approve_attendance_correction(db, correction_id, approved_by=approved_by)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.put("/attendance/corrections/{correction_id}/reject")
+def reject_attendance_correction(correction_id: str, payload: dict = None, db: Session = Depends(get_db)):
+    rejection_reason = (payload or {}).get("rejection_reason", "Rejected by administrator")
+    try:
+        return HrmsService.reject_attendance_correction(db, correction_id, rejection_reason=rejection_reason)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.post("/attendance/corrections/batch-approve")
+def batch_approve_attendance_corrections(payload: dict, db: Session = Depends(get_db)):
+    ids = payload.get("ids", [])
+    approved_by = payload.get("approved_by", "Administrator")
+    try:
+        return HrmsService.batch_approve_attendance_corrections(db, ids, approved_by=approved_by)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 @router.post("/attendance/punch")
 def record_punch(payload: dict, db: Session = Depends(get_db)):
     emp_id = payload.get("employee_id") or payload.get("user_id") or ""

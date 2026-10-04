@@ -25,7 +25,7 @@ export const api = {
         });
 
         if (res && res.access_token) {
-          localStorage.setItem('fitclub_token', res.access_token);
+          localStorage.setItem('vahd_token', res.access_token);
         }
 
         const userRole = (res.role || '').toLowerCase();
@@ -62,7 +62,7 @@ export const api = {
         });
 
         if (res && res.access_token) {
-          localStorage.setItem('fitclub_token', res.access_token);
+          localStorage.setItem('vahd_token', res.access_token);
         }
 
         const userRole = (res.role || 'OWNER').toLowerCase();

@@ -69,6 +69,6 @@ export function getNavItems(role: Role): NavItem[] {
 }
 
 export function notifyModuleVisibilityChanged() {
-  window.dispatchEvent(new Event('fitclub_modules_changed'));
+  window.dispatchEvent(new Event('vahd_modules_changed'));
 }
 

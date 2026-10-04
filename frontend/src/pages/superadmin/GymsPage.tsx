@@ -27,7 +27,7 @@ interface SaaSPlanItem {
 }
 
 function generateSecurePassword(): string {
-  const words = ['FitClub', 'Iron', 'Apex', 'Titan', 'Pulse', 'Zenith', 'Vortex', 'Prime'];
+  const words = ['VAHD', 'Iron', 'Apex', 'Titan', 'Pulse', 'Zenith', 'Vortex', 'Prime'];
   const symbols = ['!', '@', '#', '$', '%', '&'];
   const word = words[Math.floor(Math.random() * words.length)];
   const num = Math.floor(1000 + Math.random() * 9000);

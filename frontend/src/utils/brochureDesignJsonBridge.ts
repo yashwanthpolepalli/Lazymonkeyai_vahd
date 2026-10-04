@@ -191,7 +191,7 @@ export function brochureDataToDesignJson(data: BrochureData): BrochureDesignJson
       editable: true,
       position: { x: 480, y: 642, zIndex: 10 },
       size: { width: 132, height: 80 },
-      content: { url: data.qrCodeText || 'https://fitclub.ai', label: data.qrCodeLabel || 'SCAN TO JOIN' },
+      content: { url: data.qrCodeText || 'https://vahd.ai', label: data.qrCodeLabel || 'SCAN TO JOIN' },
       style: { backgroundColor: '#FFFFFF', borderRadius: '12px', padding: '6px', color: '#000000' },
     },
   ];

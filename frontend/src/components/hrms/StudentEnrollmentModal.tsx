@@ -752,7 +752,7 @@ export function StudentEnrollmentModal({
                   required
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value.toUpperCase())}
-                  placeholder="E.G. POLEPALLI YASHWANTH"
+                  placeholder="E.G. sandy"
                   className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl font-bold uppercase tracking-wider text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500"
                 />
               </div>

@@ -15,7 +15,6 @@ const PrivacyPolicyPage = lazy(() => import('@/pages/PrivacyPolicyPage').then(m 
 // Owner pages
 const OwnerDashboard = lazy(() => import('@/pages/owner/OwnerDashboard').then(m => ({ default: m.OwnerDashboard })));
 const MembersPage = lazy(() => import('@/pages/owner/MembersPage').then(m => ({ default: m.MembersPage })));
-const CrmPage = lazy(() => import('@/pages/owner/CrmPage').then(m => ({ default: m.CrmPage })));
 const PosPage = lazy(() => import('@/pages/owner/PosPage').then(m => ({ default: m.PosPage })));
 const HrmsPage = lazy(() => import('@/pages/owner/HrmsPage').then(m => ({ default: m.HrmsPage })));
 const PaymentsPage = lazy(() => import('@/pages/owner/PaymentsPage').then(m => ({ default: m.PaymentsPage })));
@@ -82,6 +81,7 @@ function AppRoutes() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/download" element={<DownloadPage />} />
         <Route path="/privacy" element={<PrivacyPolicyPage />} />
+        <Route path="/attendance-approve" element={<Navigate to="/owner/hrms?tab=corrections" replace />} />
 
         {/* OWNER ROUTES */}
         <Route path="/owner" element={<ProtectedRoute><RoleRedirect allowed={['owner']} /></ProtectedRoute>}>
@@ -92,13 +92,14 @@ function AppRoutes() {
           <Route path="food-scanner" element={<Navigate to="/owner" replace />} />
           <Route path="body-composition" element={<Navigate to="/owner" replace />} />
           <Route path="health-sync" element={<Navigate to="/owner" replace />} />
-          <Route path="crm" element={<CrmPage />} />
+          <Route path="crm" element={<Navigate to="/owner" replace />} />
           <Route path="pos" element={<PosPage />} />
           <Route path="inventory" element={<Navigate to="/owner/pos?tab=inventory" replace />} />
           <Route path="purchase" element={<Navigate to="/owner/pos?tab=purchase" replace />} />
           <Route path="memberships" element={<Navigate to="/owner/settings?tab=courses" replace />} />
           <Route path="courses" element={<Navigate to="/owner/settings?tab=courses" replace />} />
           <Route path="attendance" element={<Navigate to="/owner/hrms?tab=attendance" replace />} />
+          <Route path="attendance-approve" element={<Navigate to="/owner/hrms?tab=corrections" replace />} />
           <Route path="trainers" element={<Navigate to="/owner/hrms?tab=trainers" replace />} />
           <Route path="hrms" element={<HrmsPage />} />
           <Route path="brochures" element={<Navigate to="/owner" replace />} />

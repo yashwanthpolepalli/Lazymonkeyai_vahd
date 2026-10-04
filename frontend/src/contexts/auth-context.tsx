@@ -428,7 +428,7 @@ export function useAuth() {
 
     const appUser: AppUser = {
       id: storedUser?.id || "user_default",
-      email: storedUser?.email || "admin@fitclub.com",
+      email: storedUser?.email || "admin@vahd.com",
       name: storedUser?.name || "Admin",
       avatar: storedUser?.avatar || buildAvatar(storedUser?.name || "Admin"),
       status: storedUser?.status || "Active",

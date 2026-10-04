@@ -23,10 +23,10 @@ export function Topbar() {
       if (user) setItems(getNavItems(user.role));
     };
     updateItems();
-    window.addEventListener('fitclub_modules_changed', updateItems);
+    window.addEventListener('vahd_modules_changed', updateItems);
     window.addEventListener('storage', updateItems);
     return () => {
-      window.removeEventListener('fitclub_modules_changed', updateItems);
+      window.removeEventListener('vahd_modules_changed', updateItems);
       window.removeEventListener('storage', updateItems);
     };
   }, [user]);
@@ -46,7 +46,7 @@ export function Topbar() {
     };
 
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'FITCLUB_LATEST_LEAD_PING' && e.newValue) {
+      if (e.key === 'VAHD_LATEST_LEAD_PING' && e.newValue) {
         try {
           const parsed = JSON.parse(e.newValue);
           if (parsed.lead) {
@@ -82,12 +82,12 @@ export function Topbar() {
       } catch (e) {}
     };
 
-    window.addEventListener('fitclub:new_lead', handleNewLeadEvent);
+    window.addEventListener('vahd:new_lead', handleNewLeadEvent);
     window.addEventListener('storage', handleStorageChange);
     const pollInterval = setInterval(pollBackendLive, 15000);
 
     return () => {
-      window.removeEventListener('fitclub:new_lead', handleNewLeadEvent);
+      window.removeEventListener('vahd:new_lead', handleNewLeadEvent);
       window.removeEventListener('storage', handleStorageChange);
       clearInterval(pollInterval);
     };
@@ -281,9 +281,9 @@ export function Topbar() {
               }}
               className="flex items-center gap-2.5 p-1.5 rounded-xl hover:bg-slate-100 transition-colors"
             >
-              {user?.avatar || localStorage.getItem('fitclub_owner_avatar') ? (
+              {user?.avatar || localStorage.getItem('vahd_owner_avatar') ? (
                 <img
-                  src={user?.avatar || localStorage.getItem('fitclub_owner_avatar') || ''}
+                  src={user?.avatar || localStorage.getItem('vahd_owner_avatar') || ''}
                   alt={user?.name || 'User'}
                   className="w-8 h-8 rounded-full object-cover border border-slate-200 shadow-2xs"
                   onError={(e) => {
@@ -312,7 +312,7 @@ export function Topbar() {
               <div className="absolute right-0 top-12 w-56 bg-white rounded-2xl p-2 animate-slide-up z-50 shadow-xl border border-slate-100">
                 <div className="px-3 py-2 border-b border-slate-100 mb-1">
                   <div className="text-xs font-extrabold text-slate-900">{user?.name || 'Yashwanth'}</div>
-                  <div className="text-[11px] text-slate-400">{user?.email || 'owner@fitclub.ai'}</div>
+                  <div className="text-[11px] text-slate-400">{user?.email || 'owner@vahd.ai'}</div>
                 </div>
                 <button
                   onClick={() => {

@@ -21,10 +21,10 @@ export function BottomNav() {
       if (user) setItems(getNavItems(user.role));
     };
     updateItems();
-    window.addEventListener('fitclub_modules_changed', updateItems);
+    window.addEventListener('vahd_modules_changed', updateItems);
     window.addEventListener('storage', updateItems);
     return () => {
-      window.removeEventListener('fitclub_modules_changed', updateItems);
+      window.removeEventListener('vahd_modules_changed', updateItems);
       window.removeEventListener('storage', updateItems);
     };
   }, [user]);

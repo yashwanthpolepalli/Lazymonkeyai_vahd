@@ -22,8 +22,8 @@ const defaultAuthContext: AuthContextValue = {
   },
   updateUser: () => {},
   logout: () => {
-    localStorage.removeItem('fitclub_user');
-    localStorage.removeItem('fitclub_token');
+    localStorage.removeItem('vahd_user');
+    localStorage.removeItem('vahd_token');
   },
 };
 
@@ -34,13 +34,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('fitclub_token');
+    const token = localStorage.getItem('vahd_token');
     if (token) {
       api.auth.me()
         .then((u) => {
           if (u) {
             setUser(u);
-            localStorage.setItem('fitclub_user', JSON.stringify(u));
+            localStorage.setItem('vahd_user', JSON.stringify(u));
           } else {
             logout();
           }
@@ -52,7 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setLoading(false);
         });
     } else {
-      const stored = localStorage.getItem('fitclub_user');
+      const stored = localStorage.getItem('vahd_user');
       if (stored) {
         try { setUser(JSON.parse(stored)); } catch (_err) { /* ignore */ }
       }
@@ -63,9 +63,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string, role?: string) => {
     const u = await api.auth.login(email, password, role);
     setUser(u);
-    localStorage.setItem('fitclub_user', JSON.stringify(u));
-    if (!localStorage.getItem('fitclub_token')) {
-      localStorage.setItem('fitclub_token', `token_${u.id}_${Date.now()}`);
+    localStorage.setItem('vahd_user', JSON.stringify(u));
+    if (!localStorage.getItem('vahd_token')) {
+      localStorage.setItem('vahd_token', `token_${u.id}_${Date.now()}`);
     }
     return u;
   };
@@ -73,9 +73,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signup = async (data: { full_name: string; email: string; password: string; phone?: string; gym_name?: string }) => {
     const u = await api.auth.signup(data);
     setUser(u);
-    localStorage.setItem('fitclub_user', JSON.stringify(u));
-    if (!localStorage.getItem('fitclub_token')) {
-      localStorage.setItem('fitclub_token', `token_${u.id}_${Date.now()}`);
+    localStorage.setItem('vahd_user', JSON.stringify(u));
+    if (!localStorage.getItem('vahd_token')) {
+      localStorage.setItem('vahd_token', `token_${u.id}_${Date.now()}`);
     }
     return u;
   };
@@ -84,15 +84,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser((prev) => {
       if (!prev) return prev;
       const updated = { ...prev, ...data };
-      localStorage.setItem('fitclub_user', JSON.stringify(updated));
+      localStorage.setItem('vahd_user', JSON.stringify(updated));
       return updated;
     });
   };
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem('fitclub_user');
-    localStorage.removeItem('fitclub_token');
+    localStorage.removeItem('vahd_user');
+    localStorage.removeItem('vahd_token');
   };
 
   return (

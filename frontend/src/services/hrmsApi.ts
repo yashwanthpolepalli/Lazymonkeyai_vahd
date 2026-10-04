@@ -92,6 +92,38 @@ export interface AttendanceRecord {
   notes: string;
 }
 
+export interface AttendanceCorrectionItem {
+  id: string;
+  person_type: 'EMPLOYEE' | 'STUDENT';
+  person_id?: string;
+  person_name: string;
+  person_code: string;
+  designation: string;
+  department: string;
+  district: string;
+  place: string;
+  date: string;
+  date_formatted: string;
+  in_time: string;
+  out_time: string;
+  reason: string;
+  reason_details?: string;
+  status: 'Pending' | 'Approved' | 'Rejected';
+  avatar?: string;
+  approved_by?: string;
+  approved_at?: string | null;
+  rejection_reason?: string;
+  created_at?: string;
+}
+
+export interface AttendanceCorrectionStats {
+  total_records: number;
+  pending: number;
+  approved: number;
+  rejected: number;
+  present: number;
+}
+
 export interface LeaveTypeItem {
   id: string;
   name: string;
@@ -395,6 +427,25 @@ export const hrmsApi = {
   // Attendance
   getAttendance: (date?: string) =>
     apiClient.get<AttendanceRecord[]>('/hrms/attendance', { params: { date } }),
+  getAttendanceCorrections: (params?: {
+    date?: string;
+    status?: string;
+    person_type?: string;
+    department?: string;
+    district?: string;
+    reason?: string;
+    search?: string;
+  }) => apiClient.get<AttendanceCorrectionItem[]>('/hrms/attendance/corrections', { params }),
+  getAttendanceCorrectionsStats: (params?: { date?: string }) =>
+    apiClient.get<AttendanceCorrectionStats>('/hrms/attendance/corrections/stats', { params }),
+  createAttendanceCorrection: (payload: Partial<AttendanceCorrectionItem>) =>
+    apiClient.post<{ message: string; id: string }>('/hrms/attendance/corrections', payload),
+  approveAttendanceCorrection: (correctionId: string, payload?: { approved_by?: string }) =>
+    apiClient.put<{ message: string; id: string; status: string }>(`/hrms/attendance/corrections/${correctionId}/approve`, payload),
+  rejectAttendanceCorrection: (correctionId: string, payload?: { rejection_reason?: string }) =>
+    apiClient.put<{ message: string; id: string; status: string }>(`/hrms/attendance/corrections/${correctionId}/reject`, payload),
+  batchApproveAttendanceCorrections: (payload: { ids: string[]; approved_by?: string }) =>
+    apiClient.post<{ message: string; count: number }>('/hrms/attendance/corrections/batch-approve', payload),
   recordPunch: (payload: {
     employee_id: string;
     action: 'CHECK_IN' | 'CHECK_OUT';

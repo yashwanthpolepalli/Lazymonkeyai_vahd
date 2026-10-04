@@ -161,7 +161,7 @@ export function HrmsTrainersTab() {
   // Column Settings State
   const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>(() => {
     try {
-      const saved = localStorage.getItem('fitclub_emp_columns');
+      const saved = localStorage.getItem('vahd_emp_columns');
       if (saved) return JSON.parse(saved);
     } catch {}
     return DEFAULT_EMPLOYEE_COLUMNS;
@@ -171,7 +171,7 @@ export function HrmsTrainersTab() {
     setVisibleColumns((prev) => {
       const updated = { ...prev, [key]: !prev[key] };
       try {
-        localStorage.setItem('fitclub_emp_columns', JSON.stringify(updated));
+        localStorage.setItem('vahd_emp_columns', JSON.stringify(updated));
       } catch {}
       return updated;
     });
@@ -186,14 +186,14 @@ export function HrmsTrainersTab() {
     });
     setVisibleColumns(all);
     try {
-      localStorage.setItem('fitclub_emp_columns', JSON.stringify(all));
+      localStorage.setItem('vahd_emp_columns', JSON.stringify(all));
     } catch {}
   };
 
   const handleResetColumns = () => {
     setVisibleColumns(DEFAULT_EMPLOYEE_COLUMNS);
     try {
-      localStorage.setItem('fitclub_emp_columns', JSON.stringify(DEFAULT_EMPLOYEE_COLUMNS));
+      localStorage.setItem('vahd_emp_columns', JSON.stringify(DEFAULT_EMPLOYEE_COLUMNS));
     } catch {}
   };
 
@@ -398,7 +398,7 @@ export function HrmsTrainersTab() {
 
   const allDisplayTrainers: TrainerRowData[] = trainers.map((t, idx) => {
     const name = t.name || t.full_name || `Employee ${idx + 1}`;
-    const email = t.email || `${name.toLowerCase().replace(/\s+/g, '')}@fitclub.ai`;
+    const email = t.email || `${name.toLowerCase().replace(/\s+/g, '')}@vahd.ai`;
     const phone = (t as any).phone || (t as any).contact_no || '+91 98765 43210';
     const specialization = t.specialization || t.specialty || (t as any).job_designation || 'Fitness & Training';
     const empNo = (t as any).employee_code || (t as any).emp_no || (t as any).code || `EMP-${String(idx + 1).padStart(3, '0')}`;

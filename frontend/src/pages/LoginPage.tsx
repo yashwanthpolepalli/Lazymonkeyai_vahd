@@ -79,16 +79,8 @@ export function LoginPage() {
         <div className="lg:col-span-7 flex flex-col justify-between space-y-8 pr-0 lg:pr-6 relative">
           
           {/* Top Brand Header */}
-          <div className="flex items-center justify-between">
+          <div className="flex items-center">
             <Logo size="lg" />
-            <button
-              type="button"
-              onClick={() => navigate('/download')}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-200/80 shadow-xs transition"
-            >
-              <Icon name="download" size={14} className="text-blue-600" />
-              <span>Download Desktop App</span>
-            </button>
           </div>
 
           {/* Main Hero Banner Container */}

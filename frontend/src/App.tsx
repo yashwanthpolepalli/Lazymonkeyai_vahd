@@ -9,7 +9,6 @@ import { roleHomePath } from '@/config/navigation';
 
 // Lazy-loaded pages for fast instant startup and smooth chunk loading
 const LoginPage = lazy(() => import('@/pages/LoginPage').then(m => ({ default: m.LoginPage })));
-const DownloadPage = lazy(() => import('@/pages/DownloadPage').then(m => ({ default: m.DownloadPage })));
 const PrivacyPolicyPage = lazy(() => import('@/pages/PrivacyPolicyPage').then(m => ({ default: m.PrivacyPolicyPage })));
 
 // Owner pages
@@ -79,7 +78,7 @@ function AppRoutes() {
         <Route path="/home" element={<Navigate to="/login" replace />} />
         <Route path="/landing" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/download" element={<DownloadPage />} />
+        <Route path="/download" element={<Navigate to="/login" replace />} />
         <Route path="/privacy" element={<PrivacyPolicyPage />} />
         <Route path="/attendance-approve" element={<Navigate to="/owner/hrms?tab=corrections" replace />} />
 

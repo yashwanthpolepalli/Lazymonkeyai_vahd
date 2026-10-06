@@ -1,24 +1,36 @@
+import { useAuth } from '@/context/AuthContext';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Badge } from '@/components/ui/Badge';
 import { Icon } from '@/components/ui/Icon';
 import { BarChart } from '@/components/ui/Charts';
 
 export function TrainerProfilePage() {
+  const { user } = useAuth();
+  const displayName = user?.name || user?.email?.split('@')[0] || 'Trainer';
+  const initial = displayName.charAt(0).toUpperCase();
+
   return (
     <div className="space-y-6">
       <PageHeader title="My Profile" breadcrumb={['Trainer', 'Profile']} actions={<button className="btn-primary"><Icon name="edit" size={16} /> Edit Profile</button>} />
 
       <div className="card p-6">
         <div className="flex flex-col sm:flex-row items-start gap-6">
-          <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-success-500 to-success-700 flex items-center justify-center text-white text-3xl font-bold shrink-0">M</div>
+          <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-success-500 to-success-700 flex items-center justify-center text-white text-3xl font-bold shrink-0">
+            {initial}
+          </div>
           <div className="flex-1">
-            <div className="flex items-center gap-3 mb-2"><h2 className="text-xl font-bold text-navy-900">Coach Meera</h2><Badge variant="success" dot>Active</Badge></div>
-            <div className="text-sm text-navy-500 mb-4">Weight Loss & Nutrition Specialist · Fit Club Elite Indiranagar</div>
+            <div className="flex items-center gap-3 mb-2">
+              <h2 className="text-xl font-bold text-navy-900">{displayName}</h2>
+              <Badge variant="success" dot>Active</Badge>
+            </div>
+            <div className="text-sm text-navy-500 mb-4">
+              Certified Fitness Specialist · {user?.email || 'Active Staff'}
+            </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <div><div className="stat-label">Customers</div><div className="text-lg font-bold text-navy-900">15</div></div>
-              <div><div className="stat-label">Rating</div><div className="text-lg font-bold text-navy-900 flex items-center gap-1"><Icon name="star" size={14} className="text-warning-500" />4.8</div></div>
-              <div><div className="stat-label">Experience</div><div className="text-lg font-bold text-navy-900">7 yrs</div></div>
-              <div><div className="stat-label">Revenue</div><div className="text-lg font-bold text-navy-900">₹98K</div></div>
+              <div><div className="stat-label">Customers</div><div className="text-lg font-bold text-navy-900">0</div></div>
+              <div><div className="stat-label">Rating</div><div className="text-lg font-bold text-navy-900 flex items-center gap-1"><Icon name="star" size={14} className="text-warning-500" />5.0</div></div>
+              <div><div className="stat-label">Experience</div><div className="text-lg font-bold text-navy-900">Certified</div></div>
+              <div><div className="stat-label">Revenue</div><div className="text-lg font-bold text-navy-900">₹0</div></div>
             </div>
           </div>
         </div>

@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException, Body
 from src.api.v1.auth import router as auth_router
 from src.api.v1.customers import router as customers_router, members_router, crm_customers_router
 from src.api.v1.courses import router as courses_router
@@ -81,4 +81,28 @@ def list_erp_branches():
             }
         ],
         "total": 1
+    }
+
+@api_router.post("/system/send-enrollment-email")
+def dispatch_enrollment_email_endpoint(payload: dict = Body(...)):
+    from src.utils.email import send_enrollment_email
+    
+    to_email = payload.get("to_email")
+    full_name = payload.get("full_name")
+    password = payload.get("password")
+    role = payload.get("role", "User")
+    plan_name = payload.get("plan_name")
+    
+    if not to_email or not full_name or not password:
+        raise HTTPException(
+            status_code=400,
+            detail="Missing required fields: 'to_email', 'full_name', and 'password' are required."
+        )
+        
+    success = send_enrollment_email(to_email, full_name, password, role, plan_name)
+    return {
+        "success": success,
+        "message": f"Enrollment email sent to {to_email}",
+        "recipient": to_email,
+        "template": "white"
     }

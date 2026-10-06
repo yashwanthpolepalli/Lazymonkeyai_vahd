@@ -202,7 +202,7 @@ export function LiveGymActivity({ activity }: LiveGymActivityProps) {
           <div className="flex items-center gap-2">
             <h3 className="text-xs font-black text-navy-900 tracking-wider uppercase flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>LIVE GYM ACTIVITY</span>
+              <span>LIVE ACTIVITY</span>
             </h3>
             <span className="text-[11px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60">
               • LIVE ({filteredItems.length})

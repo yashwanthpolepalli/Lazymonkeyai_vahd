@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { PageHeader } from '@/components/ui/PageHeader';
 import { Badge } from '@/components/ui/Badge';
 import { Icon } from '@/components/ui/Icon';
 import { apiClient } from '@/services/apiClient';
@@ -42,16 +41,13 @@ interface IntegrationApp {
 
 export type SettingsTab =
   | 'General'
-  | 'Profile'
   | 'ERP & Google Reviews'
   | 'Courses'
   | 'Memberships'
   | 'Reports'
   | 'Devices'
   | 'Notifications'
-  | 'Security'
-  | 'Billing'
-  | 'Integrations';
+  | 'Billing';
 
 export function SettingsPage() {
   const { user, updateUser } = useAuth();
@@ -63,12 +59,9 @@ export function SettingsPage() {
     if (rawTab === 'erp' || rawTab === 'company' || rawTab === 'reviews' || rawTab === 'google-reviews') return 'ERP & Google Reviews';
     if (rawTab === 'courses' || rawTab === 'memberships' || rawTab === 'plans') return 'Courses';
     if (rawTab === 'reports' || rawTab === 'analytics') return 'Reports';
-    if (rawTab === 'profile') return 'Profile';
-    if (rawTab === 'devices' || rawTab === 'bmi' || rawTab === 'hardware') return 'Devices';
+    if (rawTab === 'devices' || rawTab === 'bmi' || rawTab === 'hardware' || rawTab === 'integrations') return 'Devices';
     if (rawTab === 'notifications') return 'Notifications';
-    if (rawTab === 'security') return 'Security';
     if (rawTab === 'billing' || rawTab === 'plan') return 'Billing';
-    if (rawTab === 'integrations') return 'Integrations';
     return 'General';
   };
 
@@ -79,13 +72,10 @@ export function SettingsPage() {
       if (rawTab === 'erp' || rawTab === 'company' || rawTab === 'reviews' || rawTab === 'google-reviews') setActiveTab('ERP & Google Reviews');
       else if (rawTab === 'courses' || rawTab === 'memberships' || rawTab === 'plans') setActiveTab('Courses');
       else if (rawTab === 'reports' || rawTab === 'analytics') setActiveTab('Reports');
-      else if (rawTab === 'profile') setActiveTab('Profile');
-      else if (rawTab === 'devices' || rawTab === 'bmi' || rawTab === 'hardware') setActiveTab('Devices');
+      else if (rawTab === 'devices' || rawTab === 'bmi' || rawTab === 'hardware' || rawTab === 'integrations') setActiveTab('Devices');
       else if (rawTab === 'notifications') setActiveTab('Notifications');
-      else if (rawTab === 'security') setActiveTab('Security');
       else if (rawTab === 'billing' || rawTab === 'plan') setActiveTab('Billing');
-      else if (rawTab === 'integrations') setActiveTab('Integrations');
-      else if (rawTab === 'general') setActiveTab('General');
+      else if (rawTab === 'general' || rawTab === 'profile' || rawTab === 'security') setActiveTab('General');
     }
   }, [rawTab]);
 
@@ -95,12 +85,9 @@ export function SettingsPage() {
       tabId === 'ERP & Google Reviews' ? 'erp' :
       tabId === 'Courses' || tabId === 'Memberships' ? 'courses' :
       tabId === 'Reports' ? 'reports' :
-      tabId === 'Profile' ? 'profile' :
       tabId === 'Devices' ? 'devices' :
       tabId === 'Notifications' ? 'notifications' :
-      tabId === 'Security' ? 'security' :
-      tabId === 'Billing' ? 'billing' :
-      tabId === 'Integrations' ? 'integrations' : 'general';
+      tabId === 'Billing' ? 'billing' : 'general';
     setSearchParams({ tab: paramKey });
   };
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -113,22 +100,21 @@ export function SettingsPage() {
   const [gymAddress, setGymAddress] = useState('');
   const [currency, setCurrency] = useState('INR (₹)');
   const [timeZone, setTimeZone] = useState('Asia/Kolkata (GMT +5:30)');
-  const [openingTime, setOpeningTime] = useState('06:00 AM');
-  const [closingTime, setClosingTime] = useState('10:00 PM');
+  const [openingTime, setOpeningTime] = useState('');
+  const [closingTime, setClosingTime] = useState('');
   const [gstNumber, setGstNumber] = useState('');
 
-  // Owner Profile State
+  // Owner Profile State (now under General tab)
   const [ownerName, setOwnerName] = useState(() => user?.name || '');
   const [ownerEmail, setOwnerEmail] = useState(() => user?.email || '');
   const [ownerPhone, setOwnerPhone] = useState('');
-  const [ownerRole, setOwnerRole] = useState('Gym Owner');
+  const [ownerRole, setOwnerRole] = useState('Owner');
   const [ownerAvatar, setOwnerAvatar] = useState<string>(() => user?.avatar || localStorage.getItem('vahd_owner_avatar') || '');
 
   // Devices & Hardware Config State
   const [esslUrl, setEsslUrl] = useState('');
-  const [deviceAutoSync, setDeviceAutoSync] = useState(true);
 
-  // Security State
+  // Security State (now under General tab)
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -144,7 +130,7 @@ export function SettingsPage() {
     { id: '6', label: 'Hardware Device Offline Alert', desc: 'Immediate notification when eSSL Biometric access device drops connection', category: 'Hardware & AI', enabled: true, channel: 'Push & Web' },
   ]);
 
-  // Integrations State
+  // Integrations State (now under Devices tab)
   const [integrations, setIntegrations] = useState<IntegrationApp[]>([
     { id: 'essl', name: 'eSSL Biometric Gate Control', icon: 'lock', category: 'Hardware & Biometrics', desc: 'RFID fingerprint & facial recognition biometric access control sync', connected: true, statusText: 'Online', badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
     { id: 'razorpay', name: 'Razorpay Payment Gateway', icon: 'credit-card', category: 'Payments & Banking', desc: 'UPI, Credit Cards, NetBanking & Auto-debit subscriptions', connected: true, statusText: 'Merchant Active', badgeColor: 'bg-brand-50 text-brand-700 border-brand-200' },
@@ -171,6 +157,10 @@ export function SettingsPage() {
         if (gymRes.email) setGymEmail(gymRes.email);
         if (gymRes.address) setGymAddress(gymRes.address);
         if (gymRes.gstin) setGstNumber(gymRes.gstin);
+        if (gymRes.opening_time) setOpeningTime(gymRes.opening_time);
+        if (gymRes.closing_time) setClosingTime(gymRes.closing_time);
+        if (gymRes.currency) setCurrency(gymRes.currency);
+        if (gymRes.timezone) setTimeZone(gymRes.timezone);
         if (gymRes.essl_bioserver_url) setEsslUrl(gymRes.essl_bioserver_url);
         notifyModuleVisibilityChanged();
       }
@@ -179,7 +169,7 @@ export function SettingsPage() {
         if (fullName) setOwnerName(fullName);
         if (userRes.email) setOwnerEmail(userRes.email);
         if ((userRes as any).phone) setOwnerPhone((userRes as any).phone);
-        if (userRes.role) setOwnerRole(`Gym ${userRes.role.toUpperCase()}`);
+        if (userRes.role) setOwnerRole(userRes.role === 'owner' ? 'Owner' : userRes.role.toUpperCase());
         const loadedAvatar = (userRes as any).avatar_url || (userRes as any).avatar;
         if (loadedAvatar) {
           setOwnerAvatar(loadedAvatar);
@@ -280,12 +270,17 @@ export function SettingsPage() {
   };
 
   const handleSaveSettings = async () => {
-    // Save Gym Branch settings to DB
     try {
       await apiClient.post('/gym/settings', {
         gym_name: gymName,
         phone: gymPhone,
+        email: gymEmail,
+        address: gymAddress,
         gstin: gstNumber,
+        currency: currency,
+        timezone: timeZone,
+        opening_time: openingTime,
+        closing_time: closingTime,
         essl_bioserver_url: esslUrl,
         enable_pos: true,
         enable_inventory: true,
@@ -301,15 +296,12 @@ export function SettingsPage() {
 
   const tabs = [
     { id: 'General', label: 'General', icon: 'settings' },
-    { id: 'Profile', label: 'Profile & Owner', icon: 'user' },
     { id: 'ERP & Google Reviews', label: 'ERP & Google Reviews', icon: 'building-2' },
     { id: 'Courses', label: 'Courses', icon: 'book-open' },
     { id: 'Reports', label: 'Reports & Analytics', icon: 'file-bar-chart' },
     { id: 'Devices', label: 'Devices', icon: 'cpu' },
     { id: 'Notifications', label: 'Notifications', icon: 'bell' },
-    { id: 'Security', label: 'Security', icon: 'shield' },
     { id: 'Billing', label: 'Billing & Plan', icon: 'credit-card' },
-    { id: 'Integrations', label: 'Integrations', icon: 'layers' },
   ] as const;
 
   return (
@@ -331,7 +323,7 @@ export function SettingsPage() {
           <div className="space-y-2">
             <div className="flex items-center gap-2.5 flex-wrap">
               <span className="px-3 py-1 rounded-full bg-brand-500/20 text-brand-300 text-xs font-bold border border-brand-500/30 backdrop-blur-md">
-                FIT CLUB OS • Branch Admin
+                VAHD Enterprise • Branch Admin
               </span>
               <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold border border-emerald-500/30 backdrop-blur-md flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
@@ -342,7 +334,7 @@ export function SettingsPage() {
               System Settings & Configurations
             </h1>
             <p className="text-navy-300 text-xs max-w-xl">
-              Configure gym brand profile, automated member communication alerts, and hardware device integrations.
+              Configure branch profile, owner details, security preferences, automated alerts, and hardware device integrations.
             </p>
           </div>
 
@@ -387,26 +379,25 @@ export function SettingsPage() {
         </div>
       </div>
 
-      {/* TAB 1: GENERAL SETTINGS */}
+      {/* TAB 1: GENERAL SETTINGS (includes Branch Profile, Owner Profile, and Security) */}
       {activeTab === 'General' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-fade-in">
-          <div className="lg:col-span-8 space-y-6">
-            {/* Gym Branch Information Card */}
-            <div className="card p-6 border border-navy-100 bg-white space-y-6 shadow-sm rounded-3xl">
+        <div className="space-y-6 animate-fade-in">
+          {/* Section 1: Branch Information */}
+          <div className="card p-6 border border-navy-100 bg-white space-y-6 shadow-sm rounded-3xl">
             <div className="flex items-center justify-between border-b border-navy-100 pb-4">
               <div>
-                <h3 className="text-base font-bold text-navy-900">Gym Branch Information</h3>
+                <h3 className="text-base font-bold text-navy-900">Branch Information</h3>
                 <p className="text-xs text-navy-400">Basic contact profile and branch operational parameters</p>
               </div>
-              <Badge variant="brand" dot>Indiranagar Branch</Badge>
+              <Badge variant="brand" dot>{gymName || 'Primary Branch'}</Badge>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="text-xs font-bold text-navy-700 mb-1.5 block">Gym Branch Name</label>
+                <label className="text-xs font-bold text-navy-700 mb-1.5 block">Branch Name</label>
                 <input
                   type="text"
-                  placeholder="e.g. Fit Club Elite"
+                  placeholder="e.g. Main Branch"
                   value={gymName}
                   onChange={(e) => { setGymName(e.target.value); setHasUnsavedChanges(true); }}
                   className="input-field text-xs font-bold"
@@ -473,10 +464,10 @@ export function SettingsPage() {
               </div>
 
               <div className="sm:col-span-2">
-                <label className="text-xs font-bold text-navy-700 mb-1.5 block">Physical Gym Address</label>
+                <label className="text-xs font-bold text-navy-700 mb-1.5 block">Physical Address</label>
                 <input
                   type="text"
-                  placeholder="e.g. 100 Feet Road, Indiranagar, Bengaluru"
+                  placeholder="e.g. 123 Main Street, Suite 100, City, State"
                   value={gymAddress}
                   onChange={(e) => { setGymAddress(e.target.value); setHasUnsavedChanges(true); }}
                   className="input-field text-xs font-bold"
@@ -491,6 +482,7 @@ export function SettingsPage() {
                   <label className="text-xs font-semibold text-navy-500 block mb-1">Opening Time</label>
                   <input
                     type="text"
+                    placeholder="e.g. 06:00 AM"
                     value={openingTime}
                     onChange={(e) => { setOpeningTime(e.target.value); setHasUnsavedChanges(true); }}
                     className="input-field text-xs font-bold"
@@ -500,6 +492,7 @@ export function SettingsPage() {
                   <label className="text-xs font-semibold text-navy-500 block mb-1">Closing Time</label>
                   <input
                     type="text"
+                    placeholder="e.g. 10:00 PM"
                     value={closingTime}
                     onChange={(e) => { setClosingTime(e.target.value); setHasUnsavedChanges(true); }}
                     className="input-field text-xs font-bold"
@@ -508,219 +501,311 @@ export function SettingsPage() {
               </div>
             </div>
           </div>
-          </div>
 
-          {/* Right Sidebar Info Card */}
-          <div className="lg:col-span-4 space-y-4">
-            <div className="card p-5 border border-brand-100 bg-gradient-to-br from-brand-50/50 to-white space-y-3">
-              <div className="w-10 h-10 rounded-2xl bg-brand-100 text-brand-600 flex items-center justify-center">
-                <Icon name="info" size={20} />
+          {/* Section 2: Owner & Admin Profile */}
+          <div className="card p-6 border border-navy-100 bg-white space-y-6 shadow-sm rounded-3xl">
+            <div className="flex items-center justify-between border-b border-navy-100 pb-4">
+              <div>
+                <h3 className="text-base font-bold text-navy-900">Owner & Admin Profile</h3>
+                <p className="text-xs text-navy-400">Personal details and administrative access privileges</p>
               </div>
-              <h4 className="text-sm font-bold text-navy-900">Branch Profile Telemetry</h4>
-              <p className="text-xs text-navy-600 leading-relaxed">
-                Gym name, phone number, and address are automatically printed on official GST Tax Invoices and member body composition result sheets.
-              </p>
-              <div className="p-3 rounded-xl bg-white border border-brand-200 text-xs font-semibold text-brand-900">
-                Current Active Tax Rate:{' '}
-                <span className="font-bold">
-                  {billingInfo?.enable_gst_engine && Number(billingInfo?.total_gst_rate) > 0
-                    ? `${billingInfo.total_gst_rate}% GST (${billingInfo.cgst_rate || (Number(billingInfo.total_gst_rate)/2)}% CGST + ${billingInfo.sgst_rate || (Number(billingInfo.total_gst_rate)/2)}% SGST)`
-                    : 'GST Engine Disabled (0% Nil Rated)'}
-                </span>
-              </div>
+              <Badge variant="brand">Administrator</Badge>
             </div>
-          </div>
-        </div>
-      )}
 
-      {/* TAB 2: OWNER PROFILE */}
-      {activeTab === 'Profile' && (
-        <div className="card p-6 border border-navy-100 bg-white space-y-6 shadow-sm animate-fade-in max-w-4xl">
-          <div className="flex items-center justify-between border-b border-navy-100 pb-4">
-            <div>
-              <h3 className="text-base font-bold text-navy-900">Owner & Admin Profile</h3>
-              <p className="text-xs text-navy-400">Personal details and administrative access privileges</p>
-            </div>
-            <Badge variant="brand">Administrator</Badge>
-          </div>
+            {/* Profile Photo Upload Section */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5 p-5 rounded-2xl bg-navy-50/60 border border-navy-100">
+              <div className="flex items-center gap-4">
+                <input
+                  type="file"
+                  ref={avatarInputRef}
+                  accept="image/png, image/jpeg, image/webp, image/gif"
+                  onChange={handleAvatarUpload}
+                  className="hidden"
+                />
+                <div
+                  onClick={() => avatarInputRef.current?.click()}
+                  title="Click to change photo"
+                  className="w-20 h-20 rounded-2xl bg-gradient-to-br from-brand-600 via-indigo-600 to-purple-700 flex items-center justify-center text-white text-2xl font-black shadow-md relative cursor-pointer group overflow-hidden shrink-0 border-2 border-white ring-2 ring-brand-500/20"
+                >
+                  {ownerAvatar ? (
+                    <img
+                      src={ownerAvatar}
+                      alt={ownerName || 'Owner'}
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
+                  ) : (
+                    <span>{getInitials(ownerName || user?.name || 'Owner')}</span>
+                  )}
 
-          {/* Profile Photo Upload Section */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5 p-5 rounded-2xl bg-navy-50/60 border border-navy-100">
-            <div className="flex items-center gap-4">
-              <input
-                type="file"
-                ref={avatarInputRef}
-                accept="image/png, image/jpeg, image/webp, image/gif"
-                onChange={handleAvatarUpload}
-                className="hidden"
-              />
-              <div
-                onClick={() => avatarInputRef.current?.click()}
-                title="Click to change photo"
-                className="w-20 h-20 rounded-2xl bg-gradient-to-br from-brand-600 via-indigo-600 to-purple-700 flex items-center justify-center text-white text-2xl font-black shadow-md relative cursor-pointer group overflow-hidden shrink-0 border-2 border-white ring-2 ring-brand-500/20"
-              >
-                {ownerAvatar ? (
-                  <img
-                    src={ownerAvatar}
-                    alt={ownerName || 'Owner'}
-                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                  />
-                ) : (
-                  <span>{getInitials(ownerName || user?.name || 'Owner')}</span>
-                )}
+                  <div className="absolute inset-0 bg-navy-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[10px] font-bold gap-1">
+                    <Icon name="camera" size={18} />
+                    <span>Upload</span>
+                  </div>
 
-                <div className="absolute inset-0 bg-navy-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[10px] font-bold gap-1">
-                  <Icon name="camera" size={18} />
-                  <span>Upload</span>
+                  <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border-2 border-white shadow-xs" />
                 </div>
 
-                <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border-2 border-white shadow-xs" />
-              </div>
-
-              <div className="space-y-1">
-                <h4 className="text-sm font-bold text-navy-900">{ownerName || user?.name || 'Yashwanth'}</h4>
-                <p className="text-xs text-navy-500 font-medium">{ownerRole}</p>
-                <div className="flex items-center gap-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => avatarInputRef.current?.click()}
-                    className="btn-secondary text-xs py-1.5 px-3 font-bold flex items-center gap-1.5 shadow-2xs hover:bg-navy-100"
-                  >
-                    <Icon name="upload" size={13} />
-                    <span>{ownerAvatar ? 'Change Photo' : 'Upload Photo'}</span>
-                  </button>
-                  {ownerAvatar && (
+                <div className="space-y-1">
+                  <h4 className="text-sm font-bold text-navy-900">{ownerName || user?.name || 'User'}</h4>
+                  <p className="text-xs text-navy-500 font-medium">{ownerRole}</p>
+                  <div className="flex items-center gap-2 pt-1">
                     <button
                       type="button"
-                      onClick={handleRemoveAvatar}
-                      className="text-xs py-1.5 px-3 font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-xl transition-colors border border-rose-200/60 flex items-center gap-1.5"
+                      onClick={() => avatarInputRef.current?.click()}
+                      className="btn-secondary text-xs py-1.5 px-3 font-bold flex items-center gap-1.5 shadow-2xs hover:bg-navy-100"
                     >
-                      <Icon name="trash-2" size={13} />
-                      <span>Remove</span>
+                      <Icon name="upload" size={13} />
+                      <span>{ownerAvatar ? 'Change Photo' : 'Upload Photo'}</span>
                     </button>
-                  )}
+                    {ownerAvatar && (
+                      <button
+                        type="button"
+                        onClick={handleRemoveAvatar}
+                        className="text-xs py-1.5 px-3 font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-xl transition-colors border border-rose-200/60 flex items-center gap-1.5"
+                      >
+                        <Icon name="trash-2" size={13} />
+                        <span>Remove</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
+              </div>
+
+              <div className="text-left sm:text-right text-[11px] text-navy-400 space-y-0.5 border-t sm:border-t-0 pt-3 sm:pt-0 border-navy-200/60">
+                <p className="font-semibold text-navy-700">Profile Photo</p>
+                <p>PNG, JPG, WebP (Max 5MB)</p>
+                <p className="text-brand-600 font-medium">Updates top navbar instantly</p>
               </div>
             </div>
 
-            <div className="text-left sm:text-right text-[11px] text-navy-400 space-y-0.5 border-t sm:border-t-0 pt-3 sm:pt-0 border-navy-200/60">
-              <p className="font-semibold text-navy-700">Profile Photo</p>
-              <p>PNG, JPG, WebP (Max 5MB)</p>
-              <p className="text-brand-600 font-medium">Updates top navbar instantly</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs font-bold text-navy-700 mb-1.5 block">Full Name</label>
-              <input
-                type="text"
-                value={ownerName}
-                onChange={(e) => { setOwnerName(e.target.value); setHasUnsavedChanges(true); }}
-                className="input-field text-xs font-bold"
-              />
-            </div>
-
-            <div>
-              <label className="text-xs font-bold text-navy-700 mb-1.5 block">Email Address</label>
-              <input
-                type="email"
-                value={ownerEmail}
-                onChange={(e) => { setOwnerEmail(e.target.value); setHasUnsavedChanges(true); }}
-                className="input-field text-xs font-bold"
-              />
-            </div>
-
-            <div>
-              <label className="text-xs font-bold text-navy-700 mb-1.5 block">Personal Phone</label>
-              <input
-                type="text"
-                value={ownerPhone}
-                onChange={(e) => { setOwnerPhone(e.target.value); setHasUnsavedChanges(true); }}
-                className="input-field text-xs font-bold"
-              />
-            </div>
-
-            <div>
-              <label className="text-xs font-bold text-navy-700 mb-1.5 block">Administrative Role</label>
-              <input
-                type="text"
-                value={ownerRole}
-                disabled
-                className="input-field text-xs font-bold opacity-60 bg-navy-50"
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center justify-end pt-3 border-t border-navy-100">
-            <button
-              type="button"
-              onClick={handleSaveProfile}
-              className="btn-primary text-xs py-2.5 px-6 font-bold flex items-center gap-2 shadow-sm hover:scale-[1.02] active:scale-[0.98]"
-            >
-              <Icon name="check" size={14} />
-              <span>Save Profile Details</span>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 3: DEVICES & ACCESS CONTROL */}
-      {activeTab === 'Devices' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-fade-in">
-          <div className="lg:col-span-8 space-y-6">
-            {/* Card: Hardware Server Integrations */}
-            <div className="card p-6 border border-navy-100 bg-white space-y-5 shadow-sm">
-              <div className="flex items-center justify-between border-b border-navy-100 pb-3">
-                <div>
-                  <h3 className="text-base font-bold text-navy-900">Hardware Gateway Server Connections</h3>
-                  <p className="text-xs text-navy-400">Endpoints for physical eSSL biometric access control turnstiles & gates</p>
-                </div>
-                <Badge variant="success" dot>Real Hardware API</Badge>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-bold text-navy-700 mb-1.5 block">Full Name</label>
+                <input
+                  type="text"
+                  value={ownerName}
+                  onChange={(e) => { setOwnerName(e.target.value); setHasUnsavedChanges(true); }}
+                  className="input-field text-xs font-bold"
+                />
               </div>
 
-              <div className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-navy-700 mb-1.5 block">Email Address</label>
+                <input
+                  type="email"
+                  value={ownerEmail}
+                  onChange={(e) => { setOwnerEmail(e.target.value); setHasUnsavedChanges(true); }}
+                  className="input-field text-xs font-bold"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-navy-700 mb-1.5 block">Personal Phone</label>
+                <input
+                  type="text"
+                  value={ownerPhone}
+                  onChange={(e) => { setOwnerPhone(e.target.value); setHasUnsavedChanges(true); }}
+                  className="input-field text-xs font-bold"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-navy-700 mb-1.5 block">Administrative Role</label>
+                <input
+                  type="text"
+                  value={ownerRole}
+                  disabled
+                  className="input-field text-xs font-bold opacity-60 bg-navy-50"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end pt-3 border-t border-navy-100">
+              <button
+                type="button"
+                onClick={handleSaveProfile}
+                className="btn-primary text-xs py-2.5 px-6 font-bold flex items-center gap-2 shadow-sm hover:scale-[1.02] active:scale-[0.98]"
+              >
+                <Icon name="check" size={14} />
+                <span>Save Profile Details</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Section 3: Security & Credentials */}
+          <div className="card p-6 border border-navy-100 bg-white space-y-6 shadow-sm rounded-3xl">
+            <div className="flex items-center justify-between border-b border-navy-100 pb-4">
+              <div>
+                <h3 className="text-base font-bold text-navy-900">Security & Credentials</h3>
+                <p className="text-xs text-navy-400">Password management and multi-factor authentication setup</p>
+              </div>
+              <Badge variant="success" dot>Secured</Badge>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-navy-700 mb-1.5 block">Current Password</label>
+                <input
+                  type="password"
+                  placeholder="••••••••"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  className="input-field text-xs font-bold"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs font-bold text-navy-700 mb-1 block">eSSL Biometric eBioserver URL</label>
+                  <label className="text-xs font-bold text-navy-700 mb-1.5 block">New Password</label>
                   <input
-                    type="text"
-                    value={esslUrl}
-                    onChange={(e) => { setEsslUrl(e.target.value); setHasUnsavedChanges(true); }}
-                    className="input-field text-xs font-mono font-bold"
-                    placeholder="http://192.168.1.120:8080/ebioserver"
+                    type="password"
+                    placeholder="••••••••"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="input-field text-xs font-bold"
                   />
-                  <span className="text-[10px] text-navy-400 mt-1 block">Server URL for RFID & fingerprint attendance gate autolock integration.</span>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-navy-700 mb-1.5 block">Confirm New Password</label>
+                  <input
+                    type="password"
+                    placeholder="••••••••"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="input-field text-xs font-bold"
+                  />
                 </div>
               </div>
             </div>
-          </div>
 
-          <div className="lg:col-span-4 space-y-4">
-            <div className="card p-5 border border-navy-100 bg-white space-y-3">
-              <h4 className="text-xs font-bold text-navy-900">Gate Telemetry Status</h4>
-              <div className="space-y-2 text-xs">
-                <div className="flex justify-between p-2 rounded-xl bg-navy-50">
-                  <span className="text-navy-500">eSSL Gate Protocol:</span>
-                  <span className="font-bold text-navy-900">Direct TCP/LAN</span>
-                </div>
-                <div className="flex justify-between p-2 rounded-xl bg-navy-50">
-                  <span className="text-navy-500">Default Service Port:</span>
-                  <span className="font-bold text-navy-900">8080 / eBioserver</span>
-                </div>
-                <div className="flex justify-between p-2 rounded-xl bg-navy-50">
-                  <span className="text-navy-500">Auto-Sync Status:</span>
-                  <span className="font-bold text-emerald-600">Active</span>
-                </div>
+            <div className="p-4 rounded-2xl bg-navy-50/70 border border-navy-100 flex items-center justify-between">
+              <div className="space-y-1">
+                <div className="text-xs font-bold text-navy-900">Two-Factor Authentication (2FA)</div>
+                <div className="text-xs text-navy-400">Require authenticator app passcode on login</div>
               </div>
+              <button
+                onClick={() => setTwoFactorEnabled(!twoFactorEnabled)}
+                className={cn(
+                  'btn-secondary text-xs py-1.5 px-3 font-bold',
+                  twoFactorEnabled ? 'text-emerald-700 border-emerald-200 bg-emerald-50' : ''
+                )}
+              >
+                {twoFactorEnabled ? 'Enabled' : 'Enable 2FA'}
+              </button>
+            </div>
+
+            <div className="flex justify-end">
+              <button onClick={() => triggerToast('Security settings updated')} className="btn-primary text-xs py-2.5 px-4 flex items-center gap-2">
+                <Icon name="shield" size={15} /> Update Security Settings
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* TAB 4: NOTIFICATIONS */}
+      {/* TAB 2: DEVICES & HARDWARE + THIRD-PARTY INTEGRATIONS */}
+      {activeTab === 'Devices' && (
+        <div className="space-y-6 animate-fade-in">
+          {/* Section 1: Hardware Gateway Server Connections */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div className="lg:col-span-8 space-y-6">
+              <div className="card p-6 border border-navy-100 bg-white space-y-5 shadow-sm rounded-3xl">
+                <div className="flex items-center justify-between border-b border-navy-100 pb-3">
+                  <div>
+                    <h3 className="text-base font-bold text-navy-900">Hardware Gateway Server Connections</h3>
+                    <p className="text-xs text-navy-400">Endpoints for physical eSSL biometric access control turnstiles & gates</p>
+                  </div>
+                  <Badge variant="success" dot>Real Hardware API</Badge>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-xs font-bold text-navy-700 mb-1 block">eSSL Biometric eBioserver URL</label>
+                    <input
+                      type="text"
+                      value={esslUrl}
+                      onChange={(e) => { setEsslUrl(e.target.value); setHasUnsavedChanges(true); }}
+                      className="input-field text-xs font-mono font-bold"
+                      placeholder="http://192.168.1.120:8080/ebioserver"
+                    />
+                    <span className="text-[10px] text-navy-400 mt-1 block">Server URL for RFID & fingerprint attendance gate autolock integration.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="lg:col-span-4 space-y-4">
+              <div className="card p-5 border border-navy-100 bg-white space-y-3 rounded-3xl">
+                <h4 className="text-xs font-bold text-navy-900">Gate Telemetry Status</h4>
+                <div className="space-y-2 text-xs">
+                  <div className="flex justify-between p-2 rounded-xl bg-navy-50">
+                    <span className="text-navy-500">eSSL Gate Protocol:</span>
+                    <span className="font-bold text-navy-900">Direct TCP/LAN</span>
+                  </div>
+                  <div className="flex justify-between p-2 rounded-xl bg-navy-50">
+                    <span className="text-navy-500">Default Service Port:</span>
+                    <span className="font-bold text-navy-900">8080 / eBioserver</span>
+                  </div>
+                  <div className="flex justify-between p-2 rounded-xl bg-navy-50">
+                    <span className="text-navy-500">Auto-Sync Status:</span>
+                    <span className="font-bold text-emerald-600">Active</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 2: Third-Party Platform Integrations */}
+          <div className="card p-6 border border-navy-100 bg-white space-y-5 shadow-sm rounded-3xl">
+            <div className="flex items-center justify-between border-b border-navy-100 pb-3">
+              <div>
+                <h3 className="text-base font-bold text-navy-900">Third-Party Platform Integrations</h3>
+                <p className="text-xs text-navy-400">Connect hardware devices, payment gateways, and notification gateways</p>
+              </div>
+              <Badge variant="brand">{integrations.filter((i) => i.connected).length} Active Adapters</Badge>
+            </div>
+
+            <div className="space-y-3">
+              {integrations.map((app) => (
+                <div
+                  key={app.id}
+                  className="flex items-center gap-4 p-4 rounded-2xl bg-navy-50/70 border border-navy-100 hover:bg-navy-50 transition-all"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-white border border-navy-200 shadow-sm flex items-center justify-center text-brand-600 shrink-0">
+                    <Icon name={app.icon} size={18} />
+                  </div>
+
+                  <div className="flex-1 space-y-0.5 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-navy-900">{app.name}</span>
+                      <span className={cn('px-2 py-0.5 rounded-full text-[9px] font-bold border', app.badgeColor)}>
+                        {app.statusText}
+                      </span>
+                    </div>
+                    <p className="text-xs text-navy-400 truncate">{app.desc}</p>
+                  </div>
+
+                  <button
+                    onClick={() => handleToggleIntegration(app.id)}
+                    className={cn(
+                      'btn-secondary text-xs py-1.5 px-4 font-bold shrink-0',
+                      app.connected ? 'text-rose-700 hover:bg-rose-50 border-rose-200' : 'btn-primary text-white'
+                    )}
+                  >
+                    {app.connected ? 'Disconnect' : 'Connect'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 3: NOTIFICATIONS */}
       {activeTab === 'Notifications' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-fade-in">
-          <div className="lg:col-span-8 card p-6 border border-navy-100 bg-white space-y-5 shadow-sm">
+          <div className="lg:col-span-8 card p-6 border border-navy-100 bg-white space-y-5 shadow-sm rounded-3xl">
             <div className="flex items-center justify-between border-b border-navy-100 pb-3">
               <div>
                 <h3 className="text-base font-bold text-navy-900">Notification Preferences</h3>
@@ -766,7 +851,7 @@ export function SettingsPage() {
           </div>
 
           <div className="lg:col-span-4 space-y-4">
-            <div className="card p-5 border border-navy-100 bg-white space-y-3">
+            <div className="card p-5 border border-navy-100 bg-white space-y-3 rounded-3xl">
               <h4 className="text-xs font-bold text-navy-900">Live Preview Box</h4>
               <div className="p-3.5 rounded-2xl bg-slate-900 text-white text-xs space-y-2 font-sans shadow-inner">
                 <div className="flex items-center justify-between text-[10px] text-slate-400 border-b border-slate-800 pb-1">
@@ -774,7 +859,7 @@ export function SettingsPage() {
                   <span>Just Now</span>
                 </div>
                 <p className="text-[11px] leading-relaxed">
-                  💪 <span className="font-bold text-brand-400">FIT CLUB</span>: Welcome <span className="font-bold">[Member Name]</span>! Your membership plan is active. View your InBody scan report anytime in the app.
+                  📢 <span className="font-bold text-brand-400">VAHD</span>: Welcome <span className="font-bold">[Member Name]</span>! Your account has been activated.
                 </p>
               </div>
             </div>
@@ -782,148 +867,28 @@ export function SettingsPage() {
         </div>
       )}
 
-      {/* TAB 5: SECURITY */}
-      {activeTab === 'Security' && (
-        <div className="card p-6 border border-navy-100 bg-white space-y-6 shadow-sm animate-fade-in max-w-4xl">
-          <div className="flex items-center justify-between border-b border-navy-100 pb-4">
-            <div>
-              <h3 className="text-base font-bold text-navy-900">Security & Credentials</h3>
-              <p className="text-xs text-navy-400">Password management and multi-factor authentication setup</p>
-            </div>
-            <Badge variant="success" dot>Secured</Badge>
-          </div>
-
-          <div className="space-y-4">
-            <div>
-              <label className="text-xs font-bold text-navy-700 mb-1.5 block">Current Password</label>
-              <input
-                type="password"
-                placeholder="••••••••"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                className="input-field text-xs font-bold"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="text-xs font-bold text-navy-700 mb-1.5 block">New Password</label>
-                <input
-                  type="password"
-                  placeholder="••••••••"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className="input-field text-xs font-bold"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-navy-700 mb-1.5 block">Confirm New Password</label>
-                <input
-                  type="password"
-                  placeholder="••••••••"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="input-field text-xs font-bold"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="p-4 rounded-2xl bg-navy-50/70 border border-navy-100 flex items-center justify-between">
-            <div className="space-y-1">
-              <div className="text-xs font-bold text-navy-900">Two-Factor Authentication (2FA)</div>
-              <div className="text-xs text-navy-400">Require authenticator app passcode on login</div>
-            </div>
-            <button
-              onClick={() => setTwoFactorEnabled(!twoFactorEnabled)}
-              className={cn(
-                'btn-secondary text-xs py-1.5 px-3 font-bold',
-                twoFactorEnabled ? 'text-emerald-700 border-emerald-200 bg-emerald-50' : ''
-              )}
-            >
-              {twoFactorEnabled ? 'Enabled' : 'Enable 2FA'}
-            </button>
-          </div>
-
-          <div className="flex justify-end">
-            <button onClick={() => triggerToast('Security settings updated')} className="btn-primary text-xs py-2.5 px-4 flex items-center gap-2">
-              <Icon name="shield" size={15} /> Update Security Settings
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 6: BILLING */}
+      {/* TAB 4: BILLING */}
       {activeTab === 'Billing' && (
         <div className="space-y-6 animate-fade-in">
           <BillingSettingsTab />
         </div>
       )}
 
-      {/* TAB 7: INTEGRATIONS */}
-      {activeTab === 'Integrations' && (
-        <div className="space-y-6 animate-fade-in w-full">
-          <div className="card p-6 border border-navy-100 bg-white space-y-5 shadow-sm w-full">
-            <div className="flex items-center justify-between border-b border-navy-100 pb-3">
-              <div>
-                <h3 className="text-base font-bold text-navy-900">Third-Party Platform Integrations</h3>
-                <p className="text-xs text-navy-400">Connect hardware devices, payment gateways, and notification gateways</p>
-              </div>
-              <Badge variant="brand">{integrations.filter((i) => i.connected).length} Active Adapters</Badge>
-            </div>
-
-            <div className="space-y-3">
-              {integrations.map((app) => (
-                <div
-                  key={app.id}
-                  className="flex items-center gap-4 p-4 rounded-2xl bg-navy-50/70 border border-navy-100 hover:bg-navy-50 transition-all"
-                >
-                  <div className="w-10 h-10 rounded-xl bg-white border border-navy-200 shadow-sm flex items-center justify-center text-brand-600 shrink-0">
-                    <Icon name={app.icon} size={18} />
-                  </div>
-
-                  <div className="flex-1 space-y-0.5 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-navy-900">{app.name}</span>
-                      <span className={cn('px-2 py-0.5 rounded-full text-[9px] font-bold border', app.badgeColor)}>
-                        {app.statusText}
-                      </span>
-                    </div>
-                    <p className="text-xs text-navy-400 truncate">{app.desc}</p>
-                  </div>
-
-                  <button
-                    onClick={() => handleToggleIntegration(app.id)}
-                    className={cn(
-                      'btn-secondary text-xs py-1.5 px-4 font-bold shrink-0',
-                      app.connected ? 'text-rose-700 hover:bg-rose-50 border-rose-200' : 'btn-primary text-white'
-                    )}
-                  >
-                    {app.connected ? 'Disconnect' : 'Connect'}
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* TAB: ERP & GOOGLE REVIEWS */}
+      {/* TAB 5: ERP & GOOGLE REVIEWS */}
       {activeTab === 'ERP & Google Reviews' && (
         <div className="space-y-6 animate-fade-in">
           <CompanyManagement />
         </div>
       )}
 
-      {/* TAB: COURSES */}
+      {/* TAB 6: COURSES */}
       {(activeTab === 'Courses' || activeTab === 'Memberships') && (
         <div className="space-y-6 animate-fade-in">
           <CoursesPage embedded={true} />
         </div>
       )}
 
-      {/* TAB: REPORTS */}
+      {/* TAB 7: REPORTS */}
       {activeTab === 'Reports' && (
         <div className="space-y-6 animate-fade-in">
           <ReportsPage embedded={true} />

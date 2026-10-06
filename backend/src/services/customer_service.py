@@ -3,7 +3,7 @@ import uuid
 from typing import List, Optional, Dict, Any
 from sqlalchemy import or_, and_, func
 from sqlalchemy.orm import Session
-from src.utils.timezone import now_ist_naive, today_ist_start, to_ist_str
+from src.utils.timezone import now_ist_naive, today_ist_start, today_ist_end, to_ist_str
 from src.models.user import User
 from src.models.customer import Customer
 from src.models.membership import Membership
@@ -28,16 +28,75 @@ class CustomerService:
                 trainer_name = trainer_user.full_name
 
         # Last Visit & Attendance Calculation from Biometric DB Log
-        last_log = db.query(BiometricLog).filter(BiometricLog.customer_id == c.id).order_by(BiometricLog.timestamp.desc()).first()
+        last_log = db.query(BiometricLog).filter(
+            (BiometricLog.customer_id == c.id) | (BiometricLog.customer_id == c.user_id)
+        ).order_by(BiometricLog.timestamp.desc()).first()
         last_visit = to_ist_str(last_log.timestamp) if (last_log and last_log.timestamp) else None
 
         # Calculate 30-day attendance percentage from DB logs
         month_ago = now - datetime.timedelta(days=30)
         logs_count = db.query(BiometricLog).filter(
-            BiometricLog.customer_id == c.id,
+            (BiometricLog.customer_id == c.id) | (BiometricLog.customer_id == c.user_id),
             BiometricLog.timestamp >= month_ago
         ).count()
         attendance_pct = min(100, int((logs_count / 30.0) * 100)) if logs_count > 0 else 0
+
+        # Real-time Today Attendance Calculation from Biometric DB Log
+        today_start = today_ist_start()
+        today_end = today_ist_end()
+        cust_match_ids = {str(c.id)}
+        if c.user_id:
+            cust_match_ids.add(str(c.user_id))
+            cust_match_ids.add(f"cust_usr_{c.user_id}")
+            cust_match_ids.add(f"cust_{c.user_id}")
+        if str(c.id).startswith("cust_"):
+            cust_match_ids.add(str(c.id).replace("cust_", ""))
+        else:
+            cust_match_ids.add(f"cust_{c.id}")
+
+        today_logs = db.query(BiometricLog).filter(
+            (BiometricLog.customer_id.in_(list(cust_match_ids))) |
+            (BiometricLog.customer_id == c.id) |
+            (BiometricLog.customer_id == c.user_id),
+            BiometricLog.timestamp >= today_start,
+            BiometricLog.timestamp <= today_end
+        ).order_by(BiometricLog.timestamp.asc()).all()
+
+        punch_in = None
+        punch_out = None
+        is_today_present = False
+        today_punch_status = "Absent"
+
+        if today_logs:
+            in_logs = [
+                l for l in today_logs
+                if getattr(l, "direction", "") in ["CHECK_IN", "IN", "ENTRY", "ENROLL"]
+                or "in" in str(getattr(l, "direction", "")).lower()
+                or (l.event_type in ["FACE_SCAN", "FINGERPRINT", "RFID_CARD", "MANUAL", "GPS_SCAN"] and getattr(l, "direction", "") not in ["CHECK_OUT", "OUT", "EXIT"])
+            ]
+            out_logs = [
+                l for l in today_logs
+                if getattr(l, "direction", "") in ["CHECK_OUT", "OUT", "EXIT"]
+                or "out" in str(getattr(l, "direction", "")).lower()
+            ]
+
+            if in_logs:
+                punch_in = in_logs[0].timestamp.strftime("%H:%M:%S")
+            elif today_logs:
+                punch_in = today_logs[0].timestamp.strftime("%H:%M:%S")
+
+            if out_logs:
+                punch_out = out_logs[-1].timestamp.strftime("%H:%M:%S")
+            elif len(today_logs) > 1:
+                punch_out = today_logs[-1].timestamp.strftime("%H:%M:%S")
+
+            is_today_present = True
+            if punch_in and punch_out:
+                today_punch_status = "Present"
+            elif punch_in:
+                today_punch_status = "Present"
+            else:
+                today_punch_status = "Present"
 
         # Dynamic Biometric Sync Detection (Strict DB check)
         biometric_count = db.query(BiometricLog).filter(BiometricLog.customer_id == c.id).count()
@@ -53,13 +112,12 @@ class CustomerService:
         # Membership DB details
         mem = db.query(Membership).filter(Membership.customer_id == c.id).order_by(Membership.created_at.desc()).first()
         mem_dict = None
-        calculated_status = "ACTIVE"
-        if not mem:
-            calculated_status = "INACTIVE"
-        elif mem.status != "ACTIVE" or (mem.expiry_date and mem.expiry_date < now):
-            calculated_status = "EXPIRED"
-        else:
-            calculated_status = "ACTIVE"
+        calculated_status = c.status if c.status else "ACTIVE"
+        if mem:
+            if mem.status != "ACTIVE" or (mem.expiry_date and mem.expiry_date < now):
+                calculated_status = "EXPIRED"
+            else:
+                calculated_status = "ACTIVE"
 
         if mem:
             days_left = (mem.expiry_date - now).days if mem.expiry_date else 0
@@ -77,6 +135,24 @@ class CustomerService:
 
         revenue_str = f"₹{int(mem.price):,}" if (mem and mem.price) else "₹0"
         expiry_str = mem.expiry_date.strftime("%d-%m-%y") if (mem and mem.expiry_date) else None
+
+        # Dynamic Student Admission Metadata & Course/Medium Resolution
+        meta = dict(c.meta_data) if (c.meta_data and isinstance(c.meta_data, dict)) else {}
+        if not meta.get("course") and c.goal:
+            goal_str = str(c.goal).strip()
+            if "(" in goal_str and ")" in goal_str:
+                parts = goal_str.split("(")
+                course_part = parts[0].strip(" -").strip()
+                inside = parts[1].replace(")", "").strip()
+                if "medium" in inside.lower():
+                    medium_part = inside.lower().replace("medium", "").strip().capitalize()
+                    if not meta.get("medium"):
+                        meta["medium"] = medium_part
+                if not meta.get("course"):
+                    meta["course"] = course_part
+            else:
+                if not meta.get("course"):
+                    meta["course"] = goal_str
 
         return {
             "id": c.id,
@@ -96,6 +172,11 @@ class CustomerService:
             "fitness_level": c.fitness_level or "",
             "training_preference": c.training_preference or "",
             "goal": c.goal or "",
+            "meta_data": meta,
+            "course": meta.get("course") or c.goal or "",
+            "medium": meta.get("medium") or "",
+            "father_name": meta.get("father_name") or "",
+            "mother_name": meta.get("mother_name") or "",
             "target_calories": c.target_calories or 0,
             "target_protein": c.target_protein or 0,
             "target_carbs": c.target_carbs or 0,
@@ -127,6 +208,18 @@ class CustomerService:
             "enable_workout_videos": bool(c.enable_workout_videos if c.enable_workout_videos is not None else True),
             "kyc_status": kyc_status,
             "kyc_percent": kyc_percent,
+            "today_status": today_punch_status,
+            "punch_in": punch_in,
+            "punch_out": punch_out,
+            "in_time": punch_in,
+            "out_time": punch_out,
+            "is_present": is_today_present,
+            "isPresentToday": is_today_present,
+            "today_punch": {
+                "status": today_punch_status,
+                "in_time": punch_in,
+                "out_time": punch_out,
+            },
         }
 
     @staticmethod
@@ -249,6 +342,55 @@ class CustomerService:
             if data.get("notes"):
                 meta["notes"] = data["notes"]
             meta["enrolled_by"] = "GYM_OWNER"
+
+            # Geofence location matching & enforcement for students
+            from src.models.hrms import GeofenceScheme
+            from src.services.hrms_service import HrmsService
+
+            branch_target = cust.primary_gym_location or cust.branch_id
+            scheme = None
+            if branch_target:
+                scheme = db.query(GeofenceScheme).filter(
+                    GeofenceScheme.branch_name.ilike(f"%{branch_target}%"),
+                    GeofenceScheme.is_active == True,
+                    GeofenceScheme.latitude.isnot(None)
+                ).first()
+                if not scheme:
+                    scheme = db.query(GeofenceScheme).filter(
+                        GeofenceScheme.branch_name.ilike(f"%{branch_target}%"),
+                        GeofenceScheme.is_active == True
+                    ).first()
+
+            if not scheme:
+                scheme = db.query(GeofenceScheme).filter(
+                    GeofenceScheme.is_active == True,
+                    GeofenceScheme.latitude.isnot(None)
+                ).order_by(GeofenceScheme.updated_at.desc()).first()
+
+            if not scheme:
+                scheme = db.query(GeofenceScheme).filter(GeofenceScheme.is_active == True).first()
+
+            lat_val = data.get("latitude")
+            lng_val = data.get("longitude")
+            distance_meters = None
+            within_perimeter = True
+
+            if scheme and scheme.latitude is not None and scheme.longitude is not None and lat_val is not None and lng_val is not None:
+                distance_meters = HrmsService.calculate_distance_meters(
+                    float(lat_val), float(lng_val), scheme.latitude, scheme.longitude
+                )
+                radius = scheme.radius_meters or 500
+                within_perimeter = distance_meters <= radius
+                if scheme.strict_restriction and not within_perimeter:
+                    raise ValueError(
+                        f"Geofence Restriction Active: Student check-in rejected. You are {distance_meters:.0f}m away, which exceeds the permitted perimeter radius of {radius}m."
+                    )
+                meta["distance_meters"] = distance_meters
+                meta["within_perimeter"] = within_perimeter
+                meta["latitude"] = lat_val
+                meta["longitude"] = lng_val
+                meta["scheme_name"] = scheme.name
+                meta["branch"] = scheme.branch_name or "Main Branch"
 
             bio_log = BiometricLog(
                 id=f"bio_{uuid.uuid4().hex[:8]}",
@@ -392,7 +534,7 @@ class CustomerService:
             if resolved_branch_id:
                 user.branch_id = resolved_branch_id
 
-        existing_cust = db.query(Customer).filter(func.lower(Customer.email) == clean_email).first()
+        meta_data_payload = data.get("meta_data") or data.get("metaData")
         if existing_cust:
             cust = existing_cust
             cust.full_name = full_name
@@ -406,6 +548,8 @@ class CustomerService:
                 cust.status = data.get("status")
             if profile_image:
                 cust.profile_image = profile_image
+            if meta_data_payload:
+                cust.meta_data = meta_data_payload
             if resolved_branch_name:
                 cust.primary_gym_location = resolved_branch_name
             if resolved_branch_id:
@@ -425,6 +569,7 @@ class CustomerService:
                 fitness_score=fitness_score,
                 goal=goal,
                 profile_image=profile_image,
+                meta_data=meta_data_payload,
                 owner_id=resolved_owner_id,
                 branch_id=resolved_branch_id,
                 primary_gym_location=resolved_branch_name,
@@ -573,6 +718,16 @@ class CustomerService:
             cust.status = data.get("status")
         if "trainer_id" in data:
             cust.trainer_id = data.get("trainer_id")
+        if "meta_data" in data or "metaData" in data:
+            meta_val = data.get("meta_data") if "meta_data" in data else data.get("metaData")
+            if isinstance(meta_val, dict):
+                cust.meta_data = meta_val
+        if "profile_image" in data or "profileImage" in data:
+            cust.profile_image = data.get("profile_image") or data.get("profileImage")
+        if "face_image" in data or "faceImage" in data:
+            cust.face_image = data.get("face_image") or data.get("faceImage")
+        if "face_registered" in data or "faceRegistered" in data:
+            cust.face_registered = bool(data.get("face_registered") if "face_registered" in data else data.get("faceRegistered"))
         if "enable_workout_videos" in data or "enableWorkoutVideos" in data:
             val = data.get("enable_workout_videos") if "enable_workout_videos" in data else data.get("enableWorkoutVideos")
             if val is not None:

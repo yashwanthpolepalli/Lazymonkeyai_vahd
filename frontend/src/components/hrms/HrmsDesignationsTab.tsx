@@ -28,6 +28,16 @@ export function HrmsDesignationsTab() {
   const [searchQuery, setSearchQuery] = useState('');
   const [deptFilter, setDeptFilter] = useState('ALL');
   const [levelFilter, setLevelFilter] = useState('ALL');
+  const [viewMode, setViewMode] = useState<'grid' | 'row'>(() => {
+    return (localStorage.getItem('hrms_designations_view_mode') as 'grid' | 'row') || 'row';
+  });
+
+  const handleSetViewMode = (mode: 'grid' | 'row') => {
+    setViewMode(mode);
+    try {
+      localStorage.setItem('hrms_designations_view_mode', mode);
+    } catch {}
+  };
 
   // Dynamic Career Levels State
   const [careerLevels, setCareerLevels] = useState<CareerLevelItem[]>(() => {
@@ -514,10 +524,40 @@ export function HrmsDesignationsTab() {
               <Icon name="rotate-ccw" size={13} />
             </button>
           )}
+
+          {/* Row / Grid View Toggle */}
+          <div className="bg-navy-50 p-1 rounded-xl flex items-center border border-navy-100">
+            <button
+              type="button"
+              onClick={() => handleSetViewMode('grid')}
+              className={cn(
+                'p-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1',
+                viewMode === 'grid'
+                  ? 'bg-white text-purple-700 shadow-xs border border-navy-100 font-bold'
+                  : 'text-navy-400 hover:text-navy-700'
+              )}
+              title="Grid View"
+            >
+              <Icon name="layout-grid" size={15} />
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSetViewMode('row')}
+              className={cn(
+                'p-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1',
+                viewMode === 'row'
+                  ? 'bg-white text-purple-700 shadow-xs border border-navy-100 font-bold'
+                  : 'text-navy-400 hover:text-navy-700'
+              )}
+              title="Row / Table View"
+            >
+              <Icon name="list" size={15} />
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* 4. Designations List / Grid */}
+      {/* 4. Designations List / Grid or Row View */}
       {loading ? (
         <div className="p-12 text-center text-navy-400 text-xs flex flex-col items-center gap-2">
           <Icon name="loader" size={24} className="animate-spin text-purple-600" />
@@ -544,6 +584,123 @@ export function HrmsDesignationsTab() {
             <Icon name="plus" size={14} />
             <span>Add First Designation</span>
           </button>
+        </div>
+      ) : viewMode === 'row' ? (
+        <div className="bg-white rounded-2xl border border-navy-100 shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-navy-50/70 border-b border-navy-100 text-navy-500 font-extrabold uppercase text-[10px] tracking-wider">
+                <tr>
+                  <th className="py-3 px-4">Designation & Role</th>
+                  <th className="py-3 px-4">Department</th>
+                  <th className="py-3 px-4">Career Tier</th>
+                  <th className="py-3 px-4">Description</th>
+                  <th className="py-3 px-4">Assigned Staff</th>
+                  <th className="py-3 px-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-navy-100">
+                {filteredDesignations.map((desg) => {
+                  const levelStyle = getLevelStyle(desg.level);
+                  const employeesList = desg.employees || [];
+
+                  return (
+                    <tr key={desg.id} className="hover:bg-purple-50/20 transition-colors group">
+                      <td className="py-3 px-4 whitespace-nowrap">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold text-xs">
+                            <Icon name="award" size={16} />
+                          </div>
+                          <div>
+                            <div className="font-extrabold text-navy-900 text-sm group-hover:text-purple-700 transition">
+                              {desg.title}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 whitespace-nowrap">
+                        <div className="flex items-center gap-1.5 text-navy-700 font-semibold">
+                          <Icon name="building-2" size={13} className="text-navy-400" />
+                          <span>{desg.department || <span className="text-navy-400 italic">General</span>}</span>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 whitespace-nowrap">
+                        <span
+                          className={cn(
+                            'inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-black tracking-wide uppercase border',
+                            levelStyle.bg,
+                            levelStyle.text,
+                            levelStyle.border
+                          )}
+                        >
+                          <Icon name="layers" size={10} />
+                          <span>{desg.level || 'Unassigned'}</span>
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 max-w-xs">
+                        <div className="text-[11px] text-navy-500 line-clamp-1">
+                          {desg.description || <span className="italic text-navy-400">No description</span>}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setViewStaffDesg(desg)}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold text-xs border border-purple-200/60 transition cursor-pointer"
+                          >
+                            <Icon name="users" size={12} />
+                            <span>{desg.employee_count || 0} Staff</span>
+                          </button>
+                          {employeesList.length > 0 && (
+                            <div className="hidden sm:flex items-center -space-x-1.5">
+                              {employeesList.slice(0, 3).map((emp, eIdx) => (
+                                <span
+                                  key={emp.id || eIdx}
+                                  className="w-5 h-5 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-600 text-white font-bold text-[8px] flex items-center justify-center ring-2 ring-white shadow-2xs"
+                                  title={emp.name}
+                                >
+                                  {emp.name.charAt(0)}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setViewStaffDesg(desg)}
+                            className="p-1.5 rounded-lg text-purple-600 hover:bg-purple-50 hover:text-purple-700 border border-purple-200/60 transition cursor-pointer"
+                            title="View Roster & Staff"
+                          >
+                            <Icon name="users" size={13} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEdit(desg)}
+                            className="p-1.5 rounded-lg text-blue-600 hover:bg-blue-50 hover:text-blue-700 border border-blue-200/60 transition cursor-pointer shadow-2xs"
+                            title="Edit Designation"
+                          >
+                            <Icon name="edit" size={13} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(desg.id, desg.title)}
+                            className="p-1.5 rounded-lg text-navy-400 hover:text-rose-600 hover:bg-rose-50 border border-navy-100 transition cursor-pointer"
+                            title="Delete Designation"
+                          >
+                            <Icon name="trash-2" size={13} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -584,15 +741,16 @@ export function HrmsDesignationsTab() {
                       <button
                         type="button"
                         onClick={() => handleOpenEdit(desg)}
-                        className="w-7 h-7 rounded-lg hover:bg-purple-50 text-navy-400 hover:text-purple-600 flex items-center justify-center transition cursor-pointer"
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200/60 font-bold text-xs transition cursor-pointer shadow-2xs"
                         title="Edit Designation"
                       >
-                        <Icon name="edit" size={13} />
+                        <Icon name="edit" size={12} />
+                        <span>Edit</span>
                       </button>
                       <button
                         type="button"
                         onClick={() => handleDelete(desg.id, desg.title)}
-                        className="w-7 h-7 rounded-lg hover:bg-rose-50 text-navy-400 hover:text-rose-600 flex items-center justify-center transition cursor-pointer"
+                        className="p-1 rounded-lg text-navy-400 hover:text-rose-600 hover:bg-rose-50 border border-navy-100 transition cursor-pointer"
                         title="Delete Designation"
                       >
                         <Icon name="trash-2" size={13} />

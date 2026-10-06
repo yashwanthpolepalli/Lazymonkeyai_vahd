@@ -49,7 +49,7 @@ const GST_SLAB_PRESETS = [
   { rate: 0, label: 'Nil' },
   { rate: 5, label: 'Essential' },
   { rate: 12, label: 'Standard' },
-  { rate: 18, label: 'Salon / Gym' },
+  { rate: 18, label: 'Services' },
   { rate: 28, label: 'Ultra' },
 ];
 
@@ -669,10 +669,10 @@ export function BillingSettingsTab() {
             {/* Registration & Mode Fields */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
               <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">Gym / Trade Name</label>
+                <label className="text-xs font-bold text-slate-700 block mb-1">Trade Name</label>
                 <input
                   type="text"
-                  placeholder="e.g. OLYMPUS ATHLETIC CLUB"
+                  placeholder="e.g. VAHD ENTERPRISE"
                   value={settings.gym_name}
                   onChange={(e) => setSettings((p) => ({ ...p, gym_name: e.target.value }))}
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-bold focus:ring-2 focus:ring-emerald-500"
@@ -680,7 +680,7 @@ export function BillingSettingsTab() {
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">Gym Registered Address</label>
+                <label className="text-xs font-bold text-slate-700 block mb-1">Registered Address</label>
                 <input
                   type="text"
                   placeholder="e.g. Plot 42, Hitech City, Hyderabad"
@@ -691,7 +691,7 @@ export function BillingSettingsTab() {
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">Gym GSTIN Number</label>
+                <label className="text-xs font-bold text-slate-700 block mb-1">GSTIN Number</label>
                 <input
                   type="text"
                   placeholder="Enter GSTIN Number"
@@ -957,7 +957,7 @@ export function BillingSettingsTab() {
             <div className="bg-slate-50/90 border border-slate-200/80 rounded-2xl p-4 font-mono text-xs space-y-2.5 shadow-inner">
               <div className="text-center border-b border-dashed border-slate-300 pb-2.5 space-y-1">
                 <div className="font-black tracking-wider uppercase text-slate-900 text-xs">
-                  {settings.gym_name.trim() ? settings.gym_name : 'FIT CLUB AI LUXURY ATELIER'}
+                  {settings.gym_name.trim() ? settings.gym_name : 'VAHD ENTERPRISE'}
                 </div>
                 <div className="text-[10px] text-slate-500 font-bold">
                   GSTIN: {settings.gstin.trim() ? settings.gstin : 'NOT REGISTERED / EXEMPT'}

@@ -10,56 +10,8 @@ from src.utils.timezone import now_ist_naive
 
 router = APIRouter(prefix="/bank", tags=["Banking & Reconciliation"])
 
-# In-memory default bank accounts for standard cash/bank management
-DEFAULT_BANK_ACCOUNTS = [
-    {
-        "id": "bank_acc_01",
-        "account_name": "Main Operating Current Account",
-        "account_number": "50200049281742",
-        "bank_name": "HDFC Bank",
-        "branch_name": "Indiranagar, Bangalore",
-        "ifsc_code": "HDFC0001234",
-        "account_type": "CURRENT",
-        "opening_balance": 150000.0,
-        "current_balance": 284500.0,
-        "currency": "INR",
-        "status": "active",
-        "is_default": True,
-        "created_at": "2026-01-01T00:00:00",
-    },
-    {
-        "id": "bank_acc_02",
-        "account_name": "POS Counter Cash Drawer",
-        "account_number": "CASH-MAIN",
-        "bank_name": "Physical Petty Cash",
-        "branch_name": "Store Front",
-        "ifsc_code": "CASH000",
-        "account_type": "SAVINGS",
-        "opening_balance": 10000.0,
-        "current_balance": 18200.0,
-        "currency": "INR",
-        "status": "active",
-        "is_default": False,
-        "created_at": "2026-01-01T00:00:00",
-    },
-    {
-        "id": "bank_acc_03",
-        "account_name": "UPI & Razorpay Settlement Account",
-        "account_number": "91802938472910",
-        "bank_name": "ICICI Bank",
-        "branch_name": "Koramangala, Bangalore",
-        "ifsc_code": "ICIC0000987",
-        "account_type": "CURRENT",
-        "opening_balance": 50000.0,
-        "current_balance": 142000.0,
-        "currency": "INR",
-        "status": "active",
-        "is_default": False,
-        "created_at": "2026-01-01T00:00:00",
-    }
-]
-
-_bank_accounts = list(DEFAULT_BANK_ACCOUNTS)
+# In-memory bank accounts store
+_bank_accounts: List[Dict[str, Any]] = []
 _bank_transactions: List[Dict[str, Any]] = []
 
 

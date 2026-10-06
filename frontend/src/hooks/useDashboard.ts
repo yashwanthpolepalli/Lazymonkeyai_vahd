@@ -14,7 +14,7 @@ export function useDashboard(branch?: string) {
       const result = await dashboardApi.getOverview(branch);
       setData(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to connect to Fit Club server.');
+      setError(err instanceof Error ? err.message : 'Unable to connect to server.');
       setData(null);
     } finally {
       setLoading(false);

@@ -9,6 +9,7 @@ import type { Trainer } from '@/types/trainer';
 import { cn } from '@/utils/cn';
 import { EmployeeEnrollmentModal } from './EmployeeEnrollmentModal';
 import { TableColumnSettingsPopover, type ColumnGroup } from './TableColumnSettingsPopover';
+import { HrmsImportExportControls } from './HrmsImportExportControls';
 
 const EMPLOYEE_COLUMN_GROUPS: ColumnGroup[] = [
   {
@@ -152,7 +153,16 @@ export function HrmsTrainersTab() {
   const [loading, setLoading] = useState(true);
   const [enrollOpen, setEnrollOpen] = useState(false);
   const [editingTrainer, setEditingTrainer] = useState<any>(null);
-  const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
+  const [viewMode, setViewMode] = useState<'table' | 'grid'>(() => {
+    return (localStorage.getItem('hrms_trainers_view_mode') as 'table' | 'grid') || 'table';
+  });
+
+  const handleSetViewMode = (mode: 'table' | 'grid') => {
+    setViewMode(mode);
+    try {
+      localStorage.setItem('hrms_trainers_view_mode', mode);
+    } catch {}
+  };
   const [selectedTrainerIds, setSelectedTrainerIds] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
@@ -451,7 +461,7 @@ export function HrmsTrainersTab() {
 
     if (rawStatus && ['Present', 'Absent', 'Missed Punch', 'Early Logout'].includes(rawStatus)) {
       punchStatus = rawStatus as any;
-      punchDetails = inTime ? `${inTime}${outTime ? ` - ${outTime}` : ''}` : '';
+      punchDetails = inTime ? `${inTime}${outTime ? ` - ${outTime}` : ' (Checked In)'}` : '';
     } else if (inTime && outTime) {
       if (isEarly) {
         punchStatus = 'Early Logout';
@@ -461,11 +471,11 @@ export function HrmsTrainersTab() {
         punchDetails = `${inTime} - ${outTime}`;
       }
     } else if (inTime && !outTime) {
-      punchStatus = 'Missed Punch';
-      punchDetails = `In: ${inTime} (Missed Out)`;
+      punchStatus = 'Present';
+      punchDetails = `In: ${inTime} (Checked In)`;
     } else if ((t as any).is_present === true || (t as any).isPresentToday === true) {
       punchStatus = 'Present';
-      punchDetails = inTime ? `${inTime}` : 'Marked Present';
+      punchDetails = inTime ? `In: ${inTime}` : 'Marked Present';
     } else {
       punchStatus = 'Absent';
       punchDetails = 'Not marked IN and OUT';
@@ -652,7 +662,14 @@ export function HrmsTrainersTab() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <HrmsImportExportControls
+            type="employees"
+            dataToExport={allDisplayTrainers}
+            onImportSuccess={() => {
+              fetchTrainersData();
+            }}
+          />
 
           {selectedTrainerIds.length > 0 && (
             <button
@@ -766,14 +783,14 @@ export function HrmsTrainersTab() {
 
           <div className="bg-navy-50 p-1 rounded-xl flex items-center gap-1 border border-navy-100">
             <button
-              onClick={() => setViewMode('table')}
+              onClick={() => handleSetViewMode('table')}
               className={cn('p-1.5 rounded-lg transition-all', viewMode === 'table' ? 'bg-white text-purple-700 shadow-xs' : 'text-navy-400 hover:text-navy-600')}
               title="Table View"
             >
               <Icon name="list" size={16} />
             </button>
             <button
-              onClick={() => setViewMode('grid')}
+              onClick={() => handleSetViewMode('grid')}
               className={cn('p-1.5 rounded-lg transition-all', viewMode === 'grid' ? 'bg-white text-purple-700 shadow-xs' : 'text-navy-400 hover:text-navy-600')}
               title="Grid View"
             >

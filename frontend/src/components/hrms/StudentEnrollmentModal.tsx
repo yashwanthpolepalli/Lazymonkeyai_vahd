@@ -164,17 +164,40 @@ export function StudentEnrollmentModal({
       if (meta.affiliation) setAffiliation(meta.affiliation);
       if (meta.college_logo) setCollegeLogo(meta.college_logo);
 
-      const targetCourse = meta.course || '';
+      // 1. Dynamic Course & Medium Resolution from metadata, direct properties, or goal
+      let targetCourse = meta.course || studentToEdit.course || '';
+      let targetMedium = meta.medium || studentToEdit.medium || '';
+
+      if ((!targetCourse || !targetMedium) && studentToEdit.goal) {
+        const goalStr = String(studentToEdit.goal).trim();
+        if (goalStr.includes('(') && goalStr.includes(')')) {
+          const parts = goalStr.split('(');
+          if (!targetCourse) {
+            targetCourse = parts[0].replace(/-+$/, '').trim();
+          }
+          const inside = parts[1].replace(')', '').trim();
+          if (!targetMedium && inside.toLowerCase().includes('medium')) {
+            targetMedium = inside.replace(/medium/i, '').trim();
+          }
+        } else if (!targetCourse) {
+          targetCourse = goalStr;
+        }
+      }
+
       if (targetCourse) {
-        setCourse(targetCourse);
-        const knownCourseNames = coursesList.map((c) => c.name.toLowerCase().trim());
-        const isKnown = knownCourseNames.includes(targetCourse.toLowerCase().trim());
-        if (!isKnown && coursesList.length > 0) {
+        const knownCourse = coursesList.find(
+          (c) => c.name.toLowerCase().trim() === targetCourse.toLowerCase().trim()
+        );
+        if (knownCourse) {
+          setCourse(knownCourse.name);
+          setIsCustomCourse(false);
+          setCustomCourse('');
+        } else if (coursesList.length > 0) {
+          setCourse(targetCourse);
           setIsCustomCourse(true);
           setCustomCourse(targetCourse);
         } else {
-          setIsCustomCourse(false);
-          setCustomCourse('');
+          setCourse(targetCourse);
         }
       } else {
         setCourse('');
@@ -182,17 +205,20 @@ export function StudentEnrollmentModal({
         setCustomCourse('');
       }
 
-      const targetMedium = meta.medium || '';
       if (targetMedium) {
-        setMedium(targetMedium);
-        const knownLangs = languagesList.map((l) => l.toLowerCase().trim());
-        const isKnownLang = knownLangs.includes(targetMedium.toLowerCase().trim());
-        if (!isKnownLang && languagesList.length > 0) {
+        const knownLang = languagesList.find(
+          (l) => l.toLowerCase().trim() === targetMedium.toLowerCase().trim()
+        );
+        if (knownLang) {
+          setMedium(knownLang);
+          setIsCustomMedium(false);
+          setCustomMedium('');
+        } else if (languagesList.length > 0) {
+          setMedium(targetMedium);
           setIsCustomMedium(true);
           setCustomMedium(targetMedium);
         } else {
-          setIsCustomMedium(false);
-          setCustomMedium('');
+          setMedium(targetMedium);
         }
       } else {
         setMedium('');
@@ -202,8 +228,8 @@ export function StudentEnrollmentModal({
 
       setAcademicYear(meta.academic_year || defaultAcademicYear);
       setFullName(studentToEdit.full_name || studentToEdit.name || '');
-      setFatherName(meta.father_name || '');
-      setMotherName(meta.mother_name || '');
+      setFatherName(meta.father_name || studentToEdit.father_name || '');
+      setMotherName(meta.mother_name || studentToEdit.mother_name || '');
       setStudentEmail(studentToEdit.email || meta.email || '');
 
       const perm = meta.permanent_address || {};
@@ -292,7 +318,7 @@ export function StudentEnrollmentModal({
       setAadharNumber(['', '', '', '', '', '', '', '', '', '', '', '']);
       setPhotoBase64(null);
     }
-  }, [studentToEdit, visible]);
+  }, [studentToEdit, visible, coursesList, languagesList]);
 
   // Auto calculate age from DOB
   const handleDobChange = (val: string) => {

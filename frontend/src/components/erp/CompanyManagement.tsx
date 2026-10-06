@@ -461,13 +461,13 @@ function CompanyFormModal({
             <div className="space-y-4 text-xs">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="font-bold block mb-1 text-navy-800">Company / Gym Trade Name *</label>
+                  <label className="font-bold block mb-1 text-navy-800">Trade Name *</label>
                   <input
                     type="text"
                     required
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    placeholder="e.g. test warangal"
+                    placeholder="e.g. Main Campus / Main Branch"
                     className="w-full px-3 py-2 rounded-xl border border-navy-200 bg-white text-navy-900 focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 focus:outline-none font-medium"
                   />
                 </div>
@@ -508,7 +508,7 @@ function CompanyFormModal({
                     type="email"
                     value={form.email}
                     onChange={(e) => setForm({ ...form, email: e.target.value })}
-                    placeholder="e.g. contact@gym.com"
+                    placeholder="e.g. contact@company.com"
                     className="w-full px-3 py-2 rounded-xl border border-navy-200 bg-white text-navy-900 focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 focus:outline-none"
                   />
                 </div>

@@ -1212,10 +1212,10 @@ export function HrmsPayrollTab({ onSuccessToast }: HrmsPayrollTabProps) {
                       className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-white text-base shadow-sm"
                       style={{ backgroundColor: customizerForm.theme_color }}
                     >
-                      FC
+                      VA
                     </div>
                     <div>
-                      <div className="font-black text-slate-900 text-sm">FIT CLUB ENTERPRISE</div>
+                      <div className="font-black text-slate-900 text-sm">VAHD ENTERPRISE</div>
                       <div className="text-[10px] text-slate-400">100 Innovation Boulevard, Tech District</div>
                     </div>
                   </div>

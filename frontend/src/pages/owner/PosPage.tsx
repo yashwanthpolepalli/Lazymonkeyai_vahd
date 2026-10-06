@@ -1506,9 +1506,9 @@ export function PosPage() {
           <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl p-6 space-y-4 animate-scale-up border border-slate-200">
             <div className="text-center space-y-1 border-b border-slate-100 pb-3">
               <div className="w-10 h-10 mx-auto rounded-2xl bg-blue-600 text-white flex items-center justify-center font-black">
-                {billingSettings?.gym_name?.slice(0, 2).toUpperCase() || 'FC'}
+                {billingSettings?.gym_name?.slice(0, 2).toUpperCase() || 'VA'}
               </div>
-              <h3 className="text-base font-black text-slate-900">{billingSettings?.gym_name || 'FIT CLUB POS'}</h3>
+              <h3 className="text-base font-black text-slate-900">{billingSettings?.gym_name || 'VAHD POS'}</h3>
               {billingSettings?.gstin && (
                 <div className="text-[10px] text-slate-500 font-bold">GSTIN: {billingSettings.gstin}</div>
               )}

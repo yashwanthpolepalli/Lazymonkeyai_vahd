@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import { apiClient } from '@/services/apiClient';
+import { hrmsApi, DepartmentItem, DesignationItem } from '@/services/hrmsApi';
 
 export interface EmployeeEnrollmentModalProps {
   isOpen?: boolean;
@@ -114,6 +115,21 @@ export function EmployeeEnrollmentModal({
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  // Dynamic Departments and Designations from HRMS
+  const [departmentsList, setDepartmentsList] = useState<DepartmentItem[]>([]);
+  const [designationsList, setDesignationsList] = useState<DesignationItem[]>([]);
+
+  useEffect(() => {
+    if (!visible) return;
+    hrmsApi.getDepartments().then((data) => {
+      if (Array.isArray(data)) setDepartmentsList(data);
+    }).catch(() => {});
+
+    hrmsApi.getDesignations().then((data) => {
+      if (Array.isArray(data)) setDesignationsList(data);
+    }).catch(() => {});
+  }, [visible]);
 
   // Populate or Reset data
   useEffect(() => {
@@ -1183,13 +1199,13 @@ export function EmployeeEnrollmentModal({
                     {/* Row 1: Name & Father Name */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-blue-200">
                       <div className="p-1.5 flex items-center gap-2">
-                        <span className="font-bold text-blue-950 shrink-0">Name:</span>
+                        <span className="font-bold text-blue-950 shrink-0">Name: <span className="text-rose-500">*</span></span>
                         <input
                           type="text"
                           required
                           value={name}
                           onChange={(e) => setName(e.target.value)}
-                          placeholder="Full Name"
+                          placeholder="Full Name (Required)"
                           className="w-full bg-transparent outline-none font-bold text-slate-900 px-1 py-0.5 focus:bg-blue-100/50"
                         />
                       </div>
@@ -1533,13 +1549,21 @@ export function EmployeeEnrollmentModal({
                   </div>
                   <div className="p-1.5 flex items-center gap-2">
                     <span className="font-bold text-purple-950 shrink-0">Department:</span>
-                    <input
-                      type="text"
+                    <select
                       value={department}
                       onChange={(e) => setDepartment(e.target.value)}
-                      placeholder="Department"
-                      className="w-full bg-transparent outline-none text-purple-900 px-1 py-0.5 focus:bg-purple-100/50 font-bold"
-                    />
+                      className="w-full bg-transparent outline-none text-purple-900 px-1 py-0.5 focus:bg-purple-100/50 font-bold cursor-pointer"
+                    >
+                      <option value="">Select Department</option>
+                      {departmentsList.map((dept) => (
+                        <option key={dept.id || dept.name} value={dept.name}>
+                          {dept.name} {dept.code ? `(${dept.code})` : ''}
+                        </option>
+                      ))}
+                      {department && !departmentsList.some((d) => d.name.toLowerCase() === department.toLowerCase()) && (
+                        <option value={department}>{department}</option>
+                      )}
+                    </select>
                   </div>
                 </div>
 
@@ -1547,13 +1571,40 @@ export function EmployeeEnrollmentModal({
                 <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-purple-200">
                   <div className="p-1.5 flex items-center gap-2">
                     <span className="font-bold text-purple-950 shrink-0">Job Designation:</span>
-                    <input
-                      type="text"
+                    <select
                       value={jobDesignation}
-                      onChange={(e) => setJobDesignation(e.target.value)}
-                      placeholder="E.g. Senior Lecturer / Coach"
-                      className="w-full bg-transparent outline-none font-bold text-slate-900 px-1 py-0.5 focus:bg-purple-100/50"
-                    />
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setJobDesignation(val);
+                        if (!department && val) {
+                          const found = designationsList.find((d) => d.title.toLowerCase() === val.toLowerCase());
+                          if (found && found.department && found.department !== 'ALL') {
+                            setDepartment(found.department);
+                          }
+                        }
+                      }}
+                      className="w-full bg-transparent outline-none font-bold text-slate-900 px-1 py-0.5 focus:bg-purple-100/50 cursor-pointer"
+                    >
+                      <option value="">Select Job Designation</option>
+                      {(() => {
+                        const filtered = department
+                          ? designationsList.filter((d) => !d.department || d.department.toLowerCase() === department.toLowerCase() || d.department === 'ALL')
+                          : designationsList;
+                        const listToRender = filtered.length > 0 ? filtered : designationsList;
+                        return (
+                          <>
+                            {listToRender.map((desg) => (
+                              <option key={desg.id || desg.title} value={desg.title}>
+                                {desg.title} {desg.department && desg.department !== 'ALL' ? `(${desg.department})` : ''} {desg.level ? `• ${desg.level}` : ''}
+                              </option>
+                            ))}
+                            {jobDesignation && !listToRender.some((d) => d.title.toLowerCase() === jobDesignation.toLowerCase()) && (
+                              <option value={jobDesignation}>{jobDesignation}</option>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </select>
                   </div>
                   <div className="p-1.5 flex items-center gap-2">
                     <span className="font-bold text-purple-950 shrink-0">Joining Date:</span>

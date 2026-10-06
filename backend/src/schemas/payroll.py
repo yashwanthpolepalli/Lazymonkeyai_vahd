@@ -33,6 +33,14 @@ class TrainerResponse(BaseModel):
     assigned_customers_count: int = 0
     is_active: bool
     created_at: datetime
+    today_status: Optional[str] = "Absent"
+    punch_in: Optional[str] = None
+    punch_out: Optional[str] = None
+    in_time: Optional[str] = None
+    out_time: Optional[str] = None
+    is_present: Optional[bool] = False
+    is_early_logout: Optional[bool] = False
+    today_punch: Optional[dict] = None
 
     class Config:
         from_attributes = True

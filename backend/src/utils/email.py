@@ -31,8 +31,10 @@ def send_enrollment_email(to_email: str, full_name: str, password: str, role: st
     subject = f"Welcome to {gym_name} — Your {role.title()} Account Credentials"
 
     plan_html = (
-        f'<div class="field-label">Membership Plan</div>'
-        f'<div class="field-val" style="color:#60a5fa;">{plan_name}</div>'
+        f'<div class="field-group" style="margin-top:14px;padding-top:14px;border-top:1px dashed #cbd5e1;">'
+        f'<div class="field-label">Enrolled Plan / Course</div>'
+        f'<div class="field-val-plan" style="color:#7c3aed;font-size:15px;font-weight:700;">{plan_name}</div>'
+        f'</div>'
         if plan_name else ""
     )
 
@@ -40,38 +42,153 @@ def send_enrollment_email(to_email: str, full_name: str, password: str, role: st
 <html>
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Account Registration Confirmation</title>
   <style>
-    body {{ font-family: 'Inter', -apple-system, sans-serif; background-color: #0f172a; color: #f8fafc; margin: 0; padding: 20px; }}
-    .card {{ max-width: 540px; margin: 0 auto; background: #1e293b; border-radius: 16px; padding: 32px; border: 1px solid #334155; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }}
-    .header {{ text-align: center; border-bottom: 1px solid #334155; padding-bottom: 20px; margin-bottom: 24px; }}
-    .title {{ color: #10b981; font-size: 24px; font-weight: 800; letter-spacing: -0.5px; margin: 0; }}
-    .subtitle {{ color: #94a3b8; font-size: 14px; margin-top: 6px; }}
-    .cred-box {{ background: #0f172a; border-radius: 12px; padding: 20px; margin: 24px 0; border: 1px solid #3b82f6; }}
-    .field-label {{ color: #64748b; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }}
-    .field-val {{ color: #f8fafc; font-size: 16px; font-weight: 700; margin-bottom: 12px; font-family: monospace; }}
-    .footer {{ text-align: center; font-size: 12px; color: #64748b; margin-top: 28px; border-top: 1px solid #334155; padding-top: 16px; }}
+    body {{
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background-color: #f1f5f9;
+      color: #1e293b;
+      margin: 0;
+      padding: 30px 15px;
+      -webkit-font-smoothing: antialiased;
+    }}
+    .wrapper {{
+      max-width: 560px;
+      margin: 0 auto;
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 36px;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+    }}
+    .header {{
+      text-align: center;
+      border-bottom: 1px solid #f1f5f9;
+      padding-bottom: 24px;
+      margin-bottom: 24px;
+    }}
+    .logo-badge {{
+      font-size: 32px;
+      margin-bottom: 8px;
+    }}
+    .title {{
+      color: #0f172a;
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      margin: 0;
+    }}
+    .subtitle {{
+      color: #64748b;
+      font-size: 13px;
+      font-weight: 600;
+      margin-top: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }}
+    .greeting {{
+      font-size: 16px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 10px;
+    }}
+    .intro-text {{
+      font-size: 14px;
+      line-height: 1.6;
+      color: #334155;
+      margin-bottom: 24px;
+    }}
+    .cred-box {{
+      background: #f8fafc;
+      border-radius: 14px;
+      padding: 24px;
+      margin: 24px 0;
+      border: 1.5px solid #e2e8f0;
+    }}
+    .field-group {{
+      margin-bottom: 16px;
+    }}
+    .field-group:last-child {{
+      margin-bottom: 0;
+    }}
+    .field-label {{
+      color: #64748b;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 4px;
+    }}
+    .field-val-email {{
+      color: #2563eb;
+      font-size: 16px;
+      font-weight: 700;
+      font-family: 'Courier New', Courier, monospace;
+      word-break: break-all;
+    }}
+    .field-val-pass {{
+      color: #059669;
+      font-size: 20px;
+      font-weight: 800;
+      font-family: 'Courier New', Courier, monospace;
+      letter-spacing: 1px;
+    }}
+    .formula-box {{
+      background: #eff6ff;
+      border-radius: 10px;
+      padding: 12px 16px;
+      margin-top: 20px;
+      border-left: 4px solid #3b82f6;
+    }}
+    .formula-text {{
+      font-size: 12px;
+      line-height: 1.5;
+      color: #1e40af;
+      margin: 0;
+      font-weight: 600;
+    }}
+    .footer {{
+      text-align: center;
+      font-size: 12px;
+      color: #94a3b8;
+      margin-top: 32px;
+      border-top: 1px solid #f1f5f9;
+      padding-top: 20px;
+      line-height: 1.6;
+    }}
   </style>
 </head>
 <body>
-  <div class="card">
+  <div class="wrapper">
     <div class="header">
-      <h1 class="title">👑 {gym_name.upper()}</h1>
+      <div class="logo-badge">👑</div>
+      <h1 class="title">{gym_name.upper()}</h1>
       <div class="subtitle">Official Account Registration Confirmation</div>
     </div>
-    <p>Hello <strong>{full_name}</strong>,</p>
-    <p>Your <strong>{role.title()}</strong> account has been successfully enrolled on the {gym_name} Platform.</p>
+    <div class="greeting">Hello {full_name},</div>
+    <div class="intro-text">
+      Your <strong>{role.title()}</strong> account has been successfully enrolled on the <strong>{gym_name}</strong> Platform. Here are your account credentials to log in:
+    </div>
     <div class="cred-box">
-      <div class="field-label">Registered Email / Username</div>
-      <div class="field-val">{to_email}</div>
-      <div class="field-label">Auto-Generated Initial Password</div>
-      <div class="field-val" style="color:#10b981;font-size:18px;">{password}</div>
+      <div class="field-group">
+        <div class="field-label">Registered Email / Username</div>
+        <div class="field-val-email">{to_email}</div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">Auto-Generated Initial Password</div>
+        <div class="field-val-pass">{password}</div>
+      </div>
       {plan_html}
     </div>
-    <p style="font-size:13px;color:#94a3b8;">
-      Password Formula: First 4 letters of your name + Last 4 digits of your registered phone number.
-    </p>
+    <div class="formula-box">
+      <p class="formula-text">
+        🔑 <strong>Password Formula:</strong> First 4 letters of your name + Last 4 digits of your registered phone number.
+      </p>
+    </div>
     <div class="footer">
-      {gym_name} {gym_tagline} &bull; Automated System Dispatch
+      <strong>{gym_name}</strong> {gym_tagline}<br />
+      Automated System Dispatch &bull; Please keep your credentials secure.
     </div>
   </div>
 </body>

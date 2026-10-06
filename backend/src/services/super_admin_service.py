@@ -937,16 +937,6 @@ class SuperAdminService:
             ]
             for r in default_routings:
                 db.add(r)
-
-            # Also seed recent realistic telemetry job logs
-            initial_jobs = [
-                AiJobLog(job_number="JOB-9041", organization_name="VAHD Flagship", task_type="Food Scanner Vision", provider="OpenAI", model_name="gpt-4o", status="completed", duration_seconds=1.12, credits_consumed=2, tokens_used=840, created_at=now_ist_naive()),
-                AiJobLog(job_number="JOB-9042", organization_name="VAHD Indiranagar", task_type="InBody Sheet OCR", provider="Google", model_name="gemini-3.6-flash", status="completed", duration_seconds=0.78, credits_consumed=1, tokens_used=420, created_at=now_ist_naive()),
-                AiJobLog(job_number="JOB-9043", organization_name="VAHD Koramangala", task_type="AI Coach Workout Plan", provider="Anthropic", model_name="claude-3-5-sonnet", status="completed", duration_seconds=0.94, credits_consumed=3, tokens_used=1250, created_at=now_ist_naive()),
-                AiJobLog(job_number="JOB-9044", organization_name="VAHD Flagship", task_type="Flyer AI Generator", provider="Black Forest Labs", model_name="flux-1-pro", status="completed", duration_seconds=2.31, credits_consumed=5, tokens_used=2400, created_at=now_ist_naive()),
-            ]
-            for j in initial_jobs:
-                db.add(j)
             db.commit()
 
     @staticmethod
@@ -958,19 +948,19 @@ class SuperAdminService:
         total_credits = sum(j.credits_consumed or 0 for j in jobs)
 
         completed_jobs = [j for j in jobs if j.status == "completed"]
-        success_rate = (len(completed_jobs) / len(jobs) * 100.0) if jobs else 100.0
+        success_rate = (len(completed_jobs) / len(jobs) * 100.0) if jobs else 0.0
 
         durations = [j.duration_seconds for j in completed_jobs if j.duration_seconds is not None]
-        avg_latency = (sum(durations) / len(durations)) if durations else 0.8
+        avg_latency = (sum(durations) / len(durations)) if durations else 0.0
 
         models = db.query(AiModelRouting).all()
 
         return {
             "requests_today": len(jobs),
-            "tokens_today": total_tokens if total_tokens > 0 else 4910,
-            "credits_consumed_today": total_credits if total_credits > 0 else 11,
+            "tokens_today": total_tokens,
+            "credits_consumed_today": total_credits,
             "success_rate": round(success_rate, 1),
-            "avg_latency": f"{avg_latency:.1f}s" if avg_latency > 0 else "0.9s",
+            "avg_latency": f"{avg_latency:.1f}s" if avg_latency > 0 else "0.0s",
             "models": [
                 {
                     "id": m.id,
@@ -978,7 +968,7 @@ class SuperAdminService:
                     "provider": m.provider or "",
                     "model_id": m.model_id or "",
                     "status": m.status or "operational",
-                    "avg_latency": f"{m.avg_latency_sec:.1f}s" if m.avg_latency_sec is not None else "0.8s"
+                    "avg_latency": f"{m.avg_latency_sec:.1f}s" if m.avg_latency_sec is not None else "0.0s"
                 }
                 for m in models
             ],
@@ -986,15 +976,15 @@ class SuperAdminService:
                 {
                     "id": j.id,
                     "job_number": j.job_number,
-                    "organization": j.organization_name or "VAHD Enterprise",
+                    "organization": j.organization_name or "",
                     "task": j.task_type,
-                    "provider": j.provider or "AI Gateway",
-                    "model": j.model_name or "LLM",
+                    "provider": j.provider or "",
+                    "model": j.model_name or "",
                     "status": j.status or "completed",
-                    "duration": f"{j.duration_seconds:.1f}s" if j.duration_seconds is not None else "1.0s",
-                    "credits": j.credits_consumed or 1,
-                    "tokens": j.tokens_used or 500,
-                    "created_at": j.created_at.strftime("%H:%M:%S") if j.created_at else "Just now"
+                    "duration": f"{j.duration_seconds:.1f}s" if j.duration_seconds is not None else "0.0s",
+                    "credits": j.credits_consumed or 0,
+                    "tokens": j.tokens_used or 0,
+                    "created_at": j.created_at.strftime("%H:%M:%S") if j.created_at else ""
                 }
                 for j in jobs
             ]

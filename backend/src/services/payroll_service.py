@@ -16,12 +16,134 @@ class PayrollService:
     @staticmethod
     def get_all_trainers(db: Session) -> List[TrainerProfile]:
         """
-        Returns all registered trainers, managers, and staff profiles dynamically from PostgreSQL database.
+        Returns all registered trainers, managers, and staff profiles dynamically from PostgreSQL database
+        with real-time today attendance synchronization.
         """
+        from src.models.hrms import EmployeeAttendance
         trainers = db.query(TrainerProfile).filter(TrainerProfile.is_active == True).order_by(TrainerProfile.created_at.desc()).all()
+
+        today_start = today_ist_start()
+        today_end = today_ist_end()
+        today_date = today_start.date()
+
+        # Fetch today's biometric logs and HRMS attendance in bulk
+        today_bio_logs = db.query(BiometricLog).filter(
+            BiometricLog.timestamp >= today_start,
+            BiometricLog.timestamp <= today_end
+        ).order_by(BiometricLog.timestamp.asc()).all()
+
+        today_hrms_att = db.query(EmployeeAttendance).filter(
+            EmployeeAttendance.date == today_date
+        ).all()
+
         for t in trainers:
             count = db.query(Customer).filter((Customer.trainer_id == t.id) | (Customer.trainer_id == t.user_id)).count()
             setattr(t, 'assigned_customers_count', count)
+
+            # Match keys for this trainer
+            emp_keys = {str(t.id), str(t.id).replace('tr_', ''), f"emp_{t.id}", f"tr_{t.id}"}
+            if t.user_id:
+                emp_keys.update({str(t.user_id), f"cust_{t.user_id}", f"cust_usr_{t.user_id}", f"emp_{t.user_id}"})
+            if t.email:
+                emp_keys.add(t.email.lower().strip())
+
+            # Find matching HRMS attendance
+            matching_att = None
+            for att in today_hrms_att:
+                if str(att.employee_id) in emp_keys or str(att.employee_id).replace('emp_', '') in emp_keys:
+                    matching_att = att
+                    break
+
+            # Find matching Biometric logs
+            matching_logs = []
+            for b in today_bio_logs:
+                cid = str(b.customer_id or '')
+                meta = b.meta_data or {}
+                meta_uid = str(meta.get("user_id") or meta.get("employee_id") or meta.get("customer_id") or '')
+                meta_name = str(meta.get("user_name") or meta.get("employee_name") or '').strip().lower()
+                meta_email = str(meta.get("email") or '').strip().lower()
+
+                if (
+                    cid in emp_keys
+                    or cid.replace('cust_', '') in emp_keys
+                    or cid.replace('emp_', '') in emp_keys
+                    or meta_uid in emp_keys
+                    or (t.email and meta_email == t.email.lower().strip())
+                    or (t.full_name and meta_name == t.full_name.lower().strip())
+                ):
+                    matching_logs.append(b)
+
+            # Calculate Punch In and Out
+            punch_in = None
+            punch_out = None
+            is_early = False
+            today_status = "Absent"
+            is_present = False
+
+            if matching_att:
+                if matching_att.check_in and matching_att.check_in != "--:--":
+                    punch_in = matching_att.check_in
+                    is_present = True
+                if matching_att.check_out and matching_att.check_out != "--:--":
+                    punch_out = matching_att.check_out
+                if matching_att.status:
+                    if matching_att.status.upper() in ["PRESENT", "ON_DUTY"]:
+                        today_status = "Present"
+                        is_present = True
+                    elif matching_att.status.upper() in ["EARLY_LOGOUT", "EARLY_OUT"]:
+                        today_status = "Early Logout"
+                        is_early = True
+                        is_present = True
+                    elif matching_att.status.upper() in ["MISSED_PUNCH", "HALF_DAY"]:
+                        today_status = "Missed Punch"
+                        is_present = True
+                    elif matching_att.status.upper() in ["ON_LEAVE", "LEAVE"]:
+                        today_status = "Absent"
+
+            if matching_logs:
+                in_logs = [
+                    l for l in matching_logs
+                    if getattr(l, "direction", "") in ["CHECK_IN", "IN", "ENTRY", "ENROLL"]
+                    or "in" in str(getattr(l, "direction", "")).lower()
+                    or (l.event_type in ["FACE_SCAN", "FINGERPRINT", "RFID_CARD", "MANUAL", "GPS_SCAN"] and getattr(l, "direction", "") not in ["CHECK_OUT", "OUT", "EXIT"])
+                ]
+                out_logs = [
+                    l for l in matching_logs
+                    if getattr(l, "direction", "") in ["CHECK_OUT", "OUT", "EXIT"]
+                    or "out" in str(getattr(l, "direction", "")).lower()
+                ]
+
+                if in_logs and not punch_in:
+                    punch_in = in_logs[0].timestamp.strftime("%H:%M:%S")
+                elif not punch_in and matching_logs:
+                    punch_in = matching_logs[0].timestamp.strftime("%H:%M:%S")
+
+                if out_logs and not punch_out:
+                    punch_out = out_logs[-1].timestamp.strftime("%H:%M:%S")
+                elif len(matching_logs) > 1 and not punch_out:
+                    punch_out = matching_logs[-1].timestamp.strftime("%H:%M:%S")
+
+                is_present = True
+
+            if is_present or punch_in:
+                if punch_in and punch_out:
+                    today_status = "Early Logout" if is_early else "Present"
+                elif punch_in:
+                    today_status = "Present"
+                else:
+                    today_status = "Present"
+            else:
+                today_status = "Absent"
+
+            setattr(t, 'today_status', today_status)
+            setattr(t, 'punch_in', punch_in)
+            setattr(t, 'punch_out', punch_out)
+            setattr(t, 'in_time', punch_in)
+            setattr(t, 'out_time', punch_out)
+            setattr(t, 'is_present', is_present)
+            setattr(t, 'is_early_logout', is_early)
+            setattr(t, 'today_punch', {"status": today_status, "in_time": punch_in, "out_time": punch_out})
+
         return trainers
 
     @staticmethod

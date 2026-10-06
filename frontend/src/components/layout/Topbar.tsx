@@ -9,6 +9,15 @@ import { cn } from '@/utils/cn';
 import { playNotificationBeep, getStoredLeads, LiveLeadNotification } from '@/utils/audioAlert';
 import { apiClient } from '@/services/apiClient';
 
+interface SystemNotificationItem {
+  id: string;
+  title: string;
+  body: string;
+  category?: string;
+  unread?: boolean;
+  created_at?: string;
+}
+
 export function Topbar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -16,6 +25,7 @@ export function Topbar() {
   const [showNotifs, setShowNotifs] = useState(false);
   const [items, setItems] = useState(() => (user ? getNavItems(user.role) : []));
   const [liveLeads, setLiveLeads] = useState<LiveLeadNotification[]>(() => getStoredLeads());
+  const [systemNotifs, setSystemNotifs] = useState<SystemNotificationItem[]>([]);
   const [toastAlert, setToastAlert] = useState<LiveLeadNotification | null>(null);
 
   useEffect(() => {
@@ -61,27 +71,26 @@ export function Topbar() {
       }
     };
 
-    // Polling fallback from backend API for live notifications
+    // Polling from backend API for live notifications
     const pollBackendLive = async () => {
       try {
         const live = await apiClient.get<any[]>('/system/notifications/live').catch(() => []);
-        if (Array.isArray(live) && live.length > 0) {
-          const leadsFromDb: LiveLeadNotification[] = live.map((n: any) => ({
-            id: n.id,
-            name: n.title,
-            phone: n.body,
-            timestamp: n.created_at ? new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now',
-            read: !n.unread,
-          }));
-          setLiveLeads((prev) => {
-            const merged = [...leadsFromDb, ...prev];
-            const unique = Array.from(new Map(merged.map((item) => [item.id, item])).values());
-            return unique.slice(0, 30);
-          });
+        if (Array.isArray(live)) {
+          setSystemNotifs(
+            live.map((n: any) => ({
+              id: n.id,
+              title: n.title,
+              body: n.body,
+              category: n.category,
+              unread: n.unread !== false,
+              created_at: n.created_at,
+            }))
+          );
         }
       } catch (e) {}
     };
 
+    pollBackendLive();
     window.addEventListener('vahd:new_lead', handleNewLeadEvent);
     window.addEventListener('storage', handleStorageChange);
     const pollInterval = setInterval(pollBackendLive, 15000);
@@ -109,7 +118,13 @@ export function Topbar() {
   const roleLabel = roleLabelMap[user?.role || 'owner'] || 'Owner';
 
   const unreadLeadCount = liveLeads.filter((l) => !l.read).length;
-  const totalNotifBadge = 12 + unreadLeadCount;
+  const unreadSystemCount = systemNotifs.filter((n) => n.unread).length;
+  const totalNotifBadge = unreadLeadCount + unreadSystemCount;
+
+  const markAllRead = () => {
+    setLiveLeads((prev) => prev.map((l) => ({ ...l, read: true })));
+    setSystemNotifs((prev) => prev.map((n) => ({ ...n, unread: false })));
+  };
 
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-xl border-b border-slate-200/80 shadow-xs">
@@ -194,22 +209,31 @@ export function Topbar() {
               className="relative p-2 rounded-xl hover:bg-slate-100 text-slate-600 transition-colors"
             >
               <Icon name="bell" size={19} />
-              <span className="absolute top-1 right-1 px-1 min-w-[18px] h-4 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center border-2 border-white">
-                {totalNotifBadge}
-              </span>
+              {totalNotifBadge > 0 && (
+                <span className="absolute top-1 right-1 px-1 min-w-[18px] h-4 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center border-2 border-white animate-pulse">
+                  {totalNotifBadge}
+                </span>
+              )}
             </button>
             {showNotifs && (
               <div className="absolute right-0 top-12 w-88 bg-white rounded-3xl p-4 space-y-3 animate-slide-up z-50 shadow-2xl border border-slate-100 max-h-[500px] overflow-y-auto">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                  <span className="text-xs font-extrabold text-slate-900 uppercase">Notifications & Live Leads</span>
-                  <Badge variant="brand">{totalNotifBadge} total</Badge>
+                  <span className="text-xs font-extrabold text-slate-900 uppercase tracking-wide">Notifications</span>
+                  {totalNotifBadge > 0 && (
+                    <button
+                      onClick={markAllRead}
+                      className="text-[10px] font-bold text-purple-600 hover:text-purple-800 hover:underline"
+                    >
+                      Mark all as read
+                    </button>
+                  )}
                 </div>
 
                 {/* Real-time incoming leads stream */}
                 {liveLeads.length > 0 && (
                   <div className="space-y-1.5 pb-2 border-b border-slate-100">
                     <span className="text-[10px] font-black text-orange-600 uppercase tracking-wider">
-                      🔥 Landing Page Leads ({liveLeads.length})
+                      🔥 Live Inquiries ({liveLeads.length})
                     </span>
                     {liveLeads.slice(0, 5).map((lead) => (
                       <div
@@ -221,7 +245,7 @@ export function Topbar() {
                           <span className="text-[10px] text-orange-700 font-bold">{lead.timestamp}</span>
                         </div>
                         <p className="text-[11px] font-bold text-slate-700">
-                          {lead.gymName || 'Gym Lead'} • <span className="text-orange-600">{lead.plan || 'Free Trial'}</span>
+                          {lead.gymName || 'Lead'} • <span className="text-orange-600">{lead.plan || 'Inquiry'}</span>
                         </p>
                         <div className="flex items-center justify-between text-[10px] text-slate-500 font-medium">
                           <span>📞 {lead.phone}</span>
@@ -234,40 +258,54 @@ export function Topbar() {
                   </div>
                 )}
 
-                {[
-                  {
-                    icon: 'alert-triangle',
-                    title: 'High churn risk',
-                    desc: '3 members need attention',
-                    time: '5m ago',
-                    color: 'text-rose-600 bg-rose-50',
-                  },
-                  {
-                    icon: 'clock',
-                    title: 'Membership expiring',
-                    desc: '2 memberships expire this week',
-                    time: '1h ago',
-                    color: 'text-amber-600 bg-amber-50',
-                  },
-                  {
-                    icon: 'indian-rupee',
-                    title: 'Payment received',
-                    desc: '₹18,000 from Vikram Singh',
-                    time: '2h ago',
-                    color: 'text-emerald-600 bg-emerald-50',
-                  },
-                ].map((n, i) => (
-                  <div key={i} className="flex gap-3 p-2 rounded-xl hover:bg-slate-50 cursor-pointer">
-                    <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center shrink-0', n.color)}>
-                      <Icon name={n.icon} size={14} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-xs font-bold text-slate-900">{n.title}</div>
-                      <div className="text-[11px] font-medium text-slate-500">{n.desc}</div>
-                      <div className="text-[10px] text-slate-400 mt-0.5">{n.time}</div>
-                    </div>
+                {/* System Notifications List */}
+                {systemNotifs.length > 0 ? (
+                  <div className="space-y-1">
+                    {systemNotifs.slice(0, 10).map((n) => (
+                      <div
+                        key={n.id}
+                        onClick={() => {
+                          setSystemNotifs((prev) =>
+                            prev.map((item) => (item.id === n.id ? { ...item, unread: false } : item))
+                          );
+                        }}
+                        className={cn(
+                          'flex gap-3 p-2.5 rounded-2xl hover:bg-slate-50 cursor-pointer transition-colors border',
+                          n.unread ? 'bg-purple-50/30 border-purple-100' : 'bg-transparent border-transparent'
+                        )}
+                      >
+                        <div
+                          className={cn(
+                            'w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-xs font-bold',
+                            n.unread ? 'bg-purple-100 text-purple-700' : 'bg-slate-100 text-slate-500'
+                          )}
+                        >
+                          <Icon name={n.category === 'hrms' ? 'users' : 'bell'} size={14} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="text-xs font-bold text-slate-900 truncate">{n.title}</span>
+                            {n.unread && <span className="w-2 h-2 rounded-full bg-purple-600 shrink-0" />}
+                          </div>
+                          <p className="text-[11px] text-slate-600 font-medium line-clamp-2 mt-0.5">{n.body}</p>
+                          {n.created_at && (
+                            <span className="text-[10px] text-slate-400 mt-1 block">
+                              {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                ) : liveLeads.length === 0 ? (
+                  <div className="py-8 px-4 text-center">
+                    <div className="w-10 h-10 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-2">
+                      <Icon name="bell-off" size={18} className="text-slate-400" />
+                    </div>
+                    <p className="text-xs font-bold text-slate-700">No new notifications</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">You're all caught up! Real-time alerts will appear here.</p>
+                  </div>
+                ) : null}
               </div>
             )}
           </div>
@@ -292,17 +330,17 @@ export function Topbar() {
                 />
               ) : (
                 <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-600 text-white font-extrabold text-xs flex items-center justify-center border border-purple-200/80 shadow-2xs uppercase">
-                  {(user?.name || 'Owner')
+                  {(user?.name || user?.email?.split('@')[0] || 'User')
                     .split(' ')
                     .filter(Boolean)
                     .map((n) => n[0])
                     .join('')
                     .slice(0, 2)
-                    .toUpperCase() || 'O'}
+                    .toUpperCase() || 'U'}
                 </div>
               )}
               <div className="hidden sm:flex flex-col items-start leading-tight">
-                <span className="text-xs font-extrabold text-slate-900">{user?.name || 'User'}</span>
+                <span className="text-xs font-extrabold text-slate-900">{user?.name || user?.email?.split('@')[0] || 'User'}</span>
                 <span className="text-[10px] font-medium text-slate-400">{roleLabel}</span>
               </div>
               <Icon name="chevron-down" size={14} className="text-slate-400 hidden sm:block" />
@@ -311,8 +349,8 @@ export function Topbar() {
             {showProfile && (
               <div className="absolute right-0 top-12 w-56 bg-white rounded-2xl p-2 animate-slide-up z-50 shadow-xl border border-slate-100">
                 <div className="px-3 py-2 border-b border-slate-100 mb-1">
-                  <div className="text-xs font-extrabold text-slate-900">{user?.name || 'Yashwanth'}</div>
-                  <div className="text-[11px] text-slate-400">{user?.email || 'owner@vahd.ai'}</div>
+                  <div className="text-xs font-extrabold text-slate-900">{user?.name || user?.email?.split('@')[0] || 'User'}</div>
+                  <div className="text-[11px] text-slate-400">{user?.email || 'user@lazymonkey.com'}</div>
                 </div>
                 <button
                   onClick={() => {
@@ -348,7 +386,7 @@ export function Topbar() {
         </div>
       </div>
 
-      {/* Horizontal Pill Navigation Bar (Layout Matching Image 2) */}
+      {/* Horizontal Pill Navigation Bar */}
       <div className="w-full overflow-x-auto py-2 px-2.5 sm:px-3.5 lg:px-4 no-scrollbar bg-slate-50/40 border-t border-slate-100/80">
         <div className="flex items-center gap-2 min-w-max">
           {items.map((item) => (

@@ -842,10 +842,10 @@ export function TrainerHrmsPage() {
             <div className="flex items-center justify-between border-b border-navy-100 pb-4">
               <div className="flex items-center gap-3">
                 <div className="w-11 h-11 rounded-2xl bg-purple-600 text-white flex items-center justify-center font-black text-lg">
-                  FC
+                  VA
                 </div>
                 <div>
-                  <h3 className="text-base font-black text-navy-900 tracking-tight">FIT CLUB AI PLATFORM</h3>
+                  <h3 className="text-base font-black text-navy-900 tracking-tight">VAHD HRMS PLATFORM</h3>
                   <p className="text-[11px] text-navy-500 font-mono">Official Salary Slip &amp; Earnings Statement</p>
                 </div>
               </div>

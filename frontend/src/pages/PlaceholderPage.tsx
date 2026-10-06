@@ -10,7 +10,7 @@ export function PlaceholderPage({ title, breadcrumb }: { title: string; breadcru
           <Icon name="sparkles" size={28} className="text-navy-300" />
         </div>
         <h3 className="text-base font-semibold text-navy-900">{title}</h3>
-        <p className="text-sm text-navy-500 mt-1 max-w-sm">This module is part of the FIT CLUB AI platform. Full functionality will be available here.</p>
+        <p className="text-sm text-navy-500 mt-1 max-w-sm">This module is part of the VAHD platform. Full functionality will be available here.</p>
       </div>
     </div>
   );

@@ -5,6 +5,7 @@ import { cn } from '@/utils/cn';
 import { StudentEnrollmentModal } from './StudentEnrollmentModal';
 import { printStudentAdmissionForm } from '@/lib/student-print-helper';
 import { TableColumnSettingsPopover, ColumnGroup } from './TableColumnSettingsPopover';
+import { HrmsImportExportControls } from './HrmsImportExportControls';
 
 export const STUDENT_COLUMN_GROUPS: ColumnGroup[] = [
   {
@@ -19,9 +20,9 @@ export const STUDENT_COLUMN_GROUPS: ColumnGroup[] = [
     ],
   },
   {
-    name: 'WORKPLACE & STATUS',
+    name: 'COURSE & STATUS',
     columns: [
-      { key: 'designation', label: 'Designation' },
+      { key: 'designation', label: 'Course' },
       { key: 'role', label: 'Role' },
       { key: 'zone', label: 'Zone' },
       { key: 'multiZone', label: 'Multi Zone' },
@@ -99,6 +100,11 @@ interface StudentItem {
   code?: string;
   gender?: string;
   age?: number;
+  goal?: string;
+  course?: string;
+  medium?: string;
+  father_name?: string;
+  mother_name?: string;
   status?: string;
   profile_image?: string;
   face_image?: string;
@@ -114,7 +120,16 @@ export function StudentManagementTab() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedCourse, setSelectedCourse] = useState<string>('All');
-  const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
+  const [viewMode, setViewMode] = useState<'table' | 'grid'>(() => {
+    return (localStorage.getItem('hrms_students_view_mode') as 'table' | 'grid') || 'table';
+  });
+
+  const handleSetViewMode = (mode: 'table' | 'grid') => {
+    setViewMode(mode);
+    try {
+      localStorage.setItem('hrms_students_view_mode', mode);
+    } catch {}
+  };
   const [enrollModalOpen, setEnrollModalOpen] = useState(false);
   const [studentToEdit, setStudentToEdit] = useState<StudentItem | null>(null);
   const [selectedStudentForView, setSelectedStudentForView] = useState<StudentItem | null>(null);
@@ -248,6 +263,34 @@ export function StudentManagementTab() {
     const meta = s.meta_data || {};
     if (meta.course && typeof meta.course === 'string' && meta.course.trim().length > 0) {
       return meta.course.trim();
+    }
+    if ((s as any).course && typeof (s as any).course === 'string' && (s as any).course.trim().length > 0) {
+      return (s as any).course.trim();
+    }
+    if (s.goal) {
+      const g = String(s.goal).trim();
+      if (g.includes('(') && g.includes(')')) {
+        return g.split('(')[0].replace(/-+$/, '').trim();
+      }
+      return g;
+    }
+    return '';
+  };
+
+  const getStudentMedium = (s: StudentItem | null | undefined): string => {
+    if (!s) return '';
+    const meta = s.meta_data || {};
+    if (meta.medium && typeof meta.medium === 'string' && meta.medium.trim().length > 0) {
+      return meta.medium.trim();
+    }
+    if ((s as any).medium && typeof (s as any).medium === 'string' && (s as any).medium.trim().length > 0) {
+      return (s as any).medium.trim();
+    }
+    if (s.goal && String(s.goal).toLowerCase().includes('medium')) {
+      const match = String(s.goal).match(/\(([^)]+)\)/);
+      if (match && match[1]) {
+        return match[1].replace(/medium/i, '').trim();
+      }
     }
     return '';
   };
@@ -412,54 +455,67 @@ export function StudentManagementTab() {
       {/* 2. CONTROLS BAR: SEARCH, VIEW SWITCHER, ENROLL ACTION          */}
       {/* ───────────────────────────────────────────────────────────── */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-4 shadow-xs space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          {/* Search Input */}
-          <div className="relative flex-1 max-w-md">
-            <Icon name="search" size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by student name, roll no, phone, father name, aadhar..."
-              className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+          {/* Search Input & Course Filter */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 flex-1 max-w-2xl">
+            <div className="relative flex-1">
+              <Icon name="search" size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search by student name, roll no, phone, father name, aadhar..."
+                className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"
+              />
+            </div>
+
+            {/* Course Filter Dropdown */}
+            <div className="relative min-w-[180px] sm:w-56 shrink-0">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-blue-600 dark:text-blue-400">
+                <Icon name="book-open" size={14} />
+              </div>
+              <select
+                value={selectedCourse}
+                onChange={(e) => setSelectedCourse(e.target.value)}
+                className="w-full pl-9 pr-8 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none cursor-pointer shadow-xs"
+              >
+                <option value="All">All Courses ({students.length})</option>
+                {dynamicCourses.map((c) => {
+                  const count = students.filter((s) => {
+                    const sCourse = getStudentCourse(s);
+                    return sCourse.toLowerCase().includes(c.toLowerCase());
+                  }).length;
+                  return (
+                    <option key={c} value={c}>
+                      {c} ({count})
+                    </option>
+                  );
+                })}
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-400">
+                <Icon name="chevron-down" size={14} />
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons, Bulk Import/Export, Column Settings & View Mode Switcher */}
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap justify-between lg:justify-end">
+            <HrmsImportExportControls
+              type="students"
+              dataToExport={filteredStudents}
+              onImportSuccess={(count) => {
+                showToast(`Successfully imported ${count} students.`);
+                fetchStudents();
+              }}
             />
-          </div>
 
-          {/* Course Filter Dropdown */}
-          <div className="relative min-w-[200px] sm:w-64">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-blue-600 dark:text-blue-400">
-              <Icon name="book-open" size={14} />
-            </div>
-            <select
-              value={selectedCourse}
-              onChange={(e) => setSelectedCourse(e.target.value)}
-              className="w-full pl-9 pr-8 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none cursor-pointer shadow-xs"
-            >
-              <option value="All">All Courses ({students.length})</option>
-              {dynamicCourses.map((c) => {
-                const count = students.filter((s) => {
-                  const sCourse = getStudentCourse(s);
-                  return sCourse.toLowerCase().includes(c.toLowerCase());
-                }).length;
-                return (
-                  <option key={c} value={c}>
-                    {c} ({count})
-                  </option>
-                );
-              })}
-            </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-400">
-              <Icon name="chevron-down" size={14} />
-            </div>
-          </div>
+            <div className="h-6 w-px bg-slate-200 dark:bg-slate-700 hidden sm:block" />
 
-          {/* Action Buttons, Column Settings & View Mode Switcher */}
-          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
             {/* View Mode Toggle: Icons only */}
             <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-xl p-1 border border-slate-200 dark:border-slate-700 shadow-2xs">
               <button
                 type="button"
-                onClick={() => setViewMode('table')}
+                onClick={() => handleSetViewMode('table')}
                 className={cn(
                   'p-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center',
                   viewMode === 'table'
@@ -472,7 +528,7 @@ export function StudentManagementTab() {
               </button>
               <button
                 type="button"
-                onClick={() => setViewMode('grid')}
+                onClick={() => handleSetViewMode('grid')}
                 className={cn(
                   'p-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center',
                   viewMode === 'grid'
@@ -508,7 +564,7 @@ export function StudentManagementTab() {
             <button
               type="button"
               onClick={handleOpenNewEnrollment}
-              className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-extrabold text-xs shadow-md shadow-blue-500/20 transition flex items-center gap-2"
+              className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-extrabold text-xs shadow-md shadow-blue-500/20 transition flex items-center gap-2 shrink-0"
             >
               <Icon name="plus" size={15} />
               <span>Enroll Student</span>
@@ -620,7 +676,7 @@ export function StudentManagementTab() {
                   {visibleColumns.email && <th className="p-3.5 font-bold tracking-wider">EMAIL</th>}
                   {visibleColumns.gender && <th className="p-3.5 font-bold tracking-wider">GENDER</th>}
                   {visibleColumns.dob && <th className="p-3.5 font-bold tracking-wider">DATE OF BIRTH</th>}
-                  {visibleColumns.designation && <th className="p-3.5 font-bold tracking-wider">DESIGNATION</th>}
+                  {visibleColumns.designation && <th className="p-3.5 font-bold tracking-wider">COURSE</th>}
                   {visibleColumns.role && <th className="p-3.5 font-bold tracking-wider">ROLE</th>}
                   {visibleColumns.zone && <th className="p-3.5 font-bold tracking-wider">ZONE</th>}
                   {visibleColumns.multiZone && <th className="p-3.5 font-bold tracking-wider">MULTI ZONE</th>}
@@ -652,7 +708,7 @@ export function StudentManagementTab() {
                 {filteredStudents.map((s, idx) => {
                   const meta = s.meta_data || {};
                   const sCourse = getStudentCourse(s);
-                  const sMedium = meta.medium || '—';
+                  const sMedium = getStudentMedium(s);
                   const sRole = meta.batch || meta.category || 'Student';
                   const sDistrict = meta.district || meta.city || meta.permanent_address?.district || '—';
                   const sPlaceOfWork = meta.campus || meta.place_of_work || meta.branch || '—';
@@ -670,7 +726,7 @@ export function StudentManagementTab() {
 
                   if (sRawStatus && ['Present', 'Absent', 'Missed Punch', 'Early Logout'].includes(sRawStatus)) {
                     studentPunchStatus = sRawStatus;
-                    studentPunchDetails = sInTime ? `${sInTime}${sOutTime ? ` - ${sOutTime}` : ''}` : '';
+                    studentPunchDetails = sInTime ? `${sInTime}${sOutTime ? ` - ${sOutTime}` : ' (Checked In)'}` : '';
                   } else if (sInTime && sOutTime) {
                     if (sIsEarly) {
                       studentPunchStatus = 'Early Logout';
@@ -680,11 +736,11 @@ export function StudentManagementTab() {
                       studentPunchDetails = `${sInTime} - ${sOutTime}`;
                     }
                   } else if (sInTime && !sOutTime) {
-                    studentPunchStatus = 'Missed Punch';
-                    studentPunchDetails = `In: ${sInTime} (Missed Out)`;
+                    studentPunchStatus = 'Present';
+                    studentPunchDetails = `In: ${sInTime} (Checked In)`;
                   } else if ((s as any).is_present === true || (s as any).isPresentToday === true) {
                     studentPunchStatus = 'Present';
-                    studentPunchDetails = 'Marked Present';
+                    studentPunchDetails = sInTime ? `In: ${sInTime}` : 'Marked Present';
                   } else {
                     studentPunchStatus = 'Absent';
                     studentPunchDetails = 'Not marked IN and OUT';
@@ -768,11 +824,13 @@ export function StudentManagementTab() {
                       {visibleColumns.designation && (
                         <td className="p-3.5">
                           <span className="font-extrabold text-slate-900 dark:text-slate-100 block truncate">
-                            {sCourse}
+                            {sCourse || '—'}
                           </span>
-                          <span className="text-[10px] font-semibold text-slate-400">
-                            {sMedium} Medium
-                          </span>
+                          {sMedium ? (
+                            <span className="text-[10px] font-semibold text-slate-500">
+                              {sMedium} Medium
+                            </span>
+                          ) : null}
                         </td>
                       )}
 
@@ -906,8 +964,17 @@ export function StudentManagementTab() {
                       {/* STATUS */}
                       {visibleColumns.status && (
                         <td className="p-3.5">
-                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border inline-block whitespace-nowrap bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800">
-                            {s.status || 'Active'}
+                          <span
+                            className={cn(
+                              'px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border inline-block whitespace-nowrap',
+                              (s.status || 'ACTIVE').toUpperCase() === 'ACTIVE'
+                                ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                                : (s.status || '').toUpperCase() === 'EXPIRED'
+                                ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
+                                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                            )}
+                          >
+                            {s.status || 'ACTIVE'}
                           </span>
                         </td>
                       )}

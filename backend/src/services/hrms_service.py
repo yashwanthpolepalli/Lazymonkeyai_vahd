@@ -59,9 +59,9 @@ class HrmsService:
 
             role = (t.role or "").upper()
             dept = getattr(t, "department", None) or ""
-            desg = t.job_designation or t.specialization or role
+            desg = getattr(t, "job_designation", None) or getattr(t, "specialization", None) or role
 
-            status = "Active" if t.is_active else "Inactive"
+            status = "Active" if getattr(t, "is_active", True) else "Inactive"
             salary = float(t.base_monthly_salary or 0.0)
             joined = t.created_at.date() if t.created_at else date.today()
 
@@ -285,28 +285,28 @@ class HrmsService:
                         "designation": e.designation or "",
                         "department": d.name,
                         "phone": e.phone or "",
-                        "status": e.status or ("Active" if e.is_active is not False else "Inactive"),
+                        "status": e.status or "Active",
                         "avatar": e.avatar or "",
                         "joined_date": e.joined_date.isoformat() if e.joined_date else None,
                     })
             
             # Map from TrainerProfile records
             for t in trainers:
-                t_dept = (getattr(t, "department", None) or t.specialization or "").strip().lower()
+                t_dept = (getattr(t, "department", None) or getattr(t, "specialization", None) or "").strip().lower()
                 if t_dept and t_dept == dept_name_lower:
                     # Check if already added
                     if not any(emp["email"].lower() == (t.email or "").lower() for emp in mapped_emp):
                         mapped_emp.append({
                             "id": t.id,
-                            "name": t.full_name or t.name or (t.email or "Staff"),
+                            "name": getattr(t, "full_name", None) or getattr(t, "name", None) or (t.email or "Staff"),
                             "email": t.email or "",
                             "code": f"EMP-{t.id[:4].upper()}" if t.id else "",
-                            "designation": t.job_designation or t.specialization or "",
+                            "designation": getattr(t, "job_designation", None) or getattr(t, "specialization", None) or getattr(t, "role", "") or "",
                             "department": d.name,
-                            "phone": t.phone or "",
-                            "status": "Active" if t.is_active is not False else "Inactive",
+                            "phone": getattr(t, "phone", "") or "",
+                            "status": "Active" if getattr(t, "is_active", True) is not False else "Inactive",
                             "avatar": "",
-                            "joined_date": t.created_at.strftime('%Y-%m-%d') if t.created_at else None,
+                            "joined_date": t.created_at.strftime('%Y-%m-%d') if getattr(t, "created_at", None) else None,
                         })
             
             result.append({
@@ -385,22 +385,22 @@ class HrmsService:
                         "email": e.email or "",
                         "code": e.code or "",
                         "department": e.department or d.department or "",
-                        "status": e.status or ("Active" if e.is_active is not False else "Inactive"),
+                        "status": e.status or "Active",
                         "phone": e.phone or ""
                     })
             
             for t in trainers:
-                t_desg = (t.job_designation or t.specialization or "").strip().lower()
+                t_desg = (getattr(t, "job_designation", None) or getattr(t, "specialization", None) or getattr(t, "role", None) or "").strip().lower()
                 if t_desg and t_desg == title_lower:
                     if not any(emp["email"].lower() == (t.email or "").lower() for emp in mapped):
                         mapped.append({
                             "id": t.id,
-                            "name": t.full_name or t.name or (t.email or "Staff"),
+                            "name": getattr(t, "full_name", None) or getattr(t, "name", None) or (t.email or "Staff"),
                             "email": t.email or "",
                             "code": f"EMP-{t.id[:4].upper()}" if t.id else "",
                             "department": d.department or "",
-                            "status": "Active" if t.is_active is not False else "Inactive",
-                            "phone": t.phone or ""
+                            "status": "Active" if getattr(t, "is_active", True) is not False else "Inactive",
+                            "phone": getattr(t, "phone", "") or ""
                         })
             
             result.append({
@@ -732,8 +732,21 @@ class HrmsService:
         if branch:
             scheme = db.query(GeofenceScheme).filter(
                 GeofenceScheme.branch_name.ilike(f"%{branch}%"),
-                GeofenceScheme.is_active == True
+                GeofenceScheme.is_active == True,
+                GeofenceScheme.latitude.isnot(None)
             ).first()
+            if not scheme:
+                scheme = db.query(GeofenceScheme).filter(
+                    GeofenceScheme.branch_name.ilike(f"%{branch}%"),
+                    GeofenceScheme.is_active == True
+                ).first()
+
+        if not scheme:
+            scheme = db.query(GeofenceScheme).filter(
+                GeofenceScheme.is_active == True,
+                GeofenceScheme.latitude.isnot(None)
+            ).order_by(GeofenceScheme.updated_at.desc()).first()
+
         if not scheme:
             scheme = db.query(GeofenceScheme).filter(GeofenceScheme.is_active == True).first()
 
@@ -773,7 +786,7 @@ class HrmsService:
         display_name = "User"
         customer_id_val = None
 
-        if user_role_upper == "CUSTOMER":
+        if user_role_upper in ["CUSTOMER", "STUDENT", "MEMBER"]:
             # Check Customer record
             from src.models.customer import Customer
             cust = db.query(Customer).filter(
@@ -789,21 +802,21 @@ class HrmsService:
                 customer_id_val = cust.id
                 cust.status = "ACTIVE"
             else:
-                display_name = "Gym Customer"
+                display_name = "Student Member"
                 customer_id_val = employee_id
         else:
-
-            # Trainer / Staff / Owner
+            # Trainer / Staff / Employee / Owner
             emp = db.query(Employee).filter(
                 (Employee.id == employee_id) | (Employee.code == employee_id) | (Employee.email.ilike(employee_id))
             ).first()
 
+            trainer = None
             if not emp:
                 trainer = db.query(TrainerProfile).filter(
                     (TrainerProfile.id == employee_id) | (TrainerProfile.email.ilike(employee_id))
                 ).first()
                 if trainer:
-                    emp = db.query(Employee).filter(Employee.id == f"emp_{trainer.id}").first()
+                    emp = db.query(Employee).filter((Employee.id == f"emp_{trainer.id}") | (Employee.id == trainer.id)).first()
 
             if not emp and user_role_upper == "GYM_OWNER":
                 owner_user = db.query(User).filter(User.role == "GYM_OWNER").first()
@@ -827,21 +840,22 @@ class HrmsService:
                         db.flush()
 
             if not emp:
-                full_name = employee_id
+                full_name = (trainer.full_name if trainer else employee_id)
                 unique_code = f"EMP-{uuid.uuid4().hex[:4].upper()}"
                 emp = Employee(
-                    id=f"emp_{uuid.uuid4().hex[:8]}",
+                    id=f"emp_{trainer.id if trainer else uuid.uuid4().hex[:8]}",
                     code=unique_code,
                     first_name=full_name,
-                    email=employee_id if "@" in employee_id else f"{employee_id}@lazymonkey.ai",
-                    designation="",
+                    email=trainer.email if trainer else (employee_id if "@" in employee_id else f"{employee_id}@lazymonkey.ai"),
+                    designation=trainer.role if trainer else "",
                     department="",
                     status="Active"
                 )
                 db.add(emp)
                 db.flush()
 
-            display_name = f"{emp.first_name} {emp.last_name or ''}".strip() or emp.email
+            display_name = f"{emp.first_name} {emp.last_name or ''}".strip() or (trainer.full_name if trainer else emp.email)
+            customer_id_val = None
 
             # Record in EmployeeAttendance
             att = db.query(EmployeeAttendance).filter(
@@ -911,7 +925,11 @@ class HrmsService:
                 confidence_score=0.99 if method == "FACE_ID" else 1.0,
                 meta_data={
                     "user_id": employee_id,
+                    "employee_id": (emp.id if 'emp' in locals() and emp else employee_id),
+                    "trainer_id": (trainer.id if 'trainer' in locals() and trainer else None),
                     "user_name": display_name,
+                    "employee_name": display_name,
+                    "email": (emp.email if 'emp' in locals() and emp else (trainer.email if 'trainer' in locals() and trainer else employee_id)),
                     "distance_meters": distance,
                     "within_perimeter": is_within_geofence,
                     "latitude": latitude,

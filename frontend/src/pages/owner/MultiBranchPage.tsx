@@ -117,13 +117,13 @@ export function MultiBranchPage() {
         </div>
         <div className="card p-5">
           <div className="flex items-center justify-between mb-2">
-            <span className="stat-label">Total Members</span>
+            <span className="stat-label">Total Students</span>
             <div className="w-8 h-8 rounded-lg bg-success-50 flex items-center justify-center">
               <Icon name="users" size={16} className="text-success-600" />
             </div>
           </div>
           <div className="text-2xl font-bold text-navy-900">{totalMembers.toLocaleString()}</div>
-          <div className="text-xs text-success-600 font-semibold mt-1">Total active members</div>
+          <div className="text-xs text-success-600 font-semibold mt-1">Total active students</div>
         </div>
         <div className="card p-5">
           <div className="flex items-center justify-between mb-2">
@@ -137,7 +137,7 @@ export function MultiBranchPage() {
         </div>
         <div className="card p-5">
           <div className="flex items-center justify-between mb-2">
-            <span className="stat-label">Total Trainers</span>
+            <span className="stat-label">Total Employees</span>
             <div className="w-8 h-8 rounded-lg bg-ai-50 flex items-center justify-center">
               <Icon name="user-cog" size={16} className="text-ai-600" />
             </div>
@@ -163,7 +163,7 @@ export function MultiBranchPage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="p-3 rounded-xl bg-navy-50">
                 <div className="text-lg font-bold text-navy-900">{(b.members || 0).toLocaleString()}</div>
-                <div className="text-xs text-navy-400">Members</div>
+                <div className="text-xs text-navy-400">Students</div>
               </div>
               <div className="p-3 rounded-xl bg-navy-50">
                 <div className="text-lg font-bold text-navy-900">{b.revenue}</div>
@@ -171,7 +171,7 @@ export function MultiBranchPage() {
               </div>
               <div className="p-3 rounded-xl bg-navy-50">
                 <div className="text-lg font-bold text-navy-900">{b.trainers || 0}</div>
-                <div className="text-xs text-navy-400">Trainers</div>
+                <div className="text-xs text-navy-400">Employees</div>
               </div>
               <div className="p-3 rounded-xl bg-navy-50">
                 <div className="text-lg font-bold text-navy-900">Active</div>
@@ -202,8 +202,8 @@ export function MultiBranchPage() {
                   <Icon name="building-2" size={20} />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">Add New Gym Branch</h3>
-                  <p className="text-xs text-slate-500">Expand your gym platform footprint</p>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">Add New Branch</h3>
+                  <p className="text-xs text-slate-500">Expand your platform footprint</p>
                 </div>
               </div>
               <button

@@ -16,6 +16,8 @@ interface HrmsGeofencePortalProps {
 export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) {
   const [schemes, setSchemes] = useState<GeofenceScheme[]>([]);
   const [employees, setEmployees] = useState<EmployeeItem[]>([]);
+  const [students, setStudents] = useState<any[]>([]);
+  const [memberFilterType, setMemberFilterType] = useState<'all' | 'employees' | 'students'>('all');
   const [availableBranches, setAvailableBranches] = useState<Array<{ name: string; city: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -52,19 +54,22 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
     setTimeout(() => setToastMsg(null), 4000);
   };
 
-  // Fetch initial schemes, branches, gym settings, and employees from live database
+  // Fetch initial schemes, branches, gym settings, employees and students from live database
   const loadData = async () => {
     setLoading(true);
     try {
-      const [schemesRes, empsRes, branchesRes, settingsRes] = await Promise.all([
+      const [schemesRes, empsRes, custsRes, branchesRes, settingsRes] = await Promise.all([
         hrmsApi.getGeofenceSchemes().catch(() => []),
         hrmsApi.getEmployees().catch(() => []),
+        apiClient.get<any[]>('/customers').catch(() => []),
         apiClient.get<any[]>('/gym/branches').catch(() => []),
         apiClient.get<any>('/gym/settings').catch(() => null),
       ]);
 
       const emps = empsRes || [];
+      const custs = Array.isArray(custsRes) ? custsRes : [];
       setEmployees(emps);
+      setStudents(custs);
 
       const realBranches = Array.isArray(branchesRes)
         ? branchesRes.map((b) => ({
@@ -77,9 +82,11 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
       const realGymName = settingsRes?.gym_name || realBranches[0]?.name || '';
       setGymName(realGymName);
 
+      const allMemberIds = [...emps.map((e) => e.id), ...custs.map((c) => c.id)];
+
       if (schemesRes && schemesRes.length > 0) {
         setSchemes(schemesRes);
-        loadSchemeIntoForm(schemesRes[0], emps, realGymName);
+        loadSchemeIntoForm(schemesRes[0], allMemberIds, realGymName);
       } else {
         setSchemes([]);
         setActiveSchemeId('');
@@ -120,8 +127,7 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
     }
   }, []);
 
-  const loadSchemeIntoForm = (scheme: GeofenceScheme, empsList?: EmployeeItem[], fallbackGymName?: string) => {
-    const list = empsList || employees;
+  const loadSchemeIntoForm = (scheme: GeofenceScheme, allAvailableIds?: string[], fallbackGymName?: string) => {
     setActiveSchemeId(scheme.id || '');
     setSchemeName(scheme.name || '');
     setBranchName(scheme.branch_name || '');
@@ -141,10 +147,15 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
         : ['gps', 'biometric', 'face_recognition', 'web_ess']
     );
 
-    if (scheme.assigned_employee_ids && scheme.assigned_employee_ids.length > 0) {
-      setAssignedEmployeeIds(scheme.assigned_employee_ids);
+    const rawAssigned = scheme.assigned_employee_ids || [];
+    if (Array.isArray(rawAssigned) && rawAssigned.length > 0) {
+      const cleanIds = rawAssigned.filter((x): x is string => typeof x === 'string' && x.length > 0);
+      setAssignedEmployeeIds(cleanIds);
+    } else if (allAvailableIds && allAvailableIds.length > 0) {
+      const cleanIds = allAvailableIds.filter((x): x is string => typeof x === 'string' && x.length > 0);
+      setAssignedEmployeeIds(cleanIds);
     } else {
-      setAssignedEmployeeIds(list.map((e) => e.id));
+      setAssignedEmployeeIds([]);
     }
   };
 
@@ -236,21 +247,77 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
     }
   };
 
-  // Employee Selection Helpers
-  const toggleEmployee = (empId: string) => {
-    if (assignedEmployeeIds.includes(empId)) {
-      setAssignedEmployeeIds(assignedEmployeeIds.filter((id) => id !== empId));
+  // Unified Member Selection Helpers (Employees & Students)
+  interface UnifiedMember {
+    id: string;
+    name: string;
+    code?: string;
+    role: 'Employee' | 'Student';
+    subText: string;
+    email?: string;
+  }
+
+  const unifiedMembers: UnifiedMember[] = [
+    ...employees.map((emp) => ({
+      id: String(emp.id || ''),
+      name: (emp.full_name || `${emp.first_name || ''} ${emp.last_name || ''}`.trim()) || 'Employee',
+      code: emp.code ? `EMP-${emp.code}` : 'EMP',
+      role: 'Employee' as const,
+      subText: emp.designation || emp.department || 'Staff / Trainer',
+      email: emp.email || '',
+    })),
+    ...students.map((stu, idx) => ({
+      id: String(stu.id || ''),
+      name: stu.full_name || stu.name || 'Student Member',
+      code: stu.member_code || stu.code || `STU-${String(idx + 1).padStart(3, '0')}`,
+      role: 'Student' as const,
+      subText: stu.batch || stu.branch || 'Student',
+      email: stu.email || '',
+    })),
+  ].filter((m) => Boolean(m.id));
+
+  const filteredMembers = unifiedMembers.filter((m) => {
+    if (memberFilterType === 'employees' && m.role !== 'Employee') return false;
+    if (memberFilterType === 'students' && m.role !== 'Student') return false;
+    if (!searchEmployeeQuery) return true;
+    const q = (searchEmployeeQuery || '').toLowerCase();
+    const nameStr = (m.name || '').toLowerCase();
+    const codeStr = (m.code || '').toLowerCase();
+    const subStr = (m.subText || '').toLowerCase();
+    const emailStr = (m.email || '').toLowerCase();
+    return (
+      nameStr.includes(q) ||
+      codeStr.includes(q) ||
+      subStr.includes(q) ||
+      emailStr.includes(q)
+    );
+  });
+
+  const assignedEmpCount = assignedEmployeeIds.filter((id) => typeof id === 'string' && !id.startsWith('cust_')).length;
+  const assignedStuCount = assignedEmployeeIds.filter((id) => typeof id === 'string' && id.startsWith('cust_')).length;
+
+  const toggleMember = (id: string) => {
+    if (!id) return;
+    if (assignedEmployeeIds.includes(id)) {
+      setAssignedEmployeeIds(assignedEmployeeIds.filter((x) => x !== id));
     } else {
-      setAssignedEmployeeIds([...assignedEmployeeIds, empId]);
+      setAssignedEmployeeIds([...assignedEmployeeIds, id]);
     }
   };
 
-  const handleSelectAllEmployees = () => {
-    setAssignedEmployeeIds(employees.map((e) => e.id));
+  const handleSelectAllMembers = () => {
+    const idsToSelect = filteredMembers.map((m) => m.id).filter(Boolean);
+    const newSet = new Set([...assignedEmployeeIds.filter(Boolean), ...idsToSelect]);
+    setAssignedEmployeeIds(Array.from(newSet));
   };
 
-  const handleClearAllEmployees = () => {
-    setAssignedEmployeeIds([]);
+  const handleClearAllMembers = () => {
+    if (memberFilterType === 'all') {
+      setAssignedEmployeeIds([]);
+    } else {
+      const idsToRemove = new Set(filteredMembers.map((m) => m.id));
+      setAssignedEmployeeIds(assignedEmployeeIds.filter((id) => Boolean(id) && !idsToRemove.has(id)));
+    }
   };
 
   const toggleChannel = (channel: string) => {
@@ -266,17 +333,6 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
   };
 
   const radiusPresets = [50, 100, 250, 500, 1000, 2000];
-
-  const filteredEmployees = employees.filter((emp) => {
-    if (!searchEmployeeQuery) return true;
-    const q = searchEmployeeQuery.toLowerCase();
-    return (
-      (emp.full_name || `${emp.first_name} ${emp.last_name}`).toLowerCase().includes(q) ||
-      (emp.code || '').toLowerCase().includes(q) ||
-      (emp.designation || '').toLowerCase().includes(q) ||
-      (emp.department || '').toLowerCase().includes(q)
-    );
-  });
 
   return (
     <div className="space-y-5 animate-fade-in font-sans text-slate-800 pb-12">
@@ -676,43 +732,83 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
 
         {/* Right Column (Assign Desired Employees & Allowed Punch Channels) */}
         <div className="lg:col-span-5 space-y-6">
-          {/* Card 3: Assign Desired Employees (Matching Screenshot 1) */}
+          {/* Card 3: Assign Desired Members (Employees & Students) */}
           <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-2xs space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 border border-purple-100">
                   <Icon name="users" size={16} />
                 </div>
                 <div>
                   <h3 className="text-sm font-black text-slate-900">
-                    Assign Desired Employees
+                    Assign Desired Members
                   </h3>
                   <p className="text-[11px] font-medium text-purple-700">
-                    {assignedEmployeeIds.length} of {employees.length} employee(s) active in scheme
+                    {assignedEmployeeIds.length} of {unifiedMembers.length} active in scheme ({assignedEmpCount} Employees, {assignedStuCount} Students)
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-500 self-end sm:self-auto">
                 <button
                   type="button"
-                  onClick={handleSelectAllEmployees}
-                  className="hover:text-purple-700 hover:underline"
+                  onClick={handleSelectAllMembers}
+                  className="hover:text-purple-700 hover:underline cursor-pointer"
                 >
                   All
                 </button>
                 <span>|</span>
                 <button
                   type="button"
-                  onClick={handleClearAllEmployees}
-                  className="hover:text-purple-700 hover:underline"
+                  onClick={handleClearAllMembers}
+                  className="hover:text-purple-700 hover:underline cursor-pointer"
                 >
                   Clear
                 </button>
               </div>
             </div>
 
-            {/* Employee Search Bar */}
+            {/* Filter Tabs: All, Employees, Students */}
+            <div className="flex items-center gap-1 bg-slate-100/90 p-1 rounded-xl text-xs font-bold border border-slate-200/60">
+              <button
+                type="button"
+                onClick={() => setMemberFilterType('all')}
+                className={cn(
+                  'flex-1 py-1.5 px-2 rounded-lg text-center transition-all cursor-pointer text-[11px]',
+                  memberFilterType === 'all'
+                    ? 'bg-white text-purple-800 shadow-2xs font-extrabold'
+                    : 'text-slate-500 hover:text-slate-900'
+                )}
+              >
+                All ({unifiedMembers.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setMemberFilterType('employees')}
+                className={cn(
+                  'flex-1 py-1.5 px-2 rounded-lg text-center transition-all cursor-pointer text-[11px]',
+                  memberFilterType === 'employees'
+                    ? 'bg-white text-purple-800 shadow-2xs font-extrabold'
+                    : 'text-slate-500 hover:text-slate-900'
+                )}
+              >
+                Employees ({employees.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setMemberFilterType('students')}
+                className={cn(
+                  'flex-1 py-1.5 px-2 rounded-lg text-center transition-all cursor-pointer text-[11px]',
+                  memberFilterType === 'students'
+                    ? 'bg-white text-blue-800 shadow-2xs font-extrabold'
+                    : 'text-slate-500 hover:text-slate-900'
+                )}
+              >
+                Students ({students.length})
+              </button>
+            </div>
+
+            {/* Member Search Bar */}
             <div className="relative">
               <Icon
                 name="search"
@@ -723,27 +819,28 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
                 type="text"
                 value={searchEmployeeQuery}
                 onChange={(e) => setSearchEmployeeQuery(e.target.value)}
-                placeholder="Search employees..."
+                placeholder="Search employees & students (name, email, code)..."
                 className="w-full pl-9 pr-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
               />
             </div>
 
-            {/* Employee List (Scrollable) */}
+            {/* Members List (Scrollable) */}
             <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
-              {filteredEmployees.map((emp) => {
-                const isAssigned = assignedEmployeeIds.includes(emp.id);
-                const name = emp.full_name || `${emp.first_name} ${emp.last_name || ''}`.trim();
-                const initial = (name[0] || 'E').toUpperCase();
-                const isP = initial === 'P';
+              {filteredMembers.map((m) => {
+                const isAssigned = assignedEmployeeIds.includes(m.id);
+                const initial = ((m.name && m.name[0]) || (m.role === 'Student' ? 'S' : 'E')).toUpperCase();
+                const isStudent = m.role === 'Student';
 
                 return (
                   <div
-                    key={emp.id}
-                    onClick={() => toggleEmployee(emp.id)}
+                    key={m.id}
+                    onClick={() => toggleMember(m.id)}
                     className={cn(
                       'p-2.5 rounded-xl border flex items-center justify-between gap-3 cursor-pointer transition-all',
                       isAssigned
-                        ? 'bg-purple-50/50 border-purple-300'
+                        ? isStudent
+                          ? 'bg-blue-50/60 border-blue-300'
+                          : 'bg-purple-50/60 border-purple-300'
                         : 'bg-white border-slate-200/80 hover:bg-slate-50 opacity-75'
                     )}
                   >
@@ -751,23 +848,40 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
                       <input
                         type="checkbox"
                         checked={isAssigned}
-                        onChange={() => toggleEmployee(emp.id)}
-                        className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 border-slate-300"
+                        onChange={() => toggleMember(m.id)}
+                        className={cn(
+                          'w-4 h-4 rounded border-slate-300',
+                          isStudent
+                            ? 'text-blue-600 focus:ring-blue-500'
+                            : 'text-purple-600 focus:ring-purple-500'
+                        )}
                       />
                       <div
                         className={cn(
                           'w-7 h-7 rounded-full text-xs font-black flex items-center justify-center shrink-0 shadow-2xs',
-                          isP ? 'bg-purple-200 text-purple-900' : 'bg-indigo-100 text-indigo-900'
+                          isStudent
+                            ? 'bg-blue-100 text-blue-900 border border-blue-200'
+                            : 'bg-purple-100 text-purple-900 border border-purple-200'
                         )}
                       >
                         {initial}
                       </div>
                       <div className="min-w-0">
-                        <div className="text-xs font-extrabold text-slate-900 truncate">
-                          {name}
+                        <div className="text-xs font-extrabold text-slate-900 truncate flex items-center gap-1.5">
+                          <span>{m.name}</span>
+                          <span
+                            className={cn(
+                              'text-[9px] font-black px-1.5 py-0.2 rounded-sm uppercase tracking-wider',
+                              isStudent
+                                ? 'bg-blue-100 text-blue-700'
+                                : 'bg-purple-100 text-purple-700'
+                            )}
+                          >
+                            {m.role}
+                          </span>
                         </div>
                         <div className="text-[10px] text-slate-400 font-semibold truncate">
-                          {emp.code ? `EMP-${emp.code}` : emp.designation || 'Staff'}
+                          {m.code ? m.code : ''} {m.subText ? `· ${m.subText}` : ''}
                         </div>
                       </div>
                     </div>
@@ -785,9 +899,9 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
                 );
               })}
 
-              {filteredEmployees.length === 0 && (
+              {filteredMembers.length === 0 && (
                 <div className="py-6 text-center text-xs text-slate-400 font-semibold">
-                  No employees matched the query.
+                  No members matched the filter.
                 </div>
               )}
             </div>

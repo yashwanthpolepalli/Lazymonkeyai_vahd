@@ -437,10 +437,10 @@ class DashboardService:
                 is_employee = log.customer_id is None
 
             resolved_role = "EMPLOYEE" if is_employee else "STUDENT"
+            cust = None
 
             # 1. Resolve Student (Customer)
             if not is_employee:
-                cust = None
                 if cid:
                     cust = db.query(Customer).filter(
                         (Customer.id == cid) | (Customer.id == f"cust_{cid}")

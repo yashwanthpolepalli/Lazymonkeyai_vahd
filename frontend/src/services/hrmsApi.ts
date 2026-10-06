@@ -20,6 +20,8 @@ export interface EmployeeItem {
   skills: string[];
   gym_branch: string;
   emergency_contact: string;
+  address?: string;
+  district?: string;
   created_at?: string;
 }
 

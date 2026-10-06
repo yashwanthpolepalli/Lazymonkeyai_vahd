@@ -63,7 +63,7 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
     if (error instanceof ApiError) {
       throw error;
     }
-    throw new ApiError('Unable to connect to Fit Club server. Please check network connection.', 0);
+    throw new ApiError('Unable to connect to server. Please check network connection.', 0);
   }
 }
 

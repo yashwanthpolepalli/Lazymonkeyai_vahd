@@ -1,6 +1,6 @@
 from src.utils.timezone import now_ist_naive
 import datetime
-from sqlalchemy import Column, String, Float, Integer, DateTime, ForeignKey, Boolean
+from sqlalchemy import Column, String, Float, Integer, DateTime, ForeignKey, Boolean, JSON
 from sqlalchemy.orm import relationship
 from src.database.base import Base
 
@@ -48,6 +48,7 @@ class Customer(Base):
     status = Column(String, default="ACTIVE")
     primary_gym_location = Column(String, nullable=True)
     enable_workout_videos = Column(Boolean, default=True)
+    meta_data = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=now_ist_naive)
     updated_at = Column(DateTime, default=now_ist_naive, onupdate=now_ist_naive)
 

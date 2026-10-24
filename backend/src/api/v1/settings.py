@@ -68,7 +68,8 @@ def create_branch(
         "gym_name": branch.gym_name,
         "branch_name": branch.branch_name,
         "city": branch.city,
-        "owner_id": branch.owner_id
+        "owner_id": branch.owner_id,
+        "ho_id": branch.ho_id
     }}
 
 @router.get("/settings/billing")

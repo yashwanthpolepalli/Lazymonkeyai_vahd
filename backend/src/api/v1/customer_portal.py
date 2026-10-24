@@ -49,11 +49,14 @@ def get_current_customer(authorization: str = Header(None), db: Session = Depend
                 (Customer.email == user.email)
             ).first()
 
-    if not customer:
-        customer = db.query(Customer).first()
+    if not customer and cust_id:
+        customer = db.query(Customer).filter(Customer.id == cust_id).first()
 
     if not customer:
-        raise HTTPException(status_code=404, detail="Customer record not found in database")
+        raise HTTPException(
+            status_code=404,
+            detail="Customer record not found. Please enroll the student via Student Management."
+        )
 
     return customer
 

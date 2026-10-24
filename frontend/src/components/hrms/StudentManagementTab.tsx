@@ -3,6 +3,8 @@ import { Icon } from '@/components/ui/Icon';
 import { apiClient } from '@/services/apiClient';
 import { cn } from '@/utils/cn';
 import { StudentEnrollmentModal } from './StudentEnrollmentModal';
+import { WhatsAppAttendanceReportsModal } from './WhatsAppAttendanceReportsModal';
+import { WhatsAppGatewayConnectModal } from './WhatsAppGatewayConnectModal';
 import { printStudentAdmissionForm } from '@/lib/student-print-helper';
 import { TableColumnSettingsPopover, ColumnGroup } from './TableColumnSettingsPopover';
 import { HrmsImportExportControls } from './HrmsImportExportControls';
@@ -13,7 +15,8 @@ export const STUDENT_COLUMN_GROUPS: ColumnGroup[] = [
     columns: [
       { key: 'studentNo', label: 'Student No.' },
       { key: 'name', label: 'Name' },
-      { key: 'mobile', label: 'Mobile' },
+      { key: 'parentMobile', label: 'Parent Mobile (WhatsApp)' },
+      { key: 'mobile', label: 'Student Mobile' },
       { key: 'email', label: 'Email' },
       { key: 'gender', label: 'Gender' },
       { key: 'dob', label: 'Date of Birth' },
@@ -27,7 +30,7 @@ export const STUDENT_COLUMN_GROUPS: ColumnGroup[] = [
       { key: 'zone', label: 'Zone' },
       { key: 'multiZone', label: 'Multi Zone' },
       { key: 'district', label: 'District' },
-      { key: 'placeOfWork', label: 'Place of Work' },
+      { key: 'placeOfWork', label: 'Organisation' },
       { key: 'sourceMandal', label: 'Source Mandal' },
       { key: 'sourceVillage', label: 'Source Village' },
       { key: 'joined', label: 'Joined' },
@@ -59,6 +62,7 @@ export const STUDENT_COLUMN_GROUPS: ColumnGroup[] = [
 const DEFAULT_STUDENT_COLUMNS: Record<string, boolean> = {
   studentNo: true,
   name: true,
+  parentMobile: true,
   mobile: false,
   email: false,
   gender: false,
@@ -96,6 +100,8 @@ interface StudentItem {
   name?: string;
   email: string;
   phone: string;
+  parent_phone?: string;
+  parent_mobile?: string;
   member_code?: string;
   code?: string;
   gender?: string;
@@ -112,11 +118,16 @@ interface StudentItem {
   attendance_pct?: number;
   created_at?: string;
   meta_data?: any;
+  branch?: string;
+  branch_id?: string;
+  ho_id?: string;
 }
 
 export function StudentManagementTab() {
   const [students, setStudents] = useState<StudentItem[]>([]);
   const [availableCourses, setAvailableCourses] = useState<string[]>([]);
+  const [branchesList, setBranchesList] = useState<Array<{ id: string; branch_name: string; name?: string }>>([]);
+  const [selectedBranch, setSelectedBranch] = useState<string>('All');
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedCourse, setSelectedCourse] = useState<string>('All');
@@ -137,6 +148,42 @@ export function StudentManagementTab() {
   const [toast, setToast] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [batchActionLoading, setBatchActionLoading] = useState(false);
+  const [dispatchingReports, setDispatchingReports] = useState(false);
+  const [sendingSingleReport, setSendingSingleReport] = useState(false);
+  const [isWhatsAppReportsModalOpen, setIsWhatsAppReportsModalOpen] = useState(false);
+  const [isGatewayModalOpen, setIsGatewayModalOpen] = useState(false);
+
+  const handleDispatchMonthlyReports = async () => {
+    if (!confirm("Dispatch official monthly biometric attendance reports to all registered parent WhatsApp numbers?")) {
+      return;
+    }
+    setDispatchingReports(true);
+    try {
+      const res = await apiClient.post<any>('/customers/attendance-reports/dispatch-monthly', {});
+      showToast(res.data?.message || 'Monthly attendance reports dispatched to parents via WhatsApp!');
+    } catch (err: any) {
+      showToast(err?.response?.data?.detail || err?.message || 'Failed to dispatch monthly reports.');
+    } finally {
+      setDispatchingReports(false);
+    }
+  };
+
+  const handleSendSingleStudentWhatsAppReport = async (studentId: string) => {
+    setSendingSingleReport(true);
+    try {
+      const res = await apiClient.post<any>(`/customers/${studentId}/attendance-report/send-whatsapp`, {});
+      if (res?.whatsapp_url && !res?.gateway_sent) {
+        window.open(res.whatsapp_url, '_blank');
+        showToast(`Opening WhatsApp Web for ${res?.parent_phone || 'parent'} with pre-filled attendance report...`);
+      } else {
+        showToast(res?.message || 'Monthly attendance report sent to parent WhatsApp successfully!');
+      }
+    } catch (err: any) {
+      showToast(err?.response?.data?.detail || err?.message || 'Failed to send WhatsApp report to parent.');
+    } finally {
+      setSendingSingleReport(false);
+    }
+  };
 
   // Column visibility state
   const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>(() => {
@@ -192,12 +239,43 @@ export function StudentManagementTab() {
     setTimeout(() => setToast(null), 3500);
   };
 
+  const [dispatchingWhatsAppId, setDispatchingWhatsAppId] = useState<string | null>(null);
+
+  const handleQuickSendWhatsApp = async (student: any) => {
+    const parentPhone = student.parent_phone || student.meta_data?.parent_mobile || student.meta_data?.parent_phone;
+    if (!parentPhone) {
+      showToast(`Cannot dispatch: Missing parent mobile number for ${student.full_name || student.name}.`);
+      return;
+    }
+
+    setDispatchingWhatsAppId(student.id);
+    try {
+      const now = new Date();
+      const res = await apiClient.post<any>(`/customers/${student.id}/attendance-report/send-whatsapp`, {
+        year: now.getFullYear(),
+        month: now.getMonth() + 1,
+        dispatch_type: 'MANUAL_ROW_DISPATCH'
+      });
+      if (res?.whatsapp_url && !res?.gateway_sent) {
+        window.open(res.whatsapp_url, '_blank');
+        showToast(`Opening WhatsApp Web for ${res?.parent_phone || parentPhone} with pre-filled monthly report...`);
+      } else {
+        showToast(res?.message || `✅ Attendance report dispatched to parent (${parentPhone}) via WhatsApp!`);
+      }
+    } catch (err: any) {
+      showToast(err?.message || `Failed to dispatch WhatsApp report to ${parentPhone}`);
+    } finally {
+      setDispatchingWhatsAppId(null);
+    }
+  };
+
   const fetchStudents = async () => {
     setLoading(true);
     try {
-      const [res, coursesRes] = await Promise.all([
+      const [res, coursesRes, branchesRes] = await Promise.all([
         apiClient.get<any[]>('/customers').catch(() => []),
         apiClient.get<any[]>('/courses').catch(() => []),
+        apiClient.get<any[]>('/gym/branches').catch(() => []),
       ]);
       if (Array.isArray(res)) {
         setStudents(res);
@@ -205,6 +283,9 @@ export function StudentManagementTab() {
       if (Array.isArray(coursesRes)) {
         const names = coursesRes.map((c: any) => c.name).filter(Boolean);
         setAvailableCourses(names);
+      }
+      if (Array.isArray(branchesRes)) {
+        setBranchesList(branchesRes);
       }
     } catch {
       setStudents([]);
@@ -301,6 +382,12 @@ export function StudentManagementTab() {
     const matchesCourse = selectedCourse === 'All' || sCourse.toLowerCase().includes(selectedCourse.toLowerCase());
 
     const meta = s.meta_data || {};
+    const matchesBranch =
+      selectedBranch === 'All' ||
+      s.branch_id === selectedBranch ||
+      meta.branch_id === selectedBranch ||
+      s.branch === selectedBranch;
+
     const sName = (s.full_name || s.name || '').toLowerCase();
     const sPhone = (s.phone || '').toLowerCase();
     const sCode = (s.member_code || s.code || s.id || '').toLowerCase();
@@ -309,7 +396,7 @@ export function StudentManagementTab() {
     const q = search.toLowerCase().trim();
 
     const matchesSearch = !q || sName.includes(q) || sPhone.includes(q) || sCode.includes(q) || sFather.includes(q) || sAadhar.includes(q);
-    return matchesCourse && matchesSearch;
+    return matchesCourse && matchesBranch && matchesSearch;
   });
 
   // Selection handlers
@@ -496,6 +583,30 @@ export function StudentManagementTab() {
                 <Icon name="chevron-down" size={14} />
               </div>
             </div>
+
+            {/* Organisation Filter Dropdown */}
+            {branchesList.length > 0 && (
+              <div className="relative min-w-[170px] sm:w-52 shrink-0">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-indigo-600 dark:text-indigo-400">
+                  <Icon name="building-2" size={14} />
+                </div>
+                <select
+                  value={selectedBranch}
+                  onChange={(e) => setSelectedBranch(e.target.value)}
+                  className="w-full pl-9 pr-8 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none cursor-pointer shadow-xs truncate"
+                >
+                  <option value="All">All Organisations ({branchesList.length})</option>
+                  {branchesList.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.branch_name || b.name}
+                    </option>
+                  ))}
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-400">
+                  <Icon name="chevron-down" size={14} />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Action Buttons, Bulk Import/Export, Column Settings & View Mode Switcher */}
@@ -559,6 +670,26 @@ export function StudentManagementTab() {
               title="Refresh Student Directory"
             >
               <Icon name="refresh-cw" size={15} />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsWhatsAppReportsModalOpen(true)}
+              className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md shadow-emerald-500/25 transition flex items-center gap-1.5 shrink-0"
+              title="Open WhatsApp Monthly Attendance Reports and Automated Parent Dispatch console"
+            >
+              <Icon name="message-square" size={14} />
+              <span>WhatsApp Monthly Reports</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsGatewayModalOpen(true)}
+              className="px-3.5 py-2 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 text-emerald-800 dark:text-emerald-200 font-extrabold text-xs shadow-sm transition flex items-center gap-1.5 shrink-0"
+              title="Scan QR code from WhatsApp on your phone to link automated gateway"
+            >
+              <Icon name="smartphone" size={14} />
+              <span>Link WhatsApp QR</span>
             </button>
 
             <button
@@ -672,6 +803,7 @@ export function StudentManagementTab() {
                   </th>
                   {visibleColumns.studentNo && <th className="p-3.5 font-bold tracking-wider">STUDENT NO.</th>}
                   {visibleColumns.name && <th className="p-3.5 font-bold tracking-wider">NAME</th>}
+                  {visibleColumns.parentMobile && <th className="p-3.5 font-bold tracking-wider text-emerald-700 dark:text-emerald-400">PARENT WHATSAPP</th>}
                   {visibleColumns.mobile && <th className="p-3.5 font-bold tracking-wider">MOBILE</th>}
                   {visibleColumns.email && <th className="p-3.5 font-bold tracking-wider">EMAIL</th>}
                   {visibleColumns.gender && <th className="p-3.5 font-bold tracking-wider">GENDER</th>}
@@ -681,7 +813,7 @@ export function StudentManagementTab() {
                   {visibleColumns.zone && <th className="p-3.5 font-bold tracking-wider">ZONE</th>}
                   {visibleColumns.multiZone && <th className="p-3.5 font-bold tracking-wider">MULTI ZONE</th>}
                   {visibleColumns.district && <th className="p-3.5 font-bold tracking-wider">DISTRICT</th>}
-                  {visibleColumns.placeOfWork && <th className="p-3.5 font-bold tracking-wider">PLACE OF WORK</th>}
+                  {visibleColumns.placeOfWork && <th className="p-3.5 font-bold tracking-wider text-indigo-700 dark:text-indigo-400">ORGANISATION</th>}
                   {visibleColumns.sourceMandal && <th className="p-3.5 font-bold tracking-wider">SOURCE MANDAL</th>}
                   {visibleColumns.sourceVillage && <th className="p-3.5 font-bold tracking-wider">SOURCE VILLAGE</th>}
                   {visibleColumns.joined && <th className="p-3.5 font-bold tracking-wider">JOINED</th>}
@@ -711,7 +843,7 @@ export function StudentManagementTab() {
                   const sMedium = getStudentMedium(s);
                   const sRole = meta.batch || meta.category || 'Student';
                   const sDistrict = meta.district || meta.city || meta.permanent_address?.district || '—';
-                  const sPlaceOfWork = meta.campus || meta.place_of_work || meta.branch || '—';
+                  const sPlaceOfWork = meta.organisation_name || meta.branch_name || s.branch || meta.campus || meta.place_of_work || (branchesList.find(b => b.id === s.branch_id || b.id === meta.branch_id)?.branch_name) || (branchesList.length === 1 ? branchesList[0].branch_name : '—');
                   const isSelected = selectedIds.has(s.id);
                   const studentNo = s.member_code || s.code || `STU-${String(idx + 1).padStart(3, '0')}`;
 
@@ -789,6 +921,30 @@ export function StudentManagementTab() {
                               {s.phone || '—'}
                             </div>
                           </div>
+                        </td>
+                      )}
+
+                      {/* PARENT WHATSAPP */}
+                      {visibleColumns.parentMobile && (
+                        <td className="p-3.5 text-xs font-mono font-bold text-emerald-800 dark:text-emerald-300">
+                          {s.parent_phone || meta.parent_mobile || meta.parent_phone ? (
+                            <div className="flex items-center gap-1.5">
+                              <span className="inline-flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-lg border border-emerald-200 dark:border-emerald-800 text-[11px]">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                                {s.parent_phone || meta.parent_mobile || meta.parent_phone}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleSendSingleStudentWhatsAppReport(s.id)}
+                                title="Send Monthly Attendance to Parent WhatsApp"
+                                className="p-1 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/50 rounded-md transition"
+                              >
+                                <Icon name="message-square" size={12} />
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="text-slate-400 font-normal">—</span>
+                          )}
                         </td>
                       )}
 
@@ -1061,6 +1217,16 @@ export function StudentManagementTab() {
                         <div className="flex items-center justify-center gap-1.5">
                           <button
                             type="button"
+                            disabled={dispatchingWhatsAppId === s.id}
+                            onClick={() => handleQuickSendWhatsApp(s)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 transition disabled:opacity-50"
+                            title={`Send Attendance Report to Parent (${s.parent_phone || s.meta_data?.parent_mobile || 'Mapped Mobile'}) via WhatsApp`}
+                          >
+                            <Icon name="message-circle" size={13} className="text-emerald-600" />
+                            <span>{dispatchingWhatsAppId === s.id ? 'Sending...' : 'WhatsApp'}</span>
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => handleEditStudent(s)}
                             className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition"
                             title="Edit Student Details"
@@ -1195,6 +1361,15 @@ export function StudentManagementTab() {
                   <div className="flex items-center gap-1">
                     <button
                       type="button"
+                      disabled={dispatchingWhatsAppId === s.id}
+                      onClick={() => handleQuickSendWhatsApp(s)}
+                      className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 transition font-bold disabled:opacity-50"
+                      title={`Send Attendance Report to Parent (${s.parent_phone || s.meta_data?.parent_mobile || 'Mapped Mobile'}) via WhatsApp`}
+                    >
+                      <Icon name="message-circle" size={15} />
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => handleEditStudent(s)}
                       className="p-1.5 rounded-lg text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/50 transition font-bold"
                       title="Edit Student"
@@ -1231,6 +1406,16 @@ export function StudentManagementTab() {
           showToast(studentToEdit ? 'Student details updated successfully.' : 'Student enrolled successfully.');
           fetchStudents();
         }}
+      />
+
+      <WhatsAppAttendanceReportsModal
+        isOpen={isWhatsAppReportsModalOpen}
+        onClose={() => setIsWhatsAppReportsModalOpen(false)}
+      />
+
+      <WhatsAppGatewayConnectModal
+        isOpen={isGatewayModalOpen}
+        onClose={() => setIsGatewayModalOpen(false)}
       />
 
       {/* Full View Student Admission Application Dossier Modal */}
@@ -1359,8 +1544,16 @@ export function StudentManagementTab() {
                   <span className="text-slate-400 font-bold">3. Mother's Name:</span>
                   <div className="font-bold text-slate-900 uppercase">{selectedStudentForView.meta_data?.mother_name || 'N/A'}</div>
                 </div>
+                <div className="bg-emerald-50 dark:bg-emerald-950/40 p-2.5 rounded-xl border border-emerald-200 dark:border-emerald-800">
+                  <span className="text-emerald-700 dark:text-emerald-300 font-bold flex items-center gap-1 text-[11px]">
+                    <Icon name="message-square" size={12} /> Parent WhatsApp:
+                  </span>
+                  <div className="font-mono font-black text-emerald-900 dark:text-emerald-100 mt-0.5 text-xs">
+                    {selectedStudentForView.parent_phone || selectedStudentForView.meta_data?.parent_mobile || selectedStudentForView.meta_data?.parent_phone || 'N/A'}
+                  </div>
+                </div>
                 <div>
-                  <span className="text-slate-400 font-bold">6. Mobile / Telephone:</span>
+                  <span className="text-slate-400 font-bold">6. Student Mobile:</span>
                   <div className="font-mono font-bold text-blue-700">{selectedStudentForView.phone}</div>
                 </div>
                 <div>
@@ -1391,11 +1584,21 @@ export function StudentManagementTab() {
               )}
             </div>
 
-            <div className="p-4 border-t border-slate-200 bg-slate-50 flex justify-end">
+            <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={() => handleSendSingleStudentWhatsAppReport(selectedStudentForView.id)}
+                disabled={sendingSingleReport}
+                className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition"
+              >
+                <Icon name="message-square" size={13} />
+                <span>{sendingSingleReport ? 'Sending...' : 'Send WhatsApp Attendance to Parent'}</span>
+              </button>
+
               <button
                 type="button"
                 onClick={() => setSelectedStudentForView(null)}
-                className="px-5 py-2 rounded-xl bg-slate-900 text-white font-bold text-xs"
+                className="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs"
               >
                 Close
               </button>

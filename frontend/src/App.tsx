@@ -21,6 +21,7 @@ const IotPage = lazy(() => import('@/pages/owner/IotPage').then(m => ({ default:
 const MultiBranchPage = lazy(() => import('@/pages/owner/MultiBranchPage').then(m => ({ default: m.MultiBranchPage })));
 const SettingsPage = lazy(() => import('@/pages/owner/SettingsPage').then(m => ({ default: m.SettingsPage })));
 const ErpPage = lazy(() => import('@/pages/owner/ErpPage').then(m => ({ default: m.ErpPage })));
+const HoDashboard = lazy(() => import('@/pages/ho/HoDashboard').then(m => ({ default: m.HoDashboard })));
 
 // Trainer pages
 const TrainerDashboard = lazy(() => import('@/pages/trainer/TrainerDashboard').then(m => ({ default: m.TrainerDashboard })));
@@ -65,7 +66,14 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function RoleRedirect({ allowed }: { allowed: Role[] }) {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-8 h-8 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
+      </div>
+    );
+  }
   if (!user || !allowed.includes(user.role)) return <Navigate to={user ? roleHomePath[user.role] : '/login'} replace />;
   return <AppLayout />;
 }
@@ -110,6 +118,15 @@ function AppRoutes() {
           <Route path="multi-branch" element={<MultiBranchPage />} />
           <Route path="erp" element={<Navigate to="/owner/settings?tab=erp" replace />} />
           <Route path="settings" element={<SettingsPage />} />
+        </Route>
+
+        {/* HEAD OFFICE (HO) ROUTES */}
+        <Route path="/ho" element={<ProtectedRoute><RoleRedirect allowed={['ho']} /></ProtectedRoute>}>
+          <Route index element={<HoDashboard />} />
+          <Route path="hrms" element={<HrmsPage />} />
+          <Route path="organisations" element={<MultiBranchPage />} />
+          <Route path="attendance" element={<Navigate to="/ho/hrms?tab=attendance" replace />} />
+          <Route path="attendance-approve" element={<Navigate to="/ho/hrms?tab=corrections" replace />} />
         </Route>
 
         {/* ERP ROUTE */}

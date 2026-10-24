@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Body
 from src.api.v1.auth import router as auth_router
-from src.api.v1.customers import router as customers_router, members_router, crm_customers_router
+from src.api.v1.customers import router as customers_router, members_router, crm_customers_router, students_router
 from src.api.v1.courses import router as courses_router
 from src.api.v1.biometrics import router as biometrics_router
 from src.api.v1.super_admin import router as super_admin_router
@@ -23,10 +23,13 @@ from src.api.v1.whatsapp import router as whatsapp_router
 from src.api.v1.companies import router as companies_router
 from src.api.v1.reviews import router as reviews_router
 from src.api.v1.procurement import router as procurement_router
+from src.api.v1.ho import router as ho_router
 
 api_router = APIRouter()
+api_router.include_router(ho_router)
 api_router.include_router(auth_router)
 api_router.include_router(customers_router)
+api_router.include_router(students_router)
 api_router.include_router(crm_customers_router)
 api_router.include_router(members_router)
 api_router.include_router(courses_router)

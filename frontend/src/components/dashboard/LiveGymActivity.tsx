@@ -40,7 +40,6 @@ function resolveRole(roleUpper: string, rawCustId: string): 'Employee' | 'Studen
     roleUpper === 'STAFF' ||
     roleUpper === 'COACH' ||
     roleUpper === 'ADMIN' ||
-    roleUpper === 'GYM_OWNER' ||
     roleUpper === 'OWNER' ||
     roleUpper === 'MANAGER'
   ) {

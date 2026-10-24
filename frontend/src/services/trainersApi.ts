@@ -31,7 +31,7 @@ export const trainersApi = {
       full_name: data.name || data.full_name,
       email: data.email,
       phone: data.phone,
-      role: data.role || 'TRAINER',
+      role: (data.role && data.role !== 'TRAINER') ? data.role : 'EMPLOYEE',
       specialization: data.specialty || data.goal || data.specialization || undefined,
       base_monthly_salary: data.base_monthly_salary !== undefined ? Number(data.base_monthly_salary) : (data.salary ? Number(data.salary) : 0),
       pt_session_rate: data.pt_session_rate !== undefined ? Number(data.pt_session_rate) : 0,

@@ -1,5 +1,6 @@
 import uuid
 from typing import List, Dict, Any, Optional
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from src.models.settings import GymBranch, GymSetting, PaymentMethod
 from src.models.customer import Customer
@@ -20,13 +21,15 @@ class SettingsService:
             if role in ["SUPER_ADMIN", "SUPERADMIN", "ADMIN"]:
                 if owner_id:
                     query = query.filter(GymBranch.owner_id == owner_id)
-            elif role in ["GYM_OWNER", "OWNER"]:
+            elif role in ["HEAD_OFFICE", "HO"]:
+                ho_target = current_user.ho_id or current_user.id
+                query = query.filter(or_(GymBranch.ho_id == ho_target, GymBranch.owner_id == current_user.id))
+            elif role in ["OWNER"]:
                 effective_owner_id = current_user.id
-                owner_branches_count = db.query(GymBranch).filter(GymBranch.owner_id == current_user.id).count()
-                if owner_branches_count > 0:
-                    query = query.filter(GymBranch.owner_id == current_user.id)
-                elif current_user.branch_id:
-                    query = query.filter(GymBranch.id == current_user.branch_id)
+                branch_conditions = [GymBranch.owner_id == current_user.id]
+                if current_user.branch_id:
+                    branch_conditions.append(GymBranch.id == current_user.branch_id)
+                query = query.filter(or_(*branch_conditions))
             elif role in ["TRAINER", "STAFF", "CUSTOMER", "MEMBER"]:
                 if current_user.branch_id:
                     query = query.filter(GymBranch.id == current_user.branch_id)
@@ -46,7 +49,7 @@ class SettingsService:
                     parts = loc.split("·")
                     b_name = parts[0].strip()
                     c_name = parts[1].strip() if len(parts) > 1 else ""
-                    b_id = f"branch_{uuid.uuid4().hex[:6]}"
+                    b_id = f"vahd_{uuid.uuid4().hex[:10]}"
                     new_b = GymBranch(id=b_id, gym_name=b_name, branch_name=b_name, city=c_name, is_active=True)
                     db.add(new_b)
             db.commit()
@@ -67,6 +70,7 @@ class SettingsService:
                 "city": b.city or "",
                 "address": b.address or (f"{b.branch_name}, {b.city}" if b.city else b.branch_name),
                 "owner_id": b.owner_id,
+                "ho_id": b.ho_id or "",
                 "active_members": member_count,
                 "devices_count": device_count,
                 "status": "ONLINE" if device_count > 0 else "ACTIVE"
@@ -78,6 +82,7 @@ class SettingsService:
         from src.config.settings import settings
         branch_id = f"branch_{uuid.uuid4().hex[:6]}"
         owner_id = (current_user.id if current_user else None) or data.get("owner_id")
+        ho_id = (current_user.ho_id if current_user and current_user.ho_id else None) or (current_user.id if current_user and getattr(current_user, "role", "") in ["HEAD_OFFICE", "HO"] else None) or data.get("ho_id")
         b = GymBranch(
             id=branch_id,
             gym_name=data.get("gym_name") or settings.GYM_NAME,
@@ -85,6 +90,7 @@ class SettingsService:
             city=data.get("city") or "",
             address=data.get("address"),
             owner_id=owner_id,
+            ho_id=ho_id,
             is_active=True
         )
         db.add(b)

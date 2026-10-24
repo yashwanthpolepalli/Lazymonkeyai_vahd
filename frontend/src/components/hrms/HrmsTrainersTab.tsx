@@ -8,6 +8,7 @@ import type { Member } from '@/types';
 import type { Trainer } from '@/types/trainer';
 import { cn } from '@/utils/cn';
 import { EmployeeEnrollmentModal } from './EmployeeEnrollmentModal';
+import { EmployeeAttendanceReportsModal } from './EmployeeAttendanceReportsModal';
 import { TableColumnSettingsPopover, type ColumnGroup } from './TableColumnSettingsPopover';
 import { HrmsImportExportControls } from './HrmsImportExportControls';
 
@@ -31,7 +32,7 @@ const EMPLOYEE_COLUMN_GROUPS: ColumnGroup[] = [
       { key: 'zone', label: 'Zone' },
       { key: 'multiZone', label: 'Multi Zone' },
       { key: 'district', label: 'District' },
-      { key: 'placeOfWork', label: 'Place of Work' },
+      { key: 'placeOfWork', label: 'Organisation' },
       { key: 'sourceMandal', label: 'Source Mandal' },
       { key: 'sourceVillage', label: 'Source Village' },
       { key: 'joined', label: 'Joined' },
@@ -150,8 +151,11 @@ interface TrainerRowData {
 export function HrmsTrainersTab() {
   const [members, setMembers] = useState<Member[]>([]);
   const [trainers, setTrainers] = useState<Array<Partial<Trainer> & { email?: string; full_name?: string; specialty?: string; base_monthly_salary?: number; pt_session_rate?: number; is_active?: boolean; created_at?: string; assigned_customers_count?: number }>>([]);
+  const [branchesList, setBranchesList] = useState<Array<{ id: string; branch_name: string; name?: string }>>([]);
+  const [selectedBranch, setSelectedBranch] = useState<string>('All');
   const [loading, setLoading] = useState(true);
   const [enrollOpen, setEnrollOpen] = useState(false);
+  const [emailReportsOpen, setEmailReportsOpen] = useState(false);
   const [editingTrainer, setEditingTrainer] = useState<any>(null);
   const [viewMode, setViewMode] = useState<'table' | 'grid'>(() => {
     return (localStorage.getItem('hrms_trainers_view_mode') as 'table' | 'grid') || 'table';
@@ -355,10 +359,12 @@ export function HrmsTrainersTab() {
     Promise.all([
       api.customers.list().catch(() => []),
       trainersApi.list().catch(() => []),
+      apiClient.get<any[]>('/gym/branches').catch(() => []),
     ])
-      .then(([mList, tList]) => {
+      .then(([mList, tList, bList]) => {
         setMembers(mList || []);
         setTrainers(Array.isArray(tList) ? tList : []);
+        if (Array.isArray(bList)) setBranchesList(bList);
       })
       .finally(() => {
         setLoading(false);
@@ -407,20 +413,21 @@ export function HrmsTrainersTab() {
   ];
 
   const allDisplayTrainers: TrainerRowData[] = trainers.map((t, idx) => {
-    const name = t.name || t.full_name || `Employee ${idx + 1}`;
-    const email = t.email || `${name.toLowerCase().replace(/\s+/g, '')}@vahd.ai`;
-    const phone = (t as any).phone || (t as any).contact_no || '+91 98765 43210';
-    const specialization = t.specialization || t.specialty || (t as any).job_designation || 'Fitness & Training';
-    const empNo = (t as any).employee_code || (t as any).emp_no || (t as any).code || `EMP-${String(idx + 1).padStart(3, '0')}`;
-    const designation = (t as any).job_designation || (t as any).designation || specialization || 'Senior Instructor';
-    const role = (t as any).role || (t as any).department || (idx % 3 === 0 ? 'Trainer' : idx % 3 === 1 ? 'Head Coach' : 'Floor Staff');
-    const district = (t as any).district || (t as any).location || (t as any).city || 'Hyderabad';
-    const placeOfWork = (t as any).place_of_work || (t as any).work_location || (t as any).branch || 'Main Branch';
+    const name = t.name || t.full_name || '';
+    const email = t.email || (t as any).personal_email || '';
+    const phone = (t as any).phone || (t as any).contact_no || '';
+    const specialization = t.specialization || t.specialty || (t as any).job_designation || '';
+    const empNo = (t as any).employee_code || (t as any).emp_no || (t as any).code || '';
+    const designation = (t as any).job_designation || (t as any).designation || specialization || '';
+    const role = (t as any).role || (t as any).department || '';
+    const matchedBranch = branchesList.find(b => b.id === (t as any).branch_id);
+    const district = (t as any).district || (t as any).location || (t as any).city || (matchedBranch as any)?.city || '';
+    const placeOfWork = (t as any).gym_branch || (t as any).primary_gym_location || (t as any).branch_name || (t as any).organisation || (t as any).organisation_name || (t as any).place_of_work || (t as any).work_location || (t as any).branch || matchedBranch?.branch_name || matchedBranch?.name || (branchesList.length === 1 ? branchesList[0].branch_name : '—');
 
     const assignedMembers = members.filter(
       (m) =>
-        (m.trainer || '').toLowerCase().includes(name.toLowerCase()) ||
-        m.trainer === name ||
+        (name && (m.trainer || '').toLowerCase().includes(name.toLowerCase())) ||
+        (name && m.trainer === name) ||
         (m as any).trainer_id === t.id
     );
 
@@ -430,21 +437,24 @@ export function HrmsTrainersTab() {
 
     const theme = colorPalettes[idx % colorPalettes.length];
     const initials = name
-      .split(' ')
-      .map((n) => n[0])
-      .join('')
-      .substring(0, 2)
-      .toUpperCase() || 'EM';
+      ? name
+          .split(' ')
+          .filter(Boolean)
+          .map((n) => n[0])
+          .join('')
+          .substring(0, 2)
+          .toUpperCase()
+      : 'EM';
 
-    const rawDate = t.created_at;
+    const rawDate = t.created_at || (t as any).join_date || (t as any).joining_date;
     const formattedJoinDate = rawDate
       ? new Date(rawDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-      : 'N/A';
+      : '';
 
     const rawRating = (t as any).rating ?? (t as any).average_rating ?? 0.0;
     const ratingNum = typeof rawRating === 'number' ? rawRating : parseFloat(rawRating) || 0.0;
 
-    const perfPct = clientsCount > 0 ? Math.min(100, Math.max(40, clientsCount * 15)) : (t.is_active !== false ? 70 : 0);
+    const perfPct = clientsCount > 0 ? Math.min(100, Math.max(40, clientsCount * 15)) : 0;
 
     // Today attendance status conditions:
     // 1. Present: marked IN and OUT matching working hours
@@ -478,7 +488,7 @@ export function HrmsTrainersTab() {
       punchDetails = inTime ? `In: ${inTime}` : 'Marked Present';
     } else {
       punchStatus = 'Absent';
-      punchDetails = 'Not marked IN and OUT';
+      punchDetails = '';
     }
 
     const todayPunch = {
@@ -486,26 +496,26 @@ export function HrmsTrainersTab() {
       time: punchDetails,
     };
 
-    const gender = (t as any).gender || (idx % 2 === 0 ? 'Male' : 'Female');
-    const dob = (t as any).dob || `199${(idx % 8) + 1}-0${(idx % 9) + 1}-15`;
-    const zone = (t as any).zone || `Zone ${(idx % 3) + 1}`;
-    const multiZone = (t as any).multi_zone || `MZ-${String.fromCharCode(65 + (idx % 4))}`;
-    const sourceMandal = (t as any).source_mandal || `${district} Central`;
-    const sourceVillage = (t as any).source_village || `${district} Town`;
-    const retirementDate = (t as any).retirement_date || `205${(idx % 5) + 0}-06-30`;
-    const presentStationDate = (t as any).present_station_date || `2023-0${(idx % 8) + 1}-10`;
-    const lengthOfService = (t as any).length_of_service || `${(idx % 7) + 2} Years`;
-    const aadhar = (t as any).aadhar || (t as any).aadhar_no || `XXXX-XXXX-38${String(10 + idx).slice(-2)}`;
-    const pan = (t as any).pan || `ABCDE${4000 + idx}F`;
-    const caste = (t as any).caste || (idx % 3 === 0 ? 'OC' : idx % 3 === 1 ? 'BC-A' : 'BC-B');
-    const subCaste = (t as any).sub_caste || 'General';
-    const bloodGroup = (t as any).blood_group || (idx % 4 === 0 ? 'O+' : idx % 4 === 1 ? 'A+' : idx % 4 === 2 ? 'B+' : 'AB+');
-    const fatherName = (t as any).father_name || `K. ${name.split(' ')[0]} Father`;
-    const motherName = (t as any).mother_name || `L. ${name.split(' ')[0]} Mother`;
-    const maritalStatus = (t as any).marital_status || (idx % 2 === 0 ? 'Married' : 'Single');
-    const nativeDistrict = (t as any).native_district || district;
-    const permanentAddress = (t as any).permanent_address || (t as any).address || `H.No 4-${idx + 1}, Main Road, ${district}`;
-    const temporaryAddress = (t as any).temporary_address || (t as any).present_address || `Station Quarters, ${placeOfWork}`;
+    const gender = (t as any).gender || '';
+    const dob = (t as any).dob || (t as any).date_of_birth || '';
+    const zone = (t as any).zone || '';
+    const multiZone = (t as any).multi_zone || (t as any).multiZone || '';
+    const sourceMandal = (t as any).source_mandal || (t as any).sourceMandal || '';
+    const sourceVillage = (t as any).source_village || (t as any).sourceVillage || '';
+    const retirementDate = (t as any).retirement_date || (t as any).retirementDate || '';
+    const presentStationDate = (t as any).present_station_date || (t as any).presentStationDate || '';
+    const lengthOfService = (t as any).length_of_service || (t as any).lengthOfService || '';
+    const aadhar = (t as any).aadhar || (t as any).aadhar_no || (t as any).aadharNo || '';
+    const pan = (t as any).pan || (t as any).pan_no || (t as any).panNo || '';
+    const caste = (t as any).caste || '';
+    const subCaste = (t as any).sub_caste || (t as any).subCaste || '';
+    const bloodGroup = (t as any).blood_group || (t as any).bloodGroup || '';
+    const fatherName = (t as any).father_name || (t as any).fatherName || '';
+    const motherName = (t as any).mother_name || (t as any).motherName || '';
+    const maritalStatus = (t as any).marital_status || (t as any).maritalStatus || '';
+    const nativeDistrict = (t as any).native_district || (t as any).nativeDistrict || district || '';
+    const permanentAddress = (t as any).permanent_address || (t as any).permanentAddress || (t as any).address || '';
+    const temporaryAddress = (t as any).temporary_address || (t as any).present_address || (t as any).temporaryAddress || '';
 
     return {
       id: t.id || `tr_${idx}`,
@@ -561,6 +571,13 @@ export function HrmsTrainersTab() {
   });
 
   const displayTrainers = allDisplayTrainers.filter((t) => {
+    const matchesBranch =
+      selectedBranch === 'All' ||
+      (t as any).branch_id === selectedBranch ||
+      (t as any).gym_branch === selectedBranch ||
+      t.placeOfWork === selectedBranch;
+    if (!matchesBranch) return false;
+
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
     return (
@@ -671,6 +688,15 @@ export function HrmsTrainersTab() {
             }}
           />
 
+          <button
+            onClick={() => setEmailReportsOpen(true)}
+            className="px-3.5 py-2 rounded-xl text-xs font-bold border border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+            title="Track and dispatch monthly employee attendance report emails with Excel attachments"
+          >
+            <Icon name="mail" size={15} className="text-indigo-600" />
+            <span>Monthly Email Reports</span>
+          </button>
+
           {selectedTrainerIds.length > 0 && (
             <button
               onClick={handleBulkDeleteTrainers}
@@ -757,18 +783,47 @@ export function HrmsTrainersTab() {
 
       {/* 3. Search Bar, Column Settings and View Switcher */}
       <div className="bg-white p-3 rounded-2xl border border-navy-100 shadow-sm flex flex-col sm:flex-row gap-3 items-center justify-between">
-        <div className="relative w-full sm:w-80">
-          <Icon name="search" size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-navy-400" />
-          <input
-            type="text"
-            placeholder="Search employees by name, role, email..."
-            value={searchQuery}
-            onChange={(e) => {
-              setSearchQuery(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="w-full pl-10 pr-4 py-2 rounded-xl bg-navy-50/60 border border-navy-100 text-xs text-navy-900 focus:outline-none focus:border-purple-500 transition"
-          />
+        <div className="flex items-center gap-2.5 w-full sm:w-auto flex-1">
+          <div className="relative w-full sm:w-80">
+            <Icon name="search" size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-navy-400" />
+            <input
+              type="text"
+              placeholder="Search employees by name, role, email..."
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="w-full pl-10 pr-4 py-2 rounded-xl bg-navy-50/60 border border-navy-100 text-xs text-navy-900 focus:outline-none focus:border-purple-500 transition"
+            />
+          </div>
+
+          {/* Organisation Filter Dropdown */}
+          {branchesList.length > 0 && (
+            <div className="relative min-w-[170px] sm:w-52 shrink-0">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-indigo-600">
+                <Icon name="building-2" size={14} />
+              </div>
+              <select
+                value={selectedBranch}
+                onChange={(e) => {
+                  setSelectedBranch(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="w-full pl-9 pr-8 py-2 bg-navy-50/60 border border-navy-100 rounded-xl text-xs font-bold text-navy-900 focus:outline-none focus:border-purple-500 appearance-none cursor-pointer shadow-xs truncate"
+              >
+                <option value="All">All Organisations ({branchesList.length})</option>
+                {branchesList.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.branch_name || b.name}
+                  </option>
+                ))}
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-navy-400">
+                <Icon name="chevron-down" size={14} />
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap sm:flex-nowrap">
@@ -935,7 +990,7 @@ export function HrmsTrainersTab() {
                     {visibleColumns.zone && <th className="py-3.5 px-4 font-bold tracking-wider">ZONE</th>}
                     {visibleColumns.multiZone && <th className="py-3.5 px-4 font-bold tracking-wider">MULTI ZONE</th>}
                     {visibleColumns.district && <th className="py-3.5 px-4 font-bold tracking-wider">DISTRICT</th>}
-                    {visibleColumns.placeOfWork && <th className="py-3.5 px-4 font-bold tracking-wider">PLACE OF WORK</th>}
+                    {visibleColumns.placeOfWork && <th className="py-3.5 px-4 font-bold tracking-wider text-indigo-700 dark:text-indigo-400">ORGANISATION</th>}
                     {visibleColumns.sourceMandal && <th className="py-3.5 px-4 font-bold tracking-wider">SOURCE MANDAL</th>}
                     {visibleColumns.sourceVillage && <th className="py-3.5 px-4 font-bold tracking-wider">SOURCE VILLAGE</th>}
                     {visibleColumns.joined && <th className="py-3.5 px-4 font-bold tracking-wider">JOINED</th>}
@@ -976,7 +1031,7 @@ export function HrmsTrainersTab() {
                         {visibleColumns.empNo && (
                           <td className="py-3.5 px-4 whitespace-nowrap">
                             <span className="font-mono font-bold text-xs text-purple-700 bg-purple-50/80 px-2.5 py-1 rounded-lg border border-purple-200/60 inline-block">
-                              {t.empNo}
+                              {t.empNo || '—'}
                             </span>
                           </td>
                         )}
@@ -989,8 +1044,8 @@ export function HrmsTrainersTab() {
                                 {t.initials}
                               </div>
                               <div className="min-w-0">
-                                <div className="font-bold text-navy-900 text-xs truncate">{t.name}</div>
-                                <div className="text-[11px] text-navy-400 font-normal truncate">{t.email}</div>
+                                <div className="font-bold text-navy-900 text-xs truncate">{t.name || '—'}</div>
+                                {t.email && <div className="text-[11px] text-navy-400 font-normal truncate">{t.email}</div>}
                                 <div className="text-[10px] text-navy-500 font-semibold flex items-center gap-1.5 mt-0.5">
                                   <span className="text-emerald-700 font-bold">₹{t.base_monthly_salary.toLocaleString('en-IN')}/mo</span>
                                   {t.upi_id && <span className="text-navy-400">· UPI: {t.upi_id}</span>}
@@ -1004,28 +1059,28 @@ export function HrmsTrainersTab() {
                         {/* MOBILE */}
                         {visibleColumns.mobile && (
                           <td className="py-3.5 px-4 text-xs font-mono text-navy-700 whitespace-nowrap">
-                            {t.phone || 'N/A'}
+                            {t.phone || '—'}
                           </td>
                         )}
 
                         {/* EMAIL */}
                         {visibleColumns.email && (
                           <td className="py-3.5 px-4 text-xs text-navy-600 whitespace-nowrap">
-                            {t.email}
+                            {t.email || '—'}
                           </td>
                         )}
 
                         {/* GENDER */}
                         {visibleColumns.gender && (
                           <td className="py-3.5 px-4 text-xs font-semibold text-navy-700 whitespace-nowrap">
-                            {t.gender || 'N/A'}
+                            {t.gender || '—'}
                           </td>
                         )}
 
                         {/* DOB */}
                         {visibleColumns.dob && (
                           <td className="py-3.5 px-4 text-xs font-mono text-navy-600 whitespace-nowrap">
-                            {t.dob || 'N/A'}
+                            {t.dob || '—'}
                           </td>
                         )}
 
@@ -1033,7 +1088,7 @@ export function HrmsTrainersTab() {
                         {visibleColumns.designation && (
                           <td className="py-3.5 px-4">
                             <span className="font-semibold text-navy-900 text-xs whitespace-nowrap">
-                              {t.designation}
+                              {t.designation || '—'}
                             </span>
                           </td>
                         )}
@@ -1041,85 +1096,97 @@ export function HrmsTrainersTab() {
                         {/* ROLE */}
                         {visibleColumns.role && (
                           <td className="py-3.5 px-4 whitespace-nowrap">
-                            <span className={cn('px-2.5 py-1 rounded-xl text-[11px] font-bold inline-block', t.specialtyBg, t.specialtyText)}>
-                              {t.role}
-                            </span>
+                            {t.role ? (
+                              <span className={cn('px-2.5 py-1 rounded-xl text-[11px] font-bold inline-block', t.specialtyBg, t.specialtyText)}>
+                                {t.role}
+                              </span>
+                            ) : (
+                              <span className="text-navy-400">—</span>
+                            )}
                           </td>
                         )}
 
                         {/* ZONE */}
                         {visibleColumns.zone && (
                           <td className="py-3.5 px-4 text-xs text-navy-700 whitespace-nowrap">
-                            {t.zone || 'Zone 1'}
+                            {t.zone || '—'}
                           </td>
                         )}
 
                         {/* MULTI ZONE */}
                         {visibleColumns.multiZone && (
                           <td className="py-3.5 px-4 text-xs text-navy-700 whitespace-nowrap">
-                            {t.multiZone || 'MZ-A'}
+                            {t.multiZone || '—'}
                           </td>
                         )}
 
                         {/* DISTRICT */}
                         {visibleColumns.district && (
                           <td className="py-3.5 px-4 text-xs font-medium text-navy-700 whitespace-nowrap">
-                            <div className="flex items-center gap-1.5">
-                              <Icon name="map-pin" size={13} className="text-slate-400 shrink-0" />
-                              <span>{t.district}</span>
-                            </div>
+                            {t.district ? (
+                              <div className="flex items-center gap-1.5">
+                                <Icon name="map-pin" size={13} className="text-slate-400 shrink-0" />
+                                <span>{t.district}</span>
+                              </div>
+                            ) : (
+                              '—'
+                            )}
                           </td>
                         )}
 
                         {/* PLACE OF WORK */}
                         {visibleColumns.placeOfWork && (
                           <td className="py-3.5 px-4 text-xs font-semibold text-navy-900 whitespace-nowrap">
-                            <div className="flex items-center gap-1.5">
-                              <Icon name="building-2" size={13} className="text-brand-500 shrink-0" />
-                              <span>{t.placeOfWork}</span>
-                            </div>
+                            {t.placeOfWork && t.placeOfWork !== '—' ? (
+                              <div className="flex items-center gap-1.5">
+                                <Icon name="building-2" size={13} className="text-brand-500 shrink-0" />
+                                <span>{t.placeOfWork}</span>
+                              </div>
+                            ) : (
+                              '—'
+                            )}
                           </td>
                         )}
 
                         {/* SOURCE MANDAL */}
                         {visibleColumns.sourceMandal && (
                           <td className="py-3.5 px-4 text-xs text-navy-700 whitespace-nowrap">
-                            {t.sourceMandal}
+                            {t.sourceMandal || '—'}
                           </td>
                         )}
 
                         {/* SOURCE VILLAGE */}
                         {visibleColumns.sourceVillage && (
                           <td className="py-3.5 px-4 text-xs text-navy-700 whitespace-nowrap">
-                            {t.sourceVillage}
+                            {t.sourceVillage || '—'}
                           </td>
                         )}
 
                         {/* JOINED */}
                         {visibleColumns.joined && (
                           <td className="py-3.5 px-4 text-xs text-navy-600 whitespace-nowrap">
-                            {t.joined}
+                            {t.joined || '—'}
                           </td>
                         )}
 
                         {/* RETIREMENT DATE */}
                         {visibleColumns.retirementDate && (
                           <td className="py-3.5 px-4 text-xs font-mono text-navy-600 whitespace-nowrap">
-                            {t.retirementDate}
+                            {t.retirementDate || '—'}
                           </td>
                         )}
 
                         {/* PRESENT STATION DATE */}
                         {visibleColumns.presentStationDate && (
                           <td className="py-3.5 px-4 text-xs font-mono text-navy-600 whitespace-nowrap">
-                            {t.presentStationDate}
+                            {t.presentStationDate || '—'}
                           </td>
                         )}
 
                         {/* LENGTH OF SERVICE */}
                         {visibleColumns.lengthOfService && (
                           <td className="py-3.5 px-4 text-xs font-semibold text-navy-700 whitespace-nowrap">
-                            {t.lengthOfService}
+                            {t.lengthOfService || '—'}
                           </td>
                         )}
 
@@ -1182,77 +1249,77 @@ export function HrmsTrainersTab() {
                         {/* AADHAR */}
                         {visibleColumns.aadhar && (
                           <td className="py-3.5 px-4 text-xs font-mono text-navy-600 whitespace-nowrap">
-                            {t.aadhar}
+                            {t.aadhar || '—'}
                           </td>
                         )}
 
                         {/* PAN */}
                         {visibleColumns.pan && (
                           <td className="py-3.5 px-4 text-xs font-mono text-navy-600 whitespace-nowrap">
-                            {t.pan}
+                            {t.pan || '—'}
                           </td>
                         )}
 
                         {/* CASTE */}
                         {visibleColumns.caste && (
                           <td className="py-3.5 px-4 text-xs text-navy-700 whitespace-nowrap">
-                            {t.caste}
+                            {t.caste || '—'}
                           </td>
                         )}
 
                         {/* SUB CASTE */}
                         {visibleColumns.subCaste && (
                           <td className="py-3.5 px-4 text-xs text-navy-700 whitespace-nowrap">
-                            {t.subCaste}
+                            {t.subCaste || '—'}
                           </td>
                         )}
 
                         {/* BLOOD GROUP */}
                         {visibleColumns.bloodGroup && (
                           <td className="py-3.5 px-4 text-xs font-bold text-rose-700 whitespace-nowrap">
-                            {t.bloodGroup}
+                            {t.bloodGroup || '—'}
                           </td>
                         )}
 
                         {/* FATHER'S NAME */}
                         {visibleColumns.fatherName && (
                           <td className="py-3.5 px-4 text-xs text-navy-700 whitespace-nowrap">
-                            {t.fatherName}
+                            {t.fatherName || '—'}
                           </td>
                         )}
 
                         {/* MOTHER'S NAME */}
                         {visibleColumns.motherName && (
                           <td className="py-3.5 px-4 text-xs text-navy-700 whitespace-nowrap">
-                            {t.motherName}
+                            {t.motherName || '—'}
                           </td>
                         )}
 
                         {/* MARITAL STATUS */}
                         {visibleColumns.maritalStatus && (
                           <td className="py-3.5 px-4 text-xs text-navy-700 whitespace-nowrap">
-                            {t.maritalStatus}
+                            {t.maritalStatus || '—'}
                           </td>
                         )}
 
                         {/* NATIVE DISTRICT */}
                         {visibleColumns.nativeDistrict && (
                           <td className="py-3.5 px-4 text-xs text-navy-700 whitespace-nowrap">
-                            {t.nativeDistrict}
+                            {t.nativeDistrict || '—'}
                           </td>
                         )}
 
                         {/* PERMANENT ADDRESS */}
                         {visibleColumns.permanentAddress && (
                           <td className="py-3.5 px-4 text-xs text-navy-600 max-w-xs truncate">
-                            {t.permanentAddress}
+                            {t.permanentAddress || '—'}
                           </td>
                         )}
 
                         {/* TEMPORARY ADDRESS */}
                         {visibleColumns.temporaryAddress && (
                           <td className="py-3.5 px-4 text-xs text-navy-600 max-w-xs truncate">
-                            {t.temporaryAddress}
+                            {t.temporaryAddress || '—'}
                           </td>
                         )}
 
@@ -1342,6 +1409,13 @@ export function HrmsTrainersTab() {
           setEditingTrainer(null);
           fetchTrainersData();
         }}
+      />
+
+      {/* 5b. Employee Monthly Email Attendance Reports Modal */}
+      <EmployeeAttendanceReportsModal
+        isOpen={emailReportsOpen}
+        onClose={() => setEmailReportsOpen(false)}
+        branchId={selectedBranch !== 'All' ? selectedBranch : undefined}
       />
 
       {/* 6. Renewal Modal */}

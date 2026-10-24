@@ -3,12 +3,14 @@ import uuid
 import time
 import httpx
 import logging
+import urllib.parse
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 
-from src.models.crm import WhatsAppSessionModel, WhatsAppMessageModel, CrmLead
+from src.models.crm import WhatsAppSessionModel, WhatsAppMessageModel
+from src.models.customer import Customer
 from src.utils.timezone import now_ist_naive
 
 logger = logging.getLogger(__name__)
@@ -18,6 +20,13 @@ GATEWAY_URL = _raw_gateway_url.replace("localhost", "127.0.0.1")
 
 def _clean_digits(val: str) -> str:
     return "".join(filter(str.isdigit, str(val)))
+
+def format_whatsapp_phone(phone: str) -> str:
+    """Ensures phone number has valid WhatsApp country code (defaults to 91 for 10-digit Indian numbers)."""
+    digits = _clean_digits(phone)
+    if len(digits) == 10:
+        return f"91{digits}"
+    return digits
 
 
 class WhatsAppService:
@@ -79,9 +88,7 @@ class WhatsAppService:
 
     @staticmethod
     def start_session(db: Session, session_id: str) -> Dict[str, Any]:
-        clean_id = _clean_digits(session_id)
-        if not clean_id:
-            clean_id = "919908297963"
+        clean_id = format_whatsapp_phone(session_id) if session_id else "919908297963"
 
         existing = db.query(WhatsAppSessionModel).filter(WhatsAppSessionModel.id == clean_id).first()
         if not existing:
@@ -146,21 +153,6 @@ class WhatsAppService:
         )
         db.add(inbound_msg)
 
-        # Update or create lead
-        lead = db.query(CrmLead).filter(CrmLead.phone.contains(from_phone[-10:])).first()
-        if not lead:
-            lead = CrmLead(
-                name=profile_name,
-                phone=f"+{from_phone}",
-                source="WhatsApp",
-                status="lead",
-                stage="Prospecting",
-                created_at=now_naive
-            )
-            db.add(lead)
-        else:
-            lead.last_contacted_at = now_naive
-
         db.commit()
         return {"status": "ok", "message_id": inbound_msg.id}
 
@@ -203,21 +195,22 @@ class WhatsAppService:
         except Exception:
             pass
 
-        # Return active CRM leads as chat contacts
-        leads = db.query(CrmLead).all()
+        # Return registered customers / students as contacts
+        customers = db.query(Customer).filter(Customer.phone.isnot(None)).limit(50).all()
         chats = []
-        for l in leads:
-            chats.append({
-                "id": _clean_digits(l.phone),
-                "name": l.name,
-                "phone": l.phone,
-                "unreadCount": 0,
-                "lastMessage": {
-                    "body": f"Inquiry about {l.interest or 'Gym Membership'}",
-                    "timestamp": int(time.time()),
-                    "fromMe": False
-                }
-            })
+        for c in customers:
+            if c.phone:
+                chats.append({
+                    "id": _clean_digits(c.phone),
+                    "name": c.full_name,
+                    "phone": c.phone,
+                    "unreadCount": 0,
+                    "lastMessage": {
+                        "body": f"Chat with {c.full_name}",
+                        "timestamp": int(time.time()),
+                        "fromMe": False
+                    }
+                })
         return {"success": True, "chats": chats}
 
     @staticmethod
@@ -259,6 +252,7 @@ class WhatsAppService:
     @staticmethod
     def send_chat_message(db: Session, session_id: str, phone: str, message: str) -> Dict[str, Any]:
         clean_phone = _clean_digits(phone)
+        formatted_phone = format_whatsapp_phone(phone)
         clean_id = _clean_digits(session_id)
 
         now_naive = now_ist_naive()
@@ -266,44 +260,41 @@ class WhatsAppService:
         # Save to DB
         new_msg = WhatsAppMessageModel(
             session_id=clean_id,
-            phone=clean_phone,
+            phone=formatted_phone,
             body=message,
             from_me=True,
             timestamp=int(time.time()),
             created_at=now_naive
         )
         db.add(new_msg)
-
-        # Ensure lead exists
-        lead = db.query(CrmLead).filter(CrmLead.phone.contains(clean_phone[-10:])).first()
-        if not lead:
-            lead = CrmLead(
-                name=f"WhatsApp Contact (+{clean_phone})",
-                phone=f"+{clean_phone}",
-                source="WhatsApp",
-                status="lead",
-                stage="Prospecting",
-                created_at=now_naive
-            )
-            db.add(lead)
-        else:
-            lead.last_contacted_at = now_naive
-
         db.commit()
         db.refresh(new_msg)
 
-        # Try proxying to gateway
+        # Generate direct WhatsApp Web click-to-send URL
+        whatsapp_url = f"https://api.whatsapp.com/send?phone={formatted_phone}&text={urllib.parse.quote(message)}"
+
+        # Attempt gateway delivery if gateway is running
+        gateway_sent = False
+        gateway_error = None
         try:
-            with httpx.Client(timeout=5.0) as client:
-                client.post(
-                    f"{GATEWAY_URL}/sessions/{clean_id}/chats/{clean_phone}/send",
+            with httpx.Client(timeout=2.0) as client:
+                resp = client.post(
+                    f"{GATEWAY_URL}/sessions/{clean_id}/chats/{formatted_phone}/send",
                     json={"message": message}
                 )
-        except Exception:
-            pass
+                if resp.status_code == 200 and resp.json().get("success"):
+                    gateway_sent = True
+                else:
+                    gateway_error = resp.json().get("error") if resp.headers.get("content-type", "").startswith("application/json") else resp.text
+        except Exception as e:
+            gateway_error = f"Gateway offline: {e}"
 
         return {
             "success": True,
+            "gateway_sent": gateway_sent,
+            "gateway_error": gateway_error,
+            "whatsapp_url": whatsapp_url,
+            "formatted_phone": formatted_phone,
             "message_id": new_msg.id,
             "timestamp": new_msg.timestamp,
             "timestamp_ist": now_naive.strftime("%d/%m/%Y, %I:%M:%S %p IST")
@@ -352,35 +343,16 @@ class WhatsAppService:
         except Exception:
             pass
 
-        leads = db.query(CrmLead).all()
+        customers = db.query(Customer).filter(Customer.phone.isnot(None)).limit(50).all()
         return [
             {
-                "number": _clean_digits(l.phone),
-                "name": l.name,
+                "number": _clean_digits(c.phone),
+                "name": c.full_name,
                 "isMyContact": True
             }
-            for l in leads
+            for c in customers if c.phone
         ]
 
     @staticmethod
     def sync_contacts(db: Session, session_id: str, contacts: List[Dict[str, Any]]) -> Dict[str, Any]:
-        imported_count = 0
-        for item in contacts:
-            clean_phone = _clean_digits(item.get("number", ""))
-            if not clean_phone:
-                continue
-            existing = db.query(CrmLead).filter(CrmLead.phone.contains(clean_phone[-10:])).first()
-            if not existing:
-                lead = CrmLead(
-                    name=item.get("name") or f"WhatsApp Contact (+{clean_phone})",
-                    phone=f"+{clean_phone}",
-                    source="WhatsApp",
-                    status="lead",
-                    stage="Prospecting",
-                    created_at=now_ist_naive()
-                )
-                db.add(lead)
-                imported_count += 1
-        if imported_count > 0:
-            db.commit()
-        return {"success": True, "message": f"Successfully imported {imported_count} WhatsApp contacts as CRM leads."}
+        return {"success": True, "message": f"Processed {len(contacts)} contacts."}

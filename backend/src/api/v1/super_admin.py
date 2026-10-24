@@ -75,7 +75,11 @@ def update_organization_status(gym_id: str, payload: dict = Body(...), db: Sessi
 @router.delete("/organizations/{gym_id}")
 def delete_organization(gym_id: str, db: Session = Depends(get_db)):
     """Delete an organization and its associated branch record dynamically from PostgreSQL DB."""
-    return SuperAdminService.delete_organization(db, gym_id)
+    try:
+        return SuperAdminService.delete_organization(db, gym_id)
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/gyms/bulk-delete")
@@ -83,7 +87,11 @@ def delete_organization(gym_id: str, db: Session = Depends(get_db)):
 def bulk_delete_organizations(payload: dict = Body(...), db: Session = Depends(get_db)):
     """Bulk delete selected organizations from PostgreSQL DB."""
     org_ids = payload.get("org_ids") or payload.get("gym_ids") or payload.get("ids") or []
-    return SuperAdminService.bulk_delete_organizations(db, org_ids)
+    try:
+        return SuperAdminService.bulk_delete_organizations(db, org_ids)
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/users")

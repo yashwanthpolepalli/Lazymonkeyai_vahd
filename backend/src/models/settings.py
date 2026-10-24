@@ -8,7 +8,9 @@ class Branch(Base):
 
     id = Column(String, primary_key=True, index=True)
     owner_id = Column(String, nullable=True, index=True)
-    name = Column(String, nullable=False, default="")
+    ho_id = Column(String, nullable=True, index=True)
+    gym_name = Column(String, nullable=True, default="") # real column — the gym/organisation name
+    name = Column(String, nullable=True, default="")      # legacy alias kept for compatibility
     branch_name = Column(String, nullable=False)
     city = Column(String, nullable=True, default="")
     address = Column(String, nullable=True)
@@ -22,13 +24,13 @@ class Branch(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=now_ist_naive)
 
-    @property
-    def gym_name(self) -> str:
-        return self.name or self.branch_name
-
-    @gym_name.setter
-    def gym_name(self, value: str):
-        self.name = value
+    def __init__(self, **kwargs):
+        val = kwargs.get("gym_name") or kwargs.get("name") or kwargs.get("branch_name") or ""
+        if not kwargs.get("gym_name"):
+            kwargs["gym_name"] = val
+        if not kwargs.get("name"):
+            kwargs["name"] = val
+        super().__init__(**kwargs)
 
 
 class Setting(Base):

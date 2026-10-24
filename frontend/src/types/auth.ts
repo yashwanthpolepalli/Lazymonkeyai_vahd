@@ -1,4 +1,4 @@
-export type Role = 'super_admin' | 'owner' | 'employee' | 'student' | 'trainer' | 'customer';
+export type Role = 'super_admin' | 'ho' | 'owner' | 'employee' | 'student' | 'trainer' | 'customer';
 
 export interface User {
   id: string;
@@ -8,6 +8,9 @@ export interface User {
   phone?: string;
   role: Role;
   avatar: string;
+  ho_id?: string;
+  hoId?: string;
+  ho_name?: string;
   gymId?: string;
   gymName?: string;
   gym_name?: string;

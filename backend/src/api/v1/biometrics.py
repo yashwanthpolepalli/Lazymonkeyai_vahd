@@ -63,7 +63,7 @@ def require_staff_user(current_user: Any = Depends(_get_current_user) if _get_cu
     if current_user is None:
         raise HTTPException(status_code=401, detail="Authentication required")
     role = str(getattr(current_user, "role", "")).upper()
-    if role not in {"ADMIN", "STAFF", "MANAGER", "GYM_OWNER", "OWNER", "SUPER_ADMIN", "TRAINER"}:
+    if role not in {"ADMIN", "STAFF", "MANAGER", "OWNER", "SUPER_ADMIN", "TRAINER"}:
         raise HTTPException(status_code=403, detail="Staff/admin/owner role required")
     return current_user
 

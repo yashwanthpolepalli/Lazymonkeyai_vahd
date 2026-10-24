@@ -23,6 +23,9 @@ export function Topbar() {
   const navigate = useNavigate();
   const [showProfile, setShowProfile] = useState(false);
   const [showNotifs, setShowNotifs] = useState(false);
+  const [showOrgDropdown, setShowOrgDropdown] = useState(false);
+  const [topbarOrgs, setTopbarOrgs] = useState<Array<{ id: string; name: string; branch: string; city: string }>>([]);
+  const [selectedTopbarOrg, setSelectedTopbarOrg] = useState<string>(() => localStorage.getItem('vahd_selected_org_id') || 'all');
   const [items, setItems] = useState(() => (user ? getNavItems(user.role) : []));
   const [liveLeads, setLiveLeads] = useState<LiveLeadNotification[]>(() => getStoredLeads());
   const [systemNotifs, setSystemNotifs] = useState<SystemNotificationItem[]>([]);
@@ -102,6 +105,47 @@ export function Topbar() {
     };
   }, []);
 
+  useEffect(() => {
+    const fetchOrgs = async () => {
+      try {
+        if (user?.role === 'ho') {
+          const res = await apiClient.get<any>('/ho/organizations');
+          if (res?.organizations) {
+            setTopbarOrgs(
+              res.organizations.map((o: any) => ({
+                id: o.id,
+                name: o.gym_name,
+                branch: o.branch_name,
+                city: o.city,
+              }))
+            );
+          }
+        } else if (user?.role === 'owner') {
+          const res = await apiClient.get<any[]>('/settings/branches');
+          if (Array.isArray(res)) {
+            setTopbarOrgs(
+              res.map((b: any) => ({
+                id: b.id,
+                name: b.gym_name,
+                branch: b.branch_name,
+                city: b.city,
+              }))
+            );
+          }
+        }
+      } catch (e) {}
+    };
+    fetchOrgs();
+
+    const handleOrgChanged = (e: any) => {
+      if (e.detail?.id) {
+        setSelectedTopbarOrg(e.detail.id);
+      }
+    };
+    window.addEventListener('vahd:org_changed', handleOrgChanged);
+    return () => window.removeEventListener('vahd:org_changed', handleOrgChanged);
+  }, [user]);
+
   const handleLogout = () => {
     logout();
     navigate('/login');
@@ -109,6 +153,7 @@ export function Topbar() {
 
   const roleLabelMap: Record<string, string> = {
     super_admin: 'Super Admin',
+    ho: 'Head Office (HO)',
     owner: 'Owner',
     employee: 'Employee',
     trainer: 'Employee',
@@ -162,19 +207,81 @@ export function Topbar() {
       )}
 
       {/* Top Header Row */}
-      <div className="h-16 flex items-center justify-between px-2.5 sm:px-3.5 lg:px-4 gap-4 border-b border-slate-100">
+      <div className="h-16 flex items-center justify-between px-3 sm:px-4 gap-4 border-b border-slate-100 w-full">
         {/* Left: Brand Logo & Gym Location Selector */}
         <div className="flex items-center gap-4 min-w-0">
           <Logo size="sm" />
 
-          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-800 hover:bg-slate-100 cursor-pointer transition-colors">
-            <Icon name="map-pin" size={14} className="text-purple-600" />
-            <span className="truncate max-w-[180px]">
-              {user?.gymName && user?.branchName
-                ? `${user.gymName} - ${user.branchName}`
-                : user?.gymName || user?.branchName || 'Main Branch'}
-            </span>
-            <Icon name="chevron-down" size={12} className="text-slate-400 shrink-0" />
+          {/* Interactive Organization Selector Dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setShowOrgDropdown(!showOrgDropdown)}
+              className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-800 hover:bg-slate-100 cursor-pointer transition-colors"
+            >
+              <Icon name="map-pin" size={14} className="text-purple-600" />
+              <span className="truncate max-w-[180px]">
+                {selectedTopbarOrg === 'all'
+                  ? user?.role === 'ho'
+                    ? 'All Organizations (HQ)'
+                    : user?.gymName || 'All Branches'
+                  : topbarOrgs.find((o) => o.id === selectedTopbarOrg)?.name ||
+                    user?.gymName ||
+                    'Main Branch'}
+              </span>
+              <Icon name="chevron-down" size={12} className="text-slate-400 shrink-0" />
+            </button>
+
+            {showOrgDropdown && (
+              <div className="absolute left-0 top-11 w-64 bg-white rounded-2xl p-2 z-50 shadow-2xl border border-slate-200 text-xs animate-in fade-in slide-in-from-top-1 duration-150">
+                <p className="px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                  Switch Organization
+                </p>
+                <div className="space-y-0.5 max-h-56 overflow-y-auto">
+                  <button
+                    onClick={() => {
+                      setSelectedTopbarOrg('all');
+                      localStorage.setItem('vahd_selected_org_id', 'all');
+                      window.dispatchEvent(new CustomEvent('vahd:org_changed', { detail: { id: 'all' } }));
+                      setShowOrgDropdown(false);
+                    }}
+                    className={`w-full flex items-center justify-between p-2 rounded-xl text-left ${
+                      selectedTopbarOrg === 'all'
+                        ? 'bg-purple-50 text-purple-900 font-extrabold'
+                        : 'hover:bg-slate-50 text-slate-700 font-medium'
+                    }`}
+                  >
+                    <span>All Organizations</span>
+                    {selectedTopbarOrg === 'all' && <Icon name="check" size={13} className="text-purple-600" />}
+                  </button>
+                  {topbarOrgs.map((o) => (
+                    <button
+                      key={o.id}
+                      onClick={() => {
+                        setSelectedTopbarOrg(o.id);
+                        localStorage.setItem('vahd_selected_org_id', o.id);
+                        window.dispatchEvent(new CustomEvent('vahd:org_changed', { detail: { id: o.id } }));
+                        setShowOrgDropdown(false);
+                      }}
+                      className={`w-full flex items-center justify-between p-2 rounded-xl text-left ${
+                        selectedTopbarOrg === o.id
+                          ? 'bg-purple-50 text-purple-900 font-extrabold'
+                          : 'hover:bg-slate-50 text-slate-700 font-medium'
+                      }`}
+                    >
+                      <div className="truncate">
+                        <p className="font-bold truncate">{o.name}</p>
+                        <p className="text-[10px] text-slate-400 truncate">
+                          {o.branch} • {o.city}
+                        </p>
+                      </div>
+                      {selectedTopbarOrg === o.id && (
+                        <Icon name="check" size={13} className="text-purple-600 shrink-0 ml-1" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -387,7 +494,7 @@ export function Topbar() {
       </div>
 
       {/* Horizontal Pill Navigation Bar */}
-      <div className="w-full overflow-x-auto py-2 px-2.5 sm:px-3.5 lg:px-4 no-scrollbar bg-slate-50/40 border-t border-slate-100/80">
+      <div className="w-full overflow-x-auto py-2 px-3 sm:px-4 no-scrollbar bg-slate-50/40 border-t border-slate-100/80">
         <div className="flex items-center gap-2 min-w-max">
           {items.map((item) => (
             <NavLink

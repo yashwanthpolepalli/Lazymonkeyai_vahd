@@ -5,6 +5,7 @@ import { SkeletonCard, Skeleton } from '@/components/ui/Skeleton';
 import { apiClient } from '@/services/apiClient';
 import type { AttendanceRecord } from '@/services/hrmsApi';
 import { cn } from '@/utils/cn';
+import { EmployeeAttendanceReportsModal } from './EmployeeAttendanceReportsModal';
 
 export type AttendanceRoleFilter = 'ALL' | 'CUSTOMER' | 'TRAINER_STAFF';
 
@@ -96,6 +97,7 @@ export function HrmsAttendanceTab({ attendanceLogs }: HrmsAttendanceTabProps) {
   const [methodFilter, setMethodFilter] = useState<string>('ALL');
   const [analytics, setAnalytics] = useState<AttendanceAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
+  const [emailReportsOpen, setEmailReportsOpen] = useState(false);
 
   const fetchAttendanceAnalytics = (role: AttendanceRoleFilter = roleFilter) => {
     setLoading(true);
@@ -233,6 +235,16 @@ export function HrmsAttendanceTab({ attendanceLogs }: HrmsAttendanceTabProps) {
               <span>Staff Shifts ({attendanceLogs.length})</span>
             </button>
           </div>
+
+          {/* Monthly Attendance Emails Button */}
+          <button
+            onClick={() => setEmailReportsOpen(true)}
+            className="px-3.5 py-2 rounded-xl text-xs font-bold border border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+            title="Track & dispatch monthly employee attendance emails with Excel attachments"
+          >
+            <Icon name="mail" size={14} className="text-indigo-600" />
+            <span>Monthly Email Reports</span>
+          </button>
         </div>
       </div>
 
@@ -608,6 +620,12 @@ export function HrmsAttendanceTab({ attendanceLogs }: HrmsAttendanceTabProps) {
           </div>
         </div>
       )}
+
+      {/* Monthly Employee Attendance Email Statements Modal */}
+      <EmployeeAttendanceReportsModal
+        isOpen={emailReportsOpen}
+        onClose={() => setEmailReportsOpen(false)}
+      />
     </div>
   );
 }

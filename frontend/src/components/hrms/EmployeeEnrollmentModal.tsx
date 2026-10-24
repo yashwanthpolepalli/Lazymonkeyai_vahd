@@ -119,6 +119,8 @@ export function EmployeeEnrollmentModal({
   // Dynamic Departments and Designations from HRMS
   const [departmentsList, setDepartmentsList] = useState<DepartmentItem[]>([]);
   const [designationsList, setDesignationsList] = useState<DesignationItem[]>([]);
+  const [branchesList, setBranchesList] = useState<Array<{ id: string; branch_name: string; name?: string }>>([]);
+  const [selectedBranchId, setSelectedBranchId] = useState<string>('');
 
   useEffect(() => {
     if (!visible) return;
@@ -128,6 +130,16 @@ export function EmployeeEnrollmentModal({
 
     hrmsApi.getDesignations().then((data) => {
       if (Array.isArray(data)) setDesignationsList(data);
+    }).catch(() => {});
+
+    apiClient.get<any[]>('/gym/branches').then((data) => {
+      if (Array.isArray(data)) {
+        setBranchesList(data);
+        if (data.length > 0 && !selectedBranchId) {
+          setSelectedBranchId(data[0].id);
+          if (!location) setLocation(data[0].branch_name || data[0].name || '');
+        }
+      }
     }).catch(() => {});
   }, [visible]);
 
@@ -931,11 +943,12 @@ export function EmployeeEnrollmentModal({
       full_name: name.trim(),
       email: safeEmail,
       phone: contactNo.trim(),
-      gender: gender ? gender.toLowerCase() : 'male',
-      designation: jobDesignation || 'Staff',
-      department: department || 'General',
+      gender: gender ? gender.toLowerCase() : '',
+      designation: jobDesignation ? jobDesignation.trim() : '',
+      department: department ? department.trim() : '',
       salary: parseFloat(baseSalary || '0') || 0,
       gym_branch: location,
+      branch_id: selectedBranchId || undefined,
       joined_date: joiningDate,
       avatar: photoBase64 || undefined,
       face_image: photoBase64 || undefined,
@@ -1014,10 +1027,11 @@ export function EmployeeEnrollmentModal({
             full_name: payload.full_name,
             email: payload.email,
             phone: payload.phone,
-            role: 'STAFF',
+            role: payload.role || 'EMPLOYEE',
             specialization: payload.designation,
             base_monthly_salary: payload.salary,
             primary_gym_location: payload.gym_branch,
+            branch_id: payload.branch_id,
             bank_account_no: accountNumber,
             bank_ifsc: ifscCode,
           });
@@ -1538,14 +1552,34 @@ export function EmployeeEnrollmentModal({
                 {/* Row 1: Location & Department */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-purple-200">
                   <div className="p-1.5 flex items-center gap-2">
-                    <span className="font-bold text-purple-950 shrink-0">Location:</span>
-                    <input
-                      type="text"
-                      value={location}
-                      onChange={(e) => setLocation(e.target.value)}
-                      placeholder="Branch / Campus Location"
-                      className="w-full bg-transparent outline-none text-purple-900 px-1 py-0.5 focus:bg-purple-100/50 font-bold"
-                    />
+                    <span className="font-bold text-purple-950 shrink-0">Organisation / Branch:</span>
+                    {branchesList.length > 0 ? (
+                      <select
+                        value={selectedBranchId || location}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setSelectedBranchId(val);
+                          const found = branchesList.find((b) => b.id === val);
+                          setLocation(found ? (found.branch_name || found.name || '') : val);
+                        }}
+                        className="w-full bg-transparent outline-none text-purple-900 px-1 py-0.5 focus:bg-purple-100/50 font-bold cursor-pointer"
+                      >
+                        <option value="">Select Organisation</option>
+                        {branchesList.map((b) => (
+                          <option key={b.id} value={b.id}>
+                            {b.branch_name || b.name}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        value={location}
+                        onChange={(e) => setLocation(e.target.value)}
+                        placeholder="Branch / Campus Location"
+                        className="w-full bg-transparent outline-none text-purple-900 px-1 py-0.5 focus:bg-purple-100/50 font-bold"
+                      />
+                    )}
                   </div>
                   <div className="p-1.5 flex items-center gap-2">
                     <span className="font-bold text-purple-950 shrink-0">Department:</span>

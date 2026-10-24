@@ -18,8 +18,8 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
     return auth_data
 
 @router.post("/signup", response_model=Token)
-def signup_gym_owner(req: SignupRequest, db: Session = Depends(get_db)):
-    if req.role not in ["OWNER", "GYM_OWNER"]:
+def signup_owner(req: SignupRequest, db: Session = Depends(get_db)):
+    if req.role.upper() not in ["OWNER"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Self-registration is restricted exclusively to Owners.",

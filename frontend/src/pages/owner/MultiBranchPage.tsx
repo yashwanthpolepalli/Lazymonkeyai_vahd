@@ -5,6 +5,7 @@ import { Icon } from '@/components/ui/Icon';
 import { BarChart } from '@/components/ui/Charts';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { api, apiClient } from '@/services/api';
+import { useAuth } from '@/context/AuthContext';
 import type { Member } from '@/types';
 import { cn } from '@/utils/cn';
 
@@ -86,11 +87,14 @@ export function MultiBranchPage() {
   const totalRevenueVal = branches.reduce((s, b) => s + (b.revenueVal || 0), 0);
   const totalTrainers = branches.reduce((s, b) => s + (b.trainers || 0), 0);
 
+  const { user } = useAuth();
+  const isHo = user?.role === 'ho';
+
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Multi-Branch"
-        breadcrumb={['Owner', 'Multi-Branch']}
+        title={isHo ? 'Organisations' : 'Multi-Branch'}
+        breadcrumb={[isHo ? 'Head Office' : 'Owner', isHo ? 'Organisations' : 'Multi-Branch']}
         actions={
           <button
             onClick={() => {
@@ -99,7 +103,7 @@ export function MultiBranchPage() {
             }}
             className="btn-primary flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-xl"
           >
-            <Icon name="plus" size={16} /> Add Branch
+            <Icon name="plus" size={16} /> {isHo ? 'Add Organisation' : 'Add Branch'}
           </button>
         }
       />

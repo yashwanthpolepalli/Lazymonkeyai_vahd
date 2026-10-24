@@ -18,6 +18,11 @@ export const navConfig: Record<Role, NavItem[]> = {
     { label: 'Support Desk', path: '/super-admin/support', icon: 'message-square' },
     { label: 'Settings', path: '/super-admin/settings', icon: 'settings' },
   ],
+  ho: [
+    { label: 'Overview', path: '/ho', icon: 'layout-dashboard' },
+    { label: 'HRMS & Students', path: '/ho/hrms', icon: 'users' },
+    { label: 'Organisations', path: '/ho/organisations', icon: 'building-2' },
+  ],
   owner: [
     { label: 'Executive Overview', path: '/owner', icon: 'layout-grid' },
     { label: 'HRMS & Students', path: '/owner/hrms', icon: 'users' },
@@ -57,6 +62,7 @@ export const navConfig: Record<Role, NavItem[]> = {
 
 export const roleHomePath: Record<Role, string> = {
   super_admin: '/super-admin',
+  ho: '/ho',
   owner: '/owner',
   employee: '/trainer',
   student: '/app',

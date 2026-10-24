@@ -377,9 +377,10 @@ export function GymsPage() {
         setSelected(null);
       }
       setDeleteConfirmModal({ open: false, orgIds: [], gymNames: [] });
-      fetchGyms();
-    } catch (_err) {
-      /* ignore */
+      await fetchGyms();
+    } catch (err: any) {
+      console.error('Failed to delete organization:', err);
+      alert(err?.message || 'Failed to delete organization from database.');
     } finally {
       setDeleting(false);
     }
@@ -713,13 +714,13 @@ export function GymsPage() {
             <div className="flex items-center justify-between border-b border-slate-100 pb-4">
               <div>
                 <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
                     <Icon name="building-2" size={18} />
                   </div>
-                  <span>Onboard Organization &amp; Provision Tenant</span>
+                  <span>Onboard Head Office (HO) &amp; Organisation</span>
                 </h3>
                 <p className="text-xs font-medium text-slate-400 mt-0.5">
-                  Tenant provisioning: profile setup, SaaS tier packaging, and POS subscription checkout.
+                  Tenant provisioning: Head Office profile setup, multi-organisation access, and SaaS packaging.
                 </p>
               </div>
               <button
@@ -823,37 +824,36 @@ export function GymsPage() {
                   </div>
                 </div>
 
-                {/* Owner Credentials */}
+                {/* Head Office (HO) Credentials */}
                 <div className="pt-3 border-t border-slate-100">
-                  <div className="text-[11px] font-bold text-blue-600 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
-                    <Icon name="key" size={13} /> Owner Account Credentials
+                  <div className="text-[11px] font-bold text-indigo-600 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                    <Icon name="key" size={13} /> Head Office (HO) Administrator Credentials
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="text-xs font-bold text-slate-700 block mb-1">Owner Full Name *</label>
+                      <label className="text-xs font-bold text-slate-700 block mb-1">Head Office Admin Name *</label>
                       <input
                         type="text"
                         required
-                        placeholder="e.g. Vikram Rathore"
+                        placeholder="e.g. Head Office Admin"
                         value={onboardForm.owner_name}
                         onChange={(e) => setOnboardForm((p) => ({ ...p, owner_name: e.target.value }))}
-                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-blue-500 outline-none"
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"
                       />
                     </div>
 
                     <div>
-                      <label className="text-xs font-bold text-slate-700 block mb-1">Owner Email (Login ID) *</label>
+                      <label className="text-xs font-bold text-slate-700 block mb-1">HO Admin Email (Login ID) *</label>
                       <input
                         type="email"
                         required
-                        placeholder="e.g. owner@enterprise.com"
+                        placeholder="e.g. ho@enterprise.com"
                         value={onboardForm.owner_email}
                         onChange={(e) => setOnboardForm((p) => ({ ...p, owner_email: e.target.value }))}
-                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-blue-500 outline-none"
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"
                       />
                     </div>
-
 
                     <div>
                       <label className="text-xs font-bold text-slate-700 block mb-1">Phone Number</label>
@@ -862,7 +862,7 @@ export function GymsPage() {
                         placeholder="e.g. 9876543210"
                         value={onboardForm.phone}
                         onChange={(e) => setOnboardForm((p) => ({ ...p, phone: e.target.value }))}
-                        className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-blue-500 outline-none"
+                        className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"
                       />
                     </div>
 
@@ -872,7 +872,7 @@ export function GymsPage() {
                         <button
                           type="button"
                           onClick={() => setOnboardForm((p) => ({ ...p, password: generateSecurePassword() }))}
-                          className="text-[11px] text-blue-600 hover:text-blue-700 font-bold flex items-center gap-1"
+                          className="text-[11px] text-indigo-600 hover:text-indigo-700 font-bold flex items-center gap-1"
                         >
                           <Icon name="refresh-cw" size={11} /> Generate
                         </button>
@@ -883,7 +883,7 @@ export function GymsPage() {
                           required
                           value={onboardForm.password}
                           onChange={(e) => setOnboardForm((p) => ({ ...p, password: e.target.value }))}
-                          className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-blue-500 pr-9 outline-none font-mono"
+                          className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-indigo-500 pr-9 outline-none font-mono"
                         />
                         <button
                           type="button"
@@ -905,7 +905,7 @@ export function GymsPage() {
                     type="button"
                     onClick={() => {
                       if (!onboardForm.gym_name.trim() || !onboardForm.owner_email.trim()) {
-                        setOnboardError('Please fill in Organization Name and Owner Email before continuing.');
+                        setOnboardError('Please fill in Organisation Name and Head Office Email before continuing.');
                         return;
                       }
                       setOnboardError('');
@@ -1408,36 +1408,36 @@ export function GymsPage() {
             </div>
 
             <div className="space-y-1">
-              <h3 className="text-xl font-black text-slate-900">Organization Onboarded Successfully! 🎉</h3>
+              <h3 className="text-xl font-black text-slate-900">Head Office (HO) Account Created! 🎉</h3>
               <p className="text-xs text-slate-400 font-medium">
-                SaaS Subscription &amp; Owner credentials active.
+                SaaS Subscription &amp; Head Office (HO) portal credentials active.
               </p>
             </div>
 
             {/* Credential Card */}
             <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-left space-y-2.5 text-xs font-semibold">
               <div className="flex justify-between items-center pb-2 border-b border-slate-200">
-                <span className="text-slate-400 font-bold uppercase text-[10px]">Organization</span>
+                <span className="text-slate-400 font-bold uppercase text-[10px]">Head Office / Org</span>
                 <span className="text-slate-900 font-bold">{credentialCardData.gym_name}{credentialCardData.branch_name ? ` (${credentialCardData.branch_name})` : ''}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-slate-400">Assigned Plan:</span>
-                <span className="text-blue-600 font-bold">{credentialCardData.plan_name} ({credentialCardData.billing_cycle})</span>
+                <span className="text-indigo-600 font-bold">{credentialCardData.plan_name} ({credentialCardData.billing_cycle})</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-slate-400">Payment Method:</span>
                 <span className="text-emerald-700 font-bold">{credentialCardData.payment_method} (₹{(credentialCardData.paid_amount || 0).toLocaleString()})</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-slate-400">Owner Name:</span>
+                <span className="text-slate-400">Admin Name:</span>
                 <span className="text-slate-800">{credentialCardData.owner_name}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-slate-400">Login Portal:</span>
-                <span className="text-blue-600 font-bold">{typeof window !== 'undefined' ? `${window.location.origin}/login` : '/login'} (Owner Tab)</span>
+                <span className="text-indigo-600 font-bold">{typeof window !== 'undefined' ? `${window.location.origin}/login` : '/login'} (HO Tab)</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-slate-400">Email:</span>
+                <span className="text-slate-400">HO Email:</span>
                 <span className="text-slate-900 font-mono font-bold">{credentialCardData.owner_email}</span>
               </div>
               <div className="flex justify-between items-center">
@@ -1454,13 +1454,13 @@ export function GymsPage() {
                 type="button"
                 onClick={() => {
                   const loginUrl = typeof window !== 'undefined' ? `${window.location.origin}/login` : '/login';
-                  const payload = `ORGANIZATION OWNER ONBOARDING CREDENTIALS:\n\nOrganization: ${credentialCardData.gym_name}\nPlan: ${credentialCardData.plan_name} (${credentialCardData.billing_cycle})\nPayment: ${credentialCardData.payment_method} - ₹${(credentialCardData.paid_amount || 0).toLocaleString()}\nLogin URL: ${loginUrl}\nRole: Organization Owner\nEmail: ${credentialCardData.owner_email}\nPassword: ${credentialCardData.temporary_password}\n\nPlease login and change your password upon first sign-in.`;
+                  const payload = `HEAD OFFICE (HO) ONBOARDING CREDENTIALS:\n\nHead Office / Org: ${credentialCardData.gym_name}\nPlan: ${credentialCardData.plan_name} (${credentialCardData.billing_cycle})\nPayment: ${credentialCardData.payment_method} - ₹${(credentialCardData.paid_amount || 0).toLocaleString()}\nLogin URL: ${loginUrl}\nPortal: Head Office (HO) Tab\nRole: Head Office (HO)\nEmail: ${credentialCardData.owner_email}\nPassword: ${credentialCardData.temporary_password}\n\nPlease login and change your password upon first sign-in.`;
                   copyToClipboard(payload, 'credentials_sheet');
                 }}
-                className="w-full py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition-all"
+                className="w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition-all"
               >
                 <Icon name={copiedKey === 'credentials_sheet' ? 'check' : 'copy'} size={15} />
-                <span>{copiedKey === 'credentials_sheet' ? 'Copied to Clipboard! ✓' : 'Copy Credentials & Subscription Receipt'}</span>
+                <span>{copiedKey === 'credentials_sheet' ? 'Copied to Clipboard! ✓' : 'Copy HO Credentials & Subscription Receipt'}</span>
               </button>
 
               <button

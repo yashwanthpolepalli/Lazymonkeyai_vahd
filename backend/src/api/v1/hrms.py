@@ -1,8 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Body, Response
+from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 from typing import Optional, List, Dict, Any
 from src.database import get_db
 from src.services.hrms_service import HrmsService
+from src.services.employee_attendance_report_service import EmployeeAttendanceReportService
+from src.api.deps import get_current_user
+from src.models.user import User
 
 router = APIRouter(prefix="/hrms", tags=["HRMS"])
 
@@ -14,12 +18,51 @@ def get_employees(
     department: Optional[str] = Query(None),
     status: Optional[str] = Query(None),
     search: Optional[str] = Query(None),
+    branch_id: Optional[str] = Query(None),
+    ho_id: Optional[str] = Query(None),
+    current_user: Optional[User] = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    return HrmsService.get_employees(db, department=department, status=status, search=search)
+    return HrmsService.get_employees(
+        db, department=department, status=status, search=search,
+        branch_id=branch_id, ho_id=ho_id, current_user=current_user
+    )
 
 @router.post("/employees")
-def create_employee(payload: dict, db: Session = Depends(get_db)):
+def create_employee(
+    payload: dict,
+    current_user: Optional[User] = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if current_user:
+        u_role = (current_user.role or "").strip().upper()
+        if u_role in ["OWNER"]:
+            payload["owner_id"] = current_user.id
+            if current_user.ho_id:
+                payload["ho_id"] = current_user.ho_id
+            if not payload.get("branch_id") and current_user.branch_id:
+                payload["branch_id"] = current_user.branch_id
+        elif u_role in ["HEAD_OFFICE", "HO"]:
+            if not payload.get("ho_id"):
+                payload["ho_id"] = current_user.ho_id or current_user.id
+            if not payload.get("branch_id") and current_user.branch_id:
+                payload["branch_id"] = current_user.branch_id
+
+    # Resolve branch from database to ensure gym_branch and hierarchy match
+    from src.models.settings import Branch as GymBranch
+    from sqlalchemy import or_
+    b_ref = payload.get("branch_id") or payload.get("gym_branch")
+    if b_ref:
+        b_obj = db.query(GymBranch).filter(
+            or_(GymBranch.id == b_ref, GymBranch.branch_name.ilike(f"%{b_ref}%"))
+        ).first()
+        if b_obj:
+            payload["branch_id"] = b_obj.id
+            payload["gym_branch"] = b_obj.branch_name or b_obj.gym_name
+            if not payload.get("owner_id") and b_obj.owner_id:
+                payload["owner_id"] = b_obj.owner_id
+            if not payload.get("ho_id") and b_obj.ho_id:
+                payload["ho_id"] = b_obj.ho_id
     return HrmsService.create_employee(db, payload)
 
 @router.put("/employees/{emp_id}")
@@ -195,7 +238,7 @@ def record_punch(payload: dict, db: Session = Depends(get_db)):
     latitude = payload.get("latitude")
     longitude = payload.get("longitude")
     method = payload.get("method", "MANUAL")
-    user_role = payload.get("user_role", "GYM_OWNER")
+    user_role = payload.get("user_role", "OWNER")
     branch = payload.get("branch")
     try:
         return HrmsService.record_punch(
@@ -268,7 +311,7 @@ def get_staff_face_status(
             face_img = enroll_log.meta_data.get("face_image")
 
     name = f"{emp.first_name} {emp.last_name or ''}".strip() if emp else (trainer.full_name if trainer else (getattr(usr, 'full_name', None) or getattr(usr, 'name', None) or employee_id))
-    role = (trainer.role if trainer and trainer.role else None) or (emp.designation if emp and emp.designation else None) or (usr.role if usr and usr.role else None) or "TRAINER"
+    role = (trainer.role if trainer and trainer.role and trainer.role != "TRAINER" else None) or (emp.designation if emp and emp.designation else None) or (usr.role if usr and usr.role and usr.role != "TRAINER" else None) or "EMPLOYEE"
 
     return {
         "is_enrolled": bool(face_img and len(face_img) > 50),
@@ -323,8 +366,8 @@ def register_staff_face(payload: dict, db: Session = Depends(get_db)):
         payload.get("user_role")
         or (trainer.role if trainer and trainer.role else None)
         or (emp.designation if emp and emp.designation else None)
-        or (usr.role if usr and usr.role else None)
-        or "TRAINER"
+        or (usr.role if usr and usr.role and usr.role != "TRAINER" else None)
+        or "EMPLOYEE"
     ).upper()
 
     branch_name = (
@@ -440,8 +483,8 @@ def verify_staff_face_punch(payload: dict, db: Session = Depends(get_db)):
         (user_role if user_role else None)
         or (trainer.role if trainer and trainer.role else None)
         or (emp.designation if emp and emp.designation else None)
-        or (usr.role if usr and usr.role else None)
-        or "TRAINER"
+        or (usr.role if usr and usr.role and usr.role != "TRAINER" else None)
+        or "EMPLOYEE"
     ).upper()
 
     branch_name = (
@@ -637,5 +680,162 @@ def get_exit_requests(db: Session = Depends(get_db)):
 def update_exit_status(exit_id: str, payload: dict, db: Session = Depends(get_db)):
     try:
         return HrmsService.update_exit_status(db, exit_id, payload)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+# -------------------------------------------------------------
+# 9. EMPLOYEE MONTHLY ATTENDANCE REPORTS & EMAIL DISPATCH
+# -------------------------------------------------------------
+@router.get("/attendance-reports/overview")
+def get_employee_attendance_reports_overview(
+    year: Optional[int] = Query(None),
+    month: Optional[int] = Query(None),
+    branch_id: Optional[str] = Query(None),
+    current_user: Optional[User] = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Overview of monthly employee attendance + email delivery statuses (SENT, FAILED, PENDING).
+    Enables owners to see who received the monthly attendance emails and who hasn't.
+    """
+    owner_id = None
+    ho_id = None
+    if current_user:
+        u_role = (current_user.role or "").strip().upper()
+        if u_role in ["OWNER"]:
+            owner_id = current_user.id
+            if not branch_id and current_user.branch_id:
+                branch_id = current_user.branch_id
+        elif u_role in ["HEAD_OFFICE", "HO"]:
+            ho_id = current_user.ho_id or current_user.id
+            if not branch_id and current_user.branch_id:
+                branch_id = current_user.branch_id
+
+    return EmployeeAttendanceReportService.get_monthly_reports_overview(
+        db, year=year, month=month, branch_id=branch_id, owner_id=owner_id, ho_id=ho_id
+    )
+
+@router.get("/attendance-reports/logs")
+def get_employee_attendance_report_logs(
+    year: Optional[int] = Query(None),
+    month: Optional[int] = Query(None),
+    branch_id: Optional[str] = Query(None),
+    limit: int = Query(100),
+    current_user: Optional[User] = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Retrieves delivery audit history for dispatched employee attendance emails."""
+    owner_id = None
+    if current_user:
+        u_role = (current_user.role or "").strip().upper()
+        if u_role in ["OWNER"]:
+            owner_id = current_user.id
+            if not branch_id and current_user.branch_id:
+                branch_id = current_user.branch_id
+
+    return EmployeeAttendanceReportService.get_dispatched_logs(
+        db, year=year, month=month, branch_id=branch_id, owner_id=owner_id, limit=limit
+    )
+
+@router.post("/attendance-reports/dispatch-monthly")
+def dispatch_all_monthly_employee_reports(
+    payload: Dict[str, Any] = Body(default={}),
+    current_user: Optional[User] = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Dispatches individual monthly attendance report emails with Excel/CSV attachment
+    to all active employees in the organization.
+    """
+    year = payload.get("year")
+    month = payload.get("month")
+    branch_id = payload.get("branch_id")
+    owner_id = None
+    ho_id = None
+
+    if current_user:
+        u_role = (current_user.role or "").strip().upper()
+        if u_role in ["OWNER"]:
+            owner_id = current_user.id
+            if not branch_id and current_user.branch_id:
+                branch_id = current_user.branch_id
+        elif u_role in ["HEAD_OFFICE", "HO"]:
+            ho_id = current_user.ho_id or current_user.id
+            if not branch_id and current_user.branch_id:
+                branch_id = current_user.branch_id
+
+    return EmployeeAttendanceReportService.dispatch_all_monthly_employee_reports(
+        db, year=year, month=month, branch_id=branch_id, owner_id=owner_id, ho_id=ho_id
+    )
+
+@router.post("/{employee_id}/attendance-report/send-email")
+def send_individual_employee_attendance_email(
+    employee_id: str,
+    payload: Dict[str, Any] = Body(default={}),
+    db: Session = Depends(get_db)
+):
+    """Sends monthly attendance statement email + CSV attachment to an individual employee."""
+    year = payload.get("year")
+    month = payload.get("month")
+    try:
+        return EmployeeAttendanceReportService.send_employee_monthly_email(
+            db, employee_id=employee_id, year=year, month=month, dispatch_type="MANUAL_SINGLE_DISPATCH"
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/{employee_id}/attendance-report")
+def get_employee_monthly_attendance_report(
+    employee_id: str,
+    year: Optional[int] = Query(None),
+    month: Optional[int] = Query(None),
+    db: Session = Depends(get_db)
+):
+    """Calculates and returns individual employee monthly attendance metrics and day-wise punch records."""
+    try:
+        return EmployeeAttendanceReportService.compute_employee_monthly_attendance(
+            db, employee_id=employee_id, year=year, month=month
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+@router.get("/{employee_id}/attendance-report/csv")
+def get_employee_attendance_report_csv(
+    employee_id: str,
+    year: Optional[int] = Query(None),
+    month: Optional[int] = Query(None),
+    db: Session = Depends(get_db)
+):
+    """Generates and downloads official employee monthly attendance report as CSV/Excel."""
+    try:
+        rep = EmployeeAttendanceReportService.compute_employee_monthly_attendance(
+            db, employee_id=employee_id, year=year, month=month
+        )
+        csv_content = EmployeeAttendanceReportService.generate_employee_attendance_csv(rep)
+        filename = f"Employee_Attendance_{rep.get('employee_code') or employee_id}_{rep['month_name']}_{rep['year']}.csv"
+        return Response(
+            content=csv_content,
+            media_type="text/csv",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+@router.get("/{employee_id}/attendance-report/pdf")
+def get_employee_attendance_report_pdf(
+    employee_id: str,
+    year: Optional[int] = Query(None),
+    month: Optional[int] = Query(None),
+    db: Session = Depends(get_db)
+):
+    """Generates printable, executive-styled HTML/PDF attendance card for direct browser viewing & printing."""
+    try:
+        rep = EmployeeAttendanceReportService.compute_employee_monthly_attendance(
+            db, employee_id=employee_id, year=year, month=month
+        )
+        html_content = EmployeeAttendanceReportService.generate_employee_attendance_html_printable(rep)
+        return HTMLResponse(content=html_content)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))

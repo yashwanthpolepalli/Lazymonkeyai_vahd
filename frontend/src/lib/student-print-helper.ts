@@ -14,6 +14,7 @@ export interface StudentPrintData {
   fullName?: string;
   fatherName?: string;
   motherName?: string;
+  parentMobile?: string;
   studentEmail?: string;
   permDoorNo?: string;
   permStreet?: string;
@@ -267,9 +268,13 @@ export function printStudentAdmissionForm(data: StudentPrintData) {
                     </td>
                   </tr>
                   <tr style="background-color: #f8fafc;">
-                    <td colspan="2" style="border-left: none; border-right: none; border-bottom: none;">
-                      <span class="label">4. Student Email Address: </span>
+                    <td style="width: 50%; border-left: none; border-bottom: none;">
+                      <span class="label">4. Student Email: </span>
                       <span class="val" style="color: #1e40af; font-weight: bold;">${safeVal(data.studentEmail)}</span>
+                    </td>
+                    <td style="width: 50%; border-right: none; border-bottom: none;">
+                      <span class="label">5. Parent Mobile (WhatsApp): </span>
+                      <span class="val-bold" style="color: #047857;">${safeVal(data.parentMobile)}</span>
                     </td>
                   </tr>
                 </table>

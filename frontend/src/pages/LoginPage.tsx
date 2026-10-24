@@ -15,7 +15,7 @@ export function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
-  const [activeRole, setActiveRole] = useState<'admin' | 'owner' | 'employee' | 'student' | 'trainer' | 'customer'>('owner');
+  const [activeRole, setActiveRole] = useState<'admin' | 'ho' | 'owner' | 'employee' | 'student' | 'trainer' | 'customer'>('ho');
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -44,7 +44,7 @@ export function LoginPage() {
     }
   };
 
-  const selectQuickRole = (role: 'admin' | 'owner' | 'employee' | 'student' | 'trainer' | 'customer') => {
+  const selectQuickRole = (role: 'admin' | 'ho' | 'owner' | 'employee' | 'student' | 'trainer' | 'customer') => {
     const normalizedRole = role === 'trainer' ? 'employee' : role === 'customer' ? 'student' : role;
     setActiveRole(normalizedRole as any);
     setError('');
@@ -52,6 +52,7 @@ export function LoginPage() {
 
   const roleTitleMap: Record<string, string> = {
     admin: 'Super Admin Portal',
+    ho: 'Head Office (HO) Portal',
     owner: 'Owner Portal',
     employee: 'Employees Portal',
     trainer: 'Employees Portal',
@@ -61,6 +62,7 @@ export function LoginPage() {
 
   const roleButtonMap: Record<string, string> = {
     admin: 'Sign In as Super Admin',
+    ho: 'Sign In as Head Office (HO)',
     owner: 'Sign In as Owner',
     employee: 'Sign In as Employee',
     trainer: 'Sign In as Employee',
@@ -199,7 +201,15 @@ export function LoginPage() {
               {/* Email Input */}
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  {activeRole === 'owner' ? 'Owner Email' : activeRole === 'admin' ? 'Super Admin Email' : (activeRole === 'employee' || activeRole === 'trainer') ? 'Employee Email' : 'Student Email'}
+                  {activeRole === 'ho'
+                    ? 'Head Office (HO) Email'
+                    : activeRole === 'owner'
+                    ? 'Owner Email'
+                    : activeRole === 'admin'
+                    ? 'Super Admin Email'
+                    : activeRole === 'employee' || activeRole === 'trainer'
+                    ? 'Employee Email'
+                    : 'Student Email'}
                 </label>
                 <div className="relative flex items-center">
                   <Icon name="mail" size={18} className="absolute left-3.5 text-blue-500 pointer-events-none" />
@@ -208,7 +218,9 @@ export function LoginPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder={
-                      activeRole === 'owner'
+                      activeRole === 'ho'
+                        ? 'ho@vahd.ai'
+                        : activeRole === 'owner'
                         ? 'owner@vahd.ai'
                         : activeRole === 'admin'
                         ? 'admin@vahd.ai'
@@ -281,27 +293,39 @@ export function LoginPage() {
 
             </form>
 
-            {/* Quick Access Roles Selector (Super Admin, Owner, Employees, Students) */}
+            {/* Quick Access Roles Selector (Super Admin, Head Office (HO), Owner, Employees, Students) */}
             <div className="mt-5 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 space-y-2">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Select Portal Role (4 Roles)</span>
-              <div className="grid grid-cols-4 gap-1.5">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Select Portal Role</span>
+              <div className="grid grid-cols-5 gap-1.5">
                 <button
                   type="button"
                   onClick={() => selectQuickRole('admin')}
                   className={cn(
-                    'py-2 px-1 text-center rounded-xl text-[11px] font-extrabold transition-all truncate',
+                    'py-2 px-1 text-center rounded-xl text-[10px] font-extrabold transition-all truncate',
                     activeRole === 'admin'
                       ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 scale-[1.02]'
                       : 'bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-950/40 dark:text-blue-300'
                   )}
                 >
-                  Super Admin
+                  Admin
+                </button>
+                <button
+                  type="button"
+                  onClick={() => selectQuickRole('ho')}
+                  className={cn(
+                    'py-2 px-1 text-center rounded-xl text-[10px] font-extrabold transition-all truncate',
+                    activeRole === 'ho'
+                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30 scale-[1.02]'
+                      : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:text-indigo-300'
+                  )}
+                >
+                  HO
                 </button>
                 <button
                   type="button"
                   onClick={() => selectQuickRole('owner')}
                   className={cn(
-                    'py-2 px-1 text-center rounded-xl text-[11px] font-extrabold transition-all truncate',
+                    'py-2 px-1 text-center rounded-xl text-[10px] font-extrabold transition-all truncate',
                     activeRole === 'owner'
                       ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 scale-[1.02]'
                       : 'bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-950/40 dark:text-blue-300'
@@ -313,19 +337,19 @@ export function LoginPage() {
                   type="button"
                   onClick={() => selectQuickRole('employee')}
                   className={cn(
-                    'py-2 px-1 text-center rounded-xl text-[11px] font-extrabold transition-all truncate',
+                    'py-2 px-1 text-center rounded-xl text-[10px] font-extrabold transition-all truncate',
                     activeRole === 'employee' || activeRole === 'trainer'
                       ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30 scale-[1.02]'
                       : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300'
                   )}
                 >
-                  Employees
+                  Staff
                 </button>
                 <button
                   type="button"
                   onClick={() => selectQuickRole('student')}
                   className={cn(
-                    'py-2 px-1 text-center rounded-xl text-[11px] font-extrabold transition-all truncate',
+                    'py-2 px-1 text-center rounded-xl text-[10px] font-extrabold transition-all truncate',
                     activeRole === 'student' || activeRole === 'customer'
                       ? 'bg-orange-600 text-white shadow-md shadow-orange-600/30 scale-[1.02]'
                       : 'bg-orange-50 text-orange-700 hover:bg-orange-100 dark:bg-orange-950/40 dark:text-orange-300'

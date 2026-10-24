@@ -31,7 +31,7 @@ class SignupRequest(BaseModel):
     full_name: str
     email: EmailStr
     password: str
-    role: str = "GYM_OWNER"
+    role: str = "OWNER"
     phone: Optional[str] = None
     gym_name: Optional[str] = None
 

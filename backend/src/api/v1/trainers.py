@@ -1,27 +1,51 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from src.database.session import get_db
 from src.services.payroll_service import PayrollService
 from src.services.biometric_service import BiometricService
 from src.schemas.payroll import TrainerCreateRequest, TrainerResponse
 from src.schemas.biometrics import BiometricEnrollmentRequest
+from src.api.deps import get_current_user
+from src.models.user import User
 
 router = APIRouter(prefix="/trainers", tags=["Trainers & Staff Management"])
 
 @router.get("", response_model=List[TrainerResponse])
-def get_all_trainers(db: Session = Depends(get_db)):
+def get_all_trainers(
+    branch_id: Optional[str] = Query(None),
+    current_user: Optional[User] = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     """
-    Returns all registered trainers, managers, staff, and gym owners.
+    Returns all registered trainers, managers, staff, and gym owners scoped to user hierarchy.
     """
-    return PayrollService.get_all_trainers(db)
+    return PayrollService.get_all_trainers(db, current_user=current_user, branch_id=branch_id)
 
 @router.post("", response_model=TrainerResponse)
-def register_trainer(payload: TrainerCreateRequest, db: Session = Depends(get_db)):
+def register_trainer(
+    payload: TrainerCreateRequest,
+    current_user: Optional[User] = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     """
     Registers a new trainer or staff profile with salary & bank account details.
     """
-    return PayrollService.register_trainer(db, payload.model_dump())
+    data = payload.model_dump()
+    if current_user:
+        u_role = (current_user.role or "").strip().upper()
+        if u_role in ["OWNER"]:
+            data["owner_id"] = data.get("owner_id") or current_user.id
+            if not data.get("branch_id") and current_user.branch_id:
+                data["branch_id"] = current_user.branch_id
+            if not data.get("ho_id") and current_user.ho_id:
+                data["ho_id"] = current_user.ho_id
+        elif u_role in ["HEAD_OFFICE", "HO"]:
+            if not data.get("ho_id"):
+                data["ho_id"] = current_user.ho_id or current_user.id
+            if not data.get("branch_id") and current_user.branch_id:
+                data["branch_id"] = current_user.branch_id
+    return PayrollService.register_trainer(db, data)
 
 @router.put("/{trainer_id}", response_model=TrainerResponse)
 def update_trainer(trainer_id: str, payload: dict, db: Session = Depends(get_db)):

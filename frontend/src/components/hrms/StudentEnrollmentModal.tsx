@@ -36,6 +36,8 @@ export function StudentEnrollmentModal({
   // Dynamic Courses & Languages strictly from Settings / Database
   const [coursesList, setCoursesList] = useState<CourseOptionItem[]>([]);
   const [languagesList, setLanguagesList] = useState<string[]>([]);
+  const [branchesList, setBranchesList] = useState<Array<{ id: string; branch_name: string; name?: string }>>([]);
+  const [selectedBranchId, setSelectedBranchId] = useState<string>('');
 
   const [course, setCourse] = useState<string>('');
   const [customCourse, setCustomCourse] = useState<string>('');
@@ -49,6 +51,7 @@ export function StudentEnrollmentModal({
   const [fullName, setFullName] = useState('');
   const [fatherName, setFatherName] = useState('');
   const [motherName, setMotherName] = useState('');
+  const [parentMobile, setParentMobile] = useState('');
   const [studentEmail, setStudentEmail] = useState('');
 
   // College / Form Branding (Editable Name, Subtitle, and Logo)
@@ -135,7 +138,7 @@ export function StudentEnrollmentModal({
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Fetch available courses and languages from Settings API on modal open
+  // Fetch available courses, languages, and branches from Settings API on modal open
   useEffect(() => {
     if (!visible) return;
 
@@ -154,6 +157,17 @@ export function StudentEnrollmentModal({
         }
       })
       .catch(() => {});
+
+    apiClient.get<any[]>('/gym/branches')
+      .then((res) => {
+        if (Array.isArray(res)) {
+          setBranchesList(res);
+          if (res.length > 0 && !selectedBranchId) {
+            setSelectedBranchId(res[0].id);
+          }
+        }
+      })
+      .catch(() => {});
   }, [visible]);
 
   // Pre-fill form dynamically when editing an existing student, or reset to empty
@@ -163,6 +177,9 @@ export function StudentEnrollmentModal({
       if (meta.college_name) setCollegeName(meta.college_name);
       if (meta.affiliation) setAffiliation(meta.affiliation);
       if (meta.college_logo) setCollegeLogo(meta.college_logo);
+      if (studentToEdit.branch_id || meta.branch_id) {
+        setSelectedBranchId(studentToEdit.branch_id || meta.branch_id);
+      }
 
       // 1. Dynamic Course & Medium Resolution from metadata, direct properties, or goal
       let targetCourse = meta.course || studentToEdit.course || '';
@@ -230,6 +247,7 @@ export function StudentEnrollmentModal({
       setFullName(studentToEdit.full_name || studentToEdit.name || '');
       setFatherName(meta.father_name || studentToEdit.father_name || '');
       setMotherName(meta.mother_name || studentToEdit.mother_name || '');
+      setParentMobile(studentToEdit.parent_phone || studentToEdit.parent_mobile || meta.parent_mobile || meta.parent_phone || meta.guardian_phone || '');
       setStudentEmail(studentToEdit.email || meta.email || '');
 
       const perm = meta.permanent_address || {};
@@ -286,6 +304,7 @@ export function StudentEnrollmentModal({
       setFullName('');
       setFatherName('');
       setMotherName('');
+      setParentMobile('');
       setStudentEmail('');
       setPermDoorNo('');
       setPermStreet('');
@@ -317,8 +336,13 @@ export function StudentEnrollmentModal({
       setAnnualIncome('');
       setAadharNumber(['', '', '', '', '', '', '', '', '', '', '', '']);
       setPhotoBase64(null);
+      if (branchesList.length > 0) {
+        setSelectedBranchId(branchesList[0].id);
+      } else {
+        setSelectedBranchId('');
+      }
     }
-  }, [studentToEdit, visible, coursesList, languagesList]);
+  }, [studentToEdit, visible, coursesList, languagesList, branchesList]);
 
   // Auto calculate age from DOB
   const handleDobChange = (val: string) => {
@@ -444,6 +468,16 @@ export function StudentEnrollmentModal({
       return;
     }
 
+    if (!parentMobile.trim()) {
+      setErrorMsg('Parent / Guardian Mobile Number is mandatory for monthly attendance WhatsApp reports.');
+      return;
+    }
+    const cleanParentMobile = parentMobile.replace(/\D/g, '');
+    if (cleanParentMobile.length < 10) {
+      setErrorMsg('Please enter a valid 10-digit Parent / Guardian Mobile Number.');
+      return;
+    }
+
     const selectedFinalCourse = isCustomCourse ? customCourse.trim() : course.trim();
     if (!selectedFinalCourse) {
       setErrorMsg('Please select or specify a Degree / Course.');
@@ -462,6 +496,9 @@ export function StudentEnrollmentModal({
       full_name: fullName.toUpperCase().trim(),
       email: validEmail,
       phone: finalMobile,
+      parent_phone: cleanParentMobile,
+      parent_mobile: cleanParentMobile,
+      branch_id: selectedBranchId || undefined,
       gender: gender.toLowerCase(),
       age: age ? parseInt(age, 10) : undefined,
       role: 'STUDENT',
@@ -476,11 +513,15 @@ export function StudentEnrollmentModal({
         affiliation: affiliation.trim(),
         college_logo: collegeLogo || undefined,
         academic_year: academicYear,
+        branch_id: selectedBranchId || undefined,
+        organisation_name: branchesList.find((b) => b.id === selectedBranchId)?.branch_name || branchesList.find((b) => b.id === selectedBranchId)?.name || undefined,
         course: selectedFinalCourse,
         medium: selectedFinalMedium,
         email: validEmail,
         father_name: fatherName.toUpperCase(),
         mother_name: motherName.toUpperCase(),
+        parent_mobile: cleanParentMobile,
+        parent_phone: cleanParentMobile,
         permanent_address: {
           door_no: permDoorNo,
           street: permStreet,
@@ -546,6 +587,7 @@ export function StudentEnrollmentModal({
       fullName,
       fatherName,
       motherName,
+      parentMobile: parentMobile.trim(),
       studentEmail,
       permDoorNo,
       permStreet,
@@ -736,15 +778,33 @@ export function StudentEnrollmentModal({
               <span className="font-extrabold uppercase tracking-wide text-slate-900 dark:text-white text-xs">
                 APPLICATION FORM FOR ADMISSION TO DEGREE / COURSE FOR:
               </span>
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400">Academic Year:</span>
-                <input
-                  type="text"
-                  value={academicYear}
-                  onChange={(e) => setAcademicYear(e.target.value)}
-                  placeholder="Academic Year (e.g. 2026 - 2027)"
-                  className="w-36 px-2.5 py-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-xs font-bold text-center text-blue-700 dark:text-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+              <div className="flex items-center gap-3 flex-wrap">
+                {branchesList.length > 0 && (
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400">Organisation:</span>
+                    <select
+                      value={selectedBranchId}
+                      onChange={(e) => setSelectedBranchId(e.target.value)}
+                      className="px-2.5 py-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-xs font-bold text-blue-700 dark:text-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-xs max-w-[200px] truncate"
+                    >
+                      {branchesList.map((b) => (
+                        <option key={b.id} value={b.id}>
+                          {b.branch_name || b.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400">Academic Year:</span>
+                  <input
+                    type="text"
+                    value={academicYear}
+                    onChange={(e) => setAcademicYear(e.target.value)}
+                    placeholder="Academic Year (e.g. 2026 - 2027)"
+                    className="w-32 px-2.5 py-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-xs font-bold text-center text-blue-700 dark:text-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
               </div>
             </div>
 
@@ -900,7 +960,22 @@ export function StudentEnrollmentModal({
 
               <div>
                 <label className="block font-bold text-slate-800 dark:text-slate-200 mb-1">
-                  4. Student Email Address <span className="text-rose-500">*</span>
+                  4. Parent / Guardian Mobile Number <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="tel"
+                  required
+                  maxLength={10}
+                  value={parentMobile}
+                  onChange={(e) => setParentMobile(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                  placeholder="9876543210"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl font-semibold uppercase tracking-wider text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-800 dark:text-slate-200 mb-1">
+                  5. Student Email Address <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-blue-600 dark:text-blue-400">
@@ -1054,7 +1129,7 @@ export function StudentEnrollmentModal({
               </div>
               <div className="col-span-2">
                 <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
-                  Mobile Number <span className="text-rose-500">*</span>:
+                  Student Personal Mobile Number <span className="text-rose-500">*</span>:
                 </label>
                 <input
                   type="tel"

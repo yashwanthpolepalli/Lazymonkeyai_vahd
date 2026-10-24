@@ -19,14 +19,23 @@ def _fetch_gym_context(db: Session, user: User = None) -> dict:
 
     if user:
         u_role = (user.role or "").strip().upper()
-        # Check Gym Owner mapping
-        if u_role in ["GYM_OWNER", "OWNER"]:
-            branch = db.query(GymBranch).filter(
-                or_(
-                    GymBranch.owner_id == user.id,
-                    GymBranch.id == user.branch_id
-                )
-            ).first()
+        # Direct user branch_id check first
+        if user.branch_id:
+            branch = db.query(GymBranch).filter(GymBranch.id == user.branch_id).first()
+
+        # Check Head Office / Owner mapping
+        if not branch:
+            if u_role in ["HEAD_OFFICE", "HO"]:
+                branch = db.query(GymBranch).filter(
+                    or_(
+                        GymBranch.ho_id == user.ho_id if user.ho_id else False,
+                        GymBranch.owner_id == user.id
+                    )
+                ).first()
+            elif u_role in ["OWNER"]:
+                branch = db.query(GymBranch).filter(
+                    GymBranch.owner_id == user.id
+                ).first()
 
         # Check Customer primary gym location mapping
         if not branch:
@@ -67,12 +76,14 @@ def _fetch_gym_context(db: Session, user: User = None) -> dict:
     branch_name = branch.branch_name if branch and branch.branch_name else ""
     city = branch.city if branch and branch.city else ""
     gym_id = branch.id if branch and branch.id else ""
+    ho_id = (user.ho_id if user and user.ho_id else None) or (branch.ho_id if branch and branch.ho_id else "") or ""
 
     return {
         "gym_id": gym_id,
         "gym_name": gym_name,
         "branch_name": branch_name,
         "city": city,
+        "ho_id": ho_id,
     }
 
 class AuthService:
@@ -137,10 +148,12 @@ class AuthService:
 
         user_role_up = (user.role or "").strip().upper()
 
-        # Normalize DB user role to canonical 4 roles
+        # Normalize DB user role
         if user_role_up in ["SUPER_ADMIN", "SUPERADMIN", "ADMIN"]:
             user_canonical_role = "SUPER_ADMIN"
-        elif user_role_up in ["OWNER", "GYM_OWNER", "MANAGER"]:
+        elif user_role_up in ["HEAD_OFFICE", "HO"]:
+            user_canonical_role = "HEAD_OFFICE"
+        elif user_role_up in ["OWNER", "MANAGER"]:
             user_canonical_role = "OWNER"
         elif user_role_up in ["EMPLOYEE", "EMPLOYEES", "TRAINER", "COACH", "STAFF", "EMP"]:
             user_canonical_role = "EMPLOYEE"
@@ -149,12 +162,14 @@ class AuthService:
         else:
             user_canonical_role = user_role_up
 
-        # Enforce strict 1:1 role validation matching selected login portal (Super Admin / Owner / Employees / Students)
+        # Enforce strict role validation matching selected login portal (Super Admin / HO / Owner / Employees / Students)
         if role:
             r_up = role.strip().upper()
             if r_up in ["ADMIN", "SUPER_ADMIN", "SUPERADMIN"]:
                 req_canonical_role = "SUPER_ADMIN"
-            elif r_up in ["OWNER", "GYM_OWNER"]:
+            elif r_up in ["HO", "HEAD_OFFICE"]:
+                req_canonical_role = "HEAD_OFFICE"
+            elif r_up in ["OWNER"]:
                 req_canonical_role = "OWNER"
             elif r_up in ["EMPLOYEE", "EMPLOYEES", "TRAINER", "COACH", "STAFF", "EMP"]:
                 req_canonical_role = "EMPLOYEE"
@@ -220,14 +235,14 @@ class AuthService:
 
         hashed_pwd = hash_password(password)
         user_id = f"owner_{uuid.uuid4().hex[:8]}"
-        branch_id = f"branch_{uuid.uuid4().hex[:8]}"
+        branch_id = f"vahd_{uuid.uuid4().hex[:10]}"
         resolved_gym_name = gym_name or f"{full_name}'s Gym"
 
         new_user = User(
             id=user_id,
             email=clean_email,
             password_hash=hashed_pwd,
-            role="GYM_OWNER",
+            role="OWNER",
             full_name=full_name,
             phone=phone,
             branch_id=branch_id,
@@ -293,14 +308,16 @@ class AuthService:
         role_up = str(raw_role or "").upper()
         if role_up in ["SUPER_ADMIN", "SUPERADMIN", "ADMIN"]:
             mapped_role = "SUPER_ADMIN"
-        elif role_up in ["OWNER", "GYM_OWNER", "MANAGER"]:
+        elif role_up in ["HO", "HEAD_OFFICE"]:
+            mapped_role = "HEAD_OFFICE"
+        elif role_up in ["OWNER", "MANAGER"]:
             mapped_role = "OWNER"
         elif role_up in ["EMPLOYEE", "EMPLOYEES", "TRAINER", "COACH", "STAFF", "EMP"]:
             mapped_role = "EMPLOYEE"
         else:
             mapped_role = "STUDENT"
 
-        if mapped_role in ["SUPER_ADMIN", "OWNER", "EMPLOYEE"]:
+        if mapped_role in ["SUPER_ADMIN", "HEAD_OFFICE", "OWNER", "EMPLOYEE"]:
             display_name = user.full_name or (cust.full_name if cust else "") or ""
         else:
             display_name = (cust.full_name if cust else "") or user.full_name or ""
@@ -313,5 +330,6 @@ class AuthService:
             "role": mapped_role,
             "phone": user.phone or (cust.phone if cust else "") or "",
             "avatar_url": user.avatar_url or (cust.profile_image if cust else "") or "",
+            "ho_id": user.ho_id,
             **gym_ctx,
         }

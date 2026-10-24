@@ -301,7 +301,7 @@ class DashboardService:
 
         if current_user:
             role = (current_user.role or "").strip().upper()
-            if role in ["GYM_OWNER", "OWNER"]:
+            if role in ["OWNER"]:
                 cust_query = cust_query.filter(
                     or_(
                         Customer.owner_id == current_user.id,
@@ -422,8 +422,8 @@ class DashboardService:
             is_explicit_employee = (
                 (log.customer_id is None)
                 and (
-                    str(log.user_role or "").upper() in ["TRAINER", "STAFF", "EMPLOYEE", "GYM_OWNER", "ADMIN", "COACH", "MANAGER"]
-                    or str(meta.get("user_role", "")).upper() in ["TRAINER", "STAFF", "EMPLOYEE", "GYM_OWNER", "ADMIN", "COACH", "MANAGER"]
+                    str(log.user_role or "").upper() in ["TRAINER", "STAFF", "EMPLOYEE", "OWNER", "ADMIN", "COACH", "MANAGER"]
+                    or str(meta.get("user_role", "")).upper() in ["TRAINER", "STAFF", "EMPLOYEE", "OWNER", "ADMIN", "COACH", "MANAGER"]
                     or (uid and (str(uid).startswith("emp_") or str(uid).startswith("tr_")))
                     or log.device_type == "GEOFENCE_ESS"
                 )

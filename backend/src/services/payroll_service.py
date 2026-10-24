@@ -11,16 +11,107 @@ from src.models.user import User
 from src.utils.security import hash_password
 from src.utils.email import generate_enrollment_password, send_enrollment_email
 
+from sqlalchemy import or_
+
 class PayrollService:
 
     @staticmethod
-    def get_all_trainers(db: Session) -> List[TrainerProfile]:
+    def get_all_trainers(
+        db: Session,
+        current_user: Optional[User] = None,
+        branch_id: Optional[str] = None
+    ) -> List[TrainerProfile]:
         """
         Returns all registered trainers, managers, and staff profiles dynamically from PostgreSQL database
-        with real-time today attendance synchronization.
+        scoped to the authenticated user hierarchy with real-time today attendance synchronization.
         """
-        from src.models.hrms import EmployeeAttendance
-        trainers = db.query(TrainerProfile).filter(TrainerProfile.is_active == True).order_by(TrainerProfile.created_at.desc()).all()
+        from src.models.hrms import EmployeeAttendance, Employee
+        from src.models.settings import Branch as GymBranch
+
+        query = db.query(TrainerProfile).filter(TrainerProfile.is_active == True)
+
+        if current_user:
+            u_role = (current_user.role or "").strip().upper()
+            if u_role in ["OWNER"]:
+                owner_branches = db.query(GymBranch).filter(
+                    or_(
+                        GymBranch.owner_id == current_user.id,
+                        GymBranch.id == current_user.branch_id
+                    )
+                ).all()
+                owner_b_ids = [b.id for b in owner_branches if b.id]
+                owner_b_names = [b.branch_name for b in owner_branches if b.branch_name] + [b.gym_name for b in owner_branches if b.gym_name]
+
+                user_ids_for_owner = [
+                    u.id for u in db.query(User.id).filter(
+                        or_(
+                            User.owner_id == current_user.id,
+                            User.branch_id.in_(owner_b_ids) if owner_b_ids else False
+                        )
+                    ).all()
+                ]
+
+                conditions = []
+                if user_ids_for_owner:
+                    conditions.append(TrainerProfile.user_id.in_(user_ids_for_owner))
+                if owner_b_names:
+                    conditions.append(TrainerProfile.primary_gym_location.in_(owner_b_names))
+
+                if conditions:
+                    query = query.filter(or_(*conditions))
+                else:
+                    query = query.filter(TrainerProfile.id == "__none__")
+
+                if branch_id and branch_id != "All":
+                    query = query.filter(
+                        or_(
+                            TrainerProfile.primary_gym_location.ilike(f"%{branch_id}%"),
+                            TrainerProfile.user_id.in_(
+                                db.query(User.id).filter(User.branch_id == branch_id)
+                            )
+                        )
+                    )
+            elif u_role in ["HEAD_OFFICE", "HO"]:
+                ho_target = current_user.ho_id or current_user.id
+                ho_branches = db.query(GymBranch).filter(
+                    or_(GymBranch.ho_id == ho_target, GymBranch.owner_id == current_user.id)
+                ).all()
+                ho_b_ids = [b.id for b in ho_branches if b.id]
+                ho_b_names = [b.branch_name for b in ho_branches if b.branch_name] + [b.gym_name for b in ho_branches if b.gym_name]
+
+                user_ids_for_ho = [
+                    u.id for u in db.query(User.id).filter(
+                        or_(
+                            User.ho_id == ho_target,
+                            User.branch_id.in_(ho_b_ids) if ho_b_ids else False
+                        )
+                    ).all()
+                ]
+
+                conditions = []
+                if user_ids_for_ho:
+                    conditions.append(TrainerProfile.user_id.in_(user_ids_for_ho))
+                if ho_b_names:
+                    conditions.append(TrainerProfile.primary_gym_location.in_(ho_b_names))
+
+                if conditions:
+                    query = query.filter(or_(*conditions))
+                else:
+                    query = query.filter(TrainerProfile.id == "__none__")
+
+                if branch_id and branch_id != "All":
+                    query = query.filter(
+                        or_(
+                            TrainerProfile.primary_gym_location.ilike(f"%{branch_id}%"),
+                            TrainerProfile.user_id.in_(
+                                db.query(User.id).filter(User.branch_id == branch_id)
+                            )
+                        )
+                    )
+            elif branch_id and branch_id != "All":
+                query = query.filter(TrainerProfile.primary_gym_location.ilike(f"%{branch_id}%"))
+
+        trainers = query.order_by(TrainerProfile.created_at.desc()).all()
 
         today_start = today_ist_start()
         today_end = today_ist_end()
@@ -37,6 +128,22 @@ class PayrollService:
         ).all()
 
         for t in trainers:
+            t_user = db.query(User).filter(User.id == t.user_id).first() if t.user_id else None
+            t_emp = db.query(Employee).filter((Employee.id == f"emp_{t.id}") | (Employee.email == t.email)).first()
+
+            branch_id_val = getattr(t_emp, "branch_id", None) or getattr(t_user, "branch_id", None)
+            owner_id_val = getattr(t_emp, "owner_id", None) or getattr(t_user, "owner_id", None)
+            ho_id_val = getattr(t_emp, "ho_id", None) or getattr(t_user, "ho_id", None)
+            gym_branch_val = getattr(t_emp, "gym_branch", None) or t.primary_gym_location or ""
+            emp_code_val = getattr(t_emp, "code", None) or f"EMP-{str(t.id).replace('tr_', '').upper()}"
+
+            setattr(t, 'branch_id', branch_id_val)
+            setattr(t, 'owner_id', owner_id_val)
+            setattr(t, 'ho_id', ho_id_val)
+            setattr(t, 'gym_branch', gym_branch_val)
+            setattr(t, 'primary_gym_location', gym_branch_val)
+            setattr(t, 'employee_code', emp_code_val)
+
             count = db.query(Customer).filter((Customer.trainer_id == t.id) | (Customer.trainer_id == t.user_id)).count()
             setattr(t, 'assigned_customers_count', count)
 
@@ -179,7 +286,9 @@ class PayrollService:
         full_name = data["full_name"]
         email = data["email"]
         phone = data.get("phone") or ""
-        trainer_role = data.get("role", "TRAINER")
+        trainer_role = data.get("role", "EMPLOYEE")
+        if str(trainer_role).upper() == "TRAINER":
+            trainer_role = "EMPLOYEE"
         trainer_id = data.get("id")
 
         # Check existing User
@@ -219,7 +328,7 @@ class PayrollService:
                 existing_user.full_name = full_name
                 existing_user.phone = phone or existing_user.phone
                 existing_user.role = trainer_role
-                if trainer_role in ["GYM_OWNER", "OWNER"]:
+                if trainer_role in ["OWNER"]:
                     existing_user.is_tenant_owner = True
 
             db.commit()
@@ -236,13 +345,23 @@ class PayrollService:
         # Generate credential: first 4 chars of name + last 4 digits of phone
         generated_password = generate_enrollment_password(full_name, phone)
 
+        t_owner_id = data.get("owner_id")
+        t_branch_id = data.get("branch_id")
+        t_ho_id = data.get("ho_id")
+
         # Create or update User record for login
         if existing_user:
             existing_user.password_hash = hash_password(generated_password)
             existing_user.full_name = full_name
             existing_user.phone = phone
             existing_user.role = trainer_role
-            if trainer_role in ["GYM_OWNER", "OWNER"]:
+            if t_owner_id:
+                existing_user.owner_id = t_owner_id
+            if t_branch_id:
+                existing_user.branch_id = t_branch_id
+            if t_ho_id:
+                existing_user.ho_id = t_ho_id
+            if trainer_role in ["OWNER"]:
                 existing_user.is_tenant_owner = True
             user = existing_user
         else:
@@ -253,7 +372,10 @@ class PayrollService:
                 role=trainer_role,
                 full_name=full_name,
                 phone=phone,
-                is_tenant_owner=(trainer_role in ["GYM_OWNER", "OWNER"])
+                owner_id=t_owner_id,
+                branch_id=t_branch_id,
+                ho_id=t_ho_id,
+                is_tenant_owner=(trainer_role in ["OWNER"])
             )
             db.add(user)
             db.flush()
@@ -294,13 +416,13 @@ class PayrollService:
         except Exception:
             pass
 
-        # Dispatch credential email to trainer
+        # Dispatch credential email to employee
         try:
             send_enrollment_email(
                 to_email=email,
                 full_name=full_name,
                 password=generated_password,
-                role="TRAINER"
+                role=trainer_role or "EMPLOYEE"
             )
         except Exception:
             pass

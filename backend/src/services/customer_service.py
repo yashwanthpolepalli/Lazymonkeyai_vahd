@@ -177,6 +177,8 @@ class CustomerService:
             "medium": meta.get("medium") or "",
             "father_name": meta.get("father_name") or "",
             "mother_name": meta.get("mother_name") or "",
+            "parent_phone": c.parent_phone or meta.get("parent_mobile") or meta.get("parent_phone") or "",
+            "parent_mobile": c.parent_phone or meta.get("parent_mobile") or meta.get("parent_phone") or "",
             "target_calories": c.target_calories or 0,
             "target_protein": c.target_protein or 0,
             "target_carbs": c.target_carbs or 0,
@@ -199,6 +201,7 @@ class CustomerService:
             "branch": c.primary_gym_location or "",
             "branch_id": c.branch_id or "",
             "owner_id": c.owner_id or "",
+            "ho_id": c.ho_id or "",
             "created_at": c.created_at.isoformat() if c.created_at else None,
             "joinDate": c.created_at.isoformat() if c.created_at else None,
             "membership": mem.plan_name if mem else "No Active Plan",
@@ -246,8 +249,35 @@ class CustomerService:
                     query = query.filter(Customer.branch_id == branch_id)
                 if branch:
                     query = query.filter(Customer.primary_gym_location.ilike(f"%{branch}%"))
-            elif user_role in ["GYM_OWNER", "OWNER"]:
-                # Gym Owner can ONLY view customers belonging to their gym / branches
+            elif user_role in ["HEAD_OFFICE", "HO"]:
+                # Head Office can view all customers/students across organizations under their Head Office
+                ho_target = current_user.ho_id or current_user.id
+                ho_branches = db.query(GymBranch).filter(
+                    or_(
+                        GymBranch.ho_id == ho_target,
+                        GymBranch.owner_id == current_user.id,
+                        GymBranch.id == current_user.branch_id
+                    )
+                ).all()
+                ho_branch_ids = [b.id for b in ho_branches if b.id]
+
+                conditions = [Customer.ho_id == ho_target, Customer.owner_id == current_user.id]
+                if ho_branch_ids:
+                    conditions.append(Customer.branch_id.in_(ho_branch_ids))
+
+                query = query.filter(or_(*conditions))
+
+                # Sub-filter by specific organisation if selected by HO
+                if branch_id or branch:
+                    target_b = branch_id or branch
+                    query = query.filter(
+                        or_(
+                            Customer.branch_id == target_b,
+                            Customer.primary_gym_location.ilike(f"%{target_b}%")
+                        )
+                    )
+            elif user_role in ["OWNER"]:
+                # Gym Owner views customers strictly belonging to their owner_id or owned branches
                 owner_branches = db.query(GymBranch).filter(
                     or_(
                         GymBranch.owner_id == current_user.id,
@@ -255,16 +285,13 @@ class CustomerService:
                     )
                 ).all()
                 owner_branch_ids = [b.id for b in owner_branches if b.id]
+                owner_branch_names = [b.branch_name for b in owner_branches if b.branch_name] + [b.gym_name for b in owner_branches if b.gym_name]
 
-                # Customer MUST belong to this gym owner
                 conditions = [Customer.owner_id == current_user.id]
                 if owner_branch_ids:
-                    conditions.append(
-                        and_(
-                            Customer.branch_id.in_(owner_branch_ids),
-                            or_(Customer.owner_id == current_user.id, Customer.owner_id.is_(None))
-                        )
-                    )
+                    conditions.append(Customer.branch_id.in_(owner_branch_ids))
+                if owner_branch_names:
+                    conditions.append(Customer.primary_gym_location.in_(owner_branch_names))
 
                 query = query.filter(or_(*conditions))
 
@@ -341,7 +368,7 @@ class CustomerService:
                 meta["card_number"] = data["card_number"]
             if data.get("notes"):
                 meta["notes"] = data["notes"]
-            meta["enrolled_by"] = "GYM_OWNER"
+            meta["enrolled_by"] = "OWNER"
 
             # Geofence location matching & enforcement for students
             from src.models.hrms import GeofenceScheme
@@ -509,6 +536,11 @@ class CustomerService:
         resolved_branch_id = data.get("branch_id") or (matched_branch.id if matched_branch else None)
         resolved_branch_name = (matched_branch.branch_name if matched_branch else branch_ref) or None
         resolved_owner_id = data.get("owner_id") or (matched_branch.owner_id if matched_branch else None)
+        resolved_ho_id = data.get("ho_id") or (matched_branch.ho_id if matched_branch else None)
+        if not resolved_ho_id and resolved_owner_id:
+            owner_u = db.query(User).filter(User.id == resolved_owner_id).first()
+            if owner_u and owner_u.ho_id:
+                resolved_ho_id = owner_u.ho_id
 
         if not user:
             user = User(
@@ -519,7 +551,8 @@ class CustomerService:
                 role=role,
                 phone=phone,
                 owner_id=resolved_owner_id,
-                branch_id=resolved_branch_id
+                branch_id=resolved_branch_id,
+                ho_id=resolved_ho_id
             )
             db.add(user)
             db.flush()
@@ -533,13 +566,28 @@ class CustomerService:
                 user.owner_id = resolved_owner_id
             if resolved_branch_id:
                 user.branch_id = resolved_branch_id
+            if resolved_ho_id:
+                user.ho_id = resolved_ho_id
 
-        meta_data_payload = data.get("meta_data") or data.get("metaData")
+        meta_data_payload = data.get("meta_data") or data.get("metaData") or {}
+        parent_phone = (
+            data.get("parent_phone")
+            or data.get("parent_mobile")
+            or data.get("parentPhone")
+            or data.get("parentMobile")
+            or (meta_data_payload.get("parent_mobile") if isinstance(meta_data_payload, dict) else None)
+            or (meta_data_payload.get("parent_phone") if isinstance(meta_data_payload, dict) else None)
+            or ""
+        ).strip()
+
+        existing_cust = db.query(Customer).filter(Customer.user_id == user.id).first()
         if existing_cust:
             cust = existing_cust
             cust.full_name = full_name
             cust.email = clean_email
             cust.phone = phone
+            if parent_phone:
+                cust.parent_phone = parent_phone
             if gender:
                 cust.gender = gender
             if goal:
@@ -556,6 +604,8 @@ class CustomerService:
                 cust.branch_id = resolved_branch_id
             if resolved_owner_id:
                 cust.owner_id = resolved_owner_id
+            if resolved_ho_id:
+                cust.ho_id = resolved_ho_id
         else:
             cust = Customer(
                 id=f"cust_{uuid.uuid4().hex[:8]}",
@@ -563,6 +613,7 @@ class CustomerService:
                 full_name=full_name,
                 email=clean_email,
                 phone=phone,
+                parent_phone=parent_phone or None,
                 gender=gender,
                 weight=weight,
                 bmi=bmi,
@@ -572,6 +623,7 @@ class CustomerService:
                 meta_data=meta_data_payload,
                 owner_id=resolved_owner_id,
                 branch_id=resolved_branch_id,
+                ho_id=resolved_ho_id,
                 primary_gym_location=resolved_branch_name,
                 status=data.get("status", "ACTIVE")
             )
@@ -667,6 +719,18 @@ class CustomerService:
             cust.full_name = data.get("full_name") or data.get("fullName") or data.get("name")
         if "phone" in data:
             cust.phone = data.get("phone")
+        if "parent_phone" in data or "parent_mobile" in data or "parentPhone" in data or "parentMobile" in data:
+            cust.parent_phone = (
+                data.get("parent_phone")
+                or data.get("parent_mobile")
+                or data.get("parentPhone")
+                or data.get("parentMobile")
+                or ""
+            ).strip() or None
+        elif "meta_data" in data and isinstance(data["meta_data"], dict):
+            p_phone = data["meta_data"].get("parent_mobile") or data["meta_data"].get("parent_phone")
+            if p_phone:
+                cust.parent_phone = p_phone.strip()
         if "email" in data:
             cust.email = data.get("email")
         if "gender" in data:

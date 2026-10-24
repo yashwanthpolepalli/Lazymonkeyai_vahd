@@ -6,7 +6,7 @@ class TrainerCreateRequest(BaseModel):
     full_name: str
     email: EmailStr
     phone: Optional[str] = None
-    role: str = "TRAINER"  # GYM_OWNER, MANAGER, TRAINER, STAFF
+    role: str = "EMPLOYEE"  # OWNER, MANAGER, EMPLOYEE, STAFF
     specialization: Optional[str] = None
     base_monthly_salary: float = 0.0
     pt_session_rate: float = 0.0
@@ -15,6 +15,9 @@ class TrainerCreateRequest(BaseModel):
     upi_id: Optional[str] = None
     primary_gym_location: Optional[str] = None
     branch: Optional[str] = None
+    branch_id: Optional[str] = None
+    owner_id: Optional[str] = None
+    ho_id: Optional[str] = None
     join_date: Optional[str] = None
     created_at: Optional[str] = None
 
@@ -41,6 +44,12 @@ class TrainerResponse(BaseModel):
     is_present: Optional[bool] = False
     is_early_logout: Optional[bool] = False
     today_punch: Optional[dict] = None
+    branch_id: Optional[str] = None
+    gym_branch: Optional[str] = None
+    primary_gym_location: Optional[str] = None
+    employee_code: Optional[str] = None
+    owner_id: Optional[str] = None
+    ho_id: Optional[str] = None
 
     class Config:
         from_attributes = True

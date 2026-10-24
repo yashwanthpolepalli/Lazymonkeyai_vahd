@@ -34,6 +34,12 @@ def on_startup():
     except Exception as e:
         print(f"⚠️ [Startup Warning] Database migration alert: {e}")
 
+    try:
+        from src.services.student_attendance_scheduler import start_monthly_attendance_scheduler
+        start_monthly_attendance_scheduler()
+    except Exception as e:
+        print(f"⚠️ [Startup Warning] Could not start attendance scheduler: {e}")
+
 
 app.add_middleware(
     CORSMiddleware,

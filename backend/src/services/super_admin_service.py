@@ -34,7 +34,7 @@ class SuperAdminService:
         total_members = db.query(Customer).count()
         total_users = db.query(User).count()
         total_trainers = db.query(User).filter(User.role == "TRAINER").count()
-        total_owners = db.query(User).filter(User.role == "GYM_OWNER").count()
+        total_owners = db.query(User).filter(User.role == "OWNER").count()
 
         # Dynamic MRR sum from active memberships
         total_mrr_sum = db.query(func.sum(Membership.price)).filter(Membership.status == "ACTIVE").scalar()
@@ -258,7 +258,7 @@ class SuperAdminService:
                 query = query.filter(GymBranch.is_active == False)
 
         branches = query.order_by(desc(GymBranch.created_at)).all()
-        owners = db.query(User).filter(User.role == "GYM_OWNER").all()
+        owners = db.query(User).filter(User.role == "OWNER").all()
         first_owner = owners[0] if owners else None
 
         res = []
@@ -267,7 +267,7 @@ class SuperAdminService:
             if b.owner_id:
                 owner = db.query(User).filter(User.id == b.owner_id).first()
             if not owner:
-                owner = db.query(User).filter(User.branch_id == b.id, User.role == "GYM_OWNER").first()
+                owner = db.query(User).filter(User.branch_id == b.id, User.role == "OWNER").first()
 
             # Dynamic member count for this branch
             member_count = db.query(Customer).filter(
@@ -349,7 +349,7 @@ class SuperAdminService:
         if branch.owner_id:
             owner = db.query(User).filter(User.id == branch.owner_id).first()
         if not owner:
-            owner = db.query(User).filter(User.branch_id == branch.id, User.role == "GYM_OWNER").first()
+            owner = db.query(User).filter(User.branch_id == branch.id, User.role == "OWNER").first()
 
         branch_cust_ids = [
             c.id for c in db.query(Customer.id).filter(
@@ -495,16 +495,21 @@ class SuperAdminService:
 
         # Check existing user
         existing_user = db.query(User).filter(func.lower(User.email) == owner_email).first()
-        if existing_user and existing_user.role != "GYM_OWNER":
+        if existing_user and existing_user.role not in ["HEAD_OFFICE", "OWNER"]:
             return {"success": False, "message": f"Email {owner_email} already belongs to an existing user with role '{existing_user.role}'"}
 
-        branch_id = f"gym_{uuid.uuid4().hex[:10]}"
+        target_role = payload.get("role") or "HEAD_OFFICE"
+        ho_id = payload.get("ho_id") or f"ho_{uuid.uuid4().hex[:10]}"
+
+        branch_id = f"vahd_{uuid.uuid4().hex[:10]}"
         branch = GymBranch(
             id=branch_id,
             gym_name=gym_name,
+            name=gym_name,
             branch_name=branch_name,
             city=city,
             address=address,
+            ho_id=ho_id,
             plan_id=plan_id,
             plan_name=plan_name,
             plan_tier=plan_tier,
@@ -516,16 +521,17 @@ class SuperAdminService:
         )
         db.add(branch)
 
-        # Create or update GYM_OWNER user
+        # Create or update HEAD_OFFICE user
         if not existing_user:
-            user_id = f"usr_owner_{uuid.uuid4().hex[:10]}"
+            user_id = f"usr_ho_{uuid.uuid4().hex[:10]}"
             new_user = User(
                 id=user_id,
                 email=owner_email,
                 password_hash=hash_password(password),
                 full_name=owner_name,
                 phone=phone,
-                role="GYM_OWNER",
+                role=target_role,
+                ho_id=ho_id,
                 branch_id=branch_id,
                 is_active=True,
                 is_tenant_owner=True
@@ -533,11 +539,12 @@ class SuperAdminService:
             db.add(new_user)
             owner_user = new_user
         else:
-            existing_user.role = "GYM_OWNER"
+            existing_user.role = target_role
             existing_user.full_name = owner_name
             if phone:
                 existing_user.phone = phone
             existing_user.password_hash = hash_password(password)
+            existing_user.ho_id = ho_id
             existing_user.branch_id = branch_id
             existing_user.is_active = True
             existing_user.is_tenant_owner = True
@@ -579,7 +586,7 @@ class SuperAdminService:
                 "additional_charges": payload.get("additional_charges", 0),
                 "custom_features": custom_features,
                 "status": "ACTIVE",
-                "role": "GYM_OWNER"
+                "role": "OWNER"
             }
         )
         db.add(log)
@@ -590,6 +597,8 @@ class SuperAdminService:
         return {
             "success": True,
             "gym_id": branch.id,
+            "ho_id": branch.ho_id,
+            "role": owner_user.role,
             "gym_name": gym_name,
             "branch_name": branch_name,
             "city": city,
@@ -638,10 +647,11 @@ class SuperAdminService:
         user.updated_at = now_ist_naive()
 
         # Audit log event
+        actor_name, actor_email = SuperAdminService._resolve_actor(db, actor_info)
         log = PlatformAuditLog(
             id=f"audit_{uuid.uuid4().hex[:12]}",
-            actor_name=actor_info.get("name") if actor_info else "Super Admin",
-            actor_email=actor_info.get("email") if actor_info else "superadmin@vahd.com",
+            actor_name=actor_name,
+            actor_email=actor_email,
             organization_id="PLATFORM",
             organization_name="VAHD Platform",
             action="RESET_OWNER_CREDENTIALS",
@@ -669,33 +679,156 @@ class SuperAdminService:
         }
 
     @staticmethod
+    def _cascade_delete_branch_data(db: Session, branch: GymBranch):
+        """
+        Deep-cascades deletion of all foreign-key linked entities for a branch / organization
+        including Customers, Memberships, Attendance, Biometrics, HRMS Employees, Courses,
+        and unlinks/removes owner or HO users if no other branches remain.
+        """
+        clean_id = branch.id
+        owner_id = branch.owner_id
+        ho_id = branch.ho_id
+        branch_name = branch.branch_name
+        gym_name = branch.gym_name
+
+        from src.models import (
+            Customer, User, Membership, BiometricLog, BiometricDevice,
+            Employee, TrainerProfile, Course, StudentCourse, StudentAttendanceReportLog,
+            EmployeeAttendance, LeaveRequest, EmployeeLeaveBalance, AttendanceCorrection,
+            PayrollRecord, EmployeeDocument, EmployeePerformance, ExitRequest, PayrollInvoice
+        )
+        from sqlalchemy import or_
+
+        # 1. Customers / Students tied to this branch or location
+        custs = db.query(Customer).filter(
+            or_(
+                Customer.branch_id == clean_id,
+                Customer.primary_gym_location == branch_name,
+                Customer.primary_gym_location == gym_name
+            )
+        ).all()
+        cust_ids = [c.id for c in custs if c.id]
+        cust_user_ids = [c.user_id for c in custs if c.user_id]
+
+        if cust_ids:
+            db.query(StudentAttendanceReportLog).filter(StudentAttendanceReportLog.student_id.in_(cust_ids)).delete(synchronize_session=False)
+            db.query(Membership).filter(Membership.customer_id.in_(cust_ids)).delete(synchronize_session=False)
+            db.query(BiometricLog).filter(BiometricLog.customer_id.in_(cust_ids)).delete(synchronize_session=False)
+            db.query(StudentCourse).filter(StudentCourse.customer_id.in_(cust_ids)).delete(synchronize_session=False)
+            db.query(Customer).filter(Customer.id.in_(cust_ids)).delete(synchronize_session=False)
+
+        if cust_user_ids:
+            db.query(User).filter(
+                User.id.in_(cust_user_ids),
+                User.role.in_(["CUSTOMER", "STUDENT", "MEMBER"])
+            ).delete(synchronize_session=False)
+
+        # 2. Employees tied to this branch or location
+        emps = db.query(Employee).filter(
+            or_(
+                Employee.branch_id == clean_id,
+                Employee.gym_branch == branch_name,
+                Employee.gym_branch == gym_name
+            )
+        ).all()
+        emp_ids = [e.id for e in emps if e.id]
+        emp_emails = [e.email for e in emps if e.email]
+
+        if emp_ids:
+            db.query(EmployeeAttendance).filter(EmployeeAttendance.employee_id.in_(emp_ids)).delete(synchronize_session=False)
+            db.query(LeaveRequest).filter(LeaveRequest.employee_id.in_(emp_ids)).delete(synchronize_session=False)
+            db.query(EmployeeLeaveBalance).filter(EmployeeLeaveBalance.employee_id.in_(emp_ids)).delete(synchronize_session=False)
+            db.query(AttendanceCorrection).filter(AttendanceCorrection.employee_id.in_(emp_ids)).delete(synchronize_session=False)
+            db.query(PayrollRecord).filter(PayrollRecord.employee_id.in_(emp_ids)).delete(synchronize_session=False)
+            db.query(EmployeeDocument).filter(EmployeeDocument.employee_id.in_(emp_ids)).delete(synchronize_session=False)
+            db.query(EmployeePerformance).filter(EmployeePerformance.employee_id.in_(emp_ids)).delete(synchronize_session=False)
+            db.query(ExitRequest).filter(ExitRequest.employee_id.in_(emp_ids)).delete(synchronize_session=False)
+            db.query(Employee).filter(Employee.id.in_(emp_ids)).delete(synchronize_session=False)
+
+        if emp_emails:
+            trainers = db.query(TrainerProfile).filter(TrainerProfile.email.in_(emp_emails)).all()
+            t_ids = [t.id for t in trainers if t.id]
+            if t_ids:
+                db.query(PayrollInvoice).filter(PayrollInvoice.trainer_id.in_(t_ids)).delete(synchronize_session=False)
+                db.query(TrainerProfile).filter(TrainerProfile.id.in_(t_ids)).delete(synchronize_session=False)
+            db.query(User).filter(
+                User.email.in_(emp_emails),
+                User.role.in_(["EMPLOYEE", "TRAINER", "STAFF"])
+            ).delete(synchronize_session=False)
+
+        # Direct trainer profiles by location
+        db.query(TrainerProfile).filter(
+            or_(
+                TrainerProfile.primary_gym_location == branch_name,
+                TrainerProfile.primary_gym_location == gym_name
+            )
+        ).delete(synchronize_session=False)
+
+        # 3. Courses tied to this branch
+        db.query(Course).filter(Course.branch_id == clean_id).delete(synchronize_session=False)
+
+        # 4. Biometric Devices at this branch
+        db.query(BiometricDevice).filter(
+            or_(
+                BiometricDevice.location == branch_name,
+                BiometricDevice.location == gym_name
+            )
+        ).delete(synchronize_session=False)
+
+        # 5. Delete the branch itself
+        db.delete(branch)
+
+        # 6. Check if owner user has any remaining branches; if none, delete the owner/HO user
+        if owner_id:
+            remaining_branches = db.query(GymBranch).filter(
+                GymBranch.owner_id == owner_id,
+                GymBranch.id != clean_id
+            ).count()
+            if remaining_branches == 0:
+                rem_custs = db.query(Customer).filter(Customer.owner_id == owner_id).all()
+                rem_c_ids = [c.id for c in rem_custs if c.id]
+                rem_c_uids = [c.user_id for c in rem_custs if c.user_id]
+                if rem_c_ids:
+                    db.query(Membership).filter(Membership.customer_id.in_(rem_c_ids)).delete(synchronize_session=False)
+                    db.query(BiometricLog).filter(BiometricLog.customer_id.in_(rem_c_ids)).delete(synchronize_session=False)
+                    db.query(StudentCourse).filter(StudentCourse.customer_id.in_(rem_c_ids)).delete(synchronize_session=False)
+                    db.query(Customer).filter(Customer.id.in_(rem_c_ids)).delete(synchronize_session=False)
+                if rem_c_uids:
+                    db.query(User).filter(User.id.in_(rem_c_uids)).delete(synchronize_session=False)
+
+                db.query(User).filter(
+                    User.id == owner_id,
+                    User.role.in_(["OWNER", "HEAD_OFFICE", "HO"])
+                ).delete(synchronize_session=False)
+
+    @staticmethod
     def delete_organization(db: Session, gym_id: str, actor_info: Optional[dict] = None) -> Dict[str, Any]:
         clean_id = (gym_id or "").strip()
         branch = db.query(GymBranch).filter(GymBranch.id == clean_id).first()
         if not branch:
             return {"success": False, "message": "Organization not found"}
 
-        gym_name = branch.gym_name
-        branch_name = branch.branch_name
-        owner_id = branch.owner_id
+        gym_name = branch.gym_name or "Organization"
+        branch_name = branch.branch_name or ""
+        ho_id = branch.ho_id
 
-        # Delete the organization branch
-        db.delete(branch)
+        # Cascade delete child branches if this branch is an HO
+        if ho_id:
+            child_branches = db.query(GymBranch).filter(
+                GymBranch.ho_id == ho_id,
+                GymBranch.id != clean_id
+            ).all()
+            for cb in child_branches:
+                SuperAdminService._cascade_delete_branch_data(db, cb)
 
-        # If owner user exists and is exclusively a GYM_OWNER, delete owner or unlink
-        if owner_id:
-            owner = db.query(User).filter(User.id == owner_id, User.role == "GYM_OWNER").first()
-            if owner:
-                # Check if this owner has any other branches
-                other_branches = db.query(GymBranch).filter(GymBranch.owner_id == owner_id, GymBranch.id != clean_id).count()
-                if other_branches == 0:
-                    db.delete(owner)
+        SuperAdminService._cascade_delete_branch_data(db, branch)
 
         # Audit log event
+        actor_name, actor_email = SuperAdminService._resolve_actor(db, actor_info)
         log = PlatformAuditLog(
             id=f"audit_{uuid.uuid4().hex[:12]}",
-            actor_name=actor_info.get("name") if actor_info else "Super Admin",
-            actor_email=actor_info.get("email") if actor_info else "superadmin@vahd.com",
+            actor_name=actor_name,
+            actor_email=actor_email,
             organization_id=clean_id,
             organization_name=gym_name,
             action="DELETE_ORGANIZATION",
@@ -725,25 +858,17 @@ class SuperAdminService:
                 continue
             branch = db.query(GymBranch).filter(GymBranch.id == clean_id).first()
             if branch:
-                gym_name = branch.gym_name
-                owner_id = branch.owner_id
+                gym_name = branch.gym_name or clean_id
                 deleted_names.append(f"{gym_name} ({clean_id})")
-                db.delete(branch)
-
-                if owner_id:
-                    owner = db.query(User).filter(User.id == owner_id, User.role == "GYM_OWNER").first()
-                    if owner:
-                        other_branches = db.query(GymBranch).filter(GymBranch.owner_id == owner_id, GymBranch.id != clean_id).count()
-                        if other_branches == 0:
-                            db.delete(owner)
-
+                SuperAdminService._cascade_delete_branch_data(db, branch)
                 deleted_count += 1
 
         if deleted_count > 0:
+            actor_name, actor_email = SuperAdminService._resolve_actor(db, actor_info)
             log = PlatformAuditLog(
                 id=f"audit_{uuid.uuid4().hex[:12]}",
-                actor_name=actor_info.get("name") if actor_info else "Super Admin",
-                actor_email=actor_info.get("email") if actor_info else "superadmin@vahd.com",
+                actor_name=actor_name,
+                actor_email=actor_email,
                 organization_id="PLATFORM",
                 organization_name="VAHD Platform",
                 action="BULK_DELETE_ORGANIZATIONS",
@@ -772,10 +897,11 @@ class SuperAdminService:
         user.updated_at = now_ist_naive()
 
         # Audit log event
+        actor_name, actor_email = SuperAdminService._resolve_actor(db, actor_info)
         log = PlatformAuditLog(
             id=f"audit_{uuid.uuid4().hex[:12]}",
-            actor_name=actor_info.get("name") if actor_info else "Super Admin",
-            actor_email=actor_info.get("email") if actor_info else "superadmin@vahd.com",
+            actor_name=actor_name,
+            actor_email=actor_email,
             organization_id="PLATFORM",
             organization_name="VAHD Platform",
             action="CHANGE_OWNER_STATUS",
@@ -805,9 +931,10 @@ class SuperAdminService:
         branch.is_active = is_active
 
         # Audit log event
+        actor_name, actor_email = SuperAdminService._resolve_actor(db, actor_info)
         log = PlatformAuditLog(
-            actor_name=actor_info.get("name") if actor_info else "",
-            actor_email=actor_info.get("email") if actor_info else "",
+            actor_name=actor_name,
+            actor_email=actor_email,
             organization_id=branch.id,
             organization_name=branch.gym_name,
             action="CHANGE_ORGANIZATION_STATUS",
@@ -1083,93 +1210,11 @@ class SuperAdminService:
     # =========================================================================
     @staticmethod
     def ensure_default_devices(db: Session):
-        """Ensures complete fleet of standard gym hardware devices exists in DB."""
-        count = db.query(BiometricDevice).count()
-        if count == 0:
-            default_devices = [
-                BiometricDevice(
-                    id="dev_essl_mb20_01",
-                    serial_number="ESSL-MB20-9941",
-                    device_name="eSSL MB20 Biometric Turnstile",
-                    model_name="eSSL MB20 Multi-Biometric",
-                    device_type="biometric",
-                    ip_address="192.168.1.120",
-                    port=4370,
-                    is_wireless=True,
-                    status="online",
-                    location="Turnstile Gate A",
-                    meta_data={"firmware_version": "v4.12.0", "alerts_count": 0},
-                    last_seen_at=now_ist_naive(),
-                    last_sync_at=now_ist_naive()
-                ),
-                BiometricDevice(
-                    id="dev_hik_face_02",
-                    serial_number="HIK-FR-8820",
-                    device_name="Hikvision Face Terminal K1T671",
-                    model_name="Hikvision DS-K1T671MF",
-                    device_type="face_recognition",
-                    ip_address="192.168.1.125",
-                    port=8000,
-                    is_wireless=False,
-                    status="online",
-                    location="VIP Entrance",
-                    meta_data={"firmware_version": "v3.2.1", "alerts_count": 0},
-                    last_seen_at=now_ist_naive(),
-                    last_sync_at=now_ist_naive()
-                ),
-                BiometricDevice(
-                    id="dev_inbody_570_03",
-                    serial_number="INB-570-4412",
-                    device_name="InBody 570 Composition Analyzer",
-                    model_name="InBody 570 Multi-Frequency",
-                    device_type="body_scanner",
-                    ip_address="192.168.1.140",
-                    port=9100,
-                    is_wireless=True,
-                    status="online",
-                    location="Assessment Room 1",
-                    meta_data={"firmware_version": "v2.1.0", "alerts_count": 0},
-                    last_seen_at=now_ist_naive(),
-                    last_sync_at=now_ist_naive()
-                ),
-                BiometricDevice(
-                    id="dev_dahua_cctv_04",
-                    serial_number="DAH-4K-1102",
-                    device_name="Dahua 4K Security Stream Cam 01",
-                    model_name="Dahua IPC-HFW5842E-Z4E",
-                    device_type="cctv",
-                    ip_address="192.168.1.160",
-                    port=554,
-                    is_wireless=False,
-                    status="online",
-                    location="Free Weights Area",
-                    meta_data={"firmware_version": "v5.0.2", "alerts_count": 0},
-                    last_seen_at=now_ist_naive(),
-                    last_sync_at=now_ist_naive()
-                ),
-                BiometricDevice(
-                    id="dev_sunmi_pos_05",
-                    serial_number="SUN-POS-7731",
-                    device_name="Sunmi POS Terminal T2 Pro",
-                    model_name="Sunmi T2 Pro Dual Screen",
-                    device_type="pos",
-                    ip_address="192.168.1.180",
-                    port=9000,
-                    is_wireless=True,
-                    status="online",
-                    location="Front Desk POS",
-                    meta_data={"firmware_version": "v2.0.4", "alerts_count": 0},
-                    last_seen_at=now_ist_naive(),
-                    last_sync_at=now_ist_naive()
-                ),
-            ]
-            for d in default_devices:
-                db.add(d)
-            db.commit()
+        """No-op: All devices are dynamically managed and loaded from the DB without hardcoded mock data."""
+        pass
 
     @staticmethod
     def get_devices(db: Session) -> List[Dict[str, Any]]:
-        SuperAdminService.ensure_default_devices(db)
         devices = db.query(BiometricDevice).all()
 
         type_map = {
@@ -1184,34 +1229,34 @@ class SuperAdminService:
 
         res = []
         for d in devices:
-            raw_type = (d.device_type or "biometric").lower()
-            normalized_type = type_map.get(raw_type, "biometric")
-            raw_status = (d.status or "online").lower()
+            raw_type = (d.device_type or "").lower()
+            normalized_type = type_map.get(raw_type, raw_type or "biometric")
+            raw_status = (d.status or "offline").lower()
             status_val = "online" if raw_status in ["online", "active"] else ("warning" if raw_status == "warning" else "offline")
 
             meta = d.meta_data or {}
-            version_val = meta.get("firmware_version") or "v2.4.1"
+            version_val = meta.get("firmware_version") or ""
             alerts_cnt = meta.get("alerts_count") or 0
-            network_val = "WiFi" if d.is_wireless or d.wifi_ssid else "Ethernet"
+            network_val = "WiFi" if (d.is_wireless or d.wifi_ssid) else "Ethernet"
 
             last_hb = d.last_seen_at.strftime("%b %d, %H:%M:%S") if d.last_seen_at else (
-                d.last_sync_at.strftime("%b %d, %H:%M:%S") if d.last_sync_at else "Just now"
+                d.last_sync_at.strftime("%b %d, %H:%M:%S") if d.last_sync_at else "Never"
             )
 
             res.append({
                 "id": d.id,
-                "name": d.device_name or d.model_name or "Hardware Device",
+                "name": d.device_name or d.model_name or d.id,
                 "type": normalized_type,
                 "status": status_val,
                 "lastHeartbeat": last_hb,
-                "location": d.location or "Main Branch",
+                "location": d.location or "",
                 "version": version_val,
                 "network": network_val,
                 "alerts": alerts_cnt,
-                "ip": d.ip_address or "192.168.1.1",
-                "port": d.port or 4370,
+                "ip": d.ip_address or "",
+                "port": d.port or 0,
                 "serialNumber": d.serial_number or "",
-                "is_wireless": d.is_wireless or False
+                "is_wireless": bool(d.is_wireless)
             })
         return res
 

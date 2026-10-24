@@ -28,6 +28,9 @@ def send_enrollment_email(to_email: str, full_name: str, password: str, role: st
     gym_tagline = settings.GYM_PLATFORM_TAGLINE
     from_email = settings.SMTP_FROM_EMAIL or settings.SMTP_USER or ""
 
+    if role and role.upper() == "TRAINER":
+        role = "EMPLOYEE"
+
     subject = f"Welcome to {gym_name} — Your {role.title()} Account Credentials"
 
     plan_html = (

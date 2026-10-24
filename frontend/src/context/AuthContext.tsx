@@ -30,8 +30,22 @@ const defaultAuthContext: AuthContextValue = {
 const AuthContext = createContext<AuthContextValue>(defaultAuthContext);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(() => {
+    const stored = localStorage.getItem('vahd_user');
+    if (stored) {
+      try {
+        return JSON.parse(stored);
+      } catch (_err) {
+        return null;
+      }
+    }
+    return null;
+  });
+  const [loading, setLoading] = useState<boolean>(() => {
+    const hasToken = !!localStorage.getItem('vahd_token');
+    const hasUser = !!localStorage.getItem('vahd_user');
+    return hasToken && !hasUser;
+  });
 
   useEffect(() => {
     const token = localStorage.getItem('vahd_token');
@@ -52,10 +66,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setLoading(false);
         });
     } else {
-      const stored = localStorage.getItem('vahd_user');
-      if (stored) {
-        try { setUser(JSON.parse(stored)); } catch (_err) { /* ignore */ }
-      }
       setLoading(false);
     }
   }, []);

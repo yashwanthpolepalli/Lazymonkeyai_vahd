@@ -3,6 +3,7 @@ import math
 import calendar
 from datetime import datetime, date, timezone, timedelta
 from typing import List, Dict, Any, Optional
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from src.models.hrms import (
     Employee, Department, Designation, Team, EmployeeDocument,
@@ -65,6 +66,20 @@ class HrmsService:
             salary = float(t.base_monthly_salary or 0.0)
             joined = t.created_at.date() if t.created_at else date.today()
 
+            u = db.query(User).filter(User.id == t.user_id).first() if t.user_id else None
+            if not u and t.email:
+                u = db.query(User).filter(func.lower(User.email) == t.email.strip().lower()).first()
+
+            b = None
+            if t.primary_gym_location:
+                b = db.query(GymBranch).filter(
+                    or_(GymBranch.id == t.primary_gym_location, GymBranch.branch_name.ilike(f"%{t.primary_gym_location}%"))
+                ).first()
+
+            t_branch_id = (u.branch_id if u and u.branch_id else None) or (b.id if b else None)
+            t_owner_id = (u.owner_id if u and u.owner_id else None) or (b.owner_id if b else None)
+            t_ho_id = (u.ho_id if u and u.ho_id else None) or (b.ho_id if b else None)
+
             existing_emp = db.query(Employee).filter(
                 (Employee.email.ilike(t.email)) | (Employee.id == f"emp_{t.id}")
             ).first()
@@ -80,6 +95,12 @@ class HrmsService:
                 existing_emp.status = status
                 existing_emp.salary = salary
                 existing_emp.gym_branch = t.primary_gym_location or existing_emp.gym_branch or ""
+                if t_branch_id and not existing_emp.branch_id:
+                    existing_emp.branch_id = t_branch_id
+                if t_owner_id and not getattr(existing_emp, "owner_id", None):
+                    existing_emp.owner_id = t_owner_id
+                if t_ho_id and not existing_emp.ho_id:
+                    existing_emp.ho_id = t_ho_id
                 if not existing_emp.code:
                     while f"{next_code_num:04d}" in existing_codes:
                         next_code_num += 1
@@ -109,6 +130,9 @@ class HrmsService:
                     salary=salary,
                     avatar="",
                     gym_branch=t.primary_gym_location or "",
+                    branch_id=t_branch_id,
+                    owner_id=t_owner_id,
+                    ho_id=t_ho_id,
                     skills=[t.specialization] if t.specialization else []
                 )
                 db.add(new_emp)
@@ -116,7 +140,15 @@ class HrmsService:
         db.commit()
 
     @staticmethod
-    def get_employees(db: Session, department: Optional[str] = None, status: Optional[str] = None, search: Optional[str] = None) -> List[Dict[str, Any]]:
+    def get_employees(
+        db: Session,
+        department: Optional[str] = None,
+        status: Optional[str] = None,
+        search: Optional[str] = None,
+        branch_id: Optional[str] = None,
+        ho_id: Optional[str] = None,
+        current_user: Optional[User] = None
+    ) -> List[Dict[str, Any]]:
         # Always sync with trainer profiles first
         try:
             HrmsService.sync_trainers_to_employees(db)
@@ -124,6 +156,51 @@ class HrmsService:
             db.rollback()
 
         query = db.query(Employee)
+
+        # Multi-tenant Head Office / Branch isolation
+        if current_user:
+            user_role = (current_user.role or "").strip().upper()
+            if user_role in ["HEAD_OFFICE", "HO"]:
+                ho_target = current_user.ho_id or current_user.id
+                ho_branches = db.query(GymBranch).filter(
+                    or_(GymBranch.ho_id == ho_target, GymBranch.owner_id == current_user.id)
+                ).all()
+                ho_branch_names = [b.branch_name for b in ho_branches if b.branch_name]
+                ho_branch_ids = [b.id for b in ho_branches if b.id]
+
+                conditions = [Employee.ho_id == ho_target]
+                if ho_branch_ids:
+                    conditions.append(Employee.branch_id.in_(ho_branch_ids))
+                if ho_branch_names:
+                    conditions.append(Employee.gym_branch.in_(ho_branch_names))
+
+                query = query.filter(or_(*conditions))
+
+                if branch_id:
+                    query = query.filter(or_(Employee.branch_id == branch_id, Employee.gym_branch.ilike(f"%{branch_id}%")))
+            elif user_role in ["OWNER"]:
+                owner_branches = db.query(GymBranch).filter(
+                    or_(
+                        GymBranch.owner_id == current_user.id,
+                        GymBranch.id == current_user.branch_id
+                    )
+                ).all()
+                owner_branch_names = [b.branch_name for b in owner_branches if b.branch_name] + [b.gym_name for b in owner_branches if b.gym_name]
+                owner_branch_ids = [b.id for b in owner_branches if b.id]
+                conditions = [Employee.owner_id == current_user.id]
+                if owner_branch_ids:
+                    conditions.append(Employee.branch_id.in_(owner_branch_ids))
+                if owner_branch_names:
+                    conditions.append(Employee.gym_branch.in_(owner_branch_names))
+                if conditions:
+                    query = query.filter(or_(*conditions))
+                if branch_id:
+                    query = query.filter(or_(Employee.branch_id == branch_id, Employee.gym_branch.ilike(f"%{branch_id}%")))
+        elif ho_id:
+            query = query.filter(Employee.ho_id == ho_id)
+        elif branch_id:
+            query = query.filter(or_(Employee.branch_id == branch_id, Employee.gym_branch.ilike(f"%{branch_id}%")))
+
         if department and department != "All Departments":
             query = query.filter(Employee.department == department)
         if status and status != "All Statuses":
@@ -163,6 +240,9 @@ class HrmsService:
                 "avatar": e.avatar or "",
                 "skills": e.skills or [],
                 "gym_branch": e.gym_branch or "",
+                "branch_id": e.branch_id or "",
+                "ho_id": e.ho_id or "",
+                "owner_id": getattr(e, "owner_id", None) or "",
                 "emergency_contact": e.emergency_contact or "",
                 "created_at": e.created_at.isoformat() if e.created_at else None
             })
@@ -172,19 +252,50 @@ class HrmsService:
     def create_employee(db: Session, payload: Dict[str, Any]) -> Dict[str, Any]:
         first_name = str(payload.get("first_name") or "").strip()
         last_name = str(payload.get("last_name") or "").strip()
-        full_name = f"{first_name} {last_name}".strip() or "New Staff"
+        full_name = str(payload.get("full_name") or f"{first_name} {last_name}").strip()
         email = str(payload.get("email") or "").strip()
         phone = str(payload.get("phone") or "").strip()
         designation = str(payload.get("designation") or "").strip()
         department = str(payload.get("department") or "").strip()
         salary = float(payload.get("salary") or 0.0)
         gym_branch = str(payload.get("gym_branch") or "").strip()
+        branch_id = payload.get("branch_id")
+        ho_id = payload.get("ho_id")
+        owner_id = payload.get("owner_id")
+
+        from src.models.settings import Branch as GymBranch
+        from sqlalchemy import or_
+
+        if gym_branch and not branch_id:
+            matched_b = db.query(GymBranch).filter(
+                or_(GymBranch.id == gym_branch, GymBranch.branch_name.ilike(f"%{gym_branch}%"))
+            ).first()
+            if matched_b:
+                branch_id = matched_b.id
+                if not ho_id and matched_b.ho_id:
+                    ho_id = matched_b.ho_id
+                if not owner_id and matched_b.owner_id:
+                    owner_id = matched_b.owner_id
+        elif branch_id:
+            matched_b = db.query(GymBranch).filter(GymBranch.id == branch_id).first()
+            if matched_b:
+                if not ho_id and matched_b.ho_id:
+                    ho_id = matched_b.ho_id
+                if not owner_id and matched_b.owner_id:
+                    owner_id = matched_b.owner_id
+
+        if not ho_id and owner_id:
+            owner_u = db.query(User).filter(User.id == owner_id).first()
+            if owner_u and owner_u.ho_id:
+                ho_id = owner_u.ho_id
 
         # Map department/designation to TrainerProfile role
-        role = str(payload.get("role") or "TRAINER").upper()
+        role = str(payload.get("role") or "EMPLOYEE").upper()
+        if role == "TRAINER":
+            role = "EMPLOYEE"
         if not payload.get("role"):
             if "Management" in department or "Director" in designation or "Owner" in designation:
-                role = "MANAGER" if "Operations" in department else "GYM_OWNER"
+                role = "MANAGER" if "Operations" in department else "OWNER"
             elif "Front Desk" in department or "Support" in department:
                 role = "STAFF"
 
@@ -197,11 +308,33 @@ class HrmsService:
             "role": role,
             "specialization": designation,
             "base_monthly_salary": salary,
-            "primary_gym_location": gym_branch
+            "primary_gym_location": gym_branch,
+            "branch_id": branch_id,
+            "owner_id": owner_id,
+            "ho_id": ho_id
         })
 
         HrmsService.sync_trainers_to_employees(db)
         emp = db.query(Employee).filter(Employee.email == email).first()
+        if emp:
+            if branch_id:
+                emp.branch_id = branch_id
+            if ho_id:
+                emp.ho_id = ho_id
+            if owner_id:
+                emp.owner_id = owner_id
+            db.commit()
+
+        u = db.query(User).filter(User.email == email).first()
+        if u:
+            if branch_id:
+                u.branch_id = branch_id
+            if ho_id:
+                u.ho_id = ho_id
+            if owner_id:
+                u.owner_id = owner_id
+            db.commit()
+
         return {"message": "Employee created and synced successfully", "id": emp.id if emp else "", "code": emp.code if emp else ""}
 
     @staticmethod
@@ -687,7 +820,7 @@ class HrmsService:
         bio_staff_logs = db.query(BiometricLog).filter(
             BiometricLog.timestamp >= start_of_day,
             BiometricLog.timestamp <= end_of_day,
-            BiometricLog.user_role.in_(["TRAINER", "STAFF", "GYM_OWNER", "MANAGER"])
+            BiometricLog.user_role.in_(["TRAINER", "STAFF", "OWNER", "MANAGER"])
         ).order_by(BiometricLog.timestamp.desc()).all()
 
         for blog in bio_staff_logs:
@@ -818,8 +951,8 @@ class HrmsService:
                 if trainer:
                     emp = db.query(Employee).filter((Employee.id == f"emp_{trainer.id}") | (Employee.id == trainer.id)).first()
 
-            if not emp and user_role_upper == "GYM_OWNER":
-                owner_user = db.query(User).filter(User.role == "GYM_OWNER").first()
+            if not emp and user_role_upper == "OWNER":
+                owner_user = db.query(User).filter(User.role == "OWNER").first()
                 if owner_user:
                     emp = db.query(Employee).filter(
                         (Employee.email.ilike(owner_user.email)) | (Employee.id == f"emp_{owner_user.id}")
@@ -1815,7 +1948,7 @@ class HrmsService:
             for blog in bio_logs:
                 meta = blog.meta_data or {}
                 uid = str(blog.customer_id or meta.get("user_id") or meta.get("employee_id") or "")
-                if uid in search_ids or (blog.user_role in ["TRAINER", "STAFF", "GYM_OWNER"] and meta.get("user_name") == full_name):
+                if uid in search_ids or (blog.user_role in ["TRAINER", "STAFF", "OWNER"] and meta.get("user_name") == full_name):
                     if blog.timestamp:
                         distinct_punch_days.add(blog.timestamp.date())
 

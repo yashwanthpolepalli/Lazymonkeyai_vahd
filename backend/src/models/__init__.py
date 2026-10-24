@@ -9,8 +9,6 @@ from .plan import MembershipPlan
 from .course import Course, StudentCourse
 from .settings import Branch, Setting, PaymentMethod, FeatureControl, GymBranch, GymSetting
 from .crm import (
-    CrmLead, CrmVoiceCallLog, CrmSupportTicket, CrmMarketingAd, CrmMarketingAsset,
-    CrmOpportunity, CrmQuotation, CrmSalesOrder, CrmDiscount, CrmDiscountUsage, CrmSocialPost,
     PushNotificationTemplate, NotificationBroadcast, LiveNotification, UserDeviceToken,
     WhatsAppSessionModel, WhatsAppMessageModel
 )
@@ -30,20 +28,22 @@ from .procurement import (
     GoodsReceivedNote, PurchaseReturn, VendorBill, VendorPayment,
     DebitNote, CreditNote
 )
+from .student_report import StudentAttendanceReportLog
+from .employee_report import EmployeeAttendanceReportLog
 
 __all__ = [
+    "StudentAttendanceReportLog",
+    "EmployeeAttendanceReportLog",
     "User", "Customer", "Membership",
     "BiometricLog", "BiometricDevice",
     "TrainerProfile", "PayrollInvoice", "MembershipPlan",
-    "GymBranch", "GymSetting", "PaymentMethod",
-    "CrmLead", "CrmVoiceCallLog", "CrmSupportTicket", "CrmMarketingAd",
-    "CrmOpportunity", "CrmQuotation", "CrmSalesOrder", "CrmDiscount", "CrmDiscountUsage", "CrmSocialPost",
+    "Branch", "Setting", "GymBranch", "GymSetting", "PaymentMethod", "FeatureControl",
     "PushNotificationTemplate", "NotificationBroadcast", "LiveNotification", "UserDeviceToken",
     "WhatsAppSessionModel", "WhatsAppMessageModel",
     "Employee", "Department", "Designation", "Team", "EmployeeDocument",
     "EmployeeAttendance", "LeaveRequest", "PayrollRecord", "AttendanceCorrection",
     "RecruitmentJob", "JobApplicant", "EmployeePerformance", "ExitRequest",
-    "GeofenceScheme",
+    "GeofenceScheme", "LeaveType", "EmployeeLeaveBalance",
     "SaaSPlan", "PlatformAuditLog", "AiJobLog", "PlatformSetting", "SupportTicket",
     "PlatformAlert", "AiModelRouting",
     "ProductCategory", "Brand", "UnitOfMeasure", "Product", "MasterCatalogProduct", "StockMovement",

@@ -10,12 +10,13 @@ class User(Base):
     id = Column(String, primary_key=True, index=True)
     email = Column(String, unique=True, index=True, nullable=False)
     password_hash = Column(String, nullable=False)
-    role = Column(String, nullable=False)  # 'SUPER_ADMIN', 'GYM_OWNER', 'MANAGER', 'TRAINER', 'STAFF', 'CUSTOMER'
+    role = Column(String, nullable=False)  # 'SUPER_ADMIN', 'OWNER', 'MANAGER', 'TRAINER', 'STAFF', 'CUSTOMER'
     full_name = Column(String, nullable=False)
     phone = Column(String)
     avatar_url = Column(String)
     owner_id = Column(String, nullable=True, index=True)
     branch_id = Column(String, nullable=True, index=True)
+    ho_id = Column(String, nullable=True, index=True)
     is_active = Column(Boolean, default=True)
     is_platform_admin = Column(Boolean, default=False)
     is_tenant_owner = Column(Boolean, default=False)

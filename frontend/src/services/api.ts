@@ -32,6 +32,8 @@ export const api = {
         const mappedRole = (
           userRole.includes('admin')
             ? 'super_admin'
+            : userRole.includes('ho') || userRole.includes('head_office')
+            ? 'ho'
             : userRole.includes('owner')
             ? 'owner'
             : userRole.includes('employee') || userRole.includes('trainer') || userRole.includes('staff')
@@ -46,6 +48,8 @@ export const api = {
           phone: res.phone || '',
           role: mappedRole,
           avatar: res.avatar_url || '',
+          ho_id: res.ho_id || '',
+          hoId: res.ho_id || '',
           gymId: res.gym_id || '',
           gymName: res.gym_name || '',
           branchName: res.branch_name || '',
@@ -99,6 +103,8 @@ export const api = {
         const role = (
           userRole.includes('admin')
             ? 'super_admin'
+            : userRole.includes('ho') || userRole.includes('head_office')
+            ? 'ho'
             : userRole.includes('owner')
             ? 'owner'
             : userRole.includes('employee') || userRole.includes('trainer') || userRole.includes('staff')
@@ -113,6 +119,8 @@ export const api = {
           phone: res.phone || '',
           role,
           avatar: res.avatar_url || '',
+          ho_id: res.ho_id || '',
+          hoId: res.ho_id || '',
           gymId: res.gym_id || '',
           gymName: res.gym_name || '',
           branchName: res.branch_name || '',

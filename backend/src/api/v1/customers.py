@@ -59,13 +59,37 @@ def onboard_customer(
         data["full_name"] = data["name"]
     if current_user:
         u_role = (current_user.role or "").strip().upper()
-        if u_role in ["GYM_OWNER", "OWNER"]:
-            data["owner_id"] = data.get("owner_id") or current_user.id
+        if u_role in ["OWNER"]:
+            data["owner_id"] = current_user.id
+            if current_user.ho_id:
+                data["ho_id"] = current_user.ho_id
+            if not data.get("branch_id") and current_user.branch_id:
+                data["branch_id"] = current_user.branch_id
+        elif u_role in ["HEAD_OFFICE", "HO"]:
+            if not data.get("ho_id"):
+                data["ho_id"] = current_user.ho_id or current_user.id
             if not data.get("branch_id") and current_user.branch_id:
                 data["branch_id"] = current_user.branch_id
         elif u_role in ["MANAGER", "STAFF", "TRAINER"]:
             data["owner_id"] = data.get("owner_id") or current_user.owner_id
             data["branch_id"] = data.get("branch_id") or current_user.branch_id
+            data["ho_id"] = data.get("ho_id") or current_user.ho_id
+
+    # Resolve branch from database to ensure branch_name and hierarchy match
+    from src.models.settings import Branch as GymBranch
+    from sqlalchemy import or_
+    b_ref = data.get("branch_id") or data.get("branch") or data.get("primary_gym_location")
+    if b_ref:
+        b_obj = db.query(GymBranch).filter(
+            or_(GymBranch.id == b_ref, GymBranch.branch_name.ilike(f"%{b_ref}%"))
+        ).first()
+        if b_obj:
+            data["branch_id"] = b_obj.id
+            data["primary_gym_location"] = b_obj.branch_name or b_obj.gym_name
+            if not data.get("owner_id") and b_obj.owner_id:
+                data["owner_id"] = b_obj.owner_id
+            if not data.get("ho_id") and b_obj.ho_id:
+                data["ho_id"] = b_obj.ho_id
     return CustomerService.onboard_customer(db, data)
 
 @router.put("/{customer_id}")
@@ -91,12 +115,160 @@ def sync_customer_biometric(customer_id: str, payload: dict = None, db: Session 
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
+from fastapi.responses import Response, HTMLResponse
+from src.services.student_attendance_report_service import StudentAttendanceReportService
+
+@router.get("/attendance-reports/overview")
+def get_attendance_reports_overview(
+    year: Optional[int] = Query(None),
+    month: Optional[int] = Query(None),
+    branch_id: Optional[str] = Query(None),
+    current_user: Optional[User] = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Provides comprehensive student-parent mapping, live monthly attendance stats, and dispatch statuses."""
+    if current_user and current_user.branch_id and not branch_id:
+        branch_id = current_user.branch_id
+    return StudentAttendanceReportService.get_monthly_reports_overview(
+        db, year=year, month=month, branch_id=branch_id
+    )
+
+@router.get("/attendance-reports/logs")
+def get_attendance_report_logs(
+    year: Optional[int] = Query(None),
+    month: Optional[int] = Query(None),
+    limit: int = Query(100),
+    db: Session = Depends(get_db)
+):
+    """Retrieves persistent audit log of all sent WhatsApp reports."""
+    return StudentAttendanceReportService.get_dispatched_logs(
+        db, year=year, month=month, limit=limit
+    )
+
+@router.post("/attendance-reports/dispatch-monthly")
+def dispatch_all_monthly_attendance_reports(
+    payload: Dict[str, Any] = Body(default={}),
+    current_user: Optional[User] = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Dispatches monthly attendance reports to all registered parents via WhatsApp with strict 1-to-1 mapping."""
+    year = payload.get("year")
+    month = payload.get("month")
+    branch_id = payload.get("branch_id")
+    if current_user and current_user.branch_id and not branch_id:
+        branch_id = current_user.branch_id
+    return StudentAttendanceReportService.dispatch_all_monthly_reports(
+        db, year=year, month=month, branch_id=branch_id, dispatch_type=payload.get("dispatch_type", "MANUAL_DISPATCH")
+    )
+
+@router.get("/{customer_id}/attendance-report")
+def get_customer_monthly_attendance_report(
+    customer_id: str,
+    year: Optional[int] = Query(None),
+    month: Optional[int] = Query(None),
+    db: Session = Depends(get_db)
+):
+    """Calculates and returns student monthly biometric attendance report with dynamic day-wise records."""
+    try:
+        return StudentAttendanceReportService.compute_student_monthly_attendance(
+            db, customer_id=customer_id, year=year, month=month
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+@router.get("/{customer_id}/attendance-report/csv")
+def get_customer_attendance_report_csv(
+    customer_id: str,
+    year: Optional[int] = Query(None),
+    month: Optional[int] = Query(None),
+    db: Session = Depends(get_db)
+):
+    """Downloads dynamic day-wise attendance CSV for the student."""
+    try:
+        rep = StudentAttendanceReportService.compute_student_monthly_attendance(
+            db, customer_id=customer_id, year=year, month=month
+        )
+        csv_data = StudentAttendanceReportService.generate_student_day_wise_csv(rep)
+        filename = f"attendance_report_{customer_id}_{rep.get('month')}_{rep.get('year')}.csv"
+        return Response(
+            content=csv_data,
+            media_type="text/csv",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+@router.get("/{customer_id}/attendance-report/pdf")
+def get_customer_attendance_report_printable_html(
+    customer_id: str,
+    year: Optional[int] = Query(None),
+    month: Optional[int] = Query(None),
+    db: Session = Depends(get_db)
+):
+    """Renders printable official A4 attendance report sheet with day-wise matrix."""
+    try:
+        rep = StudentAttendanceReportService.compute_student_monthly_attendance(
+            db, customer_id=customer_id, year=year, month=month
+        )
+        html_data = StudentAttendanceReportService.generate_student_attendance_html_printable(rep)
+        return HTMLResponse(content=html_data)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+@router.post("/{customer_id}/attendance-report/send-whatsapp")
+def send_customer_monthly_attendance_whatsapp(
+    customer_id: str,
+    payload: Dict[str, Any] = Body(default={}),
+    db: Session = Depends(get_db)
+):
+    """Dispatches the official monthly attendance performance report strictly to the student's parent mobile via WhatsApp."""
+    year = payload.get("year")
+    month = payload.get("month")
+    res = StudentAttendanceReportService.send_report_to_parent(
+        db, customer_id=customer_id, year=year, month=month, dispatch_type=payload.get("dispatch_type", "MANUAL_DISPATCH")
+    )
+    if not res.get("success"):
+        raise HTTPException(status_code=400, detail=res.get("message"))
+    return res
+
 @router.delete("/{customer_id}")
 def delete_customer(customer_id: str, db: Session = Depends(get_db)):
     success = CustomerService.delete_customer(db, customer_id)
     if not success:
         raise HTTPException(status_code=404, detail="Customer not found")
     return {"message": "Customer deleted successfully", "deleted_id": customer_id}
+
+
+# Alias router for /students
+students_router = APIRouter(prefix="/students", tags=["Students"])
+
+@students_router.get("/attendance-reports/overview")
+def get_students_attendance_overview(year: Optional[int] = Query(None), month: Optional[int] = Query(None), branch_id: Optional[str] = Query(None), current_user: Optional[User] = Depends(get_current_user), db: Session = Depends(get_db)):
+    return get_attendance_reports_overview(year=year, month=month, branch_id=branch_id, current_user=current_user, db=db)
+
+@students_router.get("/attendance-reports/logs")
+def get_students_attendance_logs(year: Optional[int] = Query(None), month: Optional[int] = Query(None), limit: int = Query(100), db: Session = Depends(get_db)):
+    return get_attendance_report_logs(year=year, month=month, limit=limit, db=db)
+
+@students_router.post("/attendance-reports/dispatch-monthly")
+def dispatch_students_monthly_attendance(payload: Dict[str, Any] = Body(default={}), current_user: Optional[User] = Depends(get_current_user), db: Session = Depends(get_db)):
+    return dispatch_all_monthly_attendance_reports(payload=payload, current_user=current_user, db=db)
+
+@students_router.get("/{student_id}/attendance-report")
+def get_student_monthly_attendance(student_id: str, year: Optional[int] = Query(None), month: Optional[int] = Query(None), db: Session = Depends(get_db)):
+    return get_customer_monthly_attendance_report(student_id, year=year, month=month, db=db)
+
+@students_router.get("/{student_id}/attendance-report/csv")
+def get_student_attendance_csv(student_id: str, year: Optional[int] = Query(None), month: Optional[int] = Query(None), db: Session = Depends(get_db)):
+    return get_customer_attendance_report_csv(student_id, year=year, month=month, db=db)
+
+@students_router.get("/{student_id}/attendance-report/pdf")
+def get_student_attendance_pdf(student_id: str, year: Optional[int] = Query(None), month: Optional[int] = Query(None), db: Session = Depends(get_db)):
+    return get_customer_attendance_report_printable_html(student_id, year=year, month=month, db=db)
+
+@students_router.post("/{student_id}/attendance-report/send-whatsapp")
+def send_student_monthly_attendance(student_id: str, payload: Dict[str, Any] = Body(default={}), db: Session = Depends(get_db)):
+    return send_customer_monthly_attendance_whatsapp(student_id, payload=payload, db=db)
 
 
 # Alias router for /members

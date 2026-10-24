@@ -56,13 +56,13 @@ def get_ho_organizations(
         # Employee count
         employee_count = db.query(Employee).filter(
             or_(Employee.branch_id == b.id, Employee.gym_branch == b.branch_name),
-            Employee.status == "ACTIVE"
+            or_(func.upper(Employee.status) == "ACTIVE", Employee.status == "ACTIVE", Employee.status == "Active", Employee.status.is_(None))
         ).count()
 
         # Student count
         student_count = db.query(Customer).filter(
             or_(Customer.branch_id == b.id, Customer.primary_gym_location.ilike(f"%{b.branch_name}%")),
-            Customer.status == "ACTIVE"
+            or_(func.upper(Customer.status) == "ACTIVE", Customer.status == "ACTIVE", Customer.status == "Active", Customer.status.is_(None))
         ).count()
 
         # Today punches
@@ -89,11 +89,47 @@ def get_ho_organizations(
             "employee_count": employee_count,
             "student_count": student_count,
             "today_punches": today_punches,
+            "geofence_portal_enabled": bool(b.geofence_portal_enabled),
             "status": "Active" if b.is_active else "Suspended",
             "created_at": b.created_at.strftime("%b %d, %Y") if b.created_at else None
         })
 
     return {"organizations": result, "total": len(result)}
+
+
+@router.post("/organizations/{branch_id}/toggle-geofence")
+@router.put("/organizations/{branch_id}/toggle-geofence")
+def toggle_branch_geofence_portal(
+    branch_id: str,
+    payload: Dict[str, Any] = Body(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Toggles whether the Attendance & Geofence Portal is enabled for this branch / organization.
+    Only Head Office / Super Admin can toggle this feature.
+    """
+    _get_ho_context(current_user)
+    branch = db.query(GymBranch).filter(GymBranch.id == branch_id).first()
+    if not branch:
+        raise HTTPException(status_code=404, detail="Branch not found")
+
+    enabled = bool(payload.get("enabled", True))
+    branch.geofence_portal_enabled = enabled
+    feats = dict(branch.custom_features or {})
+    feats["geofence_portal_enabled"] = enabled
+    branch.custom_features = feats
+    db.commit()
+    db.refresh(branch)
+
+    return {
+        "success": True,
+        "branch_id": branch.id,
+        "branch_name": branch.branch_name,
+        "gym_name": branch.gym_name,
+        "geofence_portal_enabled": bool(branch.geofence_portal_enabled),
+        "message": f"Attendance & Geofence Portal {'enabled' if enabled else 'disabled'} for {branch.gym_name or branch.branch_name}"
+    }
 
 
 @router.post("/onboard-owner")

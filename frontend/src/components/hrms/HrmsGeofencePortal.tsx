@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '@/context/AuthContext';
 import { Icon } from '@/components/ui/Icon';
 import { Badge } from '@/components/ui/Badge';
 import { cn } from '@/utils/cn';
@@ -9,11 +10,29 @@ import {
   type EmployeeItem,
 } from '@/services/hrmsApi';
 
+interface HoOrganizationItem {
+  id: string;
+  gym_name: string;
+  branch_name: string;
+  city?: string;
+  geofence_portal_enabled: boolean;
+  status?: string;
+  employee_count?: number;
+}
+
 interface HrmsGeofencePortalProps {
   onSuccessToast?: (msg: string) => void;
 }
 
 export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) {
+  const { user } = useAuth();
+  const isHoUser = user?.role === 'ho' || user?.role === 'super_admin';
+
+  // Head Office Governance State
+  const [hoOrganizations, setHoOrganizations] = useState<HoOrganizationItem[]>([]);
+  const [selectedOrgId, setSelectedOrgId] = useState<string>('');
+  const [togglingAccess, setTogglingAccess] = useState<boolean>(false);
+
   const [schemes, setSchemes] = useState<GeofenceScheme[]>([]);
   const [employees, setEmployees] = useState<EmployeeItem[]>([]);
   const [students, setStudents] = useState<any[]>([]);
@@ -126,6 +145,57 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
       );
     }
   }, []);
+
+  // Fetch HO organizations and default selection
+  useEffect(() => {
+    if (isHoUser) {
+      apiClient
+        .get<{ organizations: HoOrganizationItem[] }>('/ho/organizations')
+        .then((res) => {
+          const orgs = res?.organizations || [];
+          setHoOrganizations(orgs);
+          if (orgs.length > 0) {
+            const saved = localStorage.getItem('vahd_selected_org_id');
+            const matched = orgs.find((o) => o.id === saved) || orgs[0];
+            setSelectedOrgId(matched.id);
+          }
+        })
+        .catch((err) => {
+          console.error('Failed to load HO organizations:', err);
+        });
+    }
+  }, [isHoUser]);
+
+  const handleToggleBranchAccess = async (branchId: string, currentEnabled: boolean) => {
+    if (togglingAccess) return;
+    setTogglingAccess(true);
+    const nextStatus = !currentEnabled;
+    try {
+      const res = await apiClient.post<any>(`/ho/organizations/${branchId}/toggle-geofence`, {
+        enabled: nextStatus,
+      });
+      setHoOrganizations((prev) =>
+        prev.map((o) => (o.id === branchId ? { ...o, geofence_portal_enabled: nextStatus } : o))
+      );
+      showToast(
+        res?.message ||
+          `Attendance & Geofence Portal ${nextStatus ? 'ENABLED' : 'DISABLED'} for this organization`
+      );
+      window.dispatchEvent(
+        new CustomEvent('vahd:branch_geofence_toggled', {
+          detail: { branchId, enabled: nextStatus },
+        })
+      );
+    } catch (err: any) {
+      console.error('Failed to toggle branch geofence portal access:', err);
+      showToast('Error updating organization portal access. Please try again.');
+    } finally {
+      setTogglingAccess(false);
+    }
+  };
+
+  const selectedOrg = hoOrganizations.find((o) => o.id === selectedOrgId) || hoOrganizations[0];
+
 
   const loadSchemeIntoForm = (scheme: GeofenceScheme, allAvailableIds?: string[], fallbackGymName?: string) => {
     setActiveSchemeId(scheme.id || '');
@@ -343,6 +413,175 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
           <span className="text-xs font-bold">{toastMsg}</span>
         </div>
       )}
+
+      {/* ───────────────────────────────────────────────────────────── */}
+      {/* HEAD OFFICE GOVERNANCE & ACCESS CONTROL BANNER                */}
+      {/* ───────────────────────────────────────────────────────────── */}
+      {isHoUser && (
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 border border-indigo-500/30 p-5 sm:p-6 shadow-xl text-white space-y-4">
+          <div className="absolute top-0 right-0 -mt-10 -mr-10 w-48 h-48 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute bottom-0 left-1/3 -mb-10 w-48 h-48 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+
+          <div className="relative z-10 space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 flex items-center gap-1.5">
+                    <Icon name="shield" size={12} className="text-indigo-400" />
+                    Head Office Governance Control
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-300 border border-slate-700">
+                    Role: Head Office (HO)
+                  </span>
+                </div>
+                <h2 className="text-lg sm:text-xl font-black text-white tracking-tight flex items-center gap-2">
+                  <span>Branch Geofence Portal Access Control</span>
+                </h2>
+                <p className="text-xs text-slate-400 max-w-2xl font-medium">
+                  Toggle whether the <strong>Attendance &amp; Geofence Portal</strong> tab is visible and accessible in Owner login for each branch / organization. When disabled, this tab is completely hidden from that branch's owner.
+                </p>
+              </div>
+
+              {/* Active Branch Control Pill / Switch */}
+              {selectedOrg && (
+                <div className="bg-slate-800/80 backdrop-blur-md border border-slate-700/80 rounded-2xl p-3.5 flex items-center gap-4 shrink-0 shadow-lg">
+                  <div className="text-right">
+                    <div className="text-[10px] font-extrabold uppercase text-slate-400">
+                      Portal Status for {selectedOrg.gym_name || selectedOrg.branch_name}
+                    </div>
+                    <div className="flex items-center justify-end gap-1.5 mt-0.5">
+                      <span
+                        className={cn(
+                          'w-2 h-2 rounded-full',
+                          selectedOrg.geofence_portal_enabled
+                            ? 'bg-emerald-400 animate-pulse'
+                            : 'bg-rose-400'
+                        )}
+                      />
+                      <span
+                        className={cn(
+                          'text-xs font-black',
+                          selectedOrg.geofence_portal_enabled ? 'text-emerald-400' : 'text-rose-400'
+                        )}
+                      >
+                        {selectedOrg.geofence_portal_enabled ? 'PORTAL ENABLED' : 'PORTAL DISABLED'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Toggle Switch Button */}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleToggleBranchAccess(selectedOrg.id, selectedOrg.geofence_portal_enabled)
+                    }
+                    disabled={togglingAccess}
+                    className={cn(
+                      'relative inline-flex h-8 w-16 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden disabled:opacity-50 shadow-inner',
+                      selectedOrg.geofence_portal_enabled
+                        ? 'bg-emerald-500 hover:bg-emerald-600'
+                        : 'bg-slate-700 hover:bg-slate-600'
+                    )}
+                    title={
+                      selectedOrg.geofence_portal_enabled
+                        ? 'Click to disable for this branch'
+                        : 'Click to enable for this branch'
+                    }
+                  >
+                    <span className="sr-only">Toggle portal access</span>
+                    <span
+                      aria-hidden="true"
+                      className={cn(
+                        'pointer-events-none inline-block h-7 w-7 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out flex items-center justify-center text-[10px] font-black',
+                        selectedOrg.geofence_portal_enabled
+                          ? 'translate-x-8 text-emerald-600'
+                          : 'translate-x-0 text-slate-500'
+                      )}
+                    >
+                      {selectedOrg.geofence_portal_enabled ? 'ON' : 'OFF'}
+                    </span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Organizations Grid / Selector Bar */}
+            <div className="pt-3 border-t border-slate-800/80">
+              <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center justify-between">
+                <span>Select Branch / Organisation to Configure:</span>
+                <span className="text-[10px] text-slate-500">
+                  {hoOrganizations.length} Total Registered Branches
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                {hoOrganizations.map((org) => {
+                  const isSelected = org.id === selectedOrgId;
+                  return (
+                    <div
+                      key={org.id}
+                      onClick={() => {
+                        setSelectedOrgId(org.id);
+                        if (org.branch_name) setBranchName(org.branch_name);
+                        if (org.gym_name) setGymName(org.gym_name);
+                      }}
+                      className={cn(
+                        'cursor-pointer rounded-xl p-3 border transition-all flex items-center justify-between gap-3',
+                        isSelected
+                          ? 'bg-indigo-950/70 border-indigo-400 ring-2 ring-indigo-400/30'
+                          : 'bg-slate-800/50 border-slate-700/60 hover:bg-slate-800 hover:border-slate-600'
+                      )}
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <Icon
+                            name="building-2"
+                            size={14}
+                            className={isSelected ? 'text-indigo-400' : 'text-slate-400'}
+                          />
+                          <span className="text-xs font-black text-white truncate">
+                            {org.gym_name || org.branch_name}
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-slate-400 font-semibold pl-5">
+                          Branch: {org.branch_name} {org.city ? `• ${org.city}` : ''}
+                        </div>
+                      </div>
+
+                      {/* Mini Toggle Button per organization */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedOrgId(org.id);
+                          if (org.branch_name) setBranchName(org.branch_name);
+                          if (org.gym_name) setGymName(org.gym_name);
+                          handleToggleBranchAccess(org.id, org.geofence_portal_enabled);
+                        }}
+                        disabled={togglingAccess}
+                        className={cn(
+                          'px-2.5 py-1 rounded-lg text-[10px] font-extrabold uppercase shrink-0 transition-all border flex items-center gap-1',
+                          org.geofence_portal_enabled
+                            ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30'
+                            : 'bg-rose-500/20 text-rose-300 border-rose-500/40 hover:bg-rose-500/30'
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            'w-1.5 h-1.5 rounded-full',
+                            org.geofence_portal_enabled ? 'bg-emerald-400' : 'bg-rose-400'
+                          )}
+                        />
+                        <span>{org.geofence_portal_enabled ? 'Enabled' : 'Disabled'}</span>
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
 
       {/* Top Header Row (Matching Screenshot 1) */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">

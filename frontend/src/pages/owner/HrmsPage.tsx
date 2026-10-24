@@ -10,6 +10,8 @@ import { HrmsLeaveTab } from '@/components/hrms/HrmsLeaveTab';
 import { HrmsPayrollTab } from '@/components/hrms/HrmsPayrollTab';
 import { HrmsAttendanceCorrectionsTab } from '@/components/hrms/HrmsAttendanceCorrectionsTab';
 import { StudentManagementTab } from '@/components/hrms/StudentManagementTab';
+import { useAuth } from '@/context/AuthContext';
+import { apiClient } from '@/services/apiClient';
 import { cn } from '@/utils/cn';
 import {
   hrmsApi,
@@ -55,6 +57,46 @@ export function HrmsPage() {
   const [exitRequests, setExitRequests] = useState<ExitItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const { user } = useAuth();
+  const isHoUser = user?.role === 'ho' || user?.role === 'super_admin';
+  const [geofencePortalEnabled, setGeofencePortalEnabled] = useState<boolean>(true);
+
+  // Check branch-specific Geofence Portal authorization
+  useEffect(() => {
+    const checkBranchGeofenceStatus = async () => {
+      if (isHoUser) {
+        setGeofencePortalEnabled(true);
+        return;
+      }
+      try {
+        const branchKey = localStorage.getItem('vahd_selected_org_id') || user?.branch_id || 'all';
+        const res = await apiClient.get<any[]>('/settings/branches').catch(() => []);
+        if (Array.isArray(res) && res.length > 0) {
+          const matched =
+            branchKey && branchKey !== 'all'
+              ? res.find((b) => b.id === branchKey || b.branch_name === branchKey)
+              : res.find((b) => b.id === user?.branch_id) || res[0];
+          setGeofencePortalEnabled(Boolean(matched?.geofence_portal_enabled));
+        } else {
+          setGeofencePortalEnabled(false);
+        }
+      } catch (e) {
+        setGeofencePortalEnabled(false);
+      }
+    };
+    checkBranchGeofenceStatus();
+
+    const handleOrgChanged = () => {
+      checkBranchGeofenceStatus();
+    };
+    window.addEventListener('vahd:org_changed', handleOrgChanged);
+    window.addEventListener('vahd:branch_geofence_toggled', handleOrgChanged);
+    return () => {
+      window.removeEventListener('vahd:org_changed', handleOrgChanged);
+      window.removeEventListener('vahd:branch_geofence_toggled', handleOrgChanged);
+    };
+  }, [user, isHoUser]);
 
   const triggerToast = (msg: string) => {
     setToastMessage(msg);
@@ -371,7 +413,9 @@ export function HrmsPage() {
           <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
             {[
               { id: 'attendance', label: 'Daily Attendance', icon: 'calendar-check' },
-              { id: 'geofence_portal', label: 'Attendance & Geofence Portal', icon: 'sliders' },
+              ...(isHoUser || geofencePortalEnabled
+                ? [{ id: 'geofence_portal', label: 'Attendance & Geofence Portal', icon: 'sliders' }]
+                : []),
               { id: 'biometric', label: 'Biometric', icon: 'fingerprint' },
               { id: 'face_recognition', label: 'Face Recognition', icon: 'camera' },
               { id: 'gps_attendance', label: 'GPS Attendance', icon: 'map-pin' },
@@ -405,7 +449,31 @@ export function HrmsPage() {
 
           {/* Conditional View */}
           {activeSubTab === 'geofence_portal' || activeSubTab === 'geofence' ? (
-            <HrmsGeofencePortal onSuccessToast={triggerToast} />
+            isHoUser || geofencePortalEnabled ? (
+              <HrmsGeofencePortal onSuccessToast={triggerToast} />
+            ) : (
+              <div className="bg-white p-12 rounded-2xl border border-navy-100 shadow-2xs text-center space-y-3">
+                <div className="w-14 h-14 mx-auto rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center">
+                  <Icon name="lock" size={26} />
+                </div>
+                <h3 className="text-base font-extrabold text-navy-900">
+                  Attendance &amp; Geofence Portal Disabled
+                </h3>
+                <p className="text-xs text-navy-500 max-w-md mx-auto font-medium">
+                  This page is controlled by Head Office. Access to the Attendance &amp; Geofence Portal is currently disabled for this branch or organization.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveSubTab('attendance');
+                    setSearchParams({ tab: 'attendance' });
+                  }}
+                  className="px-4 py-2 rounded-xl text-xs font-bold bg-purple-600 text-white hover:bg-purple-700 transition"
+                >
+                  Return to Daily Attendance
+                </button>
+              </div>
+            )
           ) : activeSubTab === 'corrections' || activeSubTab === 'attendance-approve' || activeSubTab === 'approvals' ? (
             <HrmsAttendanceCorrectionsTab onSuccessToast={triggerToast} />
           ) : (

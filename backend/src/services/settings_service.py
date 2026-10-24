@@ -73,6 +73,7 @@ class SettingsService:
                 "ho_id": b.ho_id or "",
                 "active_members": member_count,
                 "devices_count": device_count,
+                "geofence_portal_enabled": bool(b.geofence_portal_enabled),
                 "status": "ONLINE" if device_count > 0 else "ACTIVE"
             })
         return result

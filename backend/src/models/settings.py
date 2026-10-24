@@ -21,6 +21,7 @@ class Branch(Base):
     payment_method = Column(String, nullable=True)
     paid_amount = Column(Float, nullable=True)
     custom_features = Column(JSON, nullable=True)
+    geofence_portal_enabled = Column(Boolean, default=False, nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=now_ist_naive)
 

@@ -16,6 +16,8 @@ export interface User {
   gym_name?: string;
   branchName?: string;
   branch_name?: string;
+  branchId?: string;
+  branch_id?: string;
 }
 
 export interface KpiCard {

@@ -6,8 +6,29 @@ from src.services.settings_service import SettingsService
 from src.api.deps import get_current_user
 from src.models.user import User
 
+from src.models.settings import GymBranch
+
 # Support both /settings and /gym router prefixes seamlessly
 router = APIRouter(tags=["Branches & Settings"])
+
+@router.get("/settings/branches/{branch_id}/geofence-status")
+@router.get("/gym/branches/{branch_id}/geofence-status")
+def get_branch_geofence_status(
+    branch_id: str,
+    db: Session = Depends(get_db)
+):
+    branch = db.query(GymBranch).filter(GymBranch.id == branch_id).first()
+    if not branch:
+        branch = db.query(GymBranch).filter(GymBranch.branch_name.ilike(branch_id)).first()
+    if not branch:
+        return {"branch_id": branch_id, "geofence_portal_enabled": False}
+    return {
+        "branch_id": branch.id,
+        "branch_name": branch.branch_name,
+        "gym_name": branch.gym_name,
+        "geofence_portal_enabled": bool(branch.geofence_portal_enabled)
+    }
+
 
 @router.get("/settings")
 @router.get("/gym/settings")

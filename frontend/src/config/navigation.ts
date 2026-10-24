@@ -28,10 +28,6 @@ export const navConfig: Record<Role, NavItem[]> = {
     { label: 'Executive Overview', path: '/owner', icon: 'layout-grid' },
     { label: 'HRMS & Students', path: '/owner/hrms', icon: 'users' },
     { label: 'Reports', path: '/owner/reports', icon: 'file-bar-chart' },
-    { label: 'POS', path: '/owner/pos', icon: 'credit-card' },
-    { label: 'Payments', path: '/owner/payments', icon: 'indian-rupee' },
-    { label: 'IoT Devices', path: '/owner/iot', icon: 'cpu' },
-    { label: 'Multi-Branch', path: '/owner/multi-branch', icon: 'git-branch' },
     { label: 'Settings', path: '/owner/settings', icon: 'settings' },
   ],
   employee: [

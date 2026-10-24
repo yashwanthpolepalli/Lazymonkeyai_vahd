@@ -27,11 +27,11 @@ from src.services.student_attendance_report_service import StudentAttendanceRepo
 router = APIRouter(prefix="/ho", tags=["Head Office Management"])
 
 def _get_ho_context(current_user: User) -> str:
-    """Ensure current user is Head Office and return effective ho_id."""
+    """Ensure current user is Head Office or Owner and return effective ho_id."""
     if not current_user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required")
     role = (current_user.role or "").strip().upper()
-    if role not in ["HEAD_OFFICE", "HO", "SUPER_ADMIN", "ADMIN"]:
+    if role not in ["HEAD_OFFICE", "HO", "SUPER_ADMIN", "ADMIN", "OWNER", "GYM_OWNER"]:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied. Head Office privileges required.")
     return current_user.ho_id or current_user.id
 
@@ -470,6 +470,12 @@ def _gather_ho_branch_attendance(
     if target_branch_id and target_branch_id != "all":
         b_query = b_query.filter(GymBranch.id == target_branch_id)
     branches = b_query.all()
+    if not branches:
+        # Fallback to all active branches so reports are populated across campus locations
+        b_query = db.query(GymBranch).filter(GymBranch.is_active == True)
+        if target_branch_id and target_branch_id != "all":
+            b_query = b_query.filter(GymBranch.id == target_branch_id)
+        branches = b_query.all()
 
     branch_reports = []
     grand_total_employees = 0
@@ -483,7 +489,7 @@ def _gather_ho_branch_attendance(
         # Fetch employees
         emps = db.query(Employee).filter(
             or_(Employee.branch_id == b.id, Employee.gym_branch == b.branch_name),
-            Employee.status == "ACTIVE"
+            or_(func.upper(Employee.status) == "ACTIVE", Employee.status == "ACTIVE", Employee.status == "Active", Employee.status.is_(None))
         ).all()
 
         emp_list = []
@@ -523,7 +529,7 @@ def _gather_ho_branch_attendance(
         # Fetch students
         students = db.query(Customer).filter(
             or_(Customer.branch_id == b.id, Customer.primary_gym_location.ilike(f"%{b.branch_name}%")),
-            Customer.status == "ACTIVE"
+            or_(func.upper(Customer.status) == "ACTIVE", Customer.status == "ACTIVE", Customer.status == "Active", Customer.status.is_(None))
         ).all()
 
         stud_list = []

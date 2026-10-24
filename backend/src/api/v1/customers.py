@@ -127,10 +127,9 @@ def get_attendance_reports_overview(
     db: Session = Depends(get_db)
 ):
     """Provides comprehensive student-parent mapping, live monthly attendance stats, and dispatch statuses."""
-    if current_user and current_user.branch_id and not branch_id:
-        branch_id = current_user.branch_id
+    effective_branch = branch_id if branch_id and branch_id != "all" else None
     return StudentAttendanceReportService.get_monthly_reports_overview(
-        db, year=year, month=month, branch_id=branch_id
+        db, year=year, month=month, branch_id=effective_branch
     )
 
 @router.get("/attendance-reports/logs")

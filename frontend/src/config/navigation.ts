@@ -22,10 +22,12 @@ export const navConfig: Record<Role, NavItem[]> = {
     { label: 'Overview', path: '/ho', icon: 'layout-dashboard' },
     { label: 'HRMS & Students', path: '/ho/hrms', icon: 'users' },
     { label: 'Organisations', path: '/ho/organisations', icon: 'building-2' },
+    { label: 'Reports', path: '/ho/reports', icon: 'file-bar-chart' },
   ],
   owner: [
     { label: 'Executive Overview', path: '/owner', icon: 'layout-grid' },
     { label: 'HRMS & Students', path: '/owner/hrms', icon: 'users' },
+    { label: 'Reports', path: '/owner/reports', icon: 'file-bar-chart' },
     { label: 'POS', path: '/owner/pos', icon: 'credit-card' },
     { label: 'Payments', path: '/owner/payments', icon: 'indian-rupee' },
     { label: 'IoT Devices', path: '/owner/iot', icon: 'cpu' },

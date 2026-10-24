@@ -811,14 +811,26 @@ class EmployeeAttendanceReportService:
         target_year = int(year or now.year)
         target_month = int(month or now.month)
 
-        query = db.query(Employee).filter(Employee.status == "ACTIVE")
+        query = db.query(Employee).filter(
+            or_(
+                func.upper(Employee.status) == "ACTIVE",
+                Employee.status == "ACTIVE",
+                Employee.status == "Active",
+                Employee.status.is_(None)
+            )
+        )
 
         if branch_id and branch_id != "all":
             query = query.filter(Employee.branch_id == branch_id)
         elif owner_id:
             query = query.filter(Employee.owner_id == owner_id)
         elif ho_id:
-            query = query.filter(Employee.ho_id == ho_id)
+            query = query.filter(
+                or_(
+                    Employee.ho_id == ho_id,
+                    Employee.branch_id.in_([b.id for b in db.query(GymBranch).filter(GymBranch.ho_id == ho_id).all()])
+                )
+            )
 
         employees = query.all()
 
@@ -878,13 +890,23 @@ class EmployeeAttendanceReportService:
         target_year = int(year or now.year)
         target_month = int(month or now.month)
 
-        query = db.query(Employee).filter(Employee.status == "ACTIVE")
+        branches_dict = {b.id: b for b in db.query(GymBranch).all()}
+
+        query = db.query(Employee).filter(
+            or_(
+                func.upper(Employee.status) == "ACTIVE",
+                Employee.status == "ACTIVE",
+                Employee.status == "Active",
+                Employee.status.is_(None)
+            )
+        )
         if branch_id and branch_id != "all":
             query = query.filter(Employee.branch_id == branch_id)
         elif owner_id:
             query = query.filter(Employee.owner_id == owner_id)
         elif ho_id:
-            query = query.filter(Employee.ho_id == ho_id)
+            ho_branch_ids = [b.id for b in db.query(GymBranch).filter(GymBranch.ho_id == ho_id).all()]
+            query = query.filter(or_(Employee.ho_id == ho_id, Employee.branch_id.in_(ho_branch_ids)))
 
         employees = query.all()
 
@@ -950,6 +972,10 @@ class EmployeeAttendanceReportService:
                 pending_count += 1
 
             full_name = f"{emp.first_name} {emp.last_name or ''}".strip()
+            branch_obj = branches_dict.get(emp.branch_id)
+            branch_label = branch_obj.branch_name if branch_obj else (emp.gym_branch or "Main Branch")
+            gym_label = branch_obj.gym_name if branch_obj else ""
+
             items.append({
                 "employee_id": emp.id,
                 "employee_code": emp.code,
@@ -958,8 +984,10 @@ class EmployeeAttendanceReportService:
                 "phone": emp.phone or "--",
                 "designation": emp.designation or "Employee",
                 "department": emp.department or "Operations",
-                "gym_branch": emp.gym_branch or "",
+                "gym_branch": emp.gym_branch or branch_label,
                 "branch_id": emp.branch_id,
+                "branch_name": branch_label,
+                "gym_name": gym_label,
                 "total_working_days": working_days,
                 "days_present": days_present,
                 "days_absent": days_absent,

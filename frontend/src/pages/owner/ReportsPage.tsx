@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import { hrmsApi, EmployeeItem, DepartmentItem, AttendanceRecord } from '@/services/hrmsApi';
+import { apiClient } from '@/services/apiClient';
 import { cn } from '@/utils/cn';
 
 // Sample district list matching VAHD government portal standards
@@ -63,6 +64,9 @@ const PLACES_OF_WORKING = [
 ];
 
 export type ReportType =
+  | 'student-attendance'
+  | 'employee-attendance'
+  | 'branch-consolidated'
   | 'daily-attendance'
   | 'daily-abstract'
   | 'attendance-abstract'
@@ -88,9 +92,40 @@ interface ReportCardConfig {
   iconBg: string;
   iconColor: string;
   badge?: string;
+  category?: 'all' | 'students' | 'employees' | 'branches';
 }
 
 const combinedAttendanceCards: ReportCardConfig[] = [
+  {
+    id: 'student-attendance',
+    title: 'Student Attendance Report',
+    description: 'Monthly student biometric attendance, course performance and downloadable CSV & PDF statements',
+    icon: 'graduation-cap',
+    iconBg: 'bg-blue-50 text-blue-600 border border-blue-100',
+    iconColor: 'text-blue-600',
+    badge: 'Students',
+    category: 'students',
+  },
+  {
+    id: 'employee-attendance',
+    title: 'Employee Attendance Report',
+    description: 'Staff biometric statements, monthly work hours breakdown, presents/absents and downloadable statements',
+    icon: 'user-check',
+    iconBg: 'bg-emerald-50 text-emerald-600 border border-emerald-100',
+    iconColor: 'text-emerald-600',
+    badge: 'Employees',
+    category: 'employees',
+  },
+  {
+    id: 'branch-consolidated',
+    title: 'Multi-Branch Consolidated Report',
+    description: 'Head Office multi-campus attendance consolidated overview with direct Excel spreadsheets and PDF statements',
+    icon: 'building-2',
+    iconBg: 'bg-purple-50 text-purple-600 border border-purple-100',
+    iconColor: 'text-purple-600',
+    badge: 'Multi-Branch',
+    category: 'branches',
+  },
   {
     id: 'daily-attendance',
     title: 'Daily Attendance Report',
@@ -98,6 +133,7 @@ const combinedAttendanceCards: ReportCardConfig[] = [
     icon: 'clipboard-list',
     iconBg: 'bg-blue-50 text-blue-600 border border-blue-100',
     iconColor: 'text-blue-600',
+    category: 'employees',
   },
   {
     id: 'daily-abstract',
@@ -254,6 +290,83 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
   const [filterInstType, setFilterInstType] = useState('All Types');
   const [searchTableQuery, setSearchTableQuery] = useState('');
   const [rangeTabMode, setRangeTabMode] = useState<'Report' | 'Detail' | 'Abstract'>('Report');
+
+  // Monthly Attendance State for Students, Employees & Multi-Branch
+  const [targetYear, setTargetYear] = useState<number>(new Date().getFullYear());
+  const [targetMonth, setTargetMonth] = useState<number>(new Date().getMonth() + 1);
+  const [studentsOverview, setStudentsOverview] = useState<any | null>(null);
+  const [employeesOverview, setEmployeesOverview] = useState<any | null>(null);
+  const [branchReportsData, setBranchReportsData] = useState<any | null>(null);
+  const [loadingMonthly, setLoadingMonthly] = useState<boolean>(false);
+  const [hubCategory, setHubCategory] = useState<'all' | 'students' | 'employees' | 'branches'>('all');
+  const [studentStatusFilter, setStudentStatusFilter] = useState<string>('all');
+  const [employeeStatusFilter, setEmployeeStatusFilter] = useState<string>('all');
+  const [selectedBranch, setSelectedBranch] = useState<string>(() => {
+    return localStorage.getItem('vahd_selected_org_id') || 'all';
+  });
+  const [allBranchesList, setAllBranchesList] = useState<Array<{ id: string; branch_name: string; gym_name?: string }>>([]);
+
+  // Synchronize with Topbar organization / branch switcher
+  useEffect(() => {
+    const handleOrgChanged = (e: any) => {
+      if (e.detail?.id) {
+        setSelectedBranch(e.detail.id);
+      }
+    };
+    window.addEventListener('vahd:org_changed', handleOrgChanged);
+    return () => window.removeEventListener('vahd:org_changed', handleOrgChanged);
+  }, []);
+
+  // Fetch full list of campus organizations and branches for the branch selector
+  useEffect(() => {
+    apiClient
+      .get<any>(`/ho/attendance-reports/branches?year=${targetYear}&month=${targetMonth}`)
+      .then((res) => {
+        if (res?.branches && Array.isArray(res.branches)) {
+          setAllBranchesList(
+            res.branches.map((br: any) => ({
+              id: br.branch_id,
+              branch_name: br.branch_name,
+              gym_name: br.gym_name,
+            }))
+          );
+        }
+      })
+      .catch(() => {});
+  }, [targetYear, targetMonth]);
+
+  const fetchMonthlyOverviews = async (y = targetYear, m = targetMonth, b = selectedBranch) => {
+    setLoadingMonthly(true);
+    try {
+      const branchParam = b && b !== 'all' ? `&branch_id=${encodeURIComponent(b)}` : '';
+      const [studRes, empRes, hoRes] = await Promise.all([
+        apiClient.get<any>(`/customers/attendance-reports/overview?year=${y}&month=${m}${branchParam}`).catch(() => null),
+        apiClient.get<any>(`/hrms/attendance-reports/overview?year=${y}&month=${m}${branchParam}`).catch(() => null),
+        apiClient.get<any>(`/ho/attendance-reports/branches?year=${y}&month=${m}${branchParam}`).catch(() => null),
+      ]);
+      setStudentsOverview(studRes);
+      setEmployeesOverview(empRes);
+      setBranchReportsData(hoRes);
+
+      if (hoRes?.branches && Array.isArray(hoRes.branches) && allBranchesList.length === 0) {
+        setAllBranchesList(
+          hoRes.branches.map((br: any) => ({
+            id: br.branch_id,
+            branch_name: br.branch_name,
+            gym_name: br.gym_name,
+          }))
+        );
+      }
+    } catch (e) {
+      console.error('Failed to load monthly attendance overviews:', e);
+    } finally {
+      setLoadingMonthly(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchMonthlyOverviews(targetYear, targetMonth, selectedBranch);
+  }, [targetYear, targetMonth, selectedBranch]);
 
   // Load backend data dynamically based on selected date
   const fetchData = async (dateToFetch?: string) => {
@@ -485,9 +598,870 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
     window.print();
   };
 
+  const authToken = typeof window !== 'undefined' ? (localStorage.getItem('vahd_token') || localStorage.getItem('token') || '') : '';
+  const authParam = authToken ? `&token=${encodeURIComponent(authToken)}` : '';
+
   // ─────────────────────────────────────────────────────────────────────────────
   // RENDER: DRILL-DOWN SUBVIEWS
   // ─────────────────────────────────────────────────────────────────────────────
+
+  // 1. STUDENT ATTENDANCE REPORT & DOWNLOAD CENTER
+  if (selectedReport === 'student-attendance') {
+    const studentsList = studentsOverview?.students || [];
+    const filteredStudents = studentsList.filter((s: any) => {
+      const matchBranch = !selectedBranch || selectedBranch === 'all' || s.branch_id === selectedBranch;
+      const matchSearch =
+        !searchTableQuery.trim() ||
+        (s.student_name || '').toLowerCase().includes(searchTableQuery.toLowerCase()) ||
+        (s.roll_number || '').toLowerCase().includes(searchTableQuery.toLowerCase()) ||
+        (s.degree || '').toLowerCase().includes(searchTableQuery.toLowerCase()) ||
+        (s.branch_name || '').toLowerCase().includes(searchTableQuery.toLowerCase()) ||
+        (s.parent_phone || '').includes(searchTableQuery);
+
+      const pct = s.attendance_percentage ?? 0;
+      let matchStatus = true;
+      if (studentStatusFilter === 'eligible') matchStatus = pct >= 75;
+      else if (studentStatusFilter === 'borderline') matchStatus = pct >= 60 && pct < 75;
+      else if (studentStatusFilter === 'shortage') matchStatus = pct < 60;
+
+      return matchBranch && matchSearch && matchStatus;
+    });
+
+    const displayTotalStudents = filteredStudents.length;
+    const displayAvgPct = filteredStudents.length
+      ? Math.round(filteredStudents.reduce((acc: number, s: any) => acc + (s.attendance_percentage || 0), 0) / filteredStudents.length)
+      : 0;
+    const displayEligible = filteredStudents.filter((s: any) => (s.attendance_percentage || 0) >= 75).length;
+    const displayShortage = filteredStudents.filter((s: any) => (s.attendance_percentage || 0) < 60).length;
+    const displayWorkingDays = filteredStudents[0]?.total_working_days || studentsOverview?.total_working_days || 0;
+    const branchDownloadParam = selectedBranch && selectedBranch !== 'all' ? `&branch_id=${encodeURIComponent(selectedBranch)}` : '';
+
+    return (
+      <div className="space-y-4 animate-fade-in font-sans text-navy-900">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div className="text-xs text-navy-400 font-bold mb-1 flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setSelectedReport(null)}
+                className="hover:text-blue-600 hover:underline cursor-pointer"
+              >
+                Reports
+              </button>
+              <span>›</span>
+              <span className="text-navy-700">Student Attendance</span>
+            </div>
+            <h1 className="text-2xl font-black tracking-tight text-navy-900 uppercase">
+              STUDENT ATTENDANCE REPORT &amp; DOWNLOAD CENTER
+            </h1>
+            <p className="text-xs text-navy-500 font-medium">
+              Official monthly student biometric attendance records, course performance, and downloadable statements
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setSelectedReport(null)}
+            className="px-4 py-2 rounded-xl text-xs font-bold border border-navy-200 bg-white hover:bg-navy-50 text-navy-700 flex items-center gap-1.5 transition shadow-2xs self-start sm:self-auto cursor-pointer"
+          >
+            <Icon name="chevron-left" size={14} />
+            <span>Back to Reports</span>
+          </button>
+        </div>
+
+        {/* Filter Toolbar Box */}
+        <div className="bg-white p-4 rounded-2xl border border-navy-100 shadow-sm space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <div>
+                <label className="block text-[11px] font-bold text-navy-600 mb-1">Branch / Organisation</label>
+                <select
+                  value={selectedBranch}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setSelectedBranch(val);
+                    localStorage.setItem('vahd_selected_org_id', val);
+                    window.dispatchEvent(new CustomEvent('vahd:org_changed', { detail: { id: val } }));
+                  }}
+                  className="px-3 py-1.5 rounded-xl border border-navy-200 bg-white font-bold text-navy-800 text-xs focus:ring-2 focus:ring-blue-500/20 max-w-[210px]"
+                >
+                  <option value="all">🌟 All Branches (Consolidated)</option>
+                  {allBranchesList.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      🏫 {b.gym_name ? `${b.gym_name} — ` : ''}{b.branch_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-navy-600 mb-1">Month</label>
+                <select
+                  value={targetMonth}
+                  onChange={(e) => setTargetMonth(Number(e.target.value))}
+                  className="px-3 py-1.5 rounded-xl border border-navy-200 bg-white font-bold text-navy-800 text-xs focus:ring-2 focus:ring-blue-500/20"
+                >
+                  {[
+                    'January', 'February', 'March', 'April', 'May', 'June',
+                    'July', 'August', 'September', 'October', 'November', 'December'
+                  ].map((m, idx) => (
+                    <option key={m} value={idx + 1}>{m}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-navy-600 mb-1">Year</label>
+                <select
+                  value={targetYear}
+                  onChange={(e) => setTargetYear(Number(e.target.value))}
+                  className="px-3 py-1.5 rounded-xl border border-navy-200 bg-white font-bold text-navy-800 text-xs focus:ring-2 focus:ring-blue-500/20"
+                >
+                  {[2024, 2025, 2026, 2027].map((y) => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-navy-600 mb-1">Attendance Standing</label>
+                <select
+                  value={studentStatusFilter}
+                  onChange={(e) => setStudentStatusFilter(e.target.value)}
+                  className="px-3 py-1.5 rounded-xl border border-navy-200 bg-white font-bold text-navy-800 text-xs focus:ring-2 focus:ring-blue-500/20"
+                >
+                  <option value="all">All Standings</option>
+                  <option value="eligible">Eligible (≥ 75%)</option>
+                  <option value="borderline">Borderline (60% - 74%)</option>
+                  <option value="shortage">Shortage / Risk (&lt; 60%)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-navy-600 mb-1">Search Student</label>
+                <input
+                  type="text"
+                  placeholder="Roll, Name, Campus..."
+                  value={searchTableQuery}
+                  onChange={(e) => setSearchTableQuery(e.target.value)}
+                  className="px-3 py-1.5 rounded-xl border border-navy-200 bg-white font-medium text-navy-800 text-xs focus:ring-2 focus:ring-blue-500/20 w-44"
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 pt-2 sm:pt-0">
+              <a
+                href={`/api/v1/ho/attendance-reports/export/excel?year=${targetYear}&month=${targetMonth}&category=students${branchDownloadParam}${authParam}`}
+                download
+                className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 shadow-md shadow-emerald-600/20 transition cursor-pointer"
+                title="Download consolidated Excel file for students"
+              >
+                <Icon name="file-spreadsheet" size={14} />
+                <span>{selectedBranch !== 'all' ? 'Download Branch Excel' : 'Download All Students Excel'}</span>
+              </a>
+
+              <a
+                href={`/api/v1/ho/attendance-reports/export/pdf?year=${targetYear}&month=${targetMonth}&category=students${branchDownloadParam}${authParam}`}
+                target="_blank"
+                rel="noreferrer"
+                className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-1.5 shadow-md shadow-indigo-600/20 transition cursor-pointer"
+                title="Open executive printable PDF statement"
+              >
+                <Icon name="printer" size={14} />
+                <span>{selectedBranch !== 'all' ? 'Download Branch PDF' : 'Download All Students PDF'}</span>
+              </a>
+
+              <button
+                type="button"
+                onClick={() =>
+                  handleExportCSV(
+                    `Student_Attendance_${targetYear}_${targetMonth}`,
+                    ['#', 'ROLL NO', 'STUDENT NAME', 'DEGREE / COURSE', 'REGISTERED MOBILE', 'WORKING DAYS', 'PRESENT', 'ABSENT', 'ATTENDANCE %', 'ACADEMIC STANDING'],
+                    filteredStudents.map((s: any, idx: number) => [
+                      idx + 1,
+                      s.roll_number || s.student_id,
+                      s.student_name,
+                      s.degree || '--',
+                      s.parent_phone || '--',
+                      s.total_working_days,
+                      s.days_present,
+                      s.days_absent,
+                      `${s.attendance_percentage}%`,
+                      s.attendance_percentage >= 75 ? 'Eligible' : s.attendance_percentage >= 60 ? 'Borderline' : 'Critical Shortage'
+                    ])
+                  )
+                }
+                className="px-3 py-1.5 rounded-xl text-xs font-bold border border-navy-200 bg-white hover:bg-navy-50 text-navy-700 flex items-center gap-1.5 shadow-2xs transition cursor-pointer"
+              >
+                <Icon name="download" size={13} />
+                <span>Export CSV</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* KPI Cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+          <div className="bg-white p-3.5 rounded-2xl border border-navy-100 shadow-2xs text-center">
+            <span className="text-[10px] font-bold text-navy-400 uppercase tracking-wider block">Total Students</span>
+            <span className="text-xl font-black text-navy-900 mt-0.5 block">{displayTotalStudents}</span>
+          </div>
+          <div className="bg-white p-3.5 rounded-2xl border border-navy-100 shadow-2xs text-center">
+            <span className="text-[10px] font-bold text-navy-400 uppercase tracking-wider block">Working Days</span>
+            <span className="text-xl font-black text-slate-800 mt-0.5 block">{displayWorkingDays}</span>
+          </div>
+          <div className="bg-white p-3.5 rounded-2xl border border-navy-100 shadow-2xs text-center">
+            <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block">Avg Attendance</span>
+            <span className="text-xl font-black text-emerald-600 mt-0.5 block">{displayAvgPct}%</span>
+          </div>
+          <div className="bg-white p-3.5 rounded-2xl border border-navy-100 shadow-2xs text-center">
+            <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider block">Eligible (≥ 75%)</span>
+            <span className="text-xl font-black text-blue-600 mt-0.5 block">{displayEligible}</span>
+          </div>
+          <div className="bg-white p-3.5 rounded-2xl border border-navy-100 shadow-2xs text-center">
+            <span className="text-[10px] font-bold text-rose-600 uppercase tracking-wider block">Shortage Alert (&lt; 60%)</span>
+            <span className="text-xl font-black text-rose-600 mt-0.5 block">{displayShortage}</span>
+          </div>
+        </div>
+
+        {/* Table Container */}
+        <div className="bg-white rounded-2xl border border-navy-100 shadow-sm overflow-hidden">
+          <div className="p-3.5 border-b border-navy-100 flex items-center justify-between bg-navy-50/40">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-extrabold text-navy-900">Student Attendance Statements</span>
+              <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-xs font-bold font-mono">
+                {filteredStudents.length} Students
+              </span>
+            </div>
+            <span className="text-xs text-navy-500 font-medium">
+              Period: <strong>{studentsOverview?.month_name || 'Selected Month'} {studentsOverview?.year || targetYear}</strong>
+            </span>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead className="bg-slate-50 text-[10px] uppercase font-bold text-slate-500 border-b border-slate-200">
+                <tr>
+                  <th className="py-2.5 px-3">Roll / ID</th>
+                  <th className="py-2.5 px-3">Student Name</th>
+                  <th className="py-2.5 px-3">Degree / Program</th>
+                  <th className="py-2.5 px-3">Registered Mobile</th>
+                  <th className="py-2.5 px-3 text-center">Working</th>
+                  <th className="py-2.5 px-3 text-center">Present</th>
+                  <th className="py-2.5 px-3 text-center">Absent</th>
+                  <th className="py-2.5 px-3 text-center">Score %</th>
+                  <th className="py-2.5 px-3">Academic Standing</th>
+                  <th className="py-2.5 px-3 text-right">Statements &amp; Downloads</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-slate-700">
+                {loadingMonthly ? (
+                  <tr>
+                    <td colSpan={10} className="py-12 text-center text-slate-400 font-semibold">
+                      Loading student attendance records...
+                    </td>
+                  </tr>
+                ) : filteredStudents.length === 0 ? (
+                  <tr>
+                    <td colSpan={10} className="py-12 text-center text-slate-400 font-semibold">
+                      No students found matching your filters.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredStudents.map((s: any) => {
+                    const pct = s.attendance_percentage ?? 0;
+                    return (
+                      <tr key={s.student_id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="py-3 px-3 font-mono font-bold text-slate-900">{s.roll_number || s.student_id}</td>
+                        <td className="py-3 px-3 font-extrabold text-slate-900">
+                          <div>{s.student_name}</div>
+                          <div className="text-[10px] text-slate-500 font-medium flex items-center gap-1 mt-0.5">
+                            <span className="px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                              🏫 {s.branch_name || s.college_name || 'Main Campus'}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-3 text-slate-600">{s.degree || '--'}</td>
+                        <td className="py-3 px-3 font-mono font-bold text-blue-700">{s.parent_phone || '--'}</td>
+                        <td className="py-3 px-3 text-center font-bold text-slate-800">{s.total_working_days}</td>
+                        <td className="py-3 px-3 text-center font-bold text-emerald-600 bg-emerald-50/30">{s.days_present}</td>
+                        <td className="py-3 px-3 text-center font-bold text-rose-600 bg-rose-50/30">{s.days_absent}</td>
+                        <td className="py-3 px-3 text-center">
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+                              pct >= 75
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : pct >= 60
+                                ? 'bg-amber-100 text-amber-800'
+                                : 'bg-rose-100 text-rose-800'
+                            }`}
+                          >
+                            {pct}%
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 text-[11px] font-medium text-slate-600">
+                          {pct >= 75 ? (
+                            <span className="text-emerald-700 font-bold">✓ Exam Eligible</span>
+                          ) : pct >= 60 ? (
+                            <span className="text-amber-700 font-bold">⚠ Borderline</span>
+                          ) : (
+                            <span className="text-rose-700 font-bold">✗ Shortage Alert</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-3 text-right">
+                          <div className="inline-flex items-center gap-1.5">
+                            <a
+                              href={`/api/v1/customers/${s.student_id}/attendance-report/csv?year=${targetYear}&month=${targetMonth}${authParam}`}
+                              download
+                              className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-bold flex items-center gap-1 transition"
+                              title="Download Student CSV Statement"
+                            >
+                              <Icon name="download" size={12} />
+                              <span>CSV</span>
+                            </a>
+                            <a
+                              href={`/api/v1/customers/${s.student_id}/attendance-report/pdf?year=${targetYear}&month=${targetMonth}${authParam}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-bold flex items-center gap-1 transition"
+                              title="Print Official PDF Statement"
+                            >
+                              <Icon name="printer" size={12} />
+                              <span>PDF</span>
+                            </a>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. EMPLOYEE ATTENDANCE REPORT & DOWNLOAD CENTER
+  if (selectedReport === 'employee-attendance') {
+    const employeesList = employeesOverview?.employees || [];
+    const filteredEmployees = employeesList.filter((emp: any) => {
+      const matchBranch = !selectedBranch || selectedBranch === 'all' || emp.branch_id === selectedBranch;
+      const matchSearch =
+        !searchTableQuery.trim() ||
+        (emp.employee_name || '').toLowerCase().includes(searchTableQuery.toLowerCase()) ||
+        (emp.employee_code || '').toLowerCase().includes(searchTableQuery.toLowerCase()) ||
+        (emp.designation || '').toLowerCase().includes(searchTableQuery.toLowerCase()) ||
+        (emp.department || '').toLowerCase().includes(searchTableQuery.toLowerCase()) ||
+        (emp.branch_name || '').toLowerCase().includes(searchTableQuery.toLowerCase()) ||
+        (emp.email || '').toLowerCase().includes(searchTableQuery.toLowerCase());
+
+      const pct = emp.attendance_percentage ?? 0;
+      let matchStatus = true;
+      if (employeeStatusFilter === 'eligible') matchStatus = pct >= 75;
+      else if (employeeStatusFilter === 'borderline') matchStatus = pct >= 60 && pct < 75;
+      else if (employeeStatusFilter === 'shortage') matchStatus = pct < 60;
+
+      return matchBranch && matchSearch && matchStatus;
+    });
+
+    const displayTotalEmployees = filteredEmployees.length;
+    const displayEmpAvgPct = filteredEmployees.length
+      ? Math.round(filteredEmployees.reduce((acc: number, e: any) => acc + (e.attendance_percentage || 0), 0) / filteredEmployees.length)
+      : 0;
+    const displayEmpOptimal = filteredEmployees.filter((e: any) => (e.attendance_percentage || 0) >= 75).length;
+    const displayEmpShortage = filteredEmployees.filter((e: any) => (e.attendance_percentage || 0) < 60).length;
+    const displayEmpWorkingDays = filteredEmployees[0]?.total_working_days || employeesOverview?.total_working_days || 0;
+    const branchDownloadParam = selectedBranch && selectedBranch !== 'all' ? `&branch_id=${encodeURIComponent(selectedBranch)}` : '';
+
+    return (
+      <div className="space-y-4 animate-fade-in font-sans text-navy-900">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div className="text-xs text-navy-400 font-bold mb-1 flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setSelectedReport(null)}
+                className="hover:text-blue-600 hover:underline cursor-pointer"
+              >
+                Reports
+              </button>
+              <span>›</span>
+              <span className="text-navy-700">Employee Attendance</span>
+            </div>
+            <h1 className="text-2xl font-black tracking-tight text-navy-900 uppercase">
+              EMPLOYEE ATTENDANCE REPORT &amp; DOWNLOAD CENTER
+            </h1>
+            <p className="text-xs text-navy-500 font-medium">
+              Official staff attendance statements, biometric hours breakdown, and executive reports
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setSelectedReport(null)}
+            className="px-4 py-2 rounded-xl text-xs font-bold border border-navy-200 bg-white hover:bg-navy-50 text-navy-700 flex items-center gap-1.5 transition shadow-2xs self-start sm:self-auto cursor-pointer"
+          >
+            <Icon name="chevron-left" size={14} />
+            <span>Back to Reports</span>
+          </button>
+        </div>
+
+        {/* Filter Toolbar Box */}
+        <div className="bg-white p-4 rounded-2xl border border-navy-100 shadow-sm space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <div>
+                <label className="block text-[11px] font-bold text-navy-600 mb-1">Branch / Organisation</label>
+                <select
+                  value={selectedBranch}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setSelectedBranch(val);
+                    localStorage.setItem('vahd_selected_org_id', val);
+                    window.dispatchEvent(new CustomEvent('vahd:org_changed', { detail: { id: val } }));
+                  }}
+                  className="px-3 py-1.5 rounded-xl border border-navy-200 bg-white font-bold text-navy-800 text-xs focus:ring-2 focus:ring-blue-500/20 max-w-[210px]"
+                >
+                  <option value="all">🌟 All Branches (Consolidated)</option>
+                  {allBranchesList.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      🏫 {b.gym_name ? `${b.gym_name} — ` : ''}{b.branch_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-navy-600 mb-1">Month</label>
+                <select
+                  value={targetMonth}
+                  onChange={(e) => setTargetMonth(Number(e.target.value))}
+                  className="px-3 py-1.5 rounded-xl border border-navy-200 bg-white font-bold text-navy-800 text-xs focus:ring-2 focus:ring-blue-500/20"
+                >
+                  {[
+                    'January', 'February', 'March', 'April', 'May', 'June',
+                    'July', 'August', 'September', 'October', 'November', 'December'
+                  ].map((m, idx) => (
+                    <option key={m} value={idx + 1}>{m}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-navy-600 mb-1">Year</label>
+                <select
+                  value={targetYear}
+                  onChange={(e) => setTargetYear(Number(e.target.value))}
+                  className="px-3 py-1.5 rounded-xl border border-navy-200 bg-white font-bold text-navy-800 text-xs focus:ring-2 focus:ring-blue-500/20"
+                >
+                  {[2024, 2025, 2026, 2027].map((y) => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-navy-600 mb-1">Performance Bracket</label>
+                <select
+                  value={employeeStatusFilter}
+                  onChange={(e) => setEmployeeStatusFilter(e.target.value)}
+                  className="px-3 py-1.5 rounded-xl border border-navy-200 bg-white font-bold text-navy-800 text-xs focus:ring-2 focus:ring-blue-500/20"
+                >
+                  <option value="all">All Brackets</option>
+                  <option value="eligible">Optimal (≥ 75%)</option>
+                  <option value="borderline">Moderate (60% - 74%)</option>
+                  <option value="shortage">Low Attendance (&lt; 60%)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-navy-600 mb-1">Search Staff</label>
+                <input
+                  type="text"
+                  placeholder="Code, Name, Campus..."
+                  value={searchTableQuery}
+                  onChange={(e) => setSearchTableQuery(e.target.value)}
+                  className="px-3 py-1.5 rounded-xl border border-navy-200 bg-white font-medium text-navy-800 text-xs focus:ring-2 focus:ring-blue-500/20 w-44"
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 pt-2 sm:pt-0">
+              <a
+                href={`/api/v1/ho/attendance-reports/export/excel?year=${targetYear}&month=${targetMonth}&category=employees${branchDownloadParam}${authParam}`}
+                download
+                className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 shadow-md shadow-emerald-600/20 transition cursor-pointer"
+                title="Download consolidated Excel file for employees"
+              >
+                <Icon name="file-spreadsheet" size={14} />
+                <span>{selectedBranch !== 'all' ? 'Download Branch Excel' : 'Download All Staff Excel'}</span>
+              </a>
+
+              <a
+                href={`/api/v1/ho/attendance-reports/export/pdf?year=${targetYear}&month=${targetMonth}&category=employees${branchDownloadParam}${authParam}`}
+                target="_blank"
+                rel="noreferrer"
+                className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-1.5 shadow-md shadow-indigo-600/20 transition cursor-pointer"
+                title="Open executive printable PDF statement"
+              >
+                <Icon name="printer" size={14} />
+                <span>{selectedBranch !== 'all' ? 'Download Branch PDF' : 'Download All Staff PDF'}</span>
+              </a>
+
+              <button
+                type="button"
+                onClick={() =>
+                  handleExportCSV(
+                    `Employee_Attendance_${targetYear}_${targetMonth}`,
+                    ['#', 'EMP CODE', 'EMPLOYEE NAME', 'DESIGNATION', 'DEPARTMENT', 'EMAIL', 'WORKING DAYS', 'PRESENT', 'ABSENT', 'LEAVES', 'ATTENDANCE %'],
+                    filteredEmployees.map((emp: any, idx: number) => [
+                      idx + 1,
+                      emp.employee_code,
+                      emp.employee_name,
+                      emp.designation || '--',
+                      emp.department || '--',
+                      emp.email || '--',
+                      emp.total_working_days,
+                      emp.days_present,
+                      emp.days_absent,
+                      emp.days_leave,
+                      `${emp.attendance_percentage}%`
+                    ])
+                  )
+                }
+                className="px-3 py-1.5 rounded-xl text-xs font-bold border border-navy-200 bg-white hover:bg-navy-50 text-navy-700 flex items-center gap-1.5 shadow-2xs transition cursor-pointer"
+              >
+                <Icon name="download" size={13} />
+                <span>Export CSV</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* KPI Cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+          <div className="bg-white p-3.5 rounded-2xl border border-navy-100 shadow-2xs text-center">
+            <span className="text-[10px] font-bold text-navy-400 uppercase tracking-wider block">Total Employees</span>
+            <span className="text-xl font-black text-navy-900 mt-0.5 block">{displayTotalEmployees}</span>
+          </div>
+          <div className="bg-white p-3.5 rounded-2xl border border-navy-100 shadow-2xs text-center">
+            <span className="text-[10px] font-bold text-navy-400 uppercase tracking-wider block">Working Days</span>
+            <span className="text-xl font-black text-slate-800 mt-0.5 block">{displayEmpWorkingDays}</span>
+          </div>
+          <div className="bg-white p-3.5 rounded-2xl border border-navy-100 shadow-2xs text-center">
+            <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block">Avg Attendance</span>
+            <span className="text-xl font-black text-emerald-600 mt-0.5 block">{displayEmpAvgPct}%</span>
+          </div>
+          <div className="bg-white p-3.5 rounded-2xl border border-navy-100 shadow-2xs text-center">
+            <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider block">Optimal (≥ 75%)</span>
+            <span className="text-xl font-black text-blue-600 mt-0.5 block">{displayEmpOptimal}</span>
+          </div>
+          <div className="bg-white p-3.5 rounded-2xl border border-navy-100 shadow-2xs text-center">
+            <span className="text-[10px] font-bold text-purple-600 uppercase tracking-wider block">Low Attendance (&lt; 60%)</span>
+            <span className="text-xl font-black text-purple-600 mt-0.5 block">{displayEmpShortage}</span>
+          </div>
+        </div>
+
+        {/* Table Container */}
+        <div className="bg-white rounded-2xl border border-navy-100 shadow-sm overflow-hidden">
+          <div className="p-3.5 border-b border-navy-100 flex items-center justify-between bg-navy-50/40">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-extrabold text-navy-900">Employee Attendance Statements</span>
+              <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold font-mono">
+                {filteredEmployees.length} Staff
+              </span>
+            </div>
+            <span className="text-xs text-navy-500 font-medium">
+              Period: <strong>{employeesOverview?.month_name || 'Selected Month'} {employeesOverview?.year || targetYear}</strong>
+            </span>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead className="bg-slate-50 text-[10px] uppercase font-bold text-slate-500 border-b border-slate-200">
+                <tr>
+                  <th className="py-2.5 px-3">Emp Code</th>
+                  <th className="py-2.5 px-3">Employee Name</th>
+                  <th className="py-2.5 px-3">Designation &amp; Dept</th>
+                  <th className="py-2.5 px-3">Email &amp; Mobile</th>
+                  <th className="py-2.5 px-3 text-center">Working</th>
+                  <th className="py-2.5 px-3 text-center">Present</th>
+                  <th className="py-2.5 px-3 text-center">Absent</th>
+                  <th className="py-2.5 px-3 text-center">Leaves</th>
+                  <th className="py-2.5 px-3 text-center">Score %</th>
+                  <th className="py-2.5 px-3 text-right">Statements &amp; Downloads</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-slate-700">
+                {loadingMonthly ? (
+                  <tr>
+                    <td colSpan={10} className="py-12 text-center text-slate-400 font-semibold">
+                      Loading employee attendance records...
+                    </td>
+                  </tr>
+                ) : filteredEmployees.length === 0 ? (
+                  <tr>
+                    <td colSpan={10} className="py-12 text-center text-slate-400 font-semibold">
+                      No employees found matching your filters.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredEmployees.map((emp: any) => {
+                    const pct = emp.attendance_percentage ?? 0;
+                    return (
+                      <tr key={emp.employee_id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="py-3 px-3 font-mono font-bold text-slate-900">{emp.employee_code}</td>
+                        <td className="py-3 px-3 font-extrabold text-slate-900">
+                          <div>{emp.employee_name}</div>
+                          <div className="text-[10px] text-slate-500 font-medium flex items-center gap-1 mt-0.5">
+                            <span className="px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                              🏫 {emp.branch_name || emp.gym_branch || 'Main Branch'}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-3 text-slate-600">
+                          {emp.designation} &bull; <span className="text-slate-400">{emp.department}</span>
+                        </td>
+                        <td className="py-3 px-3">
+                          <div className="text-indigo-600 font-medium truncate max-w-[160px]">{emp.email}</div>
+                          <div className="text-[10px] text-slate-400">{emp.phone}</div>
+                        </td>
+                        <td className="py-3 px-3 text-center font-bold text-slate-800">{emp.total_working_days}</td>
+                        <td className="py-3 px-3 text-center font-bold text-emerald-600 bg-emerald-50/30">{emp.days_present}</td>
+                        <td className="py-3 px-3 text-center font-bold text-rose-600 bg-rose-50/30">{emp.days_absent}</td>
+                        <td className="py-3 px-3 text-center font-bold text-purple-600">{emp.days_leave}</td>
+                        <td className="py-3 px-3 text-center">
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+                              pct >= 75
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : pct >= 60
+                                ? 'bg-amber-100 text-amber-800'
+                                : 'bg-rose-100 text-rose-800'
+                            }`}
+                          >
+                            {pct}%
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 text-right">
+                          <div className="inline-flex items-center gap-1.5">
+                            <a
+                              href={`/api/v1/hrms/${emp.employee_id}/attendance-report/csv?year=${targetYear}&month=${targetMonth}${authParam}`}
+                              download
+                              className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-bold flex items-center gap-1 transition"
+                              title="Download Employee CSV Statement"
+                            >
+                              <Icon name="download" size={12} />
+                              <span>CSV</span>
+                            </a>
+                            <a
+                              href={`/api/v1/hrms/${emp.employee_id}/attendance-report/pdf?year=${targetYear}&month=${targetMonth}${authParam}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-bold flex items-center gap-1 transition"
+                              title="Print Official PDF Statement"
+                            >
+                              <Icon name="printer" size={12} />
+                              <span>PDF</span>
+                            </a>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 3. MULTI-BRANCH CONSOLIDATED REPORT
+  if (selectedReport === 'branch-consolidated') {
+    const branches = branchReportsData?.branches || [];
+
+    return (
+      <div className="space-y-4 animate-fade-in font-sans text-navy-900">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div className="text-xs text-navy-400 font-bold mb-1 flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setSelectedReport(null)}
+                className="hover:text-blue-600 hover:underline cursor-pointer"
+              >
+                Reports
+              </button>
+              <span>›</span>
+              <span className="text-navy-700">Multi-Branch Consolidated</span>
+            </div>
+            <h1 className="text-2xl font-black tracking-tight text-navy-900 uppercase">
+              MULTI-BRANCH CONSOLIDATED ATTENDANCE CENTER
+            </h1>
+            <p className="text-xs text-navy-500 font-medium">
+              Consolidated Head Office attendance overview and exports across all registered campus branches
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setSelectedReport(null)}
+            className="px-4 py-2 rounded-xl text-xs font-bold border border-navy-200 bg-white hover:bg-navy-50 text-navy-700 flex items-center gap-1.5 transition shadow-2xs self-start sm:self-auto cursor-pointer"
+          >
+            <Icon name="chevron-left" size={14} />
+            <span>Back to Reports</span>
+          </button>
+        </div>
+
+        {/* Filter Toolbar Box */}
+        <div className="bg-white p-4 rounded-2xl border border-navy-100 shadow-sm flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div>
+              <label className="block text-[11px] font-bold text-navy-600 mb-1">Reporting Month</label>
+              <select
+                value={targetMonth}
+                onChange={(e) => setTargetMonth(Number(e.target.value))}
+                className="px-3 py-1.5 rounded-xl border border-navy-200 bg-white font-bold text-navy-800 text-xs focus:ring-2 focus:ring-blue-500/20"
+              >
+                {[
+                  'January', 'February', 'March', 'April', 'May', 'June',
+                  'July', 'August', 'September', 'October', 'November', 'December'
+                ].map((m, idx) => (
+                  <option key={m} value={idx + 1}>{m}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-navy-600 mb-1">Reporting Year</label>
+              <select
+                value={targetYear}
+                onChange={(e) => setTargetYear(Number(e.target.value))}
+                className="px-3 py-1.5 rounded-xl border border-navy-200 bg-white font-bold text-navy-800 text-xs focus:ring-2 focus:ring-blue-500/20"
+              >
+                {[2024, 2025, 2026, 2027].map((y) => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <a
+              href={`/api/v1/ho/attendance-reports/export/excel?year=${targetYear}&month=${targetMonth}&category=all${authParam}`}
+              download
+              className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 shadow-md shadow-emerald-600/20 transition cursor-pointer"
+            >
+              <Icon name="file-spreadsheet" size={15} />
+              <span>Download Master Consolidated Excel</span>
+            </a>
+
+            <a
+              href={`/api/v1/ho/attendance-reports/export/pdf?year=${targetYear}&month=${targetMonth}&category=all${authParam}`}
+              target="_blank"
+              rel="noreferrer"
+              className="px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-1.5 shadow-md shadow-indigo-600/20 transition cursor-pointer"
+            >
+              <Icon name="printer" size={15} />
+              <span>Download Master Consolidated PDF</span>
+            </a>
+          </div>
+        </div>
+
+        {/* Quick KPI Overview */}
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+          <div className="bg-white p-4 rounded-2xl border border-navy-100 shadow-2xs text-center">
+            <span className="text-[11px] font-bold text-navy-400 uppercase tracking-wider">Branches in Scope</span>
+            <div className="text-2xl font-black text-navy-900 mt-1">{branchReportsData?.total_branches ?? 0}</div>
+          </div>
+          <div className="bg-white p-4 rounded-2xl border border-navy-100 shadow-2xs text-center">
+            <span className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider">Total Organization Staff</span>
+            <div className="text-2xl font-black text-emerald-600 mt-1">{branchReportsData?.total_employees ?? 0}</div>
+          </div>
+          <div className="bg-white p-4 rounded-2xl border border-navy-100 shadow-2xs text-center">
+            <span className="text-[11px] font-bold text-blue-600 uppercase tracking-wider">Total Campus Students</span>
+            <div className="text-2xl font-black text-blue-600 mt-1">{branchReportsData?.total_students ?? 0}</div>
+          </div>
+          <div className="bg-white p-4 rounded-2xl border border-navy-100 shadow-2xs text-center">
+            <span className="text-[11px] font-bold text-purple-600 uppercase tracking-wider">Active Period</span>
+            <div className="text-xl font-black text-purple-600 mt-1">{branchReportsData?.period || 'Selected Month'}</div>
+          </div>
+        </div>
+
+        {/* Branch Cards */}
+        <div className="space-y-4">
+          {branches.length === 0 ? (
+            <div className="bg-white p-12 rounded-2xl border border-navy-100 text-center text-slate-400 font-semibold">
+              No branch records available for this reporting period.
+            </div>
+          ) : (
+            branches.map((b: any) => (
+              <div key={b.branch_id} className="bg-white p-5 rounded-2xl border border-navy-100 shadow-2xs space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-navy-50">
+                  <div>
+                    <h3 className="text-base font-extrabold text-navy-900">{b.gym_name || b.branch_name}</h3>
+                    <p className="text-xs text-navy-500">
+                      City: <strong>{b.city || 'Primary Campus'}</strong> &bull; Owner: <strong>{b.owner_name || 'Assigned'}</strong>
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="px-3 py-1 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold">
+                      Staff: {b.employees?.length ?? b.employees?.total_count ?? 0} ({b.employees?.avg_attendance_percentage || 0}%)
+                    </span>
+                    <span className="px-3 py-1 rounded-xl bg-blue-50 text-blue-800 border border-blue-200 text-xs font-bold">
+                      Students: {b.students?.length ?? b.students?.total_count ?? 0} ({b.students?.avg_attendance_percentage || 0}%)
+                    </span>
+                    <a
+                      href={`/api/v1/ho/attendance-reports/export/excel?year=${targetYear}&month=${targetMonth}&branch_id=${b.branch_id}&category=students${authParam}`}
+                      download
+                      className="px-2.5 py-1 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1 shadow-xs transition"
+                      title="Download Students Attendance for this branch"
+                    >
+                      <Icon name="graduation-cap" size={12} />
+                      <span>Students Excel</span>
+                    </a>
+                    <a
+                      href={`/api/v1/ho/attendance-reports/export/excel?year=${targetYear}&month=${targetMonth}&branch_id=${b.branch_id}&category=employees${authParam}`}
+                      download
+                      className="px-2.5 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1 shadow-xs transition"
+                      title="Download Employees Attendance for this branch"
+                    >
+                      <Icon name="user-check" size={12} />
+                      <span>Staff Excel</span>
+                    </a>
+                    <a
+                      href={`/api/v1/ho/attendance-reports/export/excel?year=${targetYear}&month=${targetMonth}&branch_id=${b.branch_id}&category=all${authParam}`}
+                      download
+                      className="px-3 py-1 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold flex items-center gap-1 shadow-xs transition"
+                      title="Download Consolidated Branch Excel"
+                    >
+                      <Icon name="download" size={12} />
+                      <span>Branch Excel</span>
+                    </a>
+                    <a
+                      href={`/api/v1/ho/attendance-reports/export/pdf?year=${targetYear}&month=${targetMonth}&branch_id=${b.branch_id}&category=all${authParam}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-3 py-1 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center gap-1 shadow-xs transition"
+                      title="Print Branch PDF Statement"
+                    >
+                      <Icon name="printer" size={12} />
+                      <span>Branch PDF</span>
+                    </a>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    );
+  }
 
   if (selectedReport === 'daily-attendance') {
     return (
@@ -1443,7 +2417,12 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
       onClick={() => setSelectedReport(card.id)}
       className="bg-white rounded-2xl p-5 border border-navy-100/90 shadow-2xs hover:shadow-md hover:border-blue-300 hover:-translate-y-0.5 transition-all duration-200 flex flex-col items-center text-center cursor-pointer group relative overflow-hidden"
     >
-      {/* Top soft icon with 3D aesthetic container */}
+      {card.badge && (
+        <span className="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase bg-blue-50 text-blue-700 border border-blue-200/80">
+          {card.badge}
+        </span>
+      )}
+      {/* Top soft icon with container */}
       <div
         className={cn(
           'w-14 h-14 rounded-2xl flex items-center justify-center mb-3.5 shadow-xs transition-transform group-hover:scale-105',
@@ -1473,10 +2452,10 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
             <span className="text-navy-700">Reports</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-navy-900 tracking-tight">
-            Reports
+            Reports &amp; Analytics
           </h1>
           <p className="text-xs text-navy-500 font-medium mt-0.5">
-            District-level analytics, exportable reports and progress tracking
+            District-level analytics, exportable attendance statements, and multi-campus progress tracking
           </p>
         </div>
 
@@ -1493,47 +2472,107 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
         </div>
       </div>
 
-      {/* SECTION 1: Combined Attendance Reports */}
-      <div className="space-y-3.5">
-        <div className="flex items-center gap-2 text-sm font-extrabold text-blue-700">
-          <span className="text-base">📁</span>
-          <span>Combined Attendance Reports</span>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5">
-          {combinedAttendanceCards
-            .filter((c) => !searchReportDirectory.trim() || c.title.toLowerCase().includes(searchReportDirectory.toLowerCase()) || c.description.toLowerCase().includes(searchReportDirectory.toLowerCase()))
-            .map(renderCard)}
-        </div>
+      {/* Category Navigation Pills matching Student / Employee portal design */}
+      <div className="flex flex-wrap items-center gap-2 p-1.5 bg-slate-100 rounded-2xl border border-slate-200/80 w-fit">
+        {[
+          { id: 'all', label: '🌟 All Report Modules', icon: 'layers' },
+          { id: 'students', label: '🎓 Students Attendance', icon: 'graduation-cap' },
+          { id: 'employees', label: '👥 Employees Attendance', icon: 'user-check' },
+          { id: 'branches', label: '🏫 Multi-Branch Consolidated', icon: 'building-2' },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setHubCategory(tab.id as any)}
+            className={cn(
+              'flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer',
+              hubCategory === tab.id
+                ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+            )}
+          >
+            <Icon name={tab.icon} size={14} />
+            <span>{tab.label}</span>
+          </button>
+        ))}
       </div>
+
+      {/* SECTION 1: Combined Attendance Reports */}
+      {(hubCategory === 'all' || hubCategory === 'students' || hubCategory === 'employees' || hubCategory === 'branches') && (
+        <div className="space-y-3.5">
+          <div className="flex items-center gap-2 text-sm font-extrabold text-blue-700">
+            <span className="text-base">📁</span>
+            <span>
+              {hubCategory === 'students'
+                ? 'Student Attendance Statements & Exports'
+                : hubCategory === 'employees'
+                ? 'Employee Attendance Statements & Exports'
+                : hubCategory === 'branches'
+                ? 'Multi-Branch Headquarters Reports'
+                : 'Combined Attendance Reports'}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5">
+            {combinedAttendanceCards
+              .filter((c) => {
+                if (hubCategory === 'students') return c.category === 'students';
+                if (hubCategory === 'employees') return c.category === 'employees';
+                if (hubCategory === 'branches') return c.category === 'branches';
+                return true;
+              })
+              .filter(
+                (c) =>
+                  !searchReportDirectory.trim() ||
+                  c.title.toLowerCase().includes(searchReportDirectory.toLowerCase()) ||
+                  c.description.toLowerCase().includes(searchReportDirectory.toLowerCase())
+              )
+              .map(renderCard)}
+          </div>
+        </div>
+      )}
 
       {/* SECTION 2: Daily Abstracts */}
-      <div className="space-y-3.5 pt-2">
-        <div className="flex items-center gap-2 text-sm font-extrabold text-emerald-700">
-          <span className="text-base">📊</span>
-          <span>Daily Abstracts</span>
-        </div>
+      {(hubCategory === 'all' || hubCategory === 'employees') && (
+        <div className="space-y-3.5 pt-2">
+          <div className="flex items-center gap-2 text-sm font-extrabold text-emerald-700">
+            <span className="text-base">📊</span>
+            <span>Daily Biometric Abstracts</span>
+          </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5">
-          {dailyAbstractCards
-            .filter((c) => !searchReportDirectory.trim() || c.title.toLowerCase().includes(searchReportDirectory.toLowerCase()) || c.description.toLowerCase().includes(searchReportDirectory.toLowerCase()))
-            .map(renderCard)}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5">
+            {dailyAbstractCards
+              .filter(
+                (c) =>
+                  !searchReportDirectory.trim() ||
+                  c.title.toLowerCase().includes(searchReportDirectory.toLowerCase()) ||
+                  c.description.toLowerCase().includes(searchReportDirectory.toLowerCase())
+              )
+              .map(renderCard)}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* SECTION 3: HRMS & Performance Analytics */}
-      <div className="space-y-3.5 pt-2">
-        <div className="flex items-center gap-2 text-sm font-extrabold text-purple-700">
-          <span className="text-base">📈</span>
-          <span>HRMS &amp; Performance Analytics</span>
-        </div>
+      {(hubCategory === 'all' || hubCategory === 'employees') && (
+        <div className="space-y-3.5 pt-2">
+          <div className="flex items-center gap-2 text-sm font-extrabold text-purple-700">
+            <span className="text-base">📈</span>
+            <span>HRMS &amp; Performance Analytics</span>
+          </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5">
-          {hrmsAnalyticsCards
-            .filter((c) => !searchReportDirectory.trim() || c.title.toLowerCase().includes(searchReportDirectory.toLowerCase()) || c.description.toLowerCase().includes(searchReportDirectory.toLowerCase()))
-            .map(renderCard)}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5">
+            {hrmsAnalyticsCards
+              .filter(
+                (c) =>
+                  !searchReportDirectory.trim() ||
+                  c.title.toLowerCase().includes(searchReportDirectory.toLowerCase()) ||
+                  c.description.toLowerCase().includes(searchReportDirectory.toLowerCase())
+              )
+              .map(renderCard)}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

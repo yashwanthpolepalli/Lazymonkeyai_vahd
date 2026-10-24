@@ -1,5 +1,5 @@
-from typing import Generator, Optional
-from fastapi import Depends, HTTPException, status
+from typing import Optional, Generator
+from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
@@ -10,12 +10,18 @@ from src.utils.security import verify_token
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)
 
 def get_current_user(
+    request: Request,
     db: Session = Depends(get_db),
     token: Optional[str] = Depends(oauth2_scheme)
 ) -> Optional[User]:
-    if not token:
+    auth_token = token or request.query_params.get("token")
+    if not auth_token:
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            auth_token = auth_header.split(" ")[1]
+    if not auth_token:
         return None
-    payload = verify_token(token)
+    payload = verify_token(auth_token)
     if not payload:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

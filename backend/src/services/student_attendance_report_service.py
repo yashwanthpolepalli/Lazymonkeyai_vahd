@@ -5,9 +5,10 @@ import logging
 from datetime import datetime, date
 from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session
-from sqlalchemy import func, desc
+from sqlalchemy import func, desc, or_
 
 from src.models.customer import Customer
+from src.models.settings import GymBranch
 from src.models.biometric import BiometricLog
 from src.models.crm import WhatsAppSessionModel
 from src.models.student_report import StudentAttendanceReportLog
@@ -587,8 +588,18 @@ class StudentAttendanceReportService:
         target_year = year or now.year
         target_month = month or now.month
 
-        query = db.query(Customer).filter(Customer.status == "ACTIVE")
-        if branch_id:
+        # Query branches to provide branch_name and gym_name mapping
+        branches_dict = {b.id: b for b in db.query(GymBranch).all()}
+
+        query = db.query(Customer).filter(
+            or_(
+                func.upper(Customer.status) == "ACTIVE",
+                Customer.status == "ACTIVE",
+                Customer.status == "Active",
+                Customer.status.is_(None)
+            )
+        )
+        if branch_id and branch_id != "all":
             query = query.filter(Customer.branch_id == branch_id)
 
         students = query.all()
@@ -631,6 +642,10 @@ class StudentAttendanceReportService:
 
             total_pct_sum += rep.get("attendance_percentage", 0.0)
 
+            branch_obj = branches_dict.get(s.branch_id)
+            branch_label = branch_obj.branch_name if branch_obj else (s.primary_gym_location or "Main Campus")
+            gym_label = branch_obj.gym_name if branch_obj else ""
+
             student_reports.append({
                 "student_id": s.id,
                 "student_name": s.full_name,
@@ -638,6 +653,8 @@ class StudentAttendanceReportService:
                 "student_email": s.email,
                 "course": rep.get("course"),
                 "branch_id": s.branch_id,
+                "branch_name": branch_label,
+                "gym_name": gym_label,
                 "parent_phone": rep.get("parent_phone"),
                 "has_parent_phone": rep.get("has_parent_phone"),
                 "total_working_days": rep.get("total_working_days"),

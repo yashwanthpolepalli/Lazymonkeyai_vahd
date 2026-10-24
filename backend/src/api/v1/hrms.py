@@ -698,21 +698,20 @@ def get_employee_attendance_reports_overview(
     Overview of monthly employee attendance + email delivery statuses (SENT, FAILED, PENDING).
     Enables owners to see who received the monthly attendance emails and who hasn't.
     """
+    effective_branch = branch_id if branch_id and branch_id != "all" else None
     owner_id = None
     ho_id = None
     if current_user:
         u_role = (current_user.role or "").strip().upper()
         if u_role in ["OWNER"]:
             owner_id = current_user.id
-            if not branch_id and current_user.branch_id:
-                branch_id = current_user.branch_id
+            if not branch_id and current_user.branch_id and branch_id != "all":
+                effective_branch = current_user.branch_id
         elif u_role in ["HEAD_OFFICE", "HO"]:
             ho_id = current_user.ho_id or current_user.id
-            if not branch_id and current_user.branch_id:
-                branch_id = current_user.branch_id
 
     return EmployeeAttendanceReportService.get_monthly_reports_overview(
-        db, year=year, month=month, branch_id=branch_id, owner_id=owner_id, ho_id=ho_id
+        db, year=year, month=month, branch_id=effective_branch, owner_id=owner_id, ho_id=ho_id
     )
 
 @router.get("/attendance-reports/logs")

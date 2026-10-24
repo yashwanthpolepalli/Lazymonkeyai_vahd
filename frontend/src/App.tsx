@@ -21,6 +21,7 @@ const IotPage = lazy(() => import('@/pages/owner/IotPage').then(m => ({ default:
 const MultiBranchPage = lazy(() => import('@/pages/owner/MultiBranchPage').then(m => ({ default: m.MultiBranchPage })));
 const SettingsPage = lazy(() => import('@/pages/owner/SettingsPage').then(m => ({ default: m.SettingsPage })));
 const ErpPage = lazy(() => import('@/pages/owner/ErpPage').then(m => ({ default: m.ErpPage })));
+const ReportsPage = lazy(() => import('@/pages/owner/ReportsPage').then(m => ({ default: m.ReportsPage })));
 const HoDashboard = lazy(() => import('@/pages/ho/HoDashboard').then(m => ({ default: m.HoDashboard })));
 
 // Trainer pages
@@ -114,7 +115,7 @@ function AppRoutes() {
           <Route path="iot" element={<IotPage />} />
           <Route path="cctv" element={<Navigate to="/owner/iot?tab=cctv" replace />} />
           <Route path="biometrics" element={<Navigate to="/owner/iot?tab=biometrics" replace />} />
-          <Route path="reports" element={<Navigate to="/owner/settings?tab=reports" replace />} />
+          <Route path="reports" element={<ReportsPage />} />
           <Route path="multi-branch" element={<MultiBranchPage />} />
           <Route path="erp" element={<Navigate to="/owner/settings?tab=erp" replace />} />
           <Route path="settings" element={<SettingsPage />} />
@@ -125,6 +126,7 @@ function AppRoutes() {
           <Route index element={<HoDashboard />} />
           <Route path="hrms" element={<HrmsPage />} />
           <Route path="organisations" element={<MultiBranchPage />} />
+          <Route path="reports" element={<ReportsPage />} />
           <Route path="attendance" element={<Navigate to="/ho/hrms?tab=attendance" replace />} />
           <Route path="attendance-approve" element={<Navigate to="/ho/hrms?tab=corrections" replace />} />
         </Route>

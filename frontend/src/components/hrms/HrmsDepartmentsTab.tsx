@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/utils/cn';
 import { hrmsApi, DepartmentItem, MappedEmployee } from '@/services/hrmsApi';
+import { HrmsImportExportControls } from './HrmsImportExportControls';
 
 export function HrmsDepartmentsTab() {
   const [departments, setDepartments] = useState<DepartmentItem[]>([]);
@@ -157,14 +158,24 @@ export function HrmsDepartmentsTab() {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={handleOpenAdd}
-          className="px-4 py-2 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white flex items-center gap-1.5 shadow-md shadow-purple-600/20 active:scale-[0.98] transition-all cursor-pointer self-start sm:self-auto"
-        >
-          <Icon name="plus" size={15} />
-          <span>Add Department</span>
-        </button>
+        <div className="flex items-center gap-2.5 flex-wrap self-start sm:self-auto">
+          <HrmsImportExportControls
+            type="departments"
+            dataToExport={departments}
+            onImportSuccess={() => {
+              fetchDepartments();
+            }}
+          />
+
+          <button
+            type="button"
+            onClick={handleOpenAdd}
+            className="px-4 py-2 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white flex items-center gap-1.5 shadow-md shadow-purple-600/20 active:scale-[0.98] transition-all cursor-pointer"
+          >
+            <Icon name="plus" size={15} />
+            <span>Add Department</span>
+          </button>
+        </div>
       </div>
 
       {/* 2. KPI Summary Cards */}

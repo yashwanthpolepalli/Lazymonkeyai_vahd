@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Icon } from '@/components/ui/Icon';
 import { apiClient } from '@/services/apiClient';
@@ -54,6 +55,7 @@ interface HoDashboardData {
 }
 
 export const HoDashboard: React.FC = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<HoDashboardData | null>(null);
@@ -79,7 +81,33 @@ export const HoDashboard: React.FC = () => {
   const [onboardSuccess, setOnboardSuccess] = useState<any>(null);
   const [formError, setFormError] = useState('');
 
-  // Tab State: Overview vs Branch Attendance Reports
+  // Checkbox Selection State
+  const [selectedOrgIds, setSelectedOrgIds] = useState<string[]>([]);
+
+  // Edit Credentials Modal State
+  const [showEditCredsModal, setShowEditCredsModal] = useState(false);
+  const [editCredsOrg, setEditCredsOrg] = useState<HoOrganization | null>(null);
+  const [editOwnerName, setEditOwnerName] = useState('');
+  const [editOwnerEmail, setEditOwnerEmail] = useState('');
+  const [editOwnerPhone, setEditOwnerPhone] = useState('');
+  const [editOwnerPassword, setEditOwnerPassword] = useState('');
+  const [editShowPassword, setEditShowPassword] = useState(false);
+  const [editOrgName, setEditOrgName] = useState('');
+  const [editBranchName, setEditBranchName] = useState('');
+  const [editCity, setEditCity] = useState('');
+  const [editAddress, setEditAddress] = useState('');
+  const [editSubmitting, setEditSubmitting] = useState(false);
+  const [editError, setEditError] = useState('');
+
+  // Delete Confirmation Modal State
+  const [deleteConfirmModal, setDeleteConfirmModal] = useState<{
+    open: boolean;
+    orgIds: string[];
+    orgNames: string[];
+  }>({ open: false, orgIds: [], orgNames: [] });
+  const [deleting, setDeleting] = useState(false);
+
+  // Tab State: Dashboard vs Branch Attendance Reports
   const [hoTab, setHoTab] = useState<'overview' | 'attendance_reports'>('overview');
   const [repYear, setRepYear] = useState<number>(new Date().getFullYear());
   const [repMonth, setRepMonth] = useState<number>(new Date().getMonth() + 1);
@@ -120,6 +148,15 @@ export const HoDashboard: React.FC = () => {
   useEffect(() => {
     fetchDashboardData(selectedOrgId);
   }, [selectedOrgId]);
+
+  useEffect(() => {
+    const handleOrgChanged = (e: any) => {
+      const orgId = e?.detail?.id || localStorage.getItem('vahd_selected_org_id') || 'all';
+      setSelectedOrgId(orgId);
+    };
+    window.addEventListener('vahd:org_changed', handleOrgChanged);
+    return () => window.removeEventListener('vahd:org_changed', handleOrgChanged);
+  }, []);
 
   useEffect(() => {
     if (hoTab === 'attendance_reports') {
@@ -212,6 +249,126 @@ export const HoDashboard: React.FC = () => {
     }
   };
 
+  // Toggle selection for all organizations
+  const handleToggleSelectAll = () => {
+    if (data?.organizations && selectedOrgIds.length === data.organizations.length) {
+      setSelectedOrgIds([]);
+    } else if (data?.organizations) {
+      setSelectedOrgIds(data.organizations.map((o) => o.id));
+    }
+  };
+
+  // Toggle selection for a single organization
+  const handleToggleSelectOrg = (id: string) => {
+    setSelectedOrgIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  // Open Edit Credentials Modal
+  const handleOpenEditCredentials = (orgOrId: HoOrganization | string) => {
+    let org: HoOrganization | undefined;
+    if (typeof orgOrId === 'string') {
+      org = data?.organizations.find((o) => o.id === orgOrId);
+    } else {
+      org = orgOrId;
+    }
+    if (!org) return;
+
+    setEditCredsOrg(org);
+    setEditOwnerName(org.owner_name || '');
+    setEditOwnerEmail(org.owner_email || '');
+    setEditOwnerPhone(org.owner_phone || '');
+    setEditOwnerPassword('');
+    setEditShowPassword(false);
+    setEditOrgName(org.gym_name || '');
+    setEditBranchName(org.branch_name || '');
+    setEditCity(org.city || '');
+    setEditAddress(org.address || '');
+    setEditError('');
+    setShowEditCredsModal(true);
+  };
+
+  // Submit Edited Credentials
+  const handleEditCredsSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editCredsOrg) return;
+    setEditError('');
+
+    if (!editOwnerName.trim()) {
+      setEditError('Owner full name is required');
+      return;
+    }
+    if (!editOwnerEmail.trim() || !editOwnerEmail.includes('@')) {
+      setEditError('Valid owner email is required');
+      return;
+    }
+
+    try {
+      setEditSubmitting(true);
+      const payload: any = {
+        owner_name: editOwnerName.trim(),
+        owner_email: editOwnerEmail.trim().toLowerCase(),
+        phone: editOwnerPhone.trim(),
+        gym_name: editOrgName.trim(),
+        branch_name: editBranchName.trim(),
+        city: editCity.trim(),
+        address: editAddress.trim(),
+      };
+      if (editOwnerPassword.trim()) {
+        if (editOwnerPassword.trim().length < 6) {
+          setEditError('Password must be at least 6 characters');
+          setEditSubmitting(false);
+          return;
+        }
+        payload.password = editOwnerPassword.trim();
+      }
+
+      await apiClient.put(`/ho/organizations/${editCredsOrg.id}/credentials`, payload);
+      setShowEditCredsModal(false);
+      await fetchDashboardData();
+    } catch (err: any) {
+      setEditError(err?.response?.data?.detail || err?.message || 'Failed to update credentials');
+    } finally {
+      setEditSubmitting(false);
+    }
+  };
+
+  // Open Delete Confirmation Modal
+  const handleOpenDeleteModal = (orgIds: string[]) => {
+    if (!orgIds.length) return;
+    const names = (data?.organizations || [])
+      .filter((o) => orgIds.includes(o.id))
+      .map((o) => o.gym_name || o.branch_name || 'Organization');
+    setDeleteConfirmModal({
+      open: true,
+      orgIds,
+      orgNames: names,
+    });
+  };
+
+  // Confirm and Execute Deletion
+  const handleConfirmDelete = async () => {
+    if (!deleteConfirmModal.orgIds.length) return;
+    try {
+      setDeleting(true);
+      if (deleteConfirmModal.orgIds.length === 1) {
+        await apiClient.delete(`/ho/organizations/${deleteConfirmModal.orgIds[0]}`);
+      } else {
+        await apiClient.post('/ho/organizations/bulk-delete', {
+          organization_ids: deleteConfirmModal.orgIds,
+        });
+      }
+      setSelectedOrgIds((prev) => prev.filter((id) => !deleteConfirmModal.orgIds.includes(id)));
+      setDeleteConfirmModal({ open: false, orgIds: [], orgNames: [] });
+      await fetchDashboardData();
+    } catch (err: any) {
+      alert(err?.response?.data?.detail || err?.message || 'Failed to delete organization');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const selectedOrgName = useMemo(() => {
     if (selectedOrgId === 'all') return 'All Organizations (Global HQ)';
     const found = data?.organizations.find((o) => o.id === selectedOrgId);
@@ -227,95 +384,14 @@ export const HoDashboard: React.FC = () => {
             <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-100 text-purple-700 border border-purple-200">
               HEAD OFFICE COMMAND CENTER
             </span>
-            <span className="text-xs text-slate-400 font-bold">•</span>
-            <span className="text-xs text-slate-500 font-semibold">Live Dynamic DB Sync</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
             {user?.name || 'Head Office'} • Organization Portal
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
-            Centrally manage organizations, onboard branch owners, and monitor multi-branch employees &amp; student metrics.
-          </p>
         </div>
 
-        {/* Header Right: Organization Dropdown Switcher & Action Buttons */}
+        {/* Header Right: Action Buttons */}
         <div className="flex flex-wrap items-center gap-3">
-          {/* Organization Switcher Dropdown */}
-          <div className="relative">
-            <button
-              onClick={() => setOrgDropdownOpen(!orgDropdownOpen)}
-              className="flex items-center gap-2 px-3.5 py-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200/80 border border-slate-200 text-xs font-bold text-slate-800 transition-all shadow-2xs"
-            >
-              <Icon name="building-2" size={15} className="text-purple-600" />
-              <div className="flex flex-col items-start text-left leading-tight">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Viewing Scope</span>
-                <span className="truncate max-w-[160px] sm:max-w-[200px] text-slate-900 font-extrabold">
-                  {selectedOrgName}
-                </span>
-              </div>
-              <Icon name="chevron-down" size={14} className="text-slate-500 shrink-0 ml-1" />
-            </button>
-
-            {/* Dropdown Menu */}
-            {orgDropdownOpen && (
-              <div className="absolute right-0 top-14 w-72 sm:w-80 bg-white rounded-3xl p-2.5 z-50 shadow-2xl border border-slate-200 animate-in fade-in slide-in-from-top-2 duration-150">
-                <div className="px-3 py-2 border-b border-slate-100">
-                  <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Select Organization Filter</p>
-                  <p className="text-xs text-slate-500 font-medium">Dashboard metrics will update strictly for the selected scope.</p>
-                </div>
-
-                <div className="py-1.5 space-y-1 max-h-64 overflow-y-auto">
-                  {/* All Organizations Option */}
-                  <button
-                    onClick={() => handleSelectOrganization('all')}
-                    className={`w-full flex items-center justify-between p-2.5 rounded-2xl text-left text-xs transition-colors ${
-                      selectedOrgId === 'all'
-                        ? 'bg-purple-50 text-purple-900 font-extrabold border border-purple-200'
-                        : 'hover:bg-slate-50 text-slate-700 font-semibold'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-7 h-7 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-xs">
-                        HQ
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold">All Organizations</p>
-                        <p className="text-[10px] text-slate-400">Global Head Office aggregate</p>
-                      </div>
-                    </div>
-                    {selectedOrgId === 'all' && <Icon name="check" size={14} className="text-purple-600" />}
-                  </button>
-
-                  {/* Individual Organizations */}
-                  {data?.organizations.map((org) => (
-                    <button
-                      key={org.id}
-                      onClick={() => handleSelectOrganization(org.id)}
-                      className={`w-full flex items-center justify-between p-2.5 rounded-2xl text-left text-xs transition-colors ${
-                        selectedOrgId === org.id
-                          ? 'bg-purple-50 text-purple-900 font-extrabold border border-purple-200'
-                          : 'hover:bg-slate-50 text-slate-700 font-semibold'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-7 h-7 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center font-bold text-xs shrink-0">
-                          <Icon name="building-2" size={13} />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-xs font-bold truncate">{org.gym_name}</p>
-                          <p className="text-[10px] text-slate-400 truncate">
-                            {org.branch_name} • {org.city || 'Campus'}
-                          </p>
-                        </div>
-                      </div>
-                      {selectedOrgId === org.id && <Icon name="check" size={14} className="text-purple-600 shrink-0" />}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
           {/* Action: Onboard Owner */}
           <button
             onClick={() => handleOpenOnboardModal()}
@@ -347,7 +423,16 @@ export const HoDashboard: React.FC = () => {
           }`}
         >
           <Icon name="layout-dashboard" size={15} />
-          <span>Overview &amp; Directory</span>
+          <span>Dashboard &amp; Directory</span>
+        </button>
+
+        <button
+          onClick={() => navigate('/ho/organisations')}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer bg-white text-slate-700 hover:bg-amber-50 hover:text-amber-900 border border-slate-200 hover:border-amber-300 shadow-2xs"
+          title="View Live Cross-Organization Attendance &amp; Leave Matrix"
+        >
+          <Icon name="table" size={15} className="text-amber-600" />
+          <span>Organisations Matrix</span>
         </button>
 
         <button
@@ -369,10 +454,14 @@ export const HoDashboard: React.FC = () => {
           {/* ── KPI HIGHLIGHTS CARDS ──────────────────────────────────────────── */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* KPI 1: Organizations Scope */}
-        <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs relative overflow-hidden group hover:border-purple-300 transition-all">
+        <div
+          onClick={() => navigate('/ho/organisations')}
+          className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs relative overflow-hidden group hover:border-purple-300 hover:shadow-md transition-all cursor-pointer"
+          title="Click to view full Organisations Attendance Matrix"
+        >
           <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Organizations</span>
-            <div className="w-9 h-9 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider group-hover:text-purple-600 transition-colors">Organizations</span>
+            <div className="w-9 h-9 rounded-2xl bg-purple-50 text-purple-600 group-hover:bg-purple-600 group-hover:text-white flex items-center justify-center transition-all">
               <Icon name="building-2" size={18} />
             </div>
           </div>
@@ -380,8 +469,9 @@ export const HoDashboard: React.FC = () => {
             <div className="text-2xl sm:text-3xl font-black text-slate-900">
               {data?.is_filtered ? '1 Selected' : data?.total_organizations ?? 0}
             </div>
-            <p className="text-[11px] font-semibold text-slate-500">
-              {data?.is_filtered ? data.selected_organization_name : 'Active branches under Head Office'}
+            <p className="text-[11px] font-semibold text-slate-500 group-hover:text-purple-600 transition-colors flex items-center gap-1">
+              <span>{data?.is_filtered ? data.selected_organization_name : 'Active branches under Head Office'}</span>
+              <Icon name="arrow-up-right" size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
             </p>
           </div>
         </div>
@@ -451,15 +541,48 @@ export const HoDashboard: React.FC = () => {
               Live mapping of Head Office organizations, assigned owners, and current personnel.
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => handleOpenOnboardModal()}
-              className="btn-primary text-xs py-2 px-3.5 flex items-center gap-1.5"
-            >
-              <Icon name="plus" size={14} />
-              <span>Onboard New Owner</span>
-            </button>
-          </div>
+          {selectedOrgIds.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-2 bg-purple-50 border border-purple-200/80 rounded-2xl p-1.5 px-3 animate-in fade-in">
+              <span className="text-xs font-black text-purple-900 flex items-center gap-1.5">
+                <span className="w-5 h-5 rounded-full bg-purple-600 text-white flex items-center justify-center text-[10px] font-black">
+                  {selectedOrgIds.length}
+                </span>
+                <span>Selected</span>
+              </span>
+
+              {selectedOrgIds.length === 1 && (
+                <button
+                  type="button"
+                  onClick={() => handleOpenEditCredentials(selectedOrgIds[0])}
+                  className="px-3 py-1.5 rounded-xl bg-white hover:bg-purple-100 text-purple-700 border border-purple-200 text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+                >
+                  <Icon name="key" size={13} />
+                  <span>Edit Credentials</span>
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={() => handleOpenDeleteModal(selectedOrgIds)}
+                className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+              >
+                <Icon name="trash-2" size={13} />
+                <span>Delete {selectedOrgIds.length === 1 ? 'Organisation' : `(${selectedOrgIds.length}) Organisations`}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSelectedOrgIds([])}
+                className="text-xs text-slate-500 hover:text-slate-800 font-bold px-2 py-1 cursor-pointer"
+              >
+                Clear
+              </button>
+            </div>
+          ) : (
+            <div className="text-xs text-slate-400 font-medium hidden sm:block">
+              Select checkboxes to edit credentials or delete
+            </div>
+          )}
         </div>
 
         {/* Directory Table */}
@@ -467,12 +590,24 @@ export const HoDashboard: React.FC = () => {
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50/80 text-slate-500 font-bold uppercase text-[10px] tracking-wider border-b border-slate-100">
               <tr>
+                <th className="w-10 py-3.5 px-4 text-center">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(
+                      data?.organizations &&
+                        data.organizations.length > 0 &&
+                        selectedOrgIds.length === data.organizations.length
+                    )}
+                    onChange={handleToggleSelectAll}
+                    className="w-4 h-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
+                    title="Select All"
+                  />
+                </th>
                 <th className="py-3.5 px-4">Organization &amp; Branch</th>
                 <th className="py-3.5 px-4">Onboarded Owner</th>
                 <th className="py-3.5 px-4">City / Location</th>
                 <th className="py-3.5 px-4 text-center">Employees</th>
                 <th className="py-3.5 px-4 text-center">Students</th>
-                <th className="py-3.5 px-4 text-center">Today's Activity</th>
                 <th className="py-3.5 px-4 text-right">Actions</th>
               </tr>
             </thead>
@@ -480,13 +615,28 @@ export const HoDashboard: React.FC = () => {
               {data?.organizations && data.organizations.length > 0 ? (
                 data.organizations.map((org) => {
                   const isCurrentSelected = selectedOrgId === org.id;
+                  const isChecked = selectedOrgIds.includes(org.id);
                   return (
                     <tr
                       key={org.id}
                       className={`hover:bg-slate-50/80 transition-colors ${
-                        isCurrentSelected ? 'bg-purple-50/40 font-semibold' : ''
+                        isChecked
+                          ? 'bg-purple-50/60'
+                          : isCurrentSelected
+                          ? 'bg-purple-50/30 font-semibold'
+                          : ''
                       }`}
                     >
+                      {/* Checkbox */}
+                      <td className="py-4 px-4 text-center" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => handleToggleSelectOrg(org.id)}
+                          className="w-4 h-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
+                        />
+                      </td>
+
                       {/* Organization & Branch */}
                       <td className="py-4 px-4">
                         <div className="flex items-center gap-3">
@@ -540,32 +690,32 @@ export const HoDashboard: React.FC = () => {
                         </span>
                       </td>
 
-                      {/* Today's Activity */}
-                      <td className="py-4 px-4 text-center">
-                        <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 font-bold text-xs">
-                          {org.today_punches} punches
-                        </span>
-                      </td>
-
                       {/* Actions */}
                       <td className="py-4 px-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
+                        <div className="flex items-center justify-end gap-1.5">
                           <button
                             onClick={() => handleSelectOrganization(org.id)}
                             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
                               isCurrentSelected
-                                ? 'bg-purple-600 text-white'
+                                ? 'bg-purple-600 text-white shadow-xs'
                                 : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
                             }`}
                           >
                             {isCurrentSelected ? 'Viewing' : 'Switch View'}
                           </button>
                           <button
-                            onClick={() => handleOpenOnboardModal(org.id)}
+                            onClick={() => handleOpenEditCredentials(org)}
                             className="p-1.5 rounded-xl bg-purple-50 text-purple-600 hover:bg-purple-100 transition-colors"
-                            title="Onboard or Reassign Owner"
+                            title="Edit Owner Credentials"
                           >
-                            <Icon name="user-plus" size={14} />
+                            <Icon name="key" size={14} />
+                          </button>
+                          <button
+                            onClick={() => handleOpenDeleteModal([org.id])}
+                            className="p-1.5 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors"
+                            title="Delete Organisation"
+                          >
+                            <Icon name="trash-2" size={14} />
                           </button>
                         </div>
                       </td>
@@ -581,53 +731,6 @@ export const HoDashboard: React.FC = () => {
               )}
             </tbody>
           </table>
-        </div>
-      </div>
-
-      {/* ── RECENT LIVE BIOMETRIC ACTIVITY FEED ───────────────────────────── */}
-      <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-base font-black text-slate-900 tracking-tight">Recent Attendance &amp; Punch Stream</h3>
-            <p className="text-xs text-slate-500 font-medium">Real-time attendance logs filtered for {selectedOrgName}.</p>
-          </div>
-          <span className="text-[11px] font-bold text-purple-600 bg-purple-50 px-2.5 py-1 rounded-full">
-            Live Stream
-          </span>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {data?.recent_activities && data.recent_activities.length > 0 ? (
-            data.recent_activities.map((act) => (
-              <div
-                key={act.id}
-                className="flex items-start gap-3 p-3.5 rounded-2xl bg-slate-50/80 border border-slate-100 hover:border-slate-200 transition-all"
-              >
-                <div
-                  className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-xs shrink-0 ${
-                    act.direction === 'CHECK_IN'
-                      ? 'bg-emerald-100 text-emerald-700'
-                      : 'bg-amber-100 text-amber-700'
-                  }`}
-                >
-                  {act.direction === 'CHECK_IN' ? 'IN' : 'OUT'}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-1">
-                    <p className="text-xs font-black text-slate-900 truncate">{act.person_name}</p>
-                    <span className="text-[10px] font-bold text-slate-400">{act.time}</span>
-                  </div>
-                  <p className="text-[11px] text-slate-500 font-medium truncate mt-0.5">
-                    {act.role} • {act.branch}
-                  </p>
-                </div>
-              </div>
-            ))
-          ) : (
-            <div className="col-span-full py-8 text-center text-slate-400 font-semibold">
-              No recent attendance punches recorded yet for today.
-            </div>
-          )}
         </div>
       </div>
     </>
@@ -1281,6 +1384,233 @@ export const HoDashboard: React.FC = () => {
                 </div>
               </form>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── EDIT CREDENTIALS MODAL ────────────────────────────────────────── */}
+      {showEditCredsModal && editCredsOrg && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 space-y-6 my-8">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider text-purple-600 bg-purple-50 px-2.5 py-0.5 rounded-full">
+                  Credentials Manager
+                </span>
+                <h3 className="text-xl font-black text-slate-900 mt-1">Edit Owner Credentials</h3>
+                <p className="text-xs text-slate-500 font-medium">
+                  Update login details and organization settings for {editCredsOrg.gym_name}.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowEditCredsModal(false)}
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            {editError && (
+              <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold flex items-center gap-2">
+                <Icon name="alert-circle" size={16} />
+                <span>{editError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleEditCredsSubmit} className="space-y-4 text-xs">
+              {/* Organization Profile Details */}
+              <div className="p-3.5 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-3">
+                <p className="font-black text-slate-900 text-xs flex items-center gap-1.5">
+                  <Icon name="building-2" size={13} className="text-purple-600" />
+                  <span>Organization &amp; Branch Information</span>
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-bold text-slate-700">Organization Name *</label>
+                    <input
+                      type="text"
+                      value={editOrgName}
+                      onChange={(e) => setEditOrgName(e.target.value)}
+                      placeholder="Organization Name"
+                      className="w-full p-2.5 rounded-xl bg-white border border-slate-200 font-semibold text-slate-900 mt-1"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold text-slate-700">Branch Name</label>
+                    <input
+                      type="text"
+                      value={editBranchName}
+                      onChange={(e) => setEditBranchName(e.target.value)}
+                      placeholder="Branch / Campus"
+                      className="w-full p-2.5 rounded-xl bg-white border border-slate-200 font-semibold text-slate-900 mt-1"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-bold text-slate-700">City / Location</label>
+                    <input
+                      type="text"
+                      value={editCity}
+                      onChange={(e) => setEditCity(e.target.value)}
+                      placeholder="City"
+                      className="w-full p-2.5 rounded-xl bg-white border border-slate-200 font-medium text-slate-900 mt-1"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold text-slate-700">Address</label>
+                    <input
+                      type="text"
+                      value={editAddress}
+                      onChange={(e) => setEditAddress(e.target.value)}
+                      placeholder="Address"
+                      className="w-full p-2.5 rounded-xl bg-white border border-slate-200 font-medium text-slate-900 mt-1"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Owner Credentials */}
+              <div className="space-y-3 pt-2">
+                <p className="font-black text-slate-900 text-xs flex items-center gap-1.5">
+                  <Icon name="key" size={13} className="text-purple-600" />
+                  <span>Owner Login &amp; Contact Credentials</span>
+                </p>
+                <div>
+                  <label className="font-bold text-slate-700">Owner Full Name *</label>
+                  <input
+                    type="text"
+                    value={editOwnerName}
+                    onChange={(e) => setEditOwnerName(e.target.value)}
+                    placeholder="Owner Full Name"
+                    className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-900 mt-1"
+                    required
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-bold text-slate-700">Owner Email (Login ID) *</label>
+                    <input
+                      type="email"
+                      value={editOwnerEmail}
+                      onChange={(e) => setEditOwnerEmail(e.target.value)}
+                      placeholder="owner@domain.com"
+                      className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-900 mt-1"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold text-slate-700">Mobile Phone Number</label>
+                    <input
+                      type="tel"
+                      value={editOwnerPhone}
+                      onChange={(e) => setEditOwnerPhone(e.target.value)}
+                      placeholder="e.g. 9876543210"
+                      className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-900 mt-1"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between">
+                    <label className="font-bold text-slate-700">Reset Password (Optional)</label>
+                    <span className="text-[10px] text-slate-400">Leave blank to keep current password</span>
+                  </div>
+                  <div className="relative mt-1">
+                    <input
+                      type={editShowPassword ? 'text' : 'password'}
+                      value={editOwnerPassword}
+                      onChange={(e) => setEditOwnerPassword(e.target.value)}
+                      placeholder="Enter new password (min. 6 characters)"
+                      className="w-full p-2.5 pr-14 rounded-xl bg-slate-50 border border-slate-200 font-mono text-slate-900"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setEditShowPassword(!editShowPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 font-bold text-[11px]"
+                    >
+                      {editShowPassword ? 'Hide' : 'Show'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowEditCredsModal(false)}
+                  className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={editSubmitting}
+                  className="btn-primary py-2.5 px-6 font-bold flex items-center gap-2 cursor-pointer shadow-md"
+                >
+                  {editSubmitting && <Icon name="refresh-cw" size={14} className="animate-spin" />}
+                  <span>{editSubmitting ? 'Saving...' : 'Save Changes'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── DELETE CONFIRMATION MODAL ─────────────────────────────────────── */}
+      {deleteConfirmModal.open && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-slate-200 space-y-5 my-8">
+            <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
+              <Icon name="alert-triangle" size={24} />
+            </div>
+
+            <div className="text-center space-y-2">
+              <h3 className="text-lg font-black text-slate-900">
+                Delete {deleteConfirmModal.orgIds.length === 1 ? 'Organisation' : `${deleteConfirmModal.orgIds.length} Organisations`}?
+              </h3>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                This action is permanent and cannot be undone. All linked branches, active employees, enrolled students, biometric punch logs, and attendance history will be completely erased.
+              </p>
+            </div>
+
+            {deleteConfirmModal.orgNames.length > 0 && (
+              <div className="bg-slate-50 rounded-2xl p-3 border border-slate-200/80 max-h-36 overflow-y-auto space-y-1.5">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  Target Organisation(s):
+                </p>
+                {deleteConfirmModal.orgNames.map((name, i) => (
+                  <div key={i} className="flex items-center gap-2 text-xs font-bold text-slate-800">
+                    <Icon name="building-2" size={13} className="text-rose-500 shrink-0" />
+                    <span className="truncate">{name}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmModal({ open: false, orgIds: [], orgNames: [] })}
+                disabled={deleting}
+                className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                disabled={deleting}
+                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-rose-600/20 transition-all cursor-pointer"
+              >
+                {deleting && <Icon name="refresh-cw" size={14} className="animate-spin" />}
+                <span>{deleting ? 'Deleting...' : 'Confirm Delete'}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -9,48 +9,18 @@ import { notifyModuleVisibilityChanged } from '@/config/navigation';
 import { CoursesPage } from '@/pages/owner/CoursesPage';
 import { ReportsPage } from '@/pages/owner/ReportsPage';
 import { CompanyManagement } from '@/components/erp/CompanyManagement';
-import { BillingSettingsTab } from '@/components/settings/BillingSettingsTab';
 import { cn } from '@/utils/cn';
-
-interface NotificationSetting {
-  id: string;
-  label: string;
-  desc: string;
-  category: 'Member Alerts' | 'Financial' | 'Hardware & AI';
-  enabled: boolean;
-  channel: 'SMS & WhatsApp' | 'Email' | 'Push & Web';
-}
-
-interface IntegrationApp {
-  id: string;
-  name: string;
-  icon: string;
-  category:
-    | 'Hardware & Biometrics'
-    | 'Payments & Banking'
-    | 'Messaging & Alerts'
-    | 'Health & Wearables'
-    | 'Hardware Scanners'
-    | 'Payments & SMS';
-  desc: string;
-  connected: boolean;
-  statusText: string;
-  badgeColor: string;
-  apiKey?: string;
-}
 
 export type SettingsTab =
   | 'General'
   | 'ERP & Google Reviews'
   | 'Courses'
   | 'Memberships'
-  | 'Reports'
-  | 'Devices'
-  | 'Notifications'
-  | 'Billing';
+  | 'Reports';
 
 export function SettingsPage() {
   const { user, updateUser } = useAuth();
+  const isHo = user?.role === 'ho';
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const rawTab = searchParams.get('tab')?.toLowerCase();
@@ -59,9 +29,6 @@ export function SettingsPage() {
     if (rawTab === 'erp' || rawTab === 'company' || rawTab === 'reviews' || rawTab === 'google-reviews') return 'ERP & Google Reviews';
     if (rawTab === 'courses' || rawTab === 'memberships' || rawTab === 'plans') return 'Courses';
     if (rawTab === 'reports' || rawTab === 'analytics') return 'Reports';
-    if (rawTab === 'devices' || rawTab === 'bmi' || rawTab === 'hardware' || rawTab === 'integrations') return 'Devices';
-    if (rawTab === 'notifications') return 'Notifications';
-    if (rawTab === 'billing' || rawTab === 'plan') return 'Billing';
     return 'General';
   };
 
@@ -72,9 +39,6 @@ export function SettingsPage() {
       if (rawTab === 'erp' || rawTab === 'company' || rawTab === 'reviews' || rawTab === 'google-reviews') setActiveTab('ERP & Google Reviews');
       else if (rawTab === 'courses' || rawTab === 'memberships' || rawTab === 'plans') setActiveTab('Courses');
       else if (rawTab === 'reports' || rawTab === 'analytics') setActiveTab('Reports');
-      else if (rawTab === 'devices' || rawTab === 'bmi' || rawTab === 'hardware' || rawTab === 'integrations') setActiveTab('Devices');
-      else if (rawTab === 'notifications') setActiveTab('Notifications');
-      else if (rawTab === 'billing' || rawTab === 'plan') setActiveTab('Billing');
       else if (rawTab === 'general' || rawTab === 'profile' || rawTab === 'security') setActiveTab('General');
     }
   }, [rawTab]);
@@ -84,10 +48,7 @@ export function SettingsPage() {
     const paramKey =
       tabId === 'ERP & Google Reviews' ? 'erp' :
       tabId === 'Courses' || tabId === 'Memberships' ? 'courses' :
-      tabId === 'Reports' ? 'reports' :
-      tabId === 'Devices' ? 'devices' :
-      tabId === 'Notifications' ? 'notifications' :
-      tabId === 'Billing' ? 'billing' : 'general';
+      tabId === 'Reports' ? 'reports' : 'general';
     setSearchParams({ tab: paramKey });
   };
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -104,11 +65,11 @@ export function SettingsPage() {
   const [closingTime, setClosingTime] = useState('');
   const [gstNumber, setGstNumber] = useState('');
 
-  // Owner Profile State (now under General tab)
+  // Owner / Head Office Profile State (now under General tab)
   const [ownerName, setOwnerName] = useState(() => user?.name || '');
   const [ownerEmail, setOwnerEmail] = useState(() => user?.email || '');
   const [ownerPhone, setOwnerPhone] = useState('');
-  const [ownerRole, setOwnerRole] = useState('Owner');
+  const [ownerRole, setOwnerRole] = useState(() => (user?.role === 'ho' ? 'Head Office Admin' : 'Owner'));
   const [ownerAvatar, setOwnerAvatar] = useState<string>(() => user?.avatar || localStorage.getItem('vahd_owner_avatar') || '');
 
   // Devices & Hardware Config State
@@ -121,24 +82,6 @@ export function SettingsPage() {
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(true);
 
   // Notification Preferences State
-  const [notifications, setNotifications] = useState<NotificationSetting[]>([
-    { id: '1', label: 'New Member Enrollment', desc: 'Instant WhatsApp & Email welcome kit sent on enrollment', category: 'Member Alerts', enabled: true, channel: 'SMS & WhatsApp' },
-    { id: '2', label: 'Payment Receipt & Invoice', desc: 'Automatic GST tax invoice delivered upon successful payment', category: 'Financial', enabled: true, channel: 'SMS & WhatsApp' },
-    { id: '3', label: 'Membership Expiry Alert', desc: 'Automated 7-day & 3-day renewal reminder sequences', category: 'Member Alerts', enabled: true, channel: 'SMS & WhatsApp' },
-    { id: '4', label: 'Low Inventory Stock Alert', desc: 'Notify branch manager when supplement or merch stock is below 5 units', category: 'Financial', enabled: true, channel: 'Push & Web' },
-    { id: '5', label: 'AI Health & Attendance Insights', desc: 'Weekly automated performance & retention telemetry summary', category: 'Hardware & AI', enabled: true, channel: 'Email' },
-    { id: '6', label: 'Hardware Device Offline Alert', desc: 'Immediate notification when eSSL Biometric access device drops connection', category: 'Hardware & AI', enabled: true, channel: 'Push & Web' },
-  ]);
-
-  // Integrations State (now under Devices tab)
-  const [integrations, setIntegrations] = useState<IntegrationApp[]>([
-    { id: 'essl', name: 'eSSL Biometric Gate Control', icon: 'lock', category: 'Hardware & Biometrics', desc: 'RFID fingerprint & facial recognition biometric access control sync', connected: true, statusText: 'Online', badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-    { id: 'razorpay', name: 'Razorpay Payment Gateway', icon: 'credit-card', category: 'Payments & Banking', desc: 'UPI, Credit Cards, NetBanking & Auto-debit subscriptions', connected: true, statusText: 'Merchant Active', badgeColor: 'bg-brand-50 text-brand-700 border-brand-200' },
-    { id: 'whatsapp', name: 'WhatsApp Business API (Twilio)', icon: 'message-square', category: 'Messaging & Alerts', desc: 'Automated student notifications & fee renewal payment links', connected: true, statusText: 'Connected', badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-  ]);
-
-  const [billingInfo, setBillingInfo] = useState<any>(null);
-
   // Load existing settings, owner profile from backend DB on mount
   useEffect(() => {
     localStorage.removeItem('vahd_enable_pos');
@@ -146,11 +89,7 @@ export function SettingsPage() {
     Promise.all([
       apiClient.get<any>('/gym/settings').catch(() => null),
       api.auth.me().catch(() => null),
-      apiClient.get<any>('/gym/billing').catch(() => null),
-    ]).then(([gymRes, userRes, billingRes]) => {
-      if (billingRes) {
-        setBillingInfo(billingRes.billing || billingRes);
-      }
+    ]).then(([gymRes, userRes]) => {
       if (gymRes) {
         if (gymRes.gym_name) setGymName(gymRes.gym_name);
         if (gymRes.phone) setGymPhone(gymRes.phone);
@@ -169,7 +108,14 @@ export function SettingsPage() {
         if (fullName) setOwnerName(fullName);
         if (userRes.email) setOwnerEmail(userRes.email);
         if ((userRes as any).phone) setOwnerPhone((userRes as any).phone);
-        if (userRes.role) setOwnerRole(userRes.role === 'owner' ? 'Owner' : userRes.role.toUpperCase());
+        if (userRes.role) {
+          const cleanRole = userRes.role.toLowerCase();
+          setOwnerRole(
+            cleanRole === 'owner' ? 'Owner' :
+            cleanRole === 'ho' ? 'Head Office Admin' :
+            userRes.role.toUpperCase()
+          );
+        }
         const loadedAvatar = (userRes as any).avatar_url || (userRes as any).avatar;
         if (loadedAvatar) {
           setOwnerAvatar(loadedAvatar);
@@ -241,32 +187,7 @@ export function SettingsPage() {
       localStorage.setItem('vahd_owner_avatar', ownerAvatar);
     }
     setHasUnsavedChanges(false);
-    triggerToast('✅ Owner profile and photo updated successfully!');
-  };
-
-  const handleToggleNotification = (id: string) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, enabled: !n.enabled } : n))
-    );
-    setHasUnsavedChanges(true);
-  };
-
-  const handleToggleIntegration = (id: string) => {
-    setIntegrations((prev) =>
-      prev.map((app) =>
-        app.id === id
-          ? {
-              ...app,
-              connected: !app.connected,
-              statusText: !app.connected ? 'Connected' : 'Disconnected',
-              badgeColor: !app.connected
-                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                : 'bg-navy-50 text-navy-600 border-navy-200',
-            }
-          : app
-      )
-    );
-    setHasUnsavedChanges(true);
+    triggerToast(`✅ ${isHo ? 'Head Office administrator' : 'Owner'} profile and photo updated successfully!`);
   };
 
   const handleSaveSettings = async () => {
@@ -291,7 +212,11 @@ export function SettingsPage() {
     } catch (_err) {}
 
     setHasUnsavedChanges(false);
-    triggerToast('Settings and device configurations saved successfully!');
+    triggerToast(
+      isHo
+        ? 'Head Office settings and profile configurations saved successfully!'
+        : 'Settings and profile configurations saved successfully!'
+    );
   };
 
   const tabs = [
@@ -299,9 +224,6 @@ export function SettingsPage() {
     { id: 'ERP & Google Reviews', label: 'ERP & Google Reviews', icon: 'building-2' },
     { id: 'Courses', label: 'Courses', icon: 'book-open' },
     { id: 'Reports', label: 'Reports & Analytics', icon: 'file-bar-chart' },
-    { id: 'Devices', label: 'Devices', icon: 'cpu' },
-    { id: 'Notifications', label: 'Notifications', icon: 'bell' },
-    { id: 'Billing', label: 'Billing & Plan', icon: 'credit-card' },
   ] as const;
 
   return (
@@ -323,19 +245,16 @@ export function SettingsPage() {
           <div className="space-y-2">
             <div className="flex items-center gap-2.5 flex-wrap">
               <span className="px-3 py-1 rounded-full bg-brand-500/20 text-brand-300 text-xs font-bold border border-brand-500/30 backdrop-blur-md">
-                VAHD Enterprise • Branch Admin
+                {isHo ? 'VAHD Enterprise • Head Office Management' : 'VAHD Enterprise • Branch Admin'}
               </span>
               <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold border border-emerald-500/30 backdrop-blur-md flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                Hardware Gateway Active
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                Active & Synchronized
               </span>
             </div>
             <h1 className="text-2xl md:text-3xl font-black tracking-tight text-white font-serif">
               System Settings & Configurations
             </h1>
-            <p className="text-navy-300 text-xs max-w-xl">
-              Configure branch profile, owner details, security preferences, automated alerts, and hardware device integrations.
-            </p>
           </div>
 
           <div className="flex items-center gap-3">
@@ -382,22 +301,28 @@ export function SettingsPage() {
       {/* TAB 1: GENERAL SETTINGS (includes Branch Profile, Owner Profile, and Security) */}
       {activeTab === 'General' && (
         <div className="space-y-6 animate-fade-in">
-          {/* Section 1: Branch Information */}
+          {/* Section 1: Branch Information / Head Office Information */}
           <div className="card p-6 border border-navy-100 bg-white space-y-6 shadow-sm rounded-3xl">
             <div className="flex items-center justify-between border-b border-navy-100 pb-4">
               <div>
-                <h3 className="text-base font-bold text-navy-900">Branch Information</h3>
-                <p className="text-xs text-navy-400">Basic contact profile and branch operational parameters</p>
+                <h3 className="text-base font-bold text-navy-900">
+                  {isHo ? 'Head Office & Organisation Profile' : 'Branch Information'}
+                </h3>
+                <p className="text-xs text-navy-400">
+                  {isHo ? 'Basic contact profile and head office operational parameters' : 'Basic contact profile and branch operational parameters'}
+                </p>
               </div>
-              <Badge variant="brand" dot>{gymName || 'Primary Branch'}</Badge>
+              <Badge variant="brand" dot>{gymName || (isHo ? (user?.ho_name || 'Central Head Office') : 'Primary Branch')}</Badge>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="text-xs font-bold text-navy-700 mb-1.5 block">Branch Name</label>
+                <label className="text-xs font-bold text-navy-700 mb-1.5 block">
+                  {isHo ? 'Head Office / Organisation Name' : 'Branch Name'}
+                </label>
                 <input
                   type="text"
-                  placeholder="e.g. Main Branch"
+                  placeholder={isHo ? 'e.g. Central Head Office' : 'e.g. Main Branch'}
                   value={gymName}
                   onChange={(e) => { setGymName(e.target.value); setHasUnsavedChanges(true); }}
                   className="input-field text-xs font-bold"
@@ -506,10 +431,14 @@ export function SettingsPage() {
           <div className="card p-6 border border-navy-100 bg-white space-y-6 shadow-sm rounded-3xl">
             <div className="flex items-center justify-between border-b border-navy-100 pb-4">
               <div>
-                <h3 className="text-base font-bold text-navy-900">Owner & Admin Profile</h3>
-                <p className="text-xs text-navy-400">Personal details and administrative access privileges</p>
+                <h3 className="text-base font-bold text-navy-900">
+                  {isHo ? 'Head Office Administrator Profile' : 'Owner & Admin Profile'}
+                </h3>
+                <p className="text-xs text-navy-400">
+                  {isHo ? 'Personal credentials and head office administrative access privileges' : 'Personal details and administrative access privileges'}
+                </p>
               </div>
-              <Badge variant="brand">Administrator</Badge>
+              <Badge variant="brand">{isHo ? 'Head Office Admin' : 'Administrator'}</Badge>
             </div>
 
             {/* Profile Photo Upload Section */}
@@ -530,11 +459,11 @@ export function SettingsPage() {
                   {ownerAvatar ? (
                     <img
                       src={ownerAvatar}
-                      alt={ownerName || 'Owner'}
+                      alt={ownerName || (isHo ? 'Head Office' : 'Owner')}
                       className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                     />
                   ) : (
-                    <span>{getInitials(ownerName || user?.name || 'Owner')}</span>
+                    <span>{getInitials(ownerName || user?.name || (isHo ? 'Head Office' : 'Owner'))}</span>
                   )}
 
                   <div className="absolute inset-0 bg-navy-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[10px] font-bold gap-1">
@@ -701,176 +630,6 @@ export function SettingsPage() {
               </button>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* TAB 2: DEVICES & HARDWARE + THIRD-PARTY INTEGRATIONS */}
-      {activeTab === 'Devices' && (
-        <div className="space-y-6 animate-fade-in">
-          {/* Section 1: Hardware Gateway Server Connections */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            <div className="lg:col-span-8 space-y-6">
-              <div className="card p-6 border border-navy-100 bg-white space-y-5 shadow-sm rounded-3xl">
-                <div className="flex items-center justify-between border-b border-navy-100 pb-3">
-                  <div>
-                    <h3 className="text-base font-bold text-navy-900">Hardware Gateway Server Connections</h3>
-                    <p className="text-xs text-navy-400">Endpoints for physical eSSL biometric access control turnstiles & gates</p>
-                  </div>
-                  <Badge variant="success" dot>Real Hardware API</Badge>
-                </div>
-
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-xs font-bold text-navy-700 mb-1 block">eSSL Biometric eBioserver URL</label>
-                    <input
-                      type="text"
-                      value={esslUrl}
-                      onChange={(e) => { setEsslUrl(e.target.value); setHasUnsavedChanges(true); }}
-                      className="input-field text-xs font-mono font-bold"
-                      placeholder="http://192.168.1.120:8080/ebioserver"
-                    />
-                    <span className="text-[10px] text-navy-400 mt-1 block">Server URL for RFID & fingerprint attendance gate autolock integration.</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="lg:col-span-4 space-y-4">
-              <div className="card p-5 border border-navy-100 bg-white space-y-3 rounded-3xl">
-                <h4 className="text-xs font-bold text-navy-900">Gate Telemetry Status</h4>
-                <div className="space-y-2 text-xs">
-                  <div className="flex justify-between p-2 rounded-xl bg-navy-50">
-                    <span className="text-navy-500">eSSL Gate Protocol:</span>
-                    <span className="font-bold text-navy-900">Direct TCP/LAN</span>
-                  </div>
-                  <div className="flex justify-between p-2 rounded-xl bg-navy-50">
-                    <span className="text-navy-500">Default Service Port:</span>
-                    <span className="font-bold text-navy-900">8080 / eBioserver</span>
-                  </div>
-                  <div className="flex justify-between p-2 rounded-xl bg-navy-50">
-                    <span className="text-navy-500">Auto-Sync Status:</span>
-                    <span className="font-bold text-emerald-600">Active</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Section 2: Third-Party Platform Integrations */}
-          <div className="card p-6 border border-navy-100 bg-white space-y-5 shadow-sm rounded-3xl">
-            <div className="flex items-center justify-between border-b border-navy-100 pb-3">
-              <div>
-                <h3 className="text-base font-bold text-navy-900">Third-Party Platform Integrations</h3>
-                <p className="text-xs text-navy-400">Connect hardware devices, payment gateways, and notification gateways</p>
-              </div>
-              <Badge variant="brand">{integrations.filter((i) => i.connected).length} Active Adapters</Badge>
-            </div>
-
-            <div className="space-y-3">
-              {integrations.map((app) => (
-                <div
-                  key={app.id}
-                  className="flex items-center gap-4 p-4 rounded-2xl bg-navy-50/70 border border-navy-100 hover:bg-navy-50 transition-all"
-                >
-                  <div className="w-10 h-10 rounded-xl bg-white border border-navy-200 shadow-sm flex items-center justify-center text-brand-600 shrink-0">
-                    <Icon name={app.icon} size={18} />
-                  </div>
-
-                  <div className="flex-1 space-y-0.5 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-navy-900">{app.name}</span>
-                      <span className={cn('px-2 py-0.5 rounded-full text-[9px] font-bold border', app.badgeColor)}>
-                        {app.statusText}
-                      </span>
-                    </div>
-                    <p className="text-xs text-navy-400 truncate">{app.desc}</p>
-                  </div>
-
-                  <button
-                    onClick={() => handleToggleIntegration(app.id)}
-                    className={cn(
-                      'btn-secondary text-xs py-1.5 px-4 font-bold shrink-0',
-                      app.connected ? 'text-rose-700 hover:bg-rose-50 border-rose-200' : 'btn-primary text-white'
-                    )}
-                  >
-                    {app.connected ? 'Disconnect' : 'Connect'}
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 3: NOTIFICATIONS */}
-      {activeTab === 'Notifications' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-fade-in">
-          <div className="lg:col-span-8 card p-6 border border-navy-100 bg-white space-y-5 shadow-sm rounded-3xl">
-            <div className="flex items-center justify-between border-b border-navy-100 pb-3">
-              <div>
-                <h3 className="text-base font-bold text-navy-900">Notification Preferences</h3>
-                <p className="text-xs text-navy-400">Manage real-time communication triggers for members and gym staff</p>
-              </div>
-              <Badge variant="brand">Automated Triggers</Badge>
-            </div>
-
-            <div className="space-y-3">
-              {notifications.map((n) => (
-                <div
-                  key={n.id}
-                  className="flex items-center justify-between p-4 rounded-2xl bg-navy-50/70 border border-navy-100/80 hover:bg-navy-50 transition-all"
-                >
-                  <div className="space-y-1 max-w-md">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-navy-900">{n.label}</span>
-                      <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-white text-navy-600 border border-navy-200">
-                        {n.channel}
-                      </span>
-                    </div>
-                    <p className="text-xs text-navy-400">{n.desc}</p>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => handleToggleNotification(n.id)}
-                    className={cn(
-                      'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500',
-                      n.enabled ? 'bg-brand-600' : 'bg-slate-200'
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out',
-                        n.enabled ? 'translate-x-5' : 'translate-x-0'
-                      )}
-                    />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="lg:col-span-4 space-y-4">
-            <div className="card p-5 border border-navy-100 bg-white space-y-3 rounded-3xl">
-              <h4 className="text-xs font-bold text-navy-900">Live Preview Box</h4>
-              <div className="p-3.5 rounded-2xl bg-slate-900 text-white text-xs space-y-2 font-sans shadow-inner">
-                <div className="flex items-center justify-between text-[10px] text-slate-400 border-b border-slate-800 pb-1">
-                  <span>WhatsApp Business API</span>
-                  <span>Just Now</span>
-                </div>
-                <p className="text-[11px] leading-relaxed">
-                  📢 <span className="font-bold text-brand-400">VAHD</span>: Welcome <span className="font-bold">[Member Name]</span>! Your account has been activated.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 4: BILLING */}
-      {activeTab === 'Billing' && (
-        <div className="space-y-6 animate-fade-in">
-          <BillingSettingsTab />
         </div>
       )}
 

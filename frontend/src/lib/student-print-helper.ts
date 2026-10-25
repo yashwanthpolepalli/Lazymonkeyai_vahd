@@ -40,6 +40,8 @@ export interface StudentPrintData {
   nationality?: string;
   maritalStatus?: string;
   placeOfBirth?: string;
+  bloodGroup?: string;
+  department?: string;
   identificationMark1?: string;
   identificationMark2?: string;
   parentOccupation?: string;
@@ -371,9 +373,13 @@ export function printStudentAdmissionForm(data: StudentPrintData) {
               </td>
             </tr>
             <tr style="background-color: #faf5ff;">
-              <td colspan="3" style="border-left: none; border-right: none; border-bottom: none;">
+              <td colspan="2" style="border-left: none; border-bottom: none;">
                 <span class="label">13. Place of Birth: </span>
                 <span class="val">${safeVal(data.placeOfBirth)}</span>
+              </td>
+              <td style="border-right: none; border-bottom: none;">
+                <span class="label">Blood Group: </span>
+                <span class="val-bold" style="color: #b91c1c;">${safeVal(data.bloodGroup)}</span>
               </td>
             </tr>
           </table>

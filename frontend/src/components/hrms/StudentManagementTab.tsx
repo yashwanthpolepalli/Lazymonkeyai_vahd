@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import { apiClient } from '@/services/apiClient';
 import { cn } from '@/utils/cn';
@@ -121,14 +121,49 @@ interface StudentItem {
   branch?: string;
   branch_id?: string;
   ho_id?: string;
+  owner_id?: string;
 }
 
 export function StudentManagementTab() {
   const [students, setStudents] = useState<StudentItem[]>([]);
   const [availableCourses, setAvailableCourses] = useState<string[]>([]);
-  const [branchesList, setBranchesList] = useState<Array<{ id: string; branch_name: string; name?: string }>>([]);
-  const [selectedBranch, setSelectedBranch] = useState<string>('All');
+  const [branchesList, setBranchesList] = useState<Array<{ id: string; branch_name: string; name?: string; gym_name?: string }>>([]);
+  const [selectedBranch, setSelectedBranch] = useState<string>(() => {
+    return localStorage.getItem('vahd_selected_org_id') || 'all';
+  });
+  const [selectedSubBranch, setSelectedSubBranch] = useState<string>('all');
   const [loading, setLoading] = useState(true);
+
+  // Sub-branches belonging specifically to the selected organisation
+  const subBranches = useMemo(() => {
+    if (!selectedBranch || selectedBranch.toLowerCase() === 'all') {
+      return [];
+    }
+    const targetBranch = branchesList.find(
+      (b) => b.id === selectedBranch || b.branch_name === selectedBranch || (b as any).gym_name === selectedBranch
+    );
+    if (!targetBranch) return [];
+    const orgGymName = ((targetBranch as any).gym_name || targetBranch.branch_name || '').toLowerCase();
+    const orgOwnerId = (targetBranch as any).owner_id;
+    return branchesList.filter(
+      (b) =>
+        (orgGymName && (b as any).gym_name?.toLowerCase() === orgGymName) ||
+        (orgOwnerId && (b as any).owner_id === orgOwnerId)
+    );
+  }, [branchesList, selectedBranch]);
+
+  // Sync selected branch with Topbar changes
+  useEffect(() => {
+    const handleOrgChange = (e: any) => {
+      const orgId = e?.detail?.id ?? localStorage.getItem('vahd_selected_org_id') ?? 'all';
+      setSelectedBranch(orgId);
+      setSelectedSubBranch('all');
+    };
+    window.addEventListener('vahd:org_changed', handleOrgChange);
+    return () => {
+      window.removeEventListener('vahd:org_changed', handleOrgChange);
+    };
+  }, []);
   const [search, setSearch] = useState('');
   const [selectedCourse, setSelectedCourse] = useState<string>('All');
   const [viewMode, setViewMode] = useState<'table' | 'grid'>(() => {
@@ -382,11 +417,51 @@ export function StudentManagementTab() {
     const matchesCourse = selectedCourse === 'All' || sCourse.toLowerCase().includes(selectedCourse.toLowerCase());
 
     const meta = s.meta_data || {};
-    const matchesBranch =
-      selectedBranch === 'All' ||
-      s.branch_id === selectedBranch ||
-      meta.branch_id === selectedBranch ||
-      s.branch === selectedBranch;
+    const isAll = !selectedBranch || selectedBranch.toLowerCase() === 'all';
+    let matchesBranch = true;
+    if (!isAll) {
+      const targetBranch = branchesList.find(
+        (b) => b.id === selectedBranch || b.branch_name === selectedBranch || (b as any).gym_name === selectedBranch
+      );
+
+      const sBranchId = s.branch_id || meta.branch_id;
+      const matchesBranchId = Boolean(
+        sBranchId && (sBranchId === selectedBranch || (targetBranch && sBranchId === targetBranch.id))
+      );
+
+      const targetNames = [
+        selectedBranch.toLowerCase(),
+        targetBranch?.branch_name?.toLowerCase(),
+        (targetBranch as any)?.gym_name?.toLowerCase(),
+        targetBranch?.name?.toLowerCase(),
+      ].filter(Boolean) as string[];
+
+      const sNames = [
+        s.branch?.toLowerCase(),
+        (s as any).primary_gym_location?.toLowerCase(),
+        meta.branch?.toLowerCase(),
+        meta.gym_branch?.toLowerCase(),
+        (s as any).organisation?.toLowerCase(),
+      ].filter(Boolean) as string[];
+
+      const matchesName = targetNames.some((tn) =>
+        sNames.some((sn) => sn === tn || sn.includes(tn) || tn.includes(sn))
+      );
+
+      const matchesOwner = Boolean(
+        targetBranch && (targetBranch as any).owner_id && (s.owner_id === (targetBranch as any).owner_id || (s as any).ho_id === targetBranch.id)
+      );
+
+      matchesBranch = Boolean(matchesBranchId || matchesName || matchesOwner);
+    }
+
+    if (selectedSubBranch && selectedSubBranch !== 'all') {
+      const matchesSub =
+        s.branch_id === selectedSubBranch ||
+        meta.branch_id === selectedSubBranch ||
+        s.branch === selectedSubBranch;
+      if (!matchesSub) return false;
+    }
 
     const sName = (s.full_name || s.name || '').toLowerCase();
     const sPhone = (s.phone || '').toLowerCase();
@@ -460,6 +535,22 @@ export function StudentManagementTab() {
     }
   };
 
+  const handleUpdateStudentStatus = async (studentId: string, newStatus: string) => {
+    // Optimistic update
+    setStudents((prev) =>
+      prev.map((stu) => (stu.id === studentId ? { ...stu, status: newStatus } : stu))
+    );
+    try {
+      await apiClient.put(`/customers/${studentId}`, { status: newStatus });
+      showToast(`Student status updated to ${newStatus}.`);
+      fetchStudents();
+    } catch (e) {
+      console.error('Failed to update student status', e);
+      showToast('Failed to update student status.');
+      fetchStudents();
+    }
+  };
+
   // Dynamic list of unique courses extracted from course settings & enrolled students
   const dynamicCourses = Array.from(
     new Set([
@@ -470,9 +561,9 @@ export function StudentManagementTab() {
     ])
   );
 
-  const totalStudents = students.length;
-  const activeStudents = students.filter((s) => (s.status || 'ACTIVE').toUpperCase() === 'ACTIVE').length;
-  const faceEnrolledCount = students.filter((s) => s.face_registered || s.face_image).length;
+  const totalStudents = filteredStudents.length;
+  const activeStudents = filteredStudents.filter((s) => (s.status || 'ACTIVE').toUpperCase() === 'ACTIVE').length;
+  const faceEnrolledCount = filteredStudents.filter((s) => s.face_registered || s.face_image).length;
   const isAllSelected = filteredStudents.length > 0 && selectedIds.size === filteredStudents.length;
   const isPartialSelected = selectedIds.size > 0 && selectedIds.size < filteredStudents.length;
 
@@ -584,19 +675,19 @@ export function StudentManagementTab() {
               </div>
             </div>
 
-            {/* Organisation Filter Dropdown */}
-            {branchesList.length > 0 && (
+            {/* Sub-Branch Filter Dropdown: Only shown if the selected organisation has multiple sub-branches */}
+            {subBranches.length > 1 && (
               <div className="relative min-w-[170px] sm:w-52 shrink-0">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-indigo-600 dark:text-indigo-400">
-                  <Icon name="building-2" size={14} />
+                  <Icon name="map-pin" size={14} />
                 </div>
                 <select
-                  value={selectedBranch}
-                  onChange={(e) => setSelectedBranch(e.target.value)}
+                  value={selectedSubBranch}
+                  onChange={(e) => setSelectedSubBranch(e.target.value)}
                   className="w-full pl-9 pr-8 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none cursor-pointer shadow-xs truncate"
                 >
-                  <option value="All">All Organisations ({branchesList.length})</option>
-                  {branchesList.map((b) => (
+                  <option value="all">All Branches ({subBranches.length})</option>
+                  {subBranches.map((b) => (
                     <option key={b.id} value={b.id}>
                       {b.branch_name || b.name}
                     </option>
@@ -676,20 +767,10 @@ export function StudentManagementTab() {
               type="button"
               onClick={() => setIsWhatsAppReportsModalOpen(true)}
               className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md shadow-emerald-500/25 transition flex items-center gap-1.5 shrink-0"
-              title="Open WhatsApp Monthly Attendance Reports and Automated Parent Dispatch console"
+              title="Open WhatsApp Attendance Reports and Automated Parent Dispatch console"
             >
               <Icon name="message-square" size={14} />
-              <span>WhatsApp Monthly Reports</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setIsGatewayModalOpen(true)}
-              className="px-3.5 py-2 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 text-emerald-800 dark:text-emerald-200 font-extrabold text-xs shadow-sm transition flex items-center gap-1.5 shrink-0"
-              title="Scan QR code from WhatsApp on your phone to link automated gateway"
-            >
-              <Icon name="smartphone" size={14} />
-              <span>Link WhatsApp QR</span>
+              <span>WhatsApp Reports</span>
             </button>
 
             <button
@@ -1119,19 +1200,20 @@ export function StudentManagementTab() {
 
                       {/* STATUS */}
                       {visibleColumns.status && (
-                        <td className="p-3.5">
-                          <span
+                        <td className="p-3.5 whitespace-nowrap">
+                          <select
+                            value={(s.status || 'ACTIVE').toUpperCase()}
+                            onChange={(e) => handleUpdateStudentStatus(s.id, e.target.value)}
                             className={cn(
-                              'px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border inline-block whitespace-nowrap',
+                              'px-2.5 py-1 rounded-full text-[10px] font-extrabold border inline-block cursor-pointer outline-none transition shadow-2xs',
                               (s.status || 'ACTIVE').toUpperCase() === 'ACTIVE'
-                                ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
-                                : (s.status || '').toUpperCase() === 'EXPIRED'
-                                ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
-                                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                                ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700 hover:bg-emerald-100'
+                                : 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-700 hover:bg-rose-100'
                             )}
                           >
-                            {s.status || 'ACTIVE'}
-                          </span>
+                            <option value="ACTIVE">ACTIVE</option>
+                            <option value="INACTIVE">INACTIVE</option>
+                          </select>
                         </td>
                       )}
 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import { SkeletonCard, Skeleton } from '@/components/ui/Skeleton';
 import {
@@ -42,6 +42,8 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
   const [formEndDate, setFormEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [formReason, setFormReason] = useState('');
   const [formAttachmentUrl, setFormAttachmentUrl] = useState('');
+  const [formAttachmentName, setFormAttachmentName] = useState('');
+  const [formAttachmentSize, setFormAttachmentSize] = useState('');
   const [applyError, setApplyError] = useState('');
   const [eligibleTypesForForm, setEligibleTypesForForm] = useState<EligibleLeaveType[]>([]);
   const [loadingEligible, setLoadingEligible] = useState(false);
@@ -141,11 +143,6 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
         const res = await hrmsApi.getEligibleLeaveTypes(formEmployeeId);
         const types = res?.eligible_leave_types || [];
         setEligibleTypesForForm(types);
-        if (types.length > 0) {
-          setFormLeaveTypeId(types[0].id);
-        } else {
-          setFormLeaveTypeId('');
-        }
       } catch (err) {
         console.error('Failed to fetch eligible leave types:', err);
       } finally {
@@ -154,6 +151,69 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
     };
     fetchEligible();
   }, [formEmployeeId]);
+
+  // Dynamic available leave policies: always show all created and active policies,
+  // enriched with any balance calculation if available for the selected employee.
+  const availablePoliciesForForm: EligibleLeaveType[] = useMemo(() => {
+    if (leaveTypes && leaveTypes.length > 0) {
+      return leaveTypes
+        .filter((p) => p.is_active !== false)
+        .map((p) => {
+          const match = eligibleTypesForForm.find(
+            (e) => e.id === p.id || e.code === p.code || e.name.toLowerCase() === p.name.toLowerCase()
+          );
+          const remDays = match?.balance?.remaining_days ?? p.annual_quota;
+          return {
+            ...p,
+            balance: {
+              allocated_days: p.annual_quota || 0,
+              used_days: 0,
+              pending_days: 0,
+              buffer_days: 0,
+              remaining_days: remDays,
+            },
+          };
+        });
+    }
+    return eligibleTypesForForm;
+  }, [leaveTypes, eligibleTypesForForm]);
+
+  useEffect(() => {
+    if (availablePoliciesForForm.length > 0) {
+      if (!formLeaveTypeId || !availablePoliciesForForm.some((p) => p.id === formLeaveTypeId)) {
+        setFormLeaveTypeId(availablePoliciesForForm[0].id);
+      }
+    }
+  }, [availablePoliciesForForm, formLeaveTypeId]);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 15 * 1024 * 1024) {
+      setApplyError('File size exceeds 15MB. Please upload a smaller document.');
+      return;
+    }
+
+    setApplyError('');
+    setFormAttachmentName(file.name);
+    const sizeFormatted = file.size > 1024 * 1024
+      ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
+      : `${Math.round(file.size / 1024)} KB`;
+    setFormAttachmentSize(sizeFormatted);
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setFormAttachmentUrl(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveFile = () => {
+    setFormAttachmentUrl('');
+    setFormAttachmentName('');
+    setFormAttachmentSize('');
+  };
 
   // ─────────────────────────────────────────────────────────────
   // 2. LEAVE ACTIONS
@@ -218,6 +278,8 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
       setShowApplyModal(false);
       setFormReason('');
       setFormAttachmentUrl('');
+      setFormAttachmentName('');
+      setFormAttachmentSize('');
       // Refresh
       const [updatedLeaves, updatedBals] = await Promise.all([
         hrmsApi.getLeaves(),
@@ -710,12 +772,12 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                                   l.leave_type.toLowerCase().includes('maternity')
                                     ? 'bg-pink-50 text-pink-700 border-pink-200'
                                     : l.leave_type.toLowerCase().includes('paternity')
-                                    ? 'bg-blue-50 text-blue-700 border-blue-200'
-                                    : l.leave_type.toLowerCase().includes('sick')
-                                    ? 'bg-rose-50 text-rose-700 border-rose-200'
-                                    : l.leave_type.toLowerCase().includes('unpaid')
-                                    ? 'bg-slate-100 text-slate-700 border-slate-200'
-                                    : 'bg-purple-50 text-purple-700 border-purple-200'
+                                      ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                      : l.leave_type.toLowerCase().includes('sick')
+                                        ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                        : l.leave_type.toLowerCase().includes('unpaid')
+                                          ? 'bg-slate-100 text-slate-700 border-slate-200'
+                                          : 'bg-purple-50 text-purple-700 border-purple-200'
                                 )}
                               >
                                 {l.leave_type}
@@ -726,15 +788,15 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                                   l.paid_type === 'PAID' || l.is_paid
                                     ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                                     : l.paid_type === 'HALF_PAY'
-                                    ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                                    : 'bg-slate-100 text-slate-600 border border-slate-200'
+                                      ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                                      : 'bg-slate-100 text-slate-600 border border-slate-200'
                                 )}
                               >
                                 {l.paid_type === 'PAID' || l.is_paid
                                   ? '💰 Fully Paid'
                                   : l.paid_type === 'HALF_PAY'
-                                  ? '½ Half Pay'
-                                  : '⚠️ Unpaid / LWP'}
+                                    ? '½ Half Pay'
+                                    : '⚠️ Unpaid / LWP'}
                               </span>
                             </div>
                           </td>
@@ -778,8 +840,8 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                                 isApproved
                                   ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                                   : isPending
-                                  ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                                  : 'bg-rose-50 text-rose-700 border border-rose-200'
+                                    ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                                    : 'bg-rose-50 text-rose-700 border border-rose-200'
                               )}
                             >
                               <span
@@ -1045,15 +1107,15 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                               policy.paid_type === 'PAID' || policy.is_paid
                                 ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                                 : policy.paid_type === 'HALF_PAY'
-                                ? 'bg-amber-50 text-amber-700 border-amber-200'
-                                : 'bg-slate-100 text-slate-700 border-slate-200'
+                                  ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                  : 'bg-slate-100 text-slate-700 border-slate-200'
                             )}
                           >
                             {policy.paid_type === 'PAID' || policy.is_paid
                               ? 'PAID'
                               : policy.paid_type === 'HALF_PAY'
-                              ? 'HALF PAY'
-                              : 'UNPAID'}
+                                ? 'HALF PAY'
+                                : 'UNPAID'}
                           </span>
                         </div>
 
@@ -1249,15 +1311,15 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                                   policy.paid_type === 'PAID' || policy.is_paid
                                     ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                                     : policy.paid_type === 'HALF_PAY'
-                                    ? 'bg-amber-50 text-amber-700 border-amber-200'
-                                    : 'bg-slate-100 text-slate-700 border-slate-200'
+                                      ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                      : 'bg-slate-100 text-slate-700 border-slate-200'
                                 )}
                               >
                                 {policy.paid_type === 'PAID' || policy.is_paid
                                   ? '💰 Fully Paid'
                                   : policy.paid_type === 'HALF_PAY'
-                                  ? '½ Half Pay'
-                                  : '⚠️ Unpaid'}
+                                    ? '½ Half Pay'
+                                    : '⚠️ Unpaid'}
                               </span>
                             </td>
 
@@ -1437,8 +1499,8 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                             b.remaining_days > 3
                               ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                               : b.remaining_days > 0
-                              ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                              : 'bg-rose-50 text-rose-700 border border-rose-200'
+                                ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                                : 'bg-rose-50 text-rose-700 border border-rose-200'
                           )}
                         >
                           {b.remaining_days}d Available
@@ -1520,11 +1582,11 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                 )}
               </div>
 
-              {/* Leave Type (Dynamic based on Employee Gender & Rules) */}
+              {/* Leave Type (All created & active policies) */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="block text-xs font-bold text-navy-700">
-                    Eligible Leave Policy <span className="text-rose-500">*</span>
+                    Leave Policy <span className="text-rose-500">*</span>
                   </label>
                   {loadingEligible && (
                     <span className="text-[10px] text-purple-600 font-bold flex items-center gap-1">
@@ -1539,10 +1601,10 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                   onChange={(e) => setFormLeaveTypeId(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-navy-50 border border-navy-200 text-xs font-bold text-navy-900 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none cursor-pointer"
                 >
-                  {eligibleTypesForForm.length === 0 ? (
-                    <option value="">No eligible leave policies found</option>
+                  {availablePoliciesForForm.length === 0 ? (
+                    <option value="">No leave policies found</option>
                   ) : (
-                    eligibleTypesForForm.map((t) => (
+                    availablePoliciesForForm.map((t) => (
                       <option key={t.id} value={t.id}>
                         {formatLeaveOptionLabel(t)}
                       </option>
@@ -1552,7 +1614,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
 
                 {/* Info on selected leave type */}
                 {(() => {
-                  const selectedType = eligibleTypesForForm.find((t) => t.id === formLeaveTypeId);
+                  const selectedType = availablePoliciesForForm.find((t) => t.id === formLeaveTypeId);
                   if (!selectedType) return null;
                   return (
                     <div className="mt-2 p-2.5 rounded-xl bg-purple-50/70 border border-purple-100 text-[11px] text-purple-900 space-y-1">
@@ -1561,11 +1623,11 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                           {selectedType.paid_type === 'PAID' || selectedType.is_paid
                             ? '💰 Fully Paid Leave'
                             : selectedType.paid_type === 'HALF_PAY'
-                            ? '½ Half Pay Leave'
-                            : '⚠️ Unpaid / Loss of Pay'}
+                              ? '½ Half Pay Leave'
+                              : '⚠️ Unpaid / Loss of Pay'}
                         </span>
                         <span>
-                          Remaining Balance: <strong>{selectedType.balance?.remaining_days ?? selectedType.annual_quota} Days</strong>
+                          Annual Quota / Balance: <strong>{selectedType.balance?.remaining_days ?? selectedType.annual_quota} Days</strong>
                         </span>
                       </div>
                       {selectedType.description && (
@@ -1620,16 +1682,71 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                 />
               </div>
 
-              {/* Document URL */}
+              {/* Supporting Document Upload */}
               <div>
-                <label className="block text-xs font-bold text-navy-700 mb-1.5">Supporting Document / Certificate URL</label>
-                <input
-                  type="text"
-                  value={formAttachmentUrl}
-                  onChange={(e) => setFormAttachmentUrl(e.target.value)}
-                  placeholder="https://... or uploaded certificate link"
-                  className="w-full px-3.5 py-2 rounded-xl bg-navy-50 border border-navy-200 text-xs font-medium text-navy-900 placeholder-navy-400 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none"
-                />
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-bold text-navy-700">
+                    Supporting Document / Certificate
+                  </label>
+                  <span className="text-[10px] text-navy-400 font-medium">PDF, DOC, DOCX, JPG, PNG (Max 15MB)</span>
+                </div>
+
+                {formAttachmentUrl ? (
+                  <div className="p-3 rounded-2xl bg-purple-50/80 border border-purple-200 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-9 h-9 rounded-xl bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                        {formAttachmentName.toLowerCase().endsWith('.pdf') ? (
+                          <Icon name="file-text" size={18} />
+                        ) : formAttachmentName.toLowerCase().match(/\.(jpg|jpeg|png|webp)$/) ? (
+                          <Icon name="image" size={18} />
+                        ) : (
+                          <Icon name="file" size={18} />
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-navy-900 truncate" title={formAttachmentName}>
+                          {formAttachmentName || 'Uploaded Document'}
+                        </div>
+                        <div className="text-[10px] text-navy-400 font-semibold">{formAttachmentSize || 'Attached'}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <a
+                        href={formAttachmentUrl}
+                        download={formAttachmentName || 'leave_document'}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="px-2.5 py-1 text-[11px] font-bold bg-white text-purple-700 hover:bg-purple-100 rounded-lg border border-purple-200 shadow-2xs transition"
+                      >
+                        Preview
+                      </a>
+                      <button
+                        type="button"
+                        onClick={handleRemoveFile}
+                        className="p-1 text-rose-500 hover:bg-rose-50 rounded-lg transition cursor-pointer"
+                        title="Remove file"
+                      >
+                        <Icon name="trash-2" size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-navy-200 hover:border-purple-500 rounded-2xl bg-navy-50/60 hover:bg-purple-50/30 transition cursor-pointer group">
+                    <div className="w-10 h-10 rounded-2xl bg-white group-hover:bg-purple-100 text-navy-500 group-hover:text-purple-600 flex items-center justify-center shadow-xs transition mb-2">
+                      <Icon name="upload-cloud" size={20} />
+                    </div>
+                    <div className="text-xs font-bold text-navy-800 group-hover:text-purple-700">
+                      Click to upload document or certificate
+                    </div>
+                    <div className="text-[10px] text-navy-400 mt-0.5">Supports PDF, DOC, DOCX, JPG, PNG</div>
+                    <input
+                      type="file"
+                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                  </label>
+                )}
               </div>
 
               <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-navy-100">
@@ -1740,13 +1857,13 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                     }}
                     className="w-full px-3.5 py-2 rounded-xl bg-navy-50 border border-navy-200 text-xs font-bold text-navy-900 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none"
                   >
-                    <option value="General Leave">🌴 General Leave (CL / EL / Annual)</option>
-                    <option value="Medical Leave">🏥 Medical Leave (Sick / Recovery)</option>
-                    <option value="Statutory / Parental Leave">👶 Statutory / Parental Leave (Maternity / Paternity)</option>
-                    <option value="Special Leave">🎉 Special Leave (Wedding / Bereavement / Study)</option>
-                    <option value="Compensatory">⏱️ Compensatory (Comp-Off / Overtime)</option>
-                    <option value="Unpaid Leave">⚠️ Unpaid Leave (Loss of Pay / LWP)</option>
-                    <option value="Custom">✏️ Custom Category...</option>
+                    <option value="General Leave">General Leave (CL / EL / Annual)</option>
+                    <option value="Medical Leave">Medical Leave (Sick / Recovery)</option>
+                    <option value="Statutory / Parental Leave">Statutory / Parental Leave (Maternity / Paternity)</option>
+                    <option value="Special Leave">Special Leave (Wedding / Bereavement / Study)</option>
+                    <option value="Compensatory">Compensatory (Comp-Off / Overtime)</option>
+                    <option value="Unpaid Leave">Unpaid Leave (Loss of Pay / LWP)</option>
+                    <option value="Custom">Custom Category...</option>
                   </select>
 
                   {!['General Leave', 'Medical Leave', 'Statutory / Parental Leave', 'Special Leave', 'Compensatory', 'Unpaid Leave'].includes(policyForm.category) && (

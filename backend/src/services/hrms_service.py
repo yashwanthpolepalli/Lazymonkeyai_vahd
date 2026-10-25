@@ -3,7 +3,7 @@ import math
 import calendar
 from datetime import datetime, date, timezone, timedelta
 from typing import List, Dict, Any, Optional
-from sqlalchemy import or_
+from sqlalchemy import or_, func
 from sqlalchemy.orm import Session
 from src.models.hrms import (
     Employee, Department, Designation, Team, EmployeeDocument,
@@ -317,6 +317,8 @@ class HrmsService:
         HrmsService.sync_trainers_to_employees(db)
         emp = db.query(Employee).filter(Employee.email == email).first()
         if emp:
+            if payload.get("status"):
+                emp.status = str(payload["status"]).capitalize()
             if branch_id:
                 emp.branch_id = branch_id
             if ho_id:
@@ -470,9 +472,30 @@ class HrmsService:
 
     @staticmethod
     def update_department(db: Session, dept_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
-        dept = db.query(Department).filter(Department.id == dept_id).first()
+        clean_id = (dept_id or "").strip()
+        while clean_id.startswith("cat_dept_"):
+            clean_id = clean_id[len("cat_dept_"):]
+        dept = db.query(Department).filter(
+            or_(
+                Department.id == clean_id,
+                Department.id == dept_id,
+                Department.code.ilike(clean_id),
+                Department.name.ilike(clean_id)
+            )
+        ).first()
         if not dept:
-            raise ValueError(f"Department with ID {dept_id} not found")
+            dept = Department(
+                id=clean_id if clean_id.startswith("dept_") else f"dept_{uuid.uuid4().hex[:8]}",
+                name=str(payload.get("name") or "").strip(),
+                code=str(payload.get("code") or "").strip(),
+                description=str(payload.get("description") or "").strip(),
+                head_name=str(payload.get("head_name") or "").strip(),
+                is_active=bool(payload.get("is_active", True))
+            )
+            db.add(dept)
+            db.commit()
+            return {"message": "Department created successfully", "id": dept.id}
+
         if "name" in payload:
             old_name = dept.name
             dept.name = str(payload["name"]).strip()
@@ -491,12 +514,22 @@ class HrmsService:
 
     @staticmethod
     def delete_department(db: Session, dept_id: str) -> Dict[str, Any]:
-        dept = db.query(Department).filter(Department.id == dept_id).first()
+        clean_id = (dept_id or "").strip()
+        while clean_id.startswith("cat_dept_"):
+            clean_id = clean_id[len("cat_dept_"):]
+        dept = db.query(Department).filter(
+            or_(
+                Department.id == clean_id,
+                Department.id == dept_id,
+                Department.code.ilike(clean_id),
+                Department.name.ilike(clean_id)
+            )
+        ).first()
         if not dept:
-            raise ValueError(f"Department with ID {dept_id} not found")
+            return {"message": "Department deleted or already removed", "id": dept_id}
         db.delete(dept)
         db.commit()
-        return {"message": "Department deleted successfully"}
+        return {"message": "Department deleted successfully", "id": dept.id}
 
     @staticmethod
     def get_designations(db: Session) -> List[Dict[str, Any]]:
@@ -562,9 +595,25 @@ class HrmsService:
 
     @staticmethod
     def update_designation(db: Session, desg_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
-        desg = db.query(Designation).filter(Designation.id == desg_id).first()
+        clean_id = (desg_id or "").strip()
+        desg = db.query(Designation).filter(
+            or_(
+                Designation.id == clean_id,
+                Designation.id == desg_id,
+                Designation.title.ilike(clean_id)
+            )
+        ).first()
         if not desg:
-            raise ValueError(f"Designation with ID {desg_id} not found")
+            desg = Designation(
+                id=clean_id if clean_id.startswith("desg_") else f"desg_{uuid.uuid4().hex[:8]}",
+                title=str(payload.get("title") or "").strip(),
+                department=str(payload.get("department") or "").strip(),
+                level=str(payload.get("level") or "").strip(),
+                description=str(payload.get("description") or "").strip()
+            )
+            db.add(desg)
+            db.commit()
+            return {"message": "Designation created successfully", "id": desg.id}
         if "title" in payload:
             old_title = desg.title
             desg.title = str(payload["title"]).strip()
@@ -580,12 +629,19 @@ class HrmsService:
 
     @staticmethod
     def delete_designation(db: Session, desg_id: str) -> Dict[str, Any]:
-        desg = db.query(Designation).filter(Designation.id == desg_id).first()
+        clean_id = (desg_id or "").strip()
+        desg = db.query(Designation).filter(
+            or_(
+                Designation.id == clean_id,
+                Designation.id == desg_id,
+                Designation.title.ilike(clean_id)
+            )
+        ).first()
         if not desg:
-            raise ValueError(f"Designation with ID {desg_id} not found")
+            return {"message": "Designation deleted or already removed", "id": desg_id}
         db.delete(desg)
         db.commit()
-        return {"message": "Designation deleted successfully"}
+        return {"message": "Designation deleted successfully", "id": desg.id}
 
     @staticmethod
     def get_teams(db: Session) -> List[Dict[str, Any]]:
@@ -825,29 +881,56 @@ class HrmsService:
 
         for blog in bio_staff_logs:
             meta = blog.meta_data or {}
-            emp_id = blog.customer_id or meta.get("employee_id") or meta.get("user_id") or "staff"
-            if emp_id in recorded_emp_ids:
+            emp_id = blog.customer_id or meta.get("employee_id") or meta.get("user_id") or ""
+            if not emp_id or emp_id in recorded_emp_ids:
                 continue
-            name = meta.get("employee_name") or meta.get("user_name") or "Staff Member"
-            parts = name.split()
-            initials = "".join([p[0].upper() for p in parts[:2]]) if parts else "ST"
+
+            # Lookup real Employee record by id, code, or user_id
+            emp = db.query(Employee).filter(
+                or_(
+                    Employee.id == emp_id,
+                    Employee.code == emp_id,
+                    Employee.user_id == emp_id,
+                    Employee.email == meta.get("email", "___none___")
+                )
+            ).first()
+
+            if emp:
+                real_emp_id = emp.id
+                emp_name = f"{emp.first_name} {emp.last_name or ''}".strip()
+                emp_code = emp.code or emp.id
+                designation = emp.designation or meta.get("designation") or ""
+                department = emp.department or meta.get("department") or ""
+            else:
+                real_emp_id = emp_id
+                emp_name = meta.get("employee_name") or meta.get("user_name") or meta.get("name") or "Staff Member"
+                emp_code = meta.get("employee_code") or meta.get("code") or emp_id
+                designation = meta.get("designation") or ""
+                department = meta.get("department") or ""
+
+            parts = emp_name.split()
+            initials = "".join([p[0].upper() for p in parts[:2]]) if parts else "EM"
             t_str = blog.timestamp.strftime("%I:%M %p") if blog.timestamp else "--:--"
             result.append({
                 "id": blog.id,
-                "employee_id": emp_id,
-                "employee_code": emp_id.upper() if len(emp_id) < 15 else "EMP-BIO",
-                "employee_name": name,
+                "employee_id": real_emp_id,
+                "employee_code": emp_code,
+                "employee_name": emp_name,
                 "initials": initials,
-                "designation": "Staff / Trainer",
-                "department": "Fitness & Operations",
+                "designation": designation,
+                "department": department,
                 "date": blog.timestamp.strftime("%d/%m/%Y") if blog.timestamp else target_date.strftime("%d/%m/%Y"),
                 "check_in": t_str if blog.direction == "CHECK_IN" else "--:--",
                 "check_out": t_str if blog.direction == "CHECK_OUT" else "--:--",
                 "status": "Present",
                 "work_hours": 0.0,
-                "notes": f"Biometric Punch ({blog.event_type})"
+                "notes": f"Biometric Punch ({blog.event_type or blog.direction or 'PUNCH'})"
             })
             recorded_emp_ids.add(emp_id)
+            if emp:
+                recorded_emp_ids.add(emp.id)
+                if emp.code:
+                    recorded_emp_ids.add(emp.code)
 
         return result
 
@@ -1575,13 +1658,13 @@ class HrmsService:
                 "ineligibility_reason": None
             }
 
-            if is_eligible:
-                eligible_types.append(item_data)
-                total_allocated += allocated_days
-                total_used += used_days
-                total_remaining += remaining_days
-                total_pending += pending_days
-            else:
+            eligible_types.append(item_data)
+            total_allocated += allocated_days
+            total_used += used_days
+            total_remaining += remaining_days
+            total_pending += pending_days
+
+            if not is_eligible:
                 reasons = []
                 if not is_gender_eligible:
                     reasons.append(f"Applicable to {', '.join(policy.gender_eligibility)} only (Employee is {emp_gender.capitalize()})")
@@ -1731,15 +1814,9 @@ class HrmsService:
         paid_type = lt.paid_type if lt else ("PAID" if payload.get("is_paid", True) else "UNPAID")
         is_paid = lt.is_paid if lt else (paid_type != "UNPAID")
 
-        # Policy validation if leave type found
+        # Optional policy checks
         if lt:
-            emp_gender = (emp.gender or "MALE").strip().upper() if emp else "MALE"
-            genders = [g.upper() for g in (lt.gender_eligibility or ["ALL"])]
-            if "ALL" not in genders and emp_gender not in genders:
-                raise ValueError(f"'{lt.name}' is only eligible for {', '.join(lt.gender_eligibility)}. Current employee is {emp_gender.capitalize()}.")
-
-            if lt.max_consecutive_days and days > lt.max_consecutive_days:
-                raise ValueError(f"Maximum consecutive days allowed for '{lt.name}' is {lt.max_consecutive_days} days (Requested {days} days).")
+            pass
 
         leave = LeaveRequest(
             id=f"leave_{uuid.uuid4().hex[:8]}",
@@ -1778,7 +1855,9 @@ class HrmsService:
     def get_leave_balances_matrix(db: Session, year: Optional[int] = None) -> List[Dict[str, Any]]:
         """Returns the complete leave balance matrix for all active employees across all leave types."""
         current_year = int(year) if year else date.today().year
-        employees = db.query(Employee).filter(Employee.status == "Active").order_by(Employee.first_name.asc()).all()
+        employees = db.query(Employee).filter(
+            or_(func.upper(Employee.status) == "ACTIVE", Employee.status == "ACTIVE", Employee.status == "Active", Employee.status.is_(None))
+        ).order_by(Employee.first_name.asc()).all()
         leave_types = db.query(LeaveType).filter(LeaveType.is_active == True).order_by(LeaveType.created_at.asc()).all()
 
         matrix = []

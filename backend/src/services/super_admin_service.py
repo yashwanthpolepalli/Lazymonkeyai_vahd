@@ -29,12 +29,19 @@ class SuperAdminService:
     # =========================================================================
     @staticmethod
     def get_platform_overview(db: Session) -> dict:
-        total_orgs = db.query(GymBranch).count()
-        active_orgs = db.query(GymBranch).filter(GymBranch.is_active == True).count()
+        ho_users = db.query(User).filter(
+            or_(
+                func.upper(User.role) == "HEAD_OFFICE",
+                func.upper(User.role) == "HO"
+            )
+        ).all()
+        ho_user_ids = {u.id for u in ho_users}
+        total_orgs = len(ho_user_ids)
+        active_orgs = db.query(GymBranch).filter(GymBranch.owner_id.in_(ho_user_ids), GymBranch.is_active == True).count()
         total_members = db.query(Customer).count()
         total_users = db.query(User).count()
         total_trainers = db.query(User).filter(User.role == "TRAINER").count()
-        total_owners = db.query(User).filter(User.role == "OWNER").count()
+        total_owners = len(ho_user_ids)
 
         # Dynamic MRR sum from active memberships
         total_mrr_sum = db.query(func.sum(Membership.price)).filter(Membership.status == "ACTIVE").scalar()
@@ -122,103 +129,6 @@ class SuperAdminService:
     # 2. ORGANIZATIONS / GYMS DIRECTORY & INSPECTOR
     # =========================================================================
     @staticmethod
-    def ensure_default_saas_plans(db: Session):
-        """Auto-seed standard SaaS tiers if none exist in the database."""
-        if db.query(SaaSPlan).count() == 0:
-            default_plans = [
-                SaaSPlan(
-                    id=str(uuid.uuid4()),
-                    name="Starter Launch",
-                    code="starter",
-                    description="Essential single-branch management for boutique gyms & fitness studios.",
-                    price_monthly=2999.0,
-                    price_annual=29990.0,
-                    max_branches=1,
-                    max_members=250,
-                    max_trainers=3,
-                    ai_credits_monthly=500,
-                    storage_gb=5.0,
-                    features=[
-                        "Member Management & Digital Registration",
-                        "QR Code Attendance & Pass Scanning",
-                        "Basic Invoicing & Receipt Generator",
-                        "FIT CLUB Member Mobile / Web App"
-                    ],
-                    is_active=True,
-                    is_popular=False,
-                ),
-                SaaSPlan(
-                    id=str(uuid.uuid4()),
-                    name="Pro Growth",
-                    code="pro",
-                    description="Advanced AI-driven fitness coaching, InBody scan OCR, and inventory stock tracking.",
-                    price_monthly=5999.0,
-                    price_annual=59990.0,
-                    max_branches=2,
-                    max_members=750,
-                    max_trainers=10,
-                    ai_credits_monthly=2500,
-                    storage_gb=20.0,
-                    features=[
-                        "All Starter Features Included",
-                        "AI Coach Workout & Diet Builder",
-                        "InBody Diagnostic Sheet Vision OCR",
-                        "Inventory & Supplement Stock Tracking",
-                        "Automated WhatsApp CRM Alerts & Reminders"
-                    ],
-                    is_active=True,
-                    is_popular=True,
-                ),
-                SaaSPlan(
-                    id=str(uuid.uuid4()),
-                    name="Business Scale",
-                    code="business",
-                    description="High-volume multi-tier gym management with PineLabs POS and Biometric Turnstiles.",
-                    price_monthly=11999.0,
-                    price_annual=119990.0,
-                    max_branches=5,
-                    max_members=2500,
-                    max_trainers=25,
-                    ai_credits_monthly=7500,
-                    storage_gb=50.0,
-                    features=[
-                        "All Pro Features Included",
-                        "PineLabs POS Terminal & EDC Swiper",
-                        "Biometric Turnstile IoT Gate Unlatch",
-                        "Automated SMS & WhatsApp Marketing Engine",
-                        "Trainer Commission & Payroll Splitter"
-                    ],
-                    is_active=True,
-                    is_popular=False,
-                ),
-                SaaSPlan(
-                    id=str(uuid.uuid4()),
-                    name="Enterprise Prime",
-                    code="enterprise",
-                    description="Full enterprise chain management with CCTV face attendance and multi-location HQ.",
-                    price_monthly=24999.0,
-                    price_annual=249990.0,
-                    max_branches=99,
-                    max_members=10000,
-                    max_trainers=100,
-                    ai_credits_monthly=25000,
-                    storage_gb=200.0,
-                    features=[
-                        "All Business Features Included",
-                        "Multi-Branch Consolidated HQ Reporting",
-                        "CCTV Facial Attendance Live Stream",
-                        "Dedicated 24/7 SLA & Integration Architect",
-                        "Custom Hardware & Turnstile Protocol Bridge"
-                    ],
-                    is_active=True,
-                    is_popular=False,
-                )
-            ]
-            for p in default_plans:
-                db.add(p)
-            db.commit()
-
-    @staticmethod
     def ensure_default_feature_controls(db: Session):
         """Auto-seed default feature matrix if empty in PostgreSQL."""
         if db.query(FeatureControl).count() == 0:
@@ -243,7 +153,6 @@ class SuperAdminService:
         plan_filter: Optional[str] = None,
         search: Optional[str] = None
     ) -> List[Dict[str, Any]]:
-        SuperAdminService.ensure_default_saas_plans(db)
         SuperAdminService.ensure_default_feature_controls(db)
         query = db.query(GymBranch)
         if search:
@@ -257,40 +166,50 @@ class SuperAdminService:
             elif status_filter == "suspended":
                 query = query.filter(GymBranch.is_active == False)
 
+        # Super Admin Head Office Directory must ONLY return Head Offices (HOs),
+        # not organizations/branches created by HOs for their branch owners.
+        ho_users = db.query(User).filter(
+            or_(
+                func.upper(User.role) == "HEAD_OFFICE",
+                func.upper(User.role) == "HO"
+            )
+        ).all()
+        ho_user_ids = {u.id for u in ho_users}
+
+        query = query.filter(GymBranch.owner_id.in_(ho_user_ids))
         branches = query.order_by(desc(GymBranch.created_at)).all()
-        owners = db.query(User).filter(User.role == "OWNER").all()
-        first_owner = owners[0] if owners else None
 
         res = []
         for b in branches:
-            owner = None
-            if b.owner_id:
-                owner = db.query(User).filter(User.id == b.owner_id).first()
+            owner = db.query(User).filter(User.id == b.owner_id).first()
             if not owner:
-                owner = db.query(User).filter(User.branch_id == b.id, User.role == "OWNER").first()
+                owner = db.query(User).filter(User.branch_id == b.id).first()
 
-            # Dynamic member count for this branch
+            # Dynamic member count across this entire Head Office
             member_count = db.query(Customer).filter(
                 or_(
+                    Customer.ho_id == b.ho_id,
                     Customer.branch_id == b.id,
                     Customer.owner_id == b.owner_id,
                     Customer.primary_gym_location.ilike(f"%{b.branch_name}%")
                 )
             ).count()
 
-            # Dynamic trainer count for this branch
+            # Dynamic trainer count for this Head Office
             trainer_count = db.query(User).filter(
                 User.role == "TRAINER",
                 or_(
+                    User.ho_id == b.ho_id,
                     User.branch_id == b.id,
                     User.owner_id == b.owner_id
                 )
             ).count()
 
-            # Dynamic revenue for this branch's members
+            # Dynamic revenue for this Head Office
             branch_cust_ids = [
                 c.id for c in db.query(Customer.id).filter(
                     or_(
+                        Customer.ho_id == b.ho_id,
                         Customer.branch_id == b.id,
                         Customer.owner_id == b.owner_id,
                         Customer.primary_gym_location.ilike(f"%{b.branch_name}%")
@@ -323,10 +242,10 @@ class SuperAdminService:
                 "trainers": trainer_count,
                 "revenue": float(rev_sum),
                 "plan_id": getattr(b, "plan_id", None),
-                "plan": getattr(b, "plan_name", None) or "Pro Growth",
-                "plan_tier": getattr(b, "plan_tier", None) or "pro",
-                "billing_cycle": getattr(b, "billing_cycle", None) or "monthly",
-                "payment_method": getattr(b, "payment_method", None) or "Cash",
+                "plan": getattr(b, "plan_name", None) or "",
+                "plan_tier": getattr(b, "plan_tier", None) or "",
+                "billing_cycle": getattr(b, "billing_cycle", None) or "",
+                "payment_method": getattr(b, "payment_method", None) or "",
                 "paid_amount": float(getattr(b, "paid_amount", 0.0) or 0.0),
                 "custom_features": getattr(b, "custom_features", None) or [],
                 "status": "Active" if b.is_active else "Suspended",
@@ -778,28 +697,30 @@ class SuperAdminService:
         # 5. Delete the branch itself
         db.delete(branch)
 
-        # 6. Check if owner user has any remaining branches; if none, delete the owner/HO user
-        if owner_id:
-            remaining_branches = db.query(GymBranch).filter(
-                GymBranch.owner_id == owner_id,
-                GymBranch.id != clean_id
-            ).count()
-            if remaining_branches == 0:
-                rem_custs = db.query(Customer).filter(Customer.owner_id == owner_id).all()
-                rem_c_ids = [c.id for c in rem_custs if c.id]
-                rem_c_uids = [c.user_id for c in rem_custs if c.user_id]
-                if rem_c_ids:
-                    db.query(Membership).filter(Membership.customer_id.in_(rem_c_ids)).delete(synchronize_session=False)
-                    db.query(BiometricLog).filter(BiometricLog.customer_id.in_(rem_c_ids)).delete(synchronize_session=False)
-                    db.query(StudentCourse).filter(StudentCourse.customer_id.in_(rem_c_ids)).delete(synchronize_session=False)
-                    db.query(Customer).filter(Customer.id.in_(rem_c_ids)).delete(synchronize_session=False)
-                if rem_c_uids:
-                    db.query(User).filter(User.id.in_(rem_c_uids)).delete(synchronize_session=False)
+        # 6. Check if owner user has any remaining branches; if none, delete the branch owner user (never delete HO user)
+        if owner_id and owner_id != ho_id:
+            owner_user = db.query(User).filter(User.id == owner_id).first()
+            if not (owner_user and (owner_user.role or "").upper() in ["HEAD_OFFICE", "HO"]):
+                remaining_branches = db.query(GymBranch).filter(
+                    GymBranch.owner_id == owner_id,
+                    GymBranch.id != clean_id
+                ).count()
+                if remaining_branches == 0:
+                    rem_custs = db.query(Customer).filter(Customer.owner_id == owner_id).all()
+                    rem_c_ids = [c.id for c in rem_custs if c.id]
+                    rem_c_uids = [c.user_id for c in rem_custs if c.user_id]
+                    if rem_c_ids:
+                        db.query(Membership).filter(Membership.customer_id.in_(rem_c_ids)).delete(synchronize_session=False)
+                        db.query(BiometricLog).filter(BiometricLog.customer_id.in_(rem_c_ids)).delete(synchronize_session=False)
+                        db.query(StudentCourse).filter(StudentCourse.customer_id.in_(rem_c_ids)).delete(synchronize_session=False)
+                        db.query(Customer).filter(Customer.id.in_(rem_c_ids)).delete(synchronize_session=False)
+                    if rem_c_uids:
+                        db.query(User).filter(User.id.in_(rem_c_uids)).delete(synchronize_session=False)
 
-                db.query(User).filter(
-                    User.id == owner_id,
-                    User.role.in_(["OWNER", "HEAD_OFFICE", "HO"])
-                ).delete(synchronize_session=False)
+                    db.query(User).filter(
+                        User.id == owner_id,
+                        User.role == "OWNER"
+                    ).delete(synchronize_session=False)
 
     @staticmethod
     def delete_organization(db: Session, gym_id: str, actor_info: Optional[dict] = None) -> Dict[str, Any]:
@@ -994,7 +915,6 @@ class SuperAdminService:
     # =========================================================================
     @staticmethod
     def get_plans(db: Session) -> List[Dict[str, Any]]:
-        SuperAdminService.ensure_default_saas_plans(db)
         plans = db.query(SaaSPlan).order_by(SaaSPlan.price_monthly).all()
         return [
             {

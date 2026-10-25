@@ -23,6 +23,7 @@ const SettingsPage = lazy(() => import('@/pages/owner/SettingsPage').then(m => (
 const ErpPage = lazy(() => import('@/pages/owner/ErpPage').then(m => ({ default: m.ErpPage })));
 const ReportsPage = lazy(() => import('@/pages/owner/ReportsPage').then(m => ({ default: m.ReportsPage })));
 const HoDashboard = lazy(() => import('@/pages/ho/HoDashboard').then(m => ({ default: m.HoDashboard })));
+const HoOrganisationsPage = lazy(() => import('@/pages/ho/HoOrganisationsPage').then(m => ({ default: m.HoOrganisationsPage })));
 
 // Trainer pages
 const TrainerDashboard = lazy(() => import('@/pages/trainer/TrainerDashboard').then(m => ({ default: m.TrainerDashboard })));
@@ -115,7 +116,7 @@ function AppRoutes() {
           <Route path="iot" element={<IotPage />} />
           <Route path="cctv" element={<Navigate to="/owner/iot?tab=cctv" replace />} />
           <Route path="biometrics" element={<Navigate to="/owner/iot?tab=biometrics" replace />} />
-          <Route path="reports" element={<ReportsPage />} />
+          <Route path="reports" element={<Navigate to="/owner/settings?tab=reports" replace />} />
           <Route path="multi-branch" element={<MultiBranchPage />} />
           <Route path="erp" element={<Navigate to="/owner/settings?tab=erp" replace />} />
           <Route path="settings" element={<SettingsPage />} />
@@ -125,10 +126,14 @@ function AppRoutes() {
         <Route path="/ho" element={<ProtectedRoute><RoleRedirect allowed={['ho']} /></ProtectedRoute>}>
           <Route index element={<HoDashboard />} />
           <Route path="hrms" element={<HrmsPage />} />
-          <Route path="organisations" element={<MultiBranchPage />} />
-          <Route path="reports" element={<ReportsPage />} />
+          <Route path="organisations" element={<HoOrganisationsPage />} />
+          <Route path="reports" element={<Navigate to="/ho/settings?tab=reports" replace />} />
           <Route path="attendance" element={<Navigate to="/ho/hrms?tab=attendance" replace />} />
           <Route path="attendance-approve" element={<Navigate to="/ho/hrms?tab=corrections" replace />} />
+          <Route path="memberships" element={<Navigate to="/ho/settings?tab=courses" replace />} />
+          <Route path="courses" element={<Navigate to="/ho/settings?tab=courses" replace />} />
+          <Route path="erp" element={<Navigate to="/ho/settings?tab=erp" replace />} />
+          <Route path="settings" element={<SettingsPage />} />
         </Route>
 
         {/* ERP ROUTE */}
@@ -167,10 +172,10 @@ function AppRoutes() {
         <Route path="/super-admin" element={<ProtectedRoute><RoleRedirect allowed={['super_admin']} /></ProtectedRoute>}>
           <Route index element={<SuperAdminDashboard />} />
           <Route path="gyms" element={<GymsPage />} />
-          <Route path="plans" element={<SaaSPlansPage />} />
-          <Route path="features" element={<FeatureControlsPage />} />
-          <Route path="ai-engine" element={<AiEnginePage />} />
-          <Route path="devices" element={<DevicesPage />} />
+          <Route path="plans" element={<Navigate to="/super-admin" replace />} />
+          <Route path="features" element={<Navigate to="/super-admin" replace />} />
+          <Route path="ai-engine" element={<Navigate to="/super-admin" replace />} />
+          <Route path="devices" element={<Navigate to="/super-admin" replace />} />
           <Route path="audit-logs" element={<AuditLogsPage />} />
           <Route path="support" element={<SupportDeskPage />} />
           <Route path="settings" element={<SettingsPage />} />

@@ -59,7 +59,39 @@ export function TrainerHrmsPage() {
   const [formEndDate, setFormEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [formReason, setFormReason] = useState('');
   const [formAttachmentUrl, setFormAttachmentUrl] = useState('');
+  const [formAttachmentName, setFormAttachmentName] = useState('');
+  const [formAttachmentSize, setFormAttachmentSize] = useState('');
   const [formError, setFormError] = useState('');
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 15 * 1024 * 1024) {
+      setFormError('File size exceeds 15MB. Please upload a smaller document.');
+      return;
+    }
+
+    setFormError('');
+    setFormAttachmentName(file.name);
+    const sizeFormatted =
+      file.size > 1024 * 1024
+        ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
+        : `${Math.round(file.size / 1024)} KB`;
+    setFormAttachmentSize(sizeFormatted);
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setFormAttachmentUrl(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveFile = () => {
+    setFormAttachmentUrl('');
+    setFormAttachmentName('');
+    setFormAttachmentSize('');
+  };
 
   // Payslip Modal State
   const [selectedPayslip, setSelectedPayslip] = useState<PayrollItem | null>(null);
@@ -97,8 +129,19 @@ export function TrainerHrmsPage() {
       // Fetch eligible leave types for this trainer (respects gender, service days, owner config)
       if (tid) {
         try {
-          const eligRes = await hrmsApi.getEligibleLeaveTypes(tid);
-          const types = eligRes?.eligible_leave_types || [];
+          const [eligRes, allPolicies] = await Promise.all([
+            hrmsApi.getEligibleLeaveTypes(tid).catch(() => null),
+            hrmsApi.getLeaveTypes().catch(() => []),
+          ]);
+          let types = eligRes?.eligible_leave_types || [];
+          if (types.length === 0 && allPolicies.length > 0) {
+            types = allPolicies.map((p) => ({
+              ...p,
+              annual_quota: p.annual_quota || 0,
+              remaining_days: p.annual_quota || 0,
+              paid_type: (p.paid_type || (p.is_paid ? 'PAID' : 'UNPAID')) as 'PAID' | 'UNPAID' | 'HALF_PAY',
+            }));
+          }
           setEligibleLeaveTypes(types);
           if (types.length > 0) {
             setFormLeaveTypeId(types[0].id);
@@ -205,6 +248,8 @@ export function TrainerHrmsPage() {
       setShowApplyModal(false);
       setFormReason('');
       setFormAttachmentUrl('');
+      setFormAttachmentName('');
+      setFormAttachmentSize('');
 
       // Refresh leaves & eligible quotas
       const [updated, eligRes] = await Promise.all([
@@ -710,7 +755,7 @@ export function TrainerHrmsPage() {
             <form onSubmit={handleApplyLeave} className="space-y-4">
               {/* Dynamic Leave Policy Selector */}
               <div>
-                <label className="block text-xs font-bold text-navy-700 mb-1.5">Eligible Leave Policy</label>
+                <label className="block text-xs font-bold text-navy-700 mb-1.5">Leave Policy</label>
                 <select
                   value={formLeaveTypeId}
                   onChange={(e) => {
@@ -722,7 +767,7 @@ export function TrainerHrmsPage() {
                   className="w-full px-3.5 py-2.5 rounded-xl bg-navy-50 border border-navy-200 text-xs font-bold text-navy-900 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none cursor-pointer"
                 >
                   {eligibleLeaveTypes.length === 0 ? (
-                    <option value="">No eligible policies found</option>
+                    <option value="">No leave policies found</option>
                   ) : (
                     eligibleLeaveTypes.map((t) => (
                       <option key={t.id} value={t.id}>
@@ -754,7 +799,7 @@ export function TrainerHrmsPage() {
                       {sel.attachment_required && (
                         <div className="text-amber-800 text-[10px] font-bold flex items-center gap-1 pt-0.5">
                           <Icon name="alert-triangle" size={11} />
-                          <span>Medical certificate or proof link is required for this leave type.</span>
+                          <span>Medical certificate or document proof is required for this leave type.</span>
                         </div>
                       )}
                     </div>
@@ -796,18 +841,71 @@ export function TrainerHrmsPage() {
                 />
               </div>
 
-              {/* Attachment URL */}
+              {/* Supporting Document Upload */}
               <div>
-                <label className="block text-xs font-bold text-navy-700 mb-1.5">
-                  Supporting Document / Certificate URL
-                </label>
-                <input
-                  type="text"
-                  value={formAttachmentUrl}
-                  onChange={(e) => setFormAttachmentUrl(e.target.value)}
-                  placeholder="https://... or medical slip link"
-                  className="w-full px-3.5 py-2 rounded-xl bg-navy-50 border border-navy-200 text-xs font-medium text-navy-900 placeholder-navy-400 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none"
-                />
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-bold text-navy-700">
+                    Supporting Document / Certificate
+                  </label>
+                  <span className="text-[10px] text-navy-400 font-medium">PDF, DOC, DOCX, JPG, PNG (Max 15MB)</span>
+                </div>
+
+                {formAttachmentUrl ? (
+                  <div className="p-3 rounded-2xl bg-purple-50/80 border border-purple-200 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-9 h-9 rounded-xl bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                        {formAttachmentName.toLowerCase().endsWith('.pdf') ? (
+                          <Icon name="file-text" size={18} />
+                        ) : formAttachmentName.toLowerCase().match(/\.(jpg|jpeg|png|webp)$/) ? (
+                          <Icon name="image" size={18} />
+                        ) : (
+                          <Icon name="file" size={18} />
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-navy-900 truncate" title={formAttachmentName}>
+                          {formAttachmentName || 'Uploaded Document'}
+                        </div>
+                        <div className="text-[10px] text-navy-400 font-semibold">{formAttachmentSize || 'Attached'}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <a
+                        href={formAttachmentUrl}
+                        download={formAttachmentName || 'leave_document'}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="px-2.5 py-1 text-[11px] font-bold bg-white text-purple-700 hover:bg-purple-100 rounded-lg border border-purple-200 shadow-2xs transition"
+                      >
+                        Preview
+                      </a>
+                      <button
+                        type="button"
+                        onClick={handleRemoveFile}
+                        className="p-1 text-rose-500 hover:bg-rose-50 rounded-lg transition cursor-pointer"
+                        title="Remove file"
+                      >
+                        <Icon name="trash-2" size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-navy-200 hover:border-purple-500 rounded-2xl bg-navy-50/60 hover:bg-purple-50/30 transition cursor-pointer group">
+                    <div className="w-10 h-10 rounded-2xl bg-white group-hover:bg-purple-100 text-navy-500 group-hover:text-purple-600 flex items-center justify-center shadow-xs transition mb-2">
+                      <Icon name="upload-cloud" size={20} />
+                    </div>
+                    <div className="text-xs font-bold text-navy-800 group-hover:text-purple-700">
+                      Click to upload document or certificate
+                    </div>
+                    <div className="text-[10px] text-navy-400 mt-0.5">Supports PDF, DOC, DOCX, JPG, PNG</div>
+                    <input
+                      type="file"
+                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                  </label>
+                )}
               </div>
 
               <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-navy-100">

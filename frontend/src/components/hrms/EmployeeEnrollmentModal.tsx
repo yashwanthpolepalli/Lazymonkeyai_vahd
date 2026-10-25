@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import { apiClient } from '@/services/apiClient';
 import { hrmsApi, DepartmentItem, DesignationItem } from '@/services/hrmsApi';
+import { cn } from '@/utils/cn';
 
 export interface EmployeeEnrollmentModalProps {
   isOpen?: boolean;
@@ -26,6 +27,43 @@ interface LanguageRow {
   speak: boolean;
 }
 
+const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+
+const CASTE_OPTIONS = [
+  { value: 'OC', label: 'OC / General' },
+  { value: 'BC-A', label: 'BC-A' },
+  { value: 'BC-B', label: 'BC-B' },
+  { value: 'BC-C', label: 'BC-C' },
+  { value: 'BC-D', label: 'BC-D' },
+  { value: 'BC-E', label: 'BC-E' },
+  { value: 'SC', label: 'SC (Scheduled Caste)' },
+  { value: 'ST', label: 'ST (Scheduled Tribe)' },
+  { value: 'EWS', label: 'EWS (Economically Weaker Section)' },
+  { value: 'Other', label: 'Other' },
+];
+
+const MARITAL_STATUS_OPTIONS = ['Single', 'Married', 'Unmarried', 'Divorced', 'Widowed', 'Separated'];
+
+const GENDER_OPTIONS = ['Male', 'Female', 'Other'];
+
+const EMPLOYEE_ROLES = [
+  { value: 'STAFF', label: 'Staff' },
+  { value: 'FACULTY', label: 'Faculty / Teacher' },
+  { value: 'TRAINER', label: 'Trainer / Coach' },
+  { value: 'MANAGER', label: 'Manager' },
+  { value: 'ADMIN', label: 'Administrator' },
+  { value: 'EMPLOYEE', label: 'Employee' },
+];
+
+const getOrgBranchLabel = (b: any) => {
+  const orgName = (b.gym_name || b.organisation || '').trim();
+  const bName = (b.branch_name || b.name || '').trim();
+  if (orgName && bName && orgName.toLowerCase() !== bName.toLowerCase()) {
+    return `${orgName} (${bName})${b.city ? ` - ${b.city}` : ''}`;
+  }
+  return orgName || bName || 'Main Organisation';
+};
+
 export function EmployeeEnrollmentModal({
   isOpen,
   open,
@@ -47,7 +85,7 @@ export function EmployeeEnrollmentModal({
   const [caste, setCaste] = useState('');
   const [bloodGroup, setBloodGroup] = useState('');
   const [religion, setReligion] = useState('');
-  const [gender, setGender] = useState<'Male' | 'Female' | ''>('');
+  const [gender, setGender] = useState<'Male' | 'Female' | 'Other' | ''>('');
   const [maritalStatus, setMaritalStatus] = useState<string>('');
   const [workExperienceYears, setWorkExperienceYears] = useState('');
   const [contactNo, setContactNo] = useState('');
@@ -68,7 +106,8 @@ export function EmployeeEnrollmentModal({
   const [jobDesignation, setJobDesignation] = useState('');
   const [joiningDate, setJoiningDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [companyId, setCompanyId] = useState('');
-  const [skypeId, setSkypeId] = useState('');
+  const [employeeRole, setEmployeeRole] = useState('STAFF');
+  const [employeeStatus, setEmployeeStatus] = useState<'Active' | 'Inactive'>('Active');
   const [technicalSkills, setTechnicalSkills] = useState('');
   const [baseSalary, setBaseSalary] = useState('');
 
@@ -116,10 +155,10 @@ export function EmployeeEnrollmentModal({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  // Dynamic Departments and Designations from HRMS
+  // Dynamic Departments and Designations from HRMS (stored and managed live in DB)
   const [departmentsList, setDepartmentsList] = useState<DepartmentItem[]>([]);
   const [designationsList, setDesignationsList] = useState<DesignationItem[]>([]);
-  const [branchesList, setBranchesList] = useState<Array<{ id: string; branch_name: string; name?: string }>>([]);
+  const [branchesList, setBranchesList] = useState<Array<{ id: string; branch_name: string; name?: string; gym_name?: string; city?: string }>>([]);
   const [selectedBranchId, setSelectedBranchId] = useState<string>('');
 
   useEffect(() => {
@@ -132,15 +171,32 @@ export function EmployeeEnrollmentModal({
       if (Array.isArray(data)) setDesignationsList(data);
     }).catch(() => {});
 
-    apiClient.get<any[]>('/gym/branches').then((data) => {
-      if (Array.isArray(data)) {
-        setBranchesList(data);
-        if (data.length > 0 && !selectedBranchId) {
-          setSelectedBranchId(data[0].id);
-          if (!location) setLocation(data[0].branch_name || data[0].name || '');
+    const fetchBranches = async () => {
+      try {
+        const hoRes = await apiClient.get<any>('/ho/organizations').catch(() => null);
+        let list: any[] = [];
+        if (hoRes?.organizations && Array.isArray(hoRes.organizations) && hoRes.organizations.length > 0) {
+          list = hoRes.organizations;
+        } else {
+          const branchRes = await apiClient.get<any[]>('/gym/branches').catch(() => []);
+          if (Array.isArray(branchRes)) list = branchRes;
         }
-      }
-    }).catch(() => {});
+
+        setBranchesList(list);
+
+        if (list.length > 0) {
+          const activeOrgId = localStorage.getItem('vahd_selected_org_id');
+          const matchedActive = activeOrgId && activeOrgId !== 'all' ? list.find((b) => b.id === activeOrgId) : null;
+          const target = matchedActive || (employeeToEdit ? list.find((b) => b.id === (employeeToEdit.branch_id || employeeToEdit.meta_data?.branch_id)) : null) || list[0];
+          
+          if (target && !selectedBranchId) {
+            setSelectedBranchId(target.id);
+            if (!location) setLocation(getOrgBranchLabel(target));
+          }
+        }
+      } catch (e) {}
+    };
+    fetchBranches();
   }, [visible]);
 
   // Populate or Reset data
@@ -179,9 +235,14 @@ export function EmployeeEnrollmentModal({
       setJobDesignation(post.designation || employeeToEdit.designation || employeeToEdit.role || '');
       setJoiningDate(post.joining_date || employeeToEdit.joined_date || new Date().toISOString().split('T')[0]);
       setCompanyId(post.company_id || '');
-      setSkypeId(post.skype_id || '');
+      setEmployeeRole(employeeToEdit.role || meta.role || meta.employee_role || post.role || 'STAFF');
+      if (employeeToEdit.branch_id || meta.branch_id) {
+        setSelectedBranchId(employeeToEdit.branch_id || meta.branch_id);
+      }
       setTechnicalSkills(post.technical_skills || (Array.isArray(employeeToEdit.skills) ? employeeToEdit.skills.join(', ') : ''));
       setBaseSalary(employeeToEdit.salary ? String(employeeToEdit.salary) : (employeeToEdit.base_monthly_salary ? String(employeeToEdit.base_monthly_salary) : ''));
+      const rawStatus = employeeToEdit.status || (employeeToEdit.is_active === false ? 'Inactive' : 'Active');
+      setEmployeeStatus(rawStatus.toLowerCase() === 'inactive' ? 'Inactive' : 'Active');
 
       const bank = meta.bank_details || {};
       setAccountHolderName(bank.account_holder_name || '');
@@ -242,7 +303,8 @@ export function EmployeeEnrollmentModal({
       setJobDesignation('');
       setJoiningDate(new Date().toISOString().split('T')[0]);
       setCompanyId('');
-      setSkypeId('');
+      setEmployeeRole('STAFF');
+      setEmployeeStatus('Active');
       setTechnicalSkills('');
       setBaseSalary('');
       setAccountHolderName('');
@@ -592,15 +654,18 @@ export function EmployeeEnrollmentModal({
                     ${checkedIcon(gender === 'Male')} Male
                     &nbsp;&nbsp;
                     ${checkedIcon(gender === 'Female')} Female
+                    &nbsp;&nbsp;
+                    ${checkedIcon(gender === 'Other')} Other
                   </span>
                 </td>
                 <td style="border-right: none;">
                   <span class="label">Marital Status: </span>
                   <span style="margin-left: 4px; font-size: 9px; font-weight: 600;">
                     ${checkedIcon(maritalStatus === 'Married')} Married &nbsp;
-                    ${checkedIcon(maritalStatus === 'Single')} Single &nbsp;
+                    ${checkedIcon(maritalStatus === 'Single' || maritalStatus === 'Unmarried')} Single &nbsp;
                     ${checkedIcon(maritalStatus === 'Separated')} Separated &nbsp;
-                    ${checkedIcon(maritalStatus === 'Divorced')} Divorced
+                    ${checkedIcon(maritalStatus === 'Divorced')} Divorced &nbsp;
+                    ${checkedIcon(maritalStatus === 'Widowed')} Widowed
                   </span>
                 </td>
               </tr>
@@ -698,8 +763,8 @@ export function EmployeeEnrollmentModal({
                   <span class="val">${safeVal(companyId)}</span>
                 </td>
                 <td style="border-right: none;">
-                  <span class="label">Skype ID: </span>
-                  <span class="val">${safeVal(skypeId)}</span>
+                  <span class="label">Role: </span>
+                  <span class="val-bold" style="color: #6b21a8;">${safeVal(employeeRole)}</span>
                 </td>
               </tr>
               <tr style="background-color: #ffffff;">
@@ -955,7 +1020,9 @@ export function EmployeeEnrollmentModal({
       address: presentAddress || permanentAddress,
       emergency_contact: emergencyContactNo ? `${emergencyName} (${emergencyRelationship}): ${emergencyContactNo}` : undefined,
       skills: technicalSkills ? technicalSkills.split(',').map((s) => s.trim()).filter(Boolean) : [],
-      role: 'EMPLOYEE',
+      role: employeeRole || 'STAFF',
+      status: employeeStatus,
+      is_active: employeeStatus === 'Active',
       meta_data: {
         form_title: 'PERSONAL DETAILS FORM',
         employee_code: employeeCode,
@@ -984,7 +1051,7 @@ export function EmployeeEnrollmentModal({
           designation: jobDesignation,
           joining_date: joiningDate,
           company_id: companyId,
-          skype_id: skypeId,
+          role: employeeRole || 'STAFF',
           technical_skills: technicalSkills,
         },
         bank_details: {
@@ -1272,13 +1339,19 @@ export function EmployeeEnrollmentModal({
                       </div>
                       <div className="p-1.5 flex items-center gap-2">
                         <span className="font-bold text-blue-950 shrink-0">Caste:</span>
-                        <input
-                          type="text"
+                        <select
                           value={caste}
                           onChange={(e) => setCaste(e.target.value)}
-                          placeholder="Caste"
-                          className="w-full bg-transparent outline-none text-slate-900 px-1 py-0.5 focus:bg-blue-100/50"
-                        />
+                          className="w-full bg-transparent outline-none text-slate-900 px-1 py-0.5 focus:bg-blue-100/50 cursor-pointer font-medium"
+                        >
+                          <option value="">Select Caste / Category</option>
+                          {CASTE_OPTIONS.map((c) => (
+                            <option key={c.value} value={c.value}>{c.label}</option>
+                          ))}
+                          {caste && !CASTE_OPTIONS.some((c) => c.value === caste || c.label === caste) && (
+                            <option value={caste}>{caste}</option>
+                          )}
+                        </select>
                       </div>
                     </div>
 
@@ -1337,13 +1410,19 @@ export function EmployeeEnrollmentModal({
                 <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-blue-200">
                   <div className="p-1.5 flex items-center gap-2">
                     <span className="font-bold text-blue-950 shrink-0">Blood Group:</span>
-                    <input
-                      type="text"
+                    <select
                       value={bloodGroup}
-                      onChange={(e) => setBloodGroup(e.target.value.toUpperCase())}
-                      placeholder="E.g. O+, B+, A+"
-                      className="w-full bg-transparent outline-none font-bold text-rose-700 px-1 py-0.5 focus:bg-blue-100/50 uppercase"
-                    />
+                      onChange={(e) => setBloodGroup(e.target.value)}
+                      className="w-full bg-transparent outline-none font-bold text-rose-700 px-1 py-0.5 focus:bg-blue-100/50 cursor-pointer uppercase"
+                    >
+                      <option value="">Select Blood Group</option>
+                      {BLOOD_GROUPS.map((bg) => (
+                        <option key={bg} value={bg}>{bg}</option>
+                      ))}
+                      {bloodGroup && !BLOOD_GROUPS.includes(bloodGroup) && (
+                        <option value={bloodGroup}>{bloodGroup}</option>
+                      )}
+                    </select>
                   </div>
                   <div className="p-1.5 flex items-center gap-2">
                     <span className="font-bold text-blue-950 shrink-0">Religion:</span>
@@ -1361,42 +1440,36 @@ export function EmployeeEnrollmentModal({
                 <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-blue-200">
                   
                   {/* Gender */}
-                  <div className="p-1.5 flex items-center gap-4">
+                  <div className="p-1.5 flex items-center gap-2">
                     <span className="font-bold text-blue-950 shrink-0">Gender:</span>
-                    <label className="flex items-center gap-1.5 cursor-pointer font-semibold text-blue-950">
-                      <input
-                        type="checkbox"
-                        checked={gender === 'Male'}
-                        onChange={() => setGender(gender === 'Male' ? '' : 'Male')}
-                        className="w-4 h-4 rounded border-blue-400 text-blue-700 accent-blue-700"
-                      />
-                      <span>Male</span>
-                    </label>
-                    <label className="flex items-center gap-1.5 cursor-pointer font-semibold text-blue-950">
-                      <input
-                        type="checkbox"
-                        checked={gender === 'Female'}
-                        onChange={() => setGender(gender === 'Female' ? '' : 'Female')}
-                        className="w-4 h-4 rounded border-blue-400 text-blue-700 accent-blue-700"
-                      />
-                      <span>Female</span>
-                    </label>
+                    <select
+                      value={gender}
+                      onChange={(e) => setGender(e.target.value as any)}
+                      className="w-full bg-transparent outline-none text-blue-950 font-semibold px-1 py-0.5 focus:bg-blue-100/50 cursor-pointer"
+                    >
+                      <option value="">Select Gender</option>
+                      {GENDER_OPTIONS.map((g) => (
+                        <option key={g} value={g}>{g}</option>
+                      ))}
+                    </select>
                   </div>
 
                   {/* Marital Status */}
-                  <div className="p-1.5 flex items-center gap-2 flex-wrap">
+                  <div className="p-1.5 flex items-center gap-2">
                     <span className="font-bold text-blue-950 shrink-0">Marital Status:</span>
-                    {['Married', 'Single', 'Separated', 'Divorced', 'Widowed'].map((status) => (
-                      <label key={status} className="flex items-center gap-1 cursor-pointer text-[11px] font-medium text-slate-800 mr-1.5">
-                        <input
-                          type="checkbox"
-                          checked={maritalStatus === status}
-                          onChange={() => setMaritalStatus(maritalStatus === status ? '' : status)}
-                          className="w-3.5 h-3.5 rounded border-blue-400 accent-blue-700"
-                        />
-                        <span>{status}</span>
-                      </label>
-                    ))}
+                    <select
+                      value={maritalStatus}
+                      onChange={(e) => setMaritalStatus(e.target.value)}
+                      className="w-full bg-transparent outline-none text-slate-900 font-medium px-1 py-0.5 focus:bg-blue-100/50 cursor-pointer"
+                    >
+                      <option value="">Select Marital Status</option>
+                      {MARITAL_STATUS_OPTIONS.map((status) => (
+                        <option key={status} value={status}>{status}</option>
+                      ))}
+                      {maritalStatus && !MARITAL_STATUS_OPTIONS.includes(maritalStatus) && (
+                        <option value={maritalStatus}>{maritalStatus}</option>
+                      )}
+                    </select>
                   </div>
 
                 </div>
@@ -1560,14 +1633,14 @@ export function EmployeeEnrollmentModal({
                           const val = e.target.value;
                           setSelectedBranchId(val);
                           const found = branchesList.find((b) => b.id === val);
-                          setLocation(found ? (found.branch_name || found.name || '') : val);
+                          setLocation(found ? getOrgBranchLabel(found) : val);
                         }}
                         className="w-full bg-transparent outline-none text-purple-900 px-1 py-0.5 focus:bg-purple-100/50 font-bold cursor-pointer"
                       >
-                        <option value="">Select Organisation</option>
+                        <option value="">Select Organisation / Branch</option>
                         {branchesList.map((b) => (
                           <option key={b.id} value={b.id}>
-                            {b.branch_name || b.name}
+                            {getOrgBranchLabel(b)}
                           </option>
                         ))}
                       </select>
@@ -1576,7 +1649,7 @@ export function EmployeeEnrollmentModal({
                         type="text"
                         value={location}
                         onChange={(e) => setLocation(e.target.value)}
-                        placeholder="Branch / Campus Location"
+                        placeholder="Organisation / Branch"
                         className="w-full bg-transparent outline-none text-purple-900 px-1 py-0.5 focus:bg-purple-100/50 font-bold"
                       />
                     )}
@@ -1651,41 +1724,52 @@ export function EmployeeEnrollmentModal({
                   </div>
                 </div>
 
-                {/* Row 3: Company ID & Skype ID / Monthly Salary */}
+                {/* Row 3: Biometric / Machine ID & Role */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-purple-200">
                   <div className="p-1.5 flex items-center gap-2">
-                    <span className="font-bold text-purple-950 shrink-0">Company ID:</span>
+                    <span className="font-bold text-purple-950 shrink-0">Biometric / Machine ID:</span>
                     <input
                       type="text"
                       value={companyId}
                       onChange={(e) => setCompanyId(e.target.value)}
-                      placeholder="Staff / Bio ID"
+                      placeholder="e.g. Machine Punch ID / Staff ID"
                       className="w-full bg-transparent outline-none text-slate-900 px-1 py-0.5 focus:bg-purple-100/50"
                     />
                   </div>
                   <div className="p-1.5 flex items-center gap-2">
-                    <span className="font-bold text-purple-950 shrink-0">Skype ID:</span>
-                    <input
-                      type="text"
-                      value={skypeId}
-                      onChange={(e) => setSkypeId(e.target.value)}
-                      placeholder="Skype / Handle"
-                      className="w-full bg-transparent outline-none text-slate-900 px-1 py-0.5 focus:bg-purple-100/50"
-                    />
+                    <span className="font-bold text-purple-950 shrink-0">Role:</span>
+                    <select
+                      value={employeeRole}
+                      onChange={(e) => setEmployeeRole(e.target.value)}
+                      className="w-full bg-transparent outline-none text-purple-900 font-bold px-1 py-0.5 focus:bg-purple-100/50 cursor-pointer uppercase"
+                    >
+                      {EMPLOYEE_ROLES.map((r) => (
+                        <option key={r.value} value={r.value}>
+                          {r.label}
+                        </option>
+                      ))}
+                      {employeeRole && !EMPLOYEE_ROLES.some((r) => r.value === employeeRole) && (
+                        <option value={employeeRole}>{employeeRole}</option>
+                      )}
+                    </select>
                   </div>
                 </div>
 
-                {/* Row 4: Technical Skills & Salary */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-purple-200">
-                  <div className="sm:col-span-2 p-1.5 flex items-center gap-2">
-                    <span className="font-bold text-purple-950 shrink-0">Technical Skills:</span>
-                    <input
-                      type="text"
-                      value={technicalSkills}
-                      onChange={(e) => setTechnicalSkills(e.target.value)}
-                      placeholder="Certifications, Special Skills, Domains"
-                      className="w-full bg-transparent outline-none text-slate-900 px-1 py-0.5 focus:bg-purple-100/50"
-                    />
+                {/* Row 4: Status & Monthly Salary */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-purple-200">
+                  <div className="p-1.5 flex items-center gap-2">
+                    <span className="font-bold text-purple-950 shrink-0">Employment Status:</span>
+                    <select
+                      value={employeeStatus}
+                      onChange={(e) => setEmployeeStatus(e.target.value as 'Active' | 'Inactive')}
+                      className={cn(
+                        'w-full bg-transparent outline-none font-black px-1.5 py-0.5 rounded cursor-pointer',
+                        employeeStatus === 'Active' ? 'text-emerald-700 bg-emerald-50/50' : 'text-rose-700 bg-rose-50/50'
+                      )}
+                    >
+                      <option value="Active">Active (Currently Employed)</option>
+                      <option value="Inactive">Inactive (Relieved / On Hold)</option>
+                    </select>
                   </div>
                   <div className="p-1.5 flex items-center gap-2">
                     <span className="font-bold text-purple-950 shrink-0">Monthly Salary (₹):</span>
@@ -1697,6 +1781,18 @@ export function EmployeeEnrollmentModal({
                       className="w-full bg-transparent outline-none font-black text-emerald-700 px-1 py-0.5 focus:bg-purple-100/50"
                     />
                   </div>
+                </div>
+
+                {/* Row 5: Technical Skills */}
+                <div className="p-1.5 flex items-center gap-2">
+                  <span className="font-bold text-purple-950 shrink-0">Technical Skills:</span>
+                  <input
+                    type="text"
+                    value={technicalSkills}
+                    onChange={(e) => setTechnicalSkills(e.target.value)}
+                    placeholder="Certifications, Special Skills, Domains"
+                    className="w-full bg-transparent outline-none text-slate-900 px-1 py-0.5 focus:bg-purple-100/50"
+                  />
                 </div>
 
               </div>

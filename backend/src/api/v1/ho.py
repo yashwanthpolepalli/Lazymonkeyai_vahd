@@ -13,7 +13,7 @@ from src.database.session import get_db
 from src.models.user import User
 from src.models.settings import GymBranch
 from src.models.customer import Customer
-from src.models.hrms import Employee, EmployeeAttendance, Department
+from src.models.hrms import Employee, EmployeeAttendance, Department, LeaveRequest
 from src.models.biometric import BiometricLog
 from src.models.membership import Membership
 from src.models.super_admin import PlatformAuditLog
@@ -55,13 +55,24 @@ def get_ho_organizations(
 
         # Employee count
         employee_count = db.query(Employee).filter(
-            or_(Employee.branch_id == b.id, Employee.gym_branch == b.branch_name),
+            or_(
+                Employee.branch_id == b.id,
+                Employee.gym_branch == b.branch_name,
+                Employee.gym_branch.ilike(f"%{b.branch_name}%"),
+                Employee.gym_branch.ilike(f"%{b.gym_name}%") if b.gym_name else False,
+                Employee.owner_id == b.owner_id if b.owner_id else False
+            ),
             or_(func.upper(Employee.status) == "ACTIVE", Employee.status == "ACTIVE", Employee.status == "Active", Employee.status.is_(None))
         ).count()
 
         # Student count
         student_count = db.query(Customer).filter(
-            or_(Customer.branch_id == b.id, Customer.primary_gym_location.ilike(f"%{b.branch_name}%")),
+            or_(
+                Customer.branch_id == b.id,
+                Customer.primary_gym_location.ilike(f"%{b.branch_name}%"),
+                Customer.primary_gym_location.ilike(f"%{b.gym_name}%") if b.gym_name else False,
+                Customer.owner_id == b.owner_id if b.owner_id else False
+            ),
             or_(func.upper(Customer.status) == "ACTIVE", Customer.status == "ACTIVE", Customer.status == "Active", Customer.status.is_(None))
         ).count()
 
@@ -296,6 +307,208 @@ def onboard_owner(
     }
 
 
+@router.put("/organizations/{branch_id}/credentials")
+@router.post("/organizations/{branch_id}/credentials")
+def update_organization_credentials(
+    branch_id: str,
+    payload: Dict[str, Any] = Body(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Update owner credentials (name, email, phone, password) and organization details
+    for an organization under this Head Office.
+    """
+    ho_id = _get_ho_context(current_user)
+    branch = db.query(GymBranch).filter(GymBranch.id == branch_id).first()
+    if not branch:
+        raise HTTPException(status_code=404, detail="Organization not found")
+
+    if branch.ho_id != ho_id and branch.owner_id != current_user.id and current_user.role not in ["SUPER_ADMIN", "ADMIN"]:
+        raise HTTPException(status_code=403, detail="Permission denied to manage this organization")
+
+    owner_name = (payload.get("owner_name") or "").strip()
+    raw_email = (payload.get("owner_email") or "").strip().lower()
+    phone = (payload.get("phone") or "").strip()
+    password = (payload.get("password") or "").strip()
+    gym_name = (payload.get("gym_name") or "").strip()
+    branch_name = (payload.get("branch_name") or "").strip()
+    city = (payload.get("city") or "").strip()
+    address = (payload.get("address") or "").strip()
+
+    if gym_name:
+        branch.gym_name = gym_name
+        branch.name = gym_name
+    if branch_name:
+        branch.branch_name = branch_name
+    if city:
+        branch.city = city
+    if address:
+        branch.address = address
+
+    owner_user = None
+    if branch.owner_id:
+        owner_user = db.query(User).filter(User.id == branch.owner_id).first()
+
+    if not owner_user and raw_email:
+        owner_user = db.query(User).filter(func.lower(User.email) == raw_email).first()
+
+    if owner_user:
+        if owner_name:
+            owner_user.full_name = owner_name
+        if phone:
+            owner_user.phone = phone
+        if raw_email and raw_email != (owner_user.email or "").lower():
+            conflict = db.query(User).filter(func.lower(User.email) == raw_email, User.id != owner_user.id).first()
+            if conflict:
+                raise HTTPException(status_code=400, detail=f"Email '{raw_email}' is already in use by another account")
+            owner_user.email = raw_email
+        if password:
+            if len(password) < 6:
+                raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+            owner_user.password_hash = hash_password(password)
+        branch.owner_id = owner_user.id
+    elif raw_email and owner_name:
+        if not password or len(password) < 6:
+            raise HTTPException(status_code=400, detail="Password must be at least 6 characters for a new owner")
+        user_id = f"usr_owner_{uuid.uuid4().hex[:10]}"
+        owner_user = User(
+            id=user_id,
+            email=raw_email,
+            password_hash=hash_password(password),
+            full_name=owner_name,
+            phone=phone,
+            role="OWNER",
+            ho_id=ho_id,
+            branch_id=branch.id,
+            is_active=True,
+            is_tenant_owner=True
+        )
+        db.add(owner_user)
+        branch.owner_id = owner_user.id
+
+    db.commit()
+    db.refresh(branch)
+    if owner_user:
+        db.refresh(owner_user)
+
+    audit = PlatformAuditLog(
+        id=f"audit_{uuid.uuid4().hex[:12]}",
+        actor_name=current_user.full_name or current_user.email or current_user.id,
+        actor_email=current_user.email or "",
+        organization_id=branch.id,
+        organization_name=branch.gym_name,
+        action="HO_UPDATE_CREDENTIALS",
+        resource_type="owner_credentials",
+        resource_id=owner_user.id if owner_user else branch.id,
+        new_value={
+            "organization_id": branch.id,
+            "organization_name": branch.gym_name,
+            "owner_id": owner_user.id if owner_user else None,
+            "owner_name": owner_user.full_name if owner_user else None,
+            "owner_email": owner_user.email if owner_user else None,
+            "password_updated": bool(password)
+        }
+    )
+    db.add(audit)
+    db.commit()
+
+    return {
+        "success": True,
+        "message": f"Successfully updated credentials for '{branch.gym_name}'",
+        "owner": {
+            "id": owner_user.id if owner_user else None,
+            "name": owner_user.full_name if owner_user else None,
+            "email": owner_user.email if owner_user else None,
+            "phone": owner_user.phone if owner_user else None,
+            "role": owner_user.role if owner_user else None,
+        },
+        "organization": {
+            "id": branch.id,
+            "gym_name": branch.gym_name,
+            "branch_name": branch.branch_name,
+            "city": branch.city
+        }
+    }
+
+
+@router.delete("/organizations/{branch_id}")
+def delete_ho_organization(
+    branch_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Deletes an organization and cascades its branch data under the logged-in HO.
+    """
+    ho_id = _get_ho_context(current_user)
+    branch = db.query(GymBranch).filter(GymBranch.id == branch_id).first()
+    if not branch:
+        raise HTTPException(status_code=404, detail="Organization not found")
+
+    if branch.ho_id != ho_id and branch.owner_id != current_user.id and current_user.role not in ["SUPER_ADMIN", "ADMIN"]:
+        raise HTTPException(status_code=403, detail="Permission denied to delete this organization")
+
+    gym_name = branch.gym_name or branch.branch_name or "Organization"
+
+    from src.services.super_admin_service import SuperAdminService
+    SuperAdminService._cascade_delete_branch_data(db, branch)
+
+    audit = PlatformAuditLog(
+        id=f"audit_{uuid.uuid4().hex[:12]}",
+        actor_name=current_user.full_name or current_user.email or current_user.id,
+        actor_email=current_user.email or "",
+        organization_id=branch_id,
+        organization_name=gym_name,
+        action="HO_DELETE_ORGANIZATION",
+        resource_type="organization",
+        resource_id=branch_id,
+        new_value={"branch_id": branch_id, "gym_name": gym_name}
+    )
+    db.add(audit)
+    db.commit()
+
+    return {
+        "success": True,
+        "message": f"Organization '{gym_name}' and all associated records deleted successfully."
+    }
+
+
+@router.post("/organizations/bulk-delete")
+def bulk_delete_ho_organizations(
+    payload: Dict[str, Any] = Body(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Bulk delete selected organizations under the logged-in HO.
+    """
+    ho_id = _get_ho_context(current_user)
+    org_ids: List[str] = payload.get("organization_ids") or []
+    if not org_ids:
+        raise HTTPException(status_code=400, detail="No organization IDs provided for deletion")
+
+    from src.services.super_admin_service import SuperAdminService
+
+    deleted_names = []
+    for bid in org_ids:
+        branch = db.query(GymBranch).filter(GymBranch.id == bid).first()
+        if not branch:
+            continue
+        if branch.ho_id != ho_id and branch.owner_id != current_user.id and current_user.role not in ["SUPER_ADMIN", "ADMIN"]:
+            continue
+        b_name = branch.gym_name or branch.branch_name or bid
+        SuperAdminService._cascade_delete_branch_data(db, branch)
+        deleted_names.append(b_name)
+
+    db.commit()
+    return {
+        "success": True,
+        "message": f"Successfully deleted {len(deleted_names)} organization(s): {', '.join(deleted_names)}",
+        "deleted_count": len(deleted_names)
+    }
+
+
 @router.get("/dashboard")
 def get_ho_dashboard(
     organization_id: Optional[str] = Query(None),
@@ -319,20 +532,49 @@ def get_ho_dashboard(
     all_branch_ids = list(branch_map.keys())
 
     # 2. Determine target branches (single or all)
-    is_filtered = bool(organization_id and organization_id.lower() != "all" and organization_id in branch_map)
-    target_branch = branch_map.get(organization_id) if is_filtered else None
+    target_branch = None
+    if organization_id and organization_id.lower() != "all":
+        if organization_id in branch_map:
+            target_branch = branch_map[organization_id]
+        else:
+            for b in all_branches:
+                if (b.gym_name and b.gym_name.lower() == organization_id.lower()) or \
+                   (b.branch_name and b.branch_name.lower() == organization_id.lower()) or \
+                   (f"{b.gym_name} - {b.branch_name}".lower() == organization_id.lower()):
+                    target_branch = b
+                    break
+    is_filtered = bool(target_branch is not None)
     active_branch_ids = [target_branch.id] if target_branch else all_branch_ids
 
-    # 3. Employee Metrics
-    emp_query = db.query(Employee).filter(Employee.status == "ACTIVE")
+    # 3. Employee Metrics (Case-insensitive status check: ACTIVE, Active, active or None)
+    emp_status_filter = or_(
+        func.upper(Employee.status) == "ACTIVE",
+        Employee.status == "ACTIVE",
+        Employee.status == "Active",
+        Employee.status.is_(None)
+    )
+    emp_query = db.query(Employee).filter(emp_status_filter)
     if is_filtered and target_branch:
-        emp_query = emp_query.filter(or_(Employee.branch_id == target_branch.id, Employee.gym_branch == target_branch.branch_name))
+        emp_query = emp_query.filter(
+            or_(
+                Employee.branch_id == target_branch.id,
+                Employee.gym_branch == target_branch.branch_name,
+                Employee.gym_branch.ilike(f"%{target_branch.branch_name}%"),
+                Employee.gym_branch.ilike(f"%{target_branch.gym_name}%") if target_branch.gym_name else False,
+                Employee.owner_id == target_branch.owner_id if target_branch.owner_id else False
+            )
+        )
     else:
+        branch_names = [b.branch_name for b in all_branches if b.branch_name]
+        gym_names = [b.gym_name for b in all_branches if b.gym_name]
+        owner_ids = [b.owner_id for b in all_branches if b.owner_id]
         emp_query = emp_query.filter(
             or_(
                 Employee.ho_id == ho_id,
                 Employee.branch_id.in_(active_branch_ids),
-                Employee.gym_branch.in_([b.branch_name for b in all_branches])
+                Employee.gym_branch.in_(branch_names),
+                Employee.gym_branch.in_(gym_names),
+                Employee.owner_id.in_(owner_ids)
             )
         )
     total_employees = emp_query.count()
@@ -345,16 +587,34 @@ def get_ho_dashboard(
         if d_cnt > 0:
             dept_stats.append({"department": d.name, "count": d_cnt})
 
-    # 4. Student Metrics
-    stud_query = db.query(Customer).filter(Customer.status == "ACTIVE")
+    # 4. Student Metrics (Case-insensitive status check: ACTIVE, Active, active or None)
+    stud_status_filter = or_(
+        func.upper(Customer.status) == "ACTIVE",
+        Customer.status == "ACTIVE",
+        Customer.status == "Active",
+        Customer.status.is_(None)
+    )
+    stud_query = db.query(Customer).filter(stud_status_filter)
     if is_filtered and target_branch:
-        stud_query = stud_query.filter(or_(Customer.branch_id == target_branch.id, Customer.primary_gym_location.ilike(f"%{target_branch.branch_name}%")))
+        stud_query = stud_query.filter(
+            or_(
+                Customer.branch_id == target_branch.id,
+                Customer.primary_gym_location.ilike(f"%{target_branch.branch_name}%"),
+                Customer.primary_gym_location.ilike(f"%{target_branch.gym_name}%") if target_branch.gym_name else False,
+                Customer.owner_id == target_branch.owner_id if target_branch.owner_id else False
+            )
+        )
     else:
+        branch_names = [b.branch_name for b in all_branches if b.branch_name]
+        gym_names = [b.gym_name for b in all_branches if b.gym_name]
+        owner_ids = [b.owner_id for b in all_branches if b.owner_id]
         stud_query = stud_query.filter(
             or_(
                 Customer.ho_id == ho_id,
                 Customer.branch_id.in_(active_branch_ids),
-                Customer.primary_gym_location.in_([b.branch_name for b in all_branches])
+                Customer.primary_gym_location.in_(branch_names),
+                Customer.primary_gym_location.in_(gym_names),
+                Customer.owner_id.in_(owner_ids)
             )
         )
     total_students = stud_query.count()
@@ -396,7 +656,7 @@ def get_ho_dashboard(
         if not person_name and emp_id:
             emp = db.query(Employee).filter(Employee.id == emp_id).first()
             if emp:
-                person_name = emp.name or ""
+                person_name = f"{emp.first_name} {emp.last_name or ''}".strip()
                 role_label = role_label or emp.designation or emp.role or "Employee"
 
         if not person_name and emp_id:
@@ -427,12 +687,23 @@ def get_ho_dashboard(
     for b in all_branches:
         owner = db.query(User).filter(User.id == b.owner_id).first() if b.owner_id else None
         b_emp_count = db.query(Employee).filter(
-            or_(Employee.branch_id == b.id, Employee.gym_branch == b.branch_name),
-            Employee.status == "ACTIVE"
+            or_(
+                Employee.branch_id == b.id,
+                Employee.gym_branch == b.branch_name,
+                Employee.gym_branch.ilike(f"%{b.branch_name}%"),
+                Employee.gym_branch.ilike(f"%{b.gym_name}%") if b.gym_name else False,
+                Employee.owner_id == b.owner_id if b.owner_id else False
+            ),
+            emp_status_filter
         ).count()
         b_stud_count = db.query(Customer).filter(
-            or_(Customer.branch_id == b.id, Customer.primary_gym_location.ilike(f"%{b.branch_name}%")),
-            Customer.status == "ACTIVE"
+            or_(
+                Customer.branch_id == b.id,
+                Customer.primary_gym_location.ilike(f"%{b.branch_name}%"),
+                Customer.primary_gym_location.ilike(f"%{b.gym_name}%") if b.gym_name else False,
+                Customer.owner_id == b.owner_id if b.owner_id else False
+            ),
+            stud_status_filter
         ).count()
 
         organization_cards.append({
@@ -997,4 +1268,164 @@ def export_ho_attendance_pdf(
 </html>"""
 
     return HTMLResponse(content=html)
+
+
+@router.get("/organisations-matrix")
+@router.get("/organisations/matrix")
+def get_ho_organisations_matrix(
+    target_date: Optional[str] = Query(None, description="Date in YYYY-MM-DD format (defaults to today)"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Returns real-time organization-wise attendance and leave matrix for the logged-in HO:
+    - Organization Name
+    - Employees: Total EMP, Present, Leave, Leave Approvals, Absent
+    - Students: Total Students, Present, Leave, Leave Approvals, Absent
+    """
+    ho_id = _get_ho_context(current_user)
+
+    now = now_ist_naive()
+    parsed_date = now.date()
+    if target_date:
+        try:
+            parsed_date = datetime.strptime(target_date.strip(), "%Y-%m-%d").date()
+        except ValueError:
+            parsed_date = now.date()
+
+    day_start = datetime.combine(parsed_date, datetime.min.time())
+    day_end = datetime.combine(parsed_date, datetime.max.time())
+
+    branches = db.query(GymBranch).filter(
+        or_(GymBranch.ho_id == ho_id, GymBranch.owner_id == ho_id, GymBranch.owner_id == current_user.id),
+        GymBranch.is_active == True
+    ).order_by(GymBranch.created_at.asc()).all()
+
+    if not branches and current_user.role in ["SUPER_ADMIN", "ADMIN"]:
+        branches = db.query(GymBranch).filter(GymBranch.is_active == True).all()
+
+    matrix_rows = []
+    totals = {
+        "total_emp": 0,
+        "emp_present": 0,
+        "emp_leave": 0,
+        "emp_leave_approvals": 0,
+        "emp_absent": 0,
+        "total_students": 0,
+        "student_present": 0,
+        "student_leave": 0,
+        "student_leave_approvals": 0,
+        "student_absent": 0
+    }
+
+    for b in branches:
+        org_display_name = b.gym_name or b.branch_name or "Organization"
+
+        # 1. Employees in this branch
+        emps = db.query(Employee).filter(
+            or_(Employee.branch_id == b.id, Employee.gym_branch == b.branch_name),
+            or_(func.upper(Employee.status) == "ACTIVE", Employee.status == "ACTIVE", Employee.status == "Active", Employee.status.is_(None))
+        ).all()
+        emp_ids = [e.id for e in emps]
+        total_emp = len(emp_ids)
+
+        emp_present_set = set()
+        if emp_ids:
+            # Check EmployeeAttendance records
+            att_records = db.query(EmployeeAttendance.employee_id).filter(
+                EmployeeAttendance.date == parsed_date,
+                EmployeeAttendance.employee_id.in_(emp_ids),
+                func.upper(EmployeeAttendance.status).in_(["PRESENT", "HALF_DAY", "LATE", "P"])
+            ).all()
+            emp_present_set.update([a[0] for a in att_records if a[0]])
+
+            # Also check if BiometricLog has employee punch
+            bio_punches = db.query(BiometricLog).filter(
+                BiometricLog.timestamp >= day_start,
+                BiometricLog.timestamp <= day_end,
+                BiometricLog.user_role.in_(["TRAINER", "STAFF", "MANAGER", "EMPLOYEE"])
+            ).all()
+            for bp in bio_punches:
+                m_emp_id = (bp.meta_data or {}).get("employee_id") or bp.customer_id
+                if m_emp_id in emp_ids:
+                    emp_present_set.add(m_emp_id)
+
+        emp_present = len(emp_present_set)
+
+        emp_leave = 0
+        if emp_ids:
+            emp_leave = db.query(LeaveRequest).filter(
+                LeaveRequest.employee_id.in_(emp_ids),
+                func.upper(LeaveRequest.status) == "APPROVED",
+                LeaveRequest.start_date <= parsed_date,
+                LeaveRequest.end_date >= parsed_date
+            ).count()
+
+        emp_leave_approvals = 0
+        if emp_ids:
+            emp_leave_approvals = db.query(LeaveRequest).filter(
+                LeaveRequest.employee_id.in_(emp_ids),
+                func.upper(LeaveRequest.status).in_(["PENDING", "REQUESTED"])
+            ).count()
+
+        emp_absent = max(0, total_emp - emp_present - emp_leave)
+
+        # 2. Students in this branch
+        students = db.query(Customer).filter(
+            or_(Customer.branch_id == b.id, Customer.primary_gym_location.ilike(f"%{b.branch_name}%")),
+            or_(func.upper(Customer.status) == "ACTIVE", Customer.status == "ACTIVE", Customer.status == "Active", Customer.status.is_(None))
+        ).all()
+        student_ids = [s.id for s in students]
+        total_students = len(student_ids)
+
+        student_present_set = set()
+        if student_ids:
+            bio_stud_punches = db.query(BiometricLog.customer_id).filter(
+                BiometricLog.timestamp >= day_start,
+                BiometricLog.timestamp <= day_end,
+                BiometricLog.customer_id.in_(student_ids)
+            ).all()
+            student_present_set.update([p[0] for p in bio_stud_punches if p[0]])
+
+        student_present = len(student_present_set)
+        student_leave = 0
+        student_leave_approvals = 0
+        student_absent = max(0, total_students - student_present - student_leave)
+
+        row = {
+            "id": b.id,
+            "org_name": org_display_name,
+            "branch_name": b.branch_name,
+            "city": b.city or "",
+            "total_emp": total_emp,
+            "emp_present": emp_present,
+            "emp_leave": emp_leave,
+            "emp_leave_approvals": emp_leave_approvals,
+            "emp_absent": emp_absent,
+            "total_students": total_students,
+            "student_present": student_present,
+            "student_leave": student_leave,
+            "student_leave_approvals": student_leave_approvals,
+            "student_absent": student_absent,
+        }
+        matrix_rows.append(row)
+
+        totals["total_emp"] += total_emp
+        totals["emp_present"] += emp_present
+        totals["emp_leave"] += emp_leave
+        totals["emp_leave_approvals"] += emp_leave_approvals
+        totals["emp_absent"] += emp_absent
+        totals["total_students"] += total_students
+        totals["student_present"] += student_present
+        totals["student_leave"] += student_leave
+        totals["student_leave_approvals"] += student_leave_approvals
+        totals["student_absent"] += student_absent
+
+    return {
+        "date": parsed_date.strftime("%Y-%m-%d"),
+        "date_formatted": parsed_date.strftime("%A, %B %d, %Y"),
+        "total_organizations": len(matrix_rows),
+        "matrix": matrix_rows,
+        "totals": totals
+    }
 

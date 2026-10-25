@@ -270,12 +270,23 @@ class CustomerService:
                 # Sub-filter by specific organisation if selected by HO
                 if branch_id or branch:
                     target_b = branch_id or branch
-                    query = query.filter(
-                        or_(
-                            Customer.branch_id == target_b,
-                            Customer.primary_gym_location.ilike(f"%{target_b}%")
-                        )
-                    )
+                    if str(target_b).lower() not in ["all", ""]:
+                        matched_b = db.query(GymBranch).filter(
+                            or_(GymBranch.id == target_b, GymBranch.branch_name == target_b, GymBranch.gym_name == target_b)
+                        ).first()
+                        b_filter_ids = [target_b]
+                        b_filter_names = [target_b]
+                        if matched_b:
+                            b_filter_ids.append(matched_b.id)
+                            if matched_b.branch_name:
+                                b_filter_names.append(matched_b.branch_name)
+                            if matched_b.gym_name:
+                                b_filter_names.append(matched_b.gym_name)
+
+                        conds = [Customer.branch_id.in_(b_filter_ids)]
+                        for nm in b_filter_names:
+                            conds.append(Customer.primary_gym_location.ilike(f"%{nm}%"))
+                        query = query.filter(or_(*conds))
             elif user_role in ["OWNER"]:
                 # Gym Owner views customers strictly belonging to their owner_id or owned branches
                 owner_branches = db.query(GymBranch).filter(

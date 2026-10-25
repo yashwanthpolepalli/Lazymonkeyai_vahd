@@ -56,41 +56,12 @@ export const STUDENT_TEMPLATE_HEADERS = [
 ];
 
 export function downloadStudentSampleXlsx() {
-  const currentYear = new Date().getFullYear();
-  const acadYear = `${currentYear} - ${currentYear + 1}`;
-
-  // Clean guidance row showing required formats and empty template rows for direct input
-  const guidanceRow = [
-    '[Enter Full Name]',
-    '[name@domain.com]',
-    '[10-Digit Mobile]',
-    '[Male / Female]',
-    '[Enter Degree / Course Name]',
-    '[English / Telugu / Hindi]',
-    '[STU-001]',
-    '[Father Full Name]',
-    '[Mother Full Name]',
-    '[YYYY-MM-DD]',
-    '[Age]',
-    '[General / OBC / SC / ST]',
-    '[Sub Caste]',
-    '[Door / Flat No]',
-    '[Street Name]',
-    '[City / Village]',
-    '[Mandal / Taluk]',
-    '[District Name]',
-    '[State Name]',
-    '[12-Digit Aadhar]',
-    acadYear,
-    'ACTIVE',
-  ];
-
-  const ws = XLSX.utils.aoa_to_sheet([STUDENT_TEMPLATE_HEADERS, guidanceRow]);
+  const ws = XLSX.utils.aoa_to_sheet([STUDENT_TEMPLATE_HEADERS]);
   ws['!cols'] = [
-    { wch: 22 }, // Name
-    { wch: 26 }, // Email
-    { wch: 18 }, // Phone
-    { wch: 14 }, // Gender
+    { wch: 24 }, // Name
+    { wch: 24 }, // Email
+    { wch: 16 }, // Phone
+    { wch: 12 }, // Gender
     { wch: 28 }, // Course
     { wch: 20 }, // Medium
     { wch: 16 }, // Roll
@@ -117,37 +88,10 @@ export function downloadStudentSampleXlsx() {
 }
 
 export function downloadStudentSampleCsv() {
-  const currentYear = new Date().getFullYear();
-  const acadYear = `${currentYear} - ${currentYear + 1}`;
-
-  const rows = [
-    {
-      'Student Full Name *': '[Enter Full Name]',
-      'Email *': '[name@domain.com]',
-      'Phone / Mobile *': '[10-Digit Mobile]',
-      'Gender': '[Male / Female]',
-      'Degree / Course Program *': '[Enter Degree / Course Name]',
-      'Medium of Instruction *': '[English / Telugu / Hindi]',
-      'Student / Roll No': '[STU-001]',
-      'Father Name': '[Father Full Name]',
-      'Mother Name': '[Mother Full Name]',
-      'Date of Birth (YYYY-MM-DD)': '[YYYY-MM-DD]',
-      'Age': '[Age]',
-      'Caste': '[General / OBC / SC / ST]',
-      'Sub Caste': '[Sub Caste]',
-      'Permanent Door No': '[Door / Flat No]',
-      'Permanent Street': '[Street Name]',
-      'Permanent Village / City': '[City / Village]',
-      'Permanent Mandal': '[Mandal / Taluk]',
-      'Permanent District': '[District Name]',
-      'Permanent State': '[State Name]',
-      'Aadhar Number': '[12-Digit Aadhar]',
-      'Academic Year': acadYear,
-      'Status': 'ACTIVE',
-    },
-  ];
-
-  const csv = Papa.unparse(rows);
+  const csv = Papa.unparse({
+    fields: STUDENT_TEMPLATE_HEADERS,
+    data: [],
+  });
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
@@ -276,25 +220,7 @@ export const EMPLOYEE_TEMPLATE_HEADERS = [
 ];
 
 export function downloadEmployeeSampleXlsx() {
-  const guidanceRow = [
-    '[Enter Full Name]',
-    '[employee@domain.com]',
-    '[10-Digit Mobile]',
-    '[Enter Designation / Role]',
-    '[Enter Department Name]',
-    '[Male / Female]',
-    '[EMP-001]',
-    '[Full-Time / Part-Time / Contract]',
-    '[YYYY-MM-DD]',
-    '[Monthly Salary]',
-    '[Branch / Campus Name]',
-    '[Specialization / Domain Skills]',
-    '[12-Digit Aadhar]',
-    '[PAN Number]',
-    'Active',
-  ];
-
-  const ws = XLSX.utils.aoa_to_sheet([EMPLOYEE_TEMPLATE_HEADERS, guidanceRow]);
+  const ws = XLSX.utils.aoa_to_sheet([EMPLOYEE_TEMPLATE_HEADERS]);
   ws['!cols'] = [
     { wch: 22 }, // Name
     { wch: 26 }, // Email
@@ -319,27 +245,10 @@ export function downloadEmployeeSampleXlsx() {
 }
 
 export function downloadEmployeeSampleCsv() {
-  const rows = [
-    {
-      'Full Name *': '[Enter Full Name]',
-      'Email *': '[employee@domain.com]',
-      'Phone / Mobile *': '[10-Digit Mobile]',
-      'Designation *': '[Enter Designation / Role]',
-      'Department *': '[Enter Department Name]',
-      'Gender': '[Male / Female]',
-      'Employee Code': '[EMP-001]',
-      'Employment Type': '[Full-Time / Part-Time / Contract]',
-      'Date of Joining (YYYY-MM-DD)': '[YYYY-MM-DD]',
-      'Base Salary (Monthly)': '[Monthly Salary]',
-      'Branch / Location': '[Branch / Campus Name]',
-      'Specialization / Skills': '[Specialization / Domain Skills]',
-      'Aadhar Number': '[12-Digit Aadhar]',
-      'PAN Number': '[PAN Number]',
-      'Status': 'Active',
-    },
-  ];
-
-  const csv = Papa.unparse(rows);
+  const csv = Papa.unparse({
+    fields: EMPLOYEE_TEMPLATE_HEADERS,
+    data: [],
+  });
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
@@ -538,14 +447,14 @@ export function normalizeEmployeeImportRow(raw: any): EmployeeImportRow {
   const department = findVal('department', 'dept', 'division');
   const gender = findVal('gender', 'sex');
   const code = findVal('employeecode', 'code', 'empid', 'staffid');
-  const employmentType = findVal('employmenttype', 'type', 'contracttype') || 'Full-Time';
+  const employmentType = findVal('employmenttype', 'type', 'contracttype');
   const joinedDate = findVal('dateofjoining', 'joiningdate', 'joineddate', 'doj');
   const salary = findVal('basesalary', 'salary', 'monthlysalary', 'ctc', 'pay');
   const branch = findVal('branchlocation', 'branch', 'location', 'campus');
   const specialization = findVal('specializationskills', 'specialization', 'skills', 'skill');
   const aadharNumber = findVal('aadharnumber', 'aadhar', 'aadharno');
   const panNumber = findVal('pannumber', 'pan', 'panno');
-  const status = findVal('status') || 'Active';
+  const status = findVal('status');
 
   return {
     fullName,
@@ -562,6 +471,410 @@ export function normalizeEmployeeImportRow(raw: any): EmployeeImportRow {
     specialization,
     aadharNumber,
     panNumber,
+    status,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 3. DEPARTMENT TEMPLATES & EXPORT UTILITIES
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface DepartmentImportRow {
+  name: string;
+  code: string;
+  headName?: string;
+  description?: string;
+  status?: string;
+}
+
+export const DEPARTMENT_TEMPLATE_HEADERS = [
+  'Department Name *',
+  'Department Code *',
+  'Head of Department',
+  'Description',
+  'Status',
+];
+
+export function downloadDepartmentSampleXlsx() {
+  const ws = XLSX.utils.aoa_to_sheet([DEPARTMENT_TEMPLATE_HEADERS]);
+  ws['!cols'] = [
+    { wch: 30 }, // Name
+    { wch: 18 }, // Code
+    { wch: 24 }, // Head
+    { wch: 36 }, // Description
+    { wch: 14 }, // Status
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Departments_Template');
+  XLSX.writeFile(wb, 'departments_bulk_import_template.xlsx');
+}
+
+export function downloadDepartmentSampleCsv() {
+  const csv = Papa.unparse({
+    fields: DEPARTMENT_TEMPLATE_HEADERS,
+    data: [],
+  });
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', 'departments_bulk_import_template.csv');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+export function exportDepartmentsToXlsx(departments: any[], filename = 'departments_export.xlsx') {
+  const rows = departments.map((dept, idx) => ({
+    '#': idx + 1,
+    'Department Name': dept.name || '',
+    'Department Code': dept.code || '',
+    'Head of Department': dept.head_name || '',
+    'Description': dept.description || '',
+    'Mapped Employees': dept.employee_count || 0,
+    'Status': dept.is_active !== false ? 'Active' : 'Inactive',
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Departments');
+  XLSX.writeFile(wb, filename);
+}
+
+export function exportDepartmentsToCsv(departments: any[], filename = 'departments_export.csv') {
+  const rows = departments.map((dept, idx) => ({
+    '#': idx + 1,
+    'Department Name': dept.name || '',
+    'Department Code': dept.code || '',
+    'Head of Department': dept.head_name || '',
+    'Description': dept.description || '',
+    'Mapped Employees': dept.employee_count || 0,
+    'Status': dept.is_active !== false ? 'Active' : 'Inactive',
+  }));
+
+  const csv = Papa.unparse(rows);
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', filename);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+export function normalizeDepartmentImportRow(raw: any): DepartmentImportRow {
+  const findVal = (...keys: string[]) => {
+    for (const k of keys) {
+      for (const rawKey of Object.keys(raw)) {
+        if (rawKey.toLowerCase().replace(/[^a-z0-9]/g, '') === k.toLowerCase().replace(/[^a-z0-9]/g, '')) {
+          const v = raw[rawKey];
+          if (v !== undefined && v !== null) {
+            const s = String(v).trim();
+            if (s.length > 0 && !s.startsWith('[')) {
+              return s;
+            }
+          }
+        }
+      }
+    }
+    return '';
+  };
+
+  const name = findVal('departmentname', 'name', 'department', 'dept');
+  const code = findVal('departmentcode', 'code', 'deptcode');
+  const headName = findVal('headofdepartment', 'headname', 'head', 'hod', 'manager');
+  const description = findVal('description', 'desc', 'details', 'about');
+  const status = findVal('status');
+
+  return {
+    name,
+    code,
+    headName,
+    description,
+    status,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 4. DESIGNATION TEMPLATES & EXPORT UTILITIES
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface DesignationImportRow {
+  title: string;
+  department: string;
+  level?: string;
+  description?: string;
+}
+
+export const DESIGNATION_TEMPLATE_HEADERS = [
+  'Designation Title *',
+  'Department *',
+  'Career Level',
+  'Description',
+];
+
+export function downloadDesignationSampleXlsx() {
+  const ws = XLSX.utils.aoa_to_sheet([DESIGNATION_TEMPLATE_HEADERS]);
+  ws['!cols'] = [
+    { wch: 30 }, // Title
+    { wch: 26 }, // Department
+    { wch: 18 }, // Level
+    { wch: 40 }, // Description
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Designations_Template');
+  XLSX.writeFile(wb, 'designations_bulk_import_template.xlsx');
+}
+
+export function downloadDesignationSampleCsv() {
+  const csv = Papa.unparse({
+    fields: DESIGNATION_TEMPLATE_HEADERS,
+    data: [],
+  });
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', 'designations_bulk_import_template.csv');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+export function exportDesignationsToXlsx(designations: any[], filename = 'designations_export.xlsx') {
+  const rows = designations.map((desg, idx) => ({
+    '#': idx + 1,
+    'Designation Title': desg.title || '',
+    'Department': desg.department || '',
+    'Career Level': desg.level || '',
+    'Description': desg.description || '',
+    'Mapped Employees': desg.employee_count || 0,
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Designations');
+  XLSX.writeFile(wb, filename);
+}
+
+export function exportDesignationsToCsv(designations: any[], filename = 'designations_export.csv') {
+  const rows = designations.map((desg, idx) => ({
+    '#': idx + 1,
+    'Designation Title': desg.title || '',
+    'Department': desg.department || '',
+    'Career Level': desg.level || '',
+    'Description': desg.description || '',
+    'Mapped Employees': desg.employee_count || 0,
+  }));
+
+  const csv = Papa.unparse(rows);
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', filename);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+export function normalizeDesignationImportRow(raw: any): DesignationImportRow {
+  const findVal = (...keys: string[]) => {
+    for (const k of keys) {
+      for (const rawKey of Object.keys(raw)) {
+        if (rawKey.toLowerCase().replace(/[^a-z0-9]/g, '') === k.toLowerCase().replace(/[^a-z0-9]/g, '')) {
+          const v = raw[rawKey];
+          if (v !== undefined && v !== null) {
+            const s = String(v).trim();
+            if (s.length > 0 && !s.startsWith('[')) {
+              return s;
+            }
+          }
+        }
+      }
+    }
+    return '';
+  };
+
+  const title = findVal('designationtitle', 'title', 'designation', 'role', 'jobtitle');
+  const department = findVal('department', 'dept', 'division');
+  const level = findVal('careerlevel', 'level', 'grade');
+  const description = findVal('description', 'desc', 'details', 'about');
+
+  return {
+    title,
+    department,
+    level,
+    description,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 5. COURSE & ACADEMIC PROGRAM TEMPLATES & EXPORT UTILITIES
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface CourseImportRow {
+  name: string;
+  category?: string;
+  degreeType?: string;
+  durationYears?: string;
+  durationMonths?: string;
+  price: string;
+  language?: string;
+  description?: string;
+  status?: string;
+}
+
+export const COURSE_TEMPLATE_HEADERS = [
+  'Course / Program Name *',
+  'Category / Department *',
+  'Classification / Degree Type',
+  'Duration in Years (e.g. 4, 3, 2, 1)',
+  'Duration in Months (e.g. 6, 12, 24, 36, 48)',
+  'Tuition / Program Fee (₹) *',
+  'Medium of Instruction',
+  'Description',
+  'Status',
+];
+
+export function downloadCourseSampleXlsx() {
+  const guidanceRow = [
+    'B.Tech Computer Science & Engineering',
+    'Computer Science & Engineering',
+    'Undergraduate Degree',
+    '4',
+    '48',
+    '125000',
+    'English',
+    'Four-year comprehensive engineering program with AI & Software specialization.',
+    'Active',
+  ];
+
+  const ws = XLSX.utils.aoa_to_sheet([COURSE_TEMPLATE_HEADERS, guidanceRow]);
+  ws['!cols'] = [
+    { wch: 36 }, // Course Name
+    { wch: 30 }, // Category/Dept
+    { wch: 26 }, // Classification
+    { wch: 30 }, // Duration Years
+    { wch: 32 }, // Duration Months
+    { wch: 24 }, // Fee
+    { wch: 22 }, // Medium
+    { wch: 50 }, // Description
+    { wch: 14 }, // Status
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Courses_Template');
+  XLSX.writeFile(wb, 'courses_bulk_import_template.xlsx');
+}
+
+export function downloadCourseSampleCsv() {
+  const guidanceRow = [
+    {
+      'Course / Program Name *': 'B.Tech Computer Science & Engineering',
+      'Category / Department *': 'Computer Science & Engineering',
+      'Classification / Degree Type': 'Undergraduate Degree',
+      'Duration in Years (e.g. 4, 3, 2, 1)': '4',
+      'Duration in Months (e.g. 6, 12, 24, 36, 48)': '48',
+      'Tuition / Program Fee (₹) *': '125000',
+      'Medium of Instruction': 'English',
+      'Description': 'Four-year comprehensive engineering program with AI & Software specialization.',
+      'Status': 'Active',
+    },
+  ];
+
+  const csv = Papa.unparse(guidanceRow);
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', 'courses_bulk_import_template.csv');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+export function exportCoursesToXlsx(courses: any[], filename = 'courses_export.xlsx') {
+  const rows = courses.map((c, idx) => ({
+    '#': idx + 1,
+    'Course / Program Name': c.name || '',
+    'Category / Branch': Array.isArray(c.categories) ? c.categories.join(', ') : (c.category || c.department || ''),
+    'Classification': c.classification || c.degree_type || '',
+    'Duration': c.durationText || c.period || (c.duration_days ? `${Math.round(c.duration_days / 365)} Years` : '1 Year'),
+    'Tuition Fee (₹)': c.price || 0,
+    'Features / Description': Array.isArray(c.features) ? c.features.join(', ') : (c.description || ''),
+    'Status': c.is_active === false ? 'Inactive' : 'Active',
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Courses_Fee_Structure');
+  XLSX.writeFile(wb, filename);
+}
+
+export function exportCoursesToCsv(courses: any[], filename = 'courses_export.csv') {
+  const rows = courses.map((c, idx) => ({
+    '#': idx + 1,
+    'Course / Program Name': c.name || '',
+    'Category / Branch': Array.isArray(c.categories) ? c.categories.join(', ') : (c.category || c.department || ''),
+    'Classification': c.classification || c.degree_type || '',
+    'Duration': c.durationText || c.period || (c.duration_days ? `${Math.round(c.duration_days / 365)} Years` : '1 Year'),
+    'Tuition Fee (₹)': c.price || 0,
+    'Features / Description': Array.isArray(c.features) ? c.features.join(', ') : (c.description || ''),
+    'Status': c.is_active === false ? 'Inactive' : 'Active',
+  }));
+
+  const csv = Papa.unparse(rows);
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', filename);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+export function normalizeCourseImportRow(raw: any): CourseImportRow {
+  const findVal = (...keys: string[]) => {
+    for (const k of keys) {
+      for (const rawKey of Object.keys(raw)) {
+        if (rawKey.toLowerCase().replace(/[^a-z0-9]/g, '') === k.toLowerCase().replace(/[^a-z0-9]/g, '')) {
+          const v = raw[rawKey];
+          if (v !== undefined && v !== null) {
+            const s = String(v).trim();
+            if (s.length > 0 && !s.startsWith('[')) {
+              return s;
+            }
+          }
+        }
+      }
+    }
+    return '';
+  };
+
+  const name = findVal('courseprogramname', 'coursename', 'programname', 'name', 'title');
+  const category = findVal('categorydepartment', 'category', 'department', 'branch');
+  const degreeType = findVal('classificationdegreetype', 'classification', 'degreetype', 'type');
+  const durationYears = findVal('durationinyears', 'durationyears', 'years', 'year');
+  const durationMonths = findVal('durationinmonths', 'durationmonths', 'months', 'month');
+  const price = findVal('tuitionprogramfee', 'fee', 'price', 'amount', 'cost');
+  const language = findVal('mediumofinstruction', 'medium', 'language', 'lang');
+  const description = findVal('description', 'desc', 'features', 'details');
+  const status = findVal('status') || 'Active';
+
+  return {
+    name,
+    category,
+    degreeType,
+    durationYears,
+    durationMonths,
+    price,
+    language,
+    description,
     status,
   };
 }

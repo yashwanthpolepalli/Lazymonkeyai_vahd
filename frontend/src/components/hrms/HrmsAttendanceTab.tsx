@@ -354,7 +354,7 @@ export function HrmsAttendanceTab({ attendanceLogs }: HrmsAttendanceTabProps) {
                 <div>No attendance check-ins found for {roleFilter === 'ALL' ? 'selected criteria' : roleFilter === 'CUSTOMER' ? 'customers' : 'trainers/staff'} today.</div>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="flex flex-col gap-2.5">
                 {filteredCheckins.map((r, i) => {
                   const roleBadge = getRoleBadge(r.user_role);
                   const methodBadge = getMethodBadge(r.event_type);
@@ -365,11 +365,11 @@ export function HrmsAttendanceTab({ attendanceLogs }: HrmsAttendanceTabProps) {
                   return (
                     <div
                       key={`${r.id || r.customer_id}-${i}`}
-                      className="p-3.5 rounded-2xl border border-navy-100 bg-white hover:bg-navy-50/50 transition-all shadow-xs flex items-center justify-between gap-3"
+                      className="p-3.5 px-4 rounded-xl border border-navy-100 bg-white hover:bg-navy-50/50 transition-all shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3"
                     >
-                      <div className="flex items-center gap-3 min-w-0">
+                      <div className="flex items-center gap-3.5 min-w-0">
                         <div className={cn(
-                          'w-10 h-10 rounded-2xl flex items-center justify-center text-white text-xs font-black shrink-0 shadow-xs',
+                          'w-10 h-10 rounded-xl flex items-center justify-center text-white text-xs font-black shrink-0 shadow-xs',
                           (r.user_role || '').toUpperCase().includes('TRAINER')
                             ? 'bg-gradient-to-br from-purple-500 to-indigo-600'
                             : (r.user_role || '').toUpperCase().includes('OWNER')
@@ -382,35 +382,37 @@ export function HrmsAttendanceTab({ attendanceLogs }: HrmsAttendanceTabProps) {
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
-                            <span className="text-xs font-black text-navy-900 truncate">{displayName}</span>
+                            <span className="text-sm font-bold text-navy-900 truncate">{displayName}</span>
                             <span className={cn('px-2 py-0.5 rounded-full text-[9px] font-extrabold border', roleBadge.color)}>
                               {roleBadge.label}
                             </span>
                           </div>
-                          <div className="text-[10px] text-navy-500 truncate flex items-center gap-1.5 mt-0.5 font-medium">
+                          <div className="text-[11px] text-navy-500 truncate flex items-center gap-1.5 mt-0.5 font-medium">
                             <span>{r.device_name || 'Main Gate Access'}</span>
-                            {r.confidence_score && (
-                              <span className="text-purple-600 font-bold">({Math.round(r.confidence_score * 100)}% Match)</span>
+                            {r.confidence_score != null && (
+                              <span className="text-purple-600 font-bold">
+                                ({Math.round(r.confidence_score * (r.confidence_score <= 1 ? 100 : 1))}% Match)
+                              </span>
                             )}
                           </div>
                         </div>
                       </div>
 
-                      {/* Method & Time */}
-                      <div className="flex flex-col items-end gap-1 shrink-0">
+                      {/* Method, Direction & Time in single row */}
+                      <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
                         <div className="flex items-center gap-1.5">
-                          <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border', methodBadge.color)}>
-                            <Icon name={methodBadge.icon} size={11} />
+                          <span className={cn('inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold border', methodBadge.color)}>
+                            <Icon name={methodBadge.icon} size={12} />
                             <span>{methodBadge.label}</span>
                           </span>
                           <span className={cn(
-                            'px-2 py-0.5 rounded text-[10px] font-extrabold border',
+                            'px-2.5 py-1 rounded-md text-[11px] font-extrabold border',
                             isCheckOut ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
                           )}>
                             {isCheckOut ? 'OUT' : 'IN'}
                           </span>
                         </div>
-                        <span className="text-[11px] font-mono font-bold text-navy-700">
+                        <span className="text-xs font-mono font-bold text-navy-700 min-w-[70px] text-right">
                           {formatTimestamp(r.timestamp)}
                         </span>
                       </div>

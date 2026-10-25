@@ -111,26 +111,38 @@ export function Topbar() {
         if (user?.role === 'ho') {
           const res = await apiClient.get<any>('/ho/organizations');
           if (res?.organizations) {
-            setTopbarOrgs(
-              res.organizations.map((o: any) => ({
-                id: o.id,
-                name: o.gym_name,
-                branch: o.branch_name,
-                city: o.city,
-              }))
-            );
+            const seen = new Set<string>();
+            const unique: typeof topbarOrgs = [];
+            for (const o of res.organizations) {
+              if (o && o.id && !seen.has(o.id)) {
+                seen.add(o.id);
+                unique.push({
+                  id: o.id,
+                  name: o.gym_name || o.name || 'Organization',
+                  branch: o.branch_name || o.branch || '',
+                  city: o.city || '',
+                });
+              }
+            }
+            setTopbarOrgs(unique);
           }
         } else if (user?.role === 'owner') {
           const res = await apiClient.get<any[]>('/settings/branches');
           if (Array.isArray(res)) {
-            setTopbarOrgs(
-              res.map((b: any) => ({
-                id: b.id,
-                name: b.gym_name,
-                branch: b.branch_name,
-                city: b.city,
-              }))
-            );
+            const seen = new Set<string>();
+            const unique: typeof topbarOrgs = [];
+            for (const b of res) {
+              if (b && b.id && !seen.has(b.id)) {
+                seen.add(b.id);
+                unique.push({
+                  id: b.id,
+                  name: b.gym_name || b.name || 'Branch',
+                  branch: b.branch_name || b.branch || '',
+                  city: b.city || '',
+                });
+              }
+            }
+            setTopbarOrgs(unique);
           }
         }
       } catch (e) {}
@@ -219,14 +231,19 @@ export function Topbar() {
               className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-800 hover:bg-slate-100 cursor-pointer transition-colors"
             >
               <Icon name="map-pin" size={14} className="text-purple-600" />
-              <span className="truncate max-w-[180px]">
-                {selectedTopbarOrg === 'all'
-                  ? user?.role === 'ho'
-                    ? 'All Organizations (HQ)'
-                    : user?.gymName || 'All Branches'
-                  : topbarOrgs.find((o) => o.id === selectedTopbarOrg)?.name ||
-                    user?.gymName ||
-                    'Main Branch'}
+              <span className="truncate max-w-[200px]">
+                {(() => {
+                  if (selectedTopbarOrg === 'all') {
+                    return user?.role === 'ho' ? 'All Organizations (HQ)' : user?.gymName || 'All Branches';
+                  }
+                  const match = topbarOrgs.find((o) => o.id === selectedTopbarOrg);
+                  if (match) {
+                    return match.branch && match.branch.toLowerCase() !== match.name.toLowerCase()
+                      ? `${match.name} - ${match.branch}`
+                      : match.name;
+                  }
+                  return user?.gymName || 'Selected Organization';
+                })()}
               </span>
               <Icon name="chevron-down" size={12} className="text-slate-400 shrink-0" />
             </button>

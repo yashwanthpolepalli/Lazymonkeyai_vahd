@@ -530,7 +530,14 @@ class StudentAttendanceReportService:
         Dispatches monthly attendance reports to all enrolled students' respective mapped parent mobile numbers.
         Executed automatically at month-end or triggered on-demand by the owner.
         """
-        query = db.query(Customer).filter(Customer.status == "ACTIVE")
+        query = db.query(Customer).filter(
+            or_(
+                func.upper(Customer.status) == "ACTIVE",
+                Customer.status == "ACTIVE",
+                Customer.status == "Active",
+                Customer.status.is_(None)
+            )
+        )
         if branch_id:
             query = query.filter(Customer.branch_id == branch_id)
 

@@ -8,26 +8,21 @@ export interface NavItem {
 
 export const navConfig: Record<Role, NavItem[]> = {
   super_admin: [
-    { label: 'Overview', path: '/super-admin', icon: 'layout-dashboard' },
-    { label: 'Organizations', path: '/super-admin/gyms', icon: 'building-2' },
-    { label: 'SaaS Plans', path: '/super-admin/plans', icon: 'credit-card' },
-    { label: 'Feature Controls', path: '/super-admin/features', icon: 'toggle-left' },
-    { label: 'AI Platform', path: '/super-admin/ai-engine', icon: 'sparkles' },
-    { label: 'Devices', path: '/super-admin/devices', icon: 'monitor' },
+    { label: 'Dashboard', path: '/super-admin', icon: 'layout-dashboard' },
+    { label: 'Head Office', path: '/super-admin/gyms', icon: 'building-2' },
     { label: 'Audit Logs', path: '/super-admin/audit-logs', icon: 'shield-check' },
     { label: 'Support Desk', path: '/super-admin/support', icon: 'message-square' },
     { label: 'Settings', path: '/super-admin/settings', icon: 'settings' },
   ],
   ho: [
-    { label: 'Overview', path: '/ho', icon: 'layout-dashboard' },
+    { label: 'Dashboard', path: '/ho', icon: 'layout-dashboard' },
     { label: 'HRMS & Students', path: '/ho/hrms', icon: 'users' },
     { label: 'Organisations', path: '/ho/organisations', icon: 'building-2' },
-    { label: 'Reports', path: '/ho/reports', icon: 'file-bar-chart' },
+    { label: 'Settings', path: '/ho/settings', icon: 'settings' },
   ],
   owner: [
-    { label: 'Executive Overview', path: '/owner', icon: 'layout-grid' },
+    { label: 'Dashboard', path: '/owner', icon: 'layout-dashboard' },
     { label: 'HRMS & Students', path: '/owner/hrms', icon: 'users' },
-    { label: 'Reports', path: '/owner/reports', icon: 'file-bar-chart' },
     { label: 'Settings', path: '/owner/settings', icon: 'settings' },
   ],
   employee: [

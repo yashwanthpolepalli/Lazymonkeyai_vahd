@@ -818,7 +818,12 @@ class DashboardService:
     @staticmethod
     def get_super_admin_kpis(db: Session) -> List[Dict[str, Any]]:
         """Retrieve dynamic platform super admin KPIs directly from database count & sum queries."""
-        total_gyms = db.query(func.count(GymBranch.id)).scalar() or 0
+        total_hos = db.query(func.count(User.id)).filter(
+            or_(
+                func.upper(User.role) == "HEAD_OFFICE",
+                func.upper(User.role) == "HO"
+            )
+        ).scalar() or 0
         total_members = db.query(func.count(Customer.id)).scalar() or 0
         total_rev = float(db.query(func.sum(Membership.paid_amount)).scalar() or 0.0)
         devices_cnt = db.query(func.count(BiometricDevice.id)).scalar() or 0
@@ -826,10 +831,10 @@ class DashboardService:
         rev_formatted = f"₹{total_rev/100000:.1f}L" if total_rev >= 100000 else f"₹{total_rev:,.0f}"
 
         return [
-            {"title": "Total Gyms", "value": total_gyms, "trend": "Active Branches", "icon": "building"},
-            {"title": "Total Members", "value": total_members, "trend": "Registered", "icon": "users"},
-            {"title": "Platform Revenue", "value": rev_formatted, "trend": "Total Collected", "icon": "trending-up"},
-            {"title": "Active Devices", "value": devices_cnt, "trend": "Online", "icon": "cpu"}
+            {"id": "total_gyms", "title": "Total Head Offices", "label": "Total Head Offices", "value": total_hos, "trend": "Active HOs", "icon": "building", "change": 0, "status": "up", "accent": "brand", "sparkline": [1, 2, 3, 4, 5]},
+            {"id": "total_members", "title": "Total Members", "label": "Total Members", "value": total_members, "trend": "Registered", "icon": "users", "change": 0, "status": "up", "accent": "success", "sparkline": [10, 15, 20, 25]},
+            {"id": "platform_revenue", "title": "Platform Revenue", "label": "Platform Revenue", "value": rev_formatted, "trend": "Total Collected", "icon": "trending-up", "change": 0, "status": "up", "accent": "ai", "sparkline": [5, 10, 15, 20]},
+            {"id": "active_devices", "title": "Active Devices", "label": "Active Devices", "value": devices_cnt, "trend": "Online", "icon": "cpu", "change": 0, "status": "neutral", "accent": "warning", "sparkline": [1, 1, 1, 1]}
         ]
 
     @staticmethod

@@ -304,7 +304,9 @@ def get_monthly_processing(
     db: Session = Depends(get_db)
 ):
     """Retrieve day-wise monthly payroll processing grid with attendance sync."""
-    employees = db.query(Employee).filter(Employee.status == "Active").all()
+    employees = db.query(Employee).filter(
+        or_(func.upper(Employee.status) == "ACTIVE", Employee.status == "ACTIVE", Employee.status == "Active", Employee.status.is_(None))
+    ).all()
     if department and department != "All Departments":
         employees = [e for e in employees if e.department == department]
 
@@ -416,7 +418,9 @@ def disburse_batch_payroll(payload: Dict[str, Any], db: Session = Depends(get_db
     employee_ids = payload.get("employee_ids", [])
     payment_method = payload.get("payment_method")
 
-    employees = db.query(Employee).filter(Employee.status == "Active").all()
+    employees = db.query(Employee).filter(
+        or_(func.upper(Employee.status) == "ACTIVE", Employee.status == "ACTIVE", Employee.status == "Active", Employee.status.is_(None))
+    ).all()
     if employee_ids:
         employees = [e for e in employees if e.id in employee_ids]
 
@@ -541,7 +545,9 @@ def get_statutory_pf_report(
     db: Session = Depends(get_db)
 ):
     """Get EPFO monthly statutory PF contribution report with ECR metrics."""
-    employees = db.query(Employee).filter(Employee.status == "Active").all()
+    employees = db.query(Employee).filter(
+        or_(func.upper(Employee.status) == "ACTIVE", Employee.status == "ACTIVE", Employee.status == "Active", Employee.status.is_(None))
+    ).all()
     structs = {s.employee_id: s for s in db.query(SalaryStructure).all()}
 
     rows = []
@@ -596,7 +602,9 @@ def get_statutory_esi_report(
     db: Session = Depends(get_db)
 ):
     """Get ESIC monthly contribution report (Employee 0.75% / Employer 3.25%)."""
-    employees = db.query(Employee).filter(Employee.status == "Active").all()
+    employees = db.query(Employee).filter(
+        or_(func.upper(Employee.status) == "ACTIVE", Employee.status == "ACTIVE", Employee.status == "Active", Employee.status.is_(None))
+    ).all()
     structs = {s.employee_id: s for s in db.query(SalaryStructure).all()}
 
     rows = []
@@ -649,7 +657,9 @@ def get_statutory_tds_report(
     db: Session = Depends(get_db)
 ):
     """Get Section 192 TDS annual tax projection and quarterly deduction matrix."""
-    employees = db.query(Employee).filter(Employee.status == "Active").all()
+    employees = db.query(Employee).filter(
+        or_(func.upper(Employee.status) == "ACTIVE", Employee.status == "ACTIVE", Employee.status == "Active", Employee.status.is_(None))
+    ).all()
     structs = {s.employee_id: s for s in db.query(SalaryStructure).all()}
 
     rows = []

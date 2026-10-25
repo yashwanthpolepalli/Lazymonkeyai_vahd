@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import { Badge } from '@/components/ui/Badge';
 import { api, apiClient } from '@/services/api';
@@ -146,17 +146,57 @@ interface TrainerRowData {
   nativeDistrict?: string;
   permanentAddress?: string;
   temporaryAddress?: string;
+  branch_id?: string;
+  gym_branch?: string;
+  branch?: string;
+  owner_id?: string;
+  ho_id?: string;
 }
 
 export function HrmsTrainersTab() {
   const [members, setMembers] = useState<Member[]>([]);
   const [trainers, setTrainers] = useState<Array<Partial<Trainer> & { email?: string; full_name?: string; specialty?: string; base_monthly_salary?: number; pt_session_rate?: number; is_active?: boolean; created_at?: string; assigned_customers_count?: number }>>([]);
-  const [branchesList, setBranchesList] = useState<Array<{ id: string; branch_name: string; name?: string }>>([]);
-  const [selectedBranch, setSelectedBranch] = useState<string>('All');
+  const [branchesList, setBranchesList] = useState<Array<{ id: string; branch_name: string; name?: string; gym_name?: string }>>([]);
+  const [selectedBranch, setSelectedBranch] = useState<string>(() => {
+    return localStorage.getItem('vahd_selected_org_id') || 'all';
+  });
+  const [selectedSubBranch, setSelectedSubBranch] = useState<string>('all');
   const [loading, setLoading] = useState(true);
   const [enrollOpen, setEnrollOpen] = useState(false);
   const [emailReportsOpen, setEmailReportsOpen] = useState(false);
   const [editingTrainer, setEditingTrainer] = useState<any>(null);
+
+  // Sub-branches belonging specifically to the selected organisation
+  const subBranches = useMemo(() => {
+    if (!selectedBranch || selectedBranch.toLowerCase() === 'all') {
+      return [];
+    }
+    const targetBranch = branchesList.find(
+      (b) => b.id === selectedBranch || b.branch_name === selectedBranch || (b as any).gym_name === selectedBranch
+    );
+    if (!targetBranch) return [];
+    const orgGymName = ((targetBranch as any).gym_name || targetBranch.branch_name || '').toLowerCase();
+    const orgOwnerId = (targetBranch as any).owner_id;
+    return branchesList.filter(
+      (b) =>
+        (orgGymName && (b as any).gym_name?.toLowerCase() === orgGymName) ||
+        (orgOwnerId && (b as any).owner_id === orgOwnerId)
+    );
+  }, [branchesList, selectedBranch]);
+
+  // Sync selected branch with Topbar changes
+  useEffect(() => {
+    const handleOrgChange = (e: any) => {
+      const orgId = e?.detail?.id ?? localStorage.getItem('vahd_selected_org_id') ?? 'all';
+      setSelectedBranch(orgId);
+      setSelectedSubBranch('all');
+      setCurrentPage(1);
+    };
+    window.addEventListener('vahd:org_changed', handleOrgChange);
+    return () => {
+      window.removeEventListener('vahd:org_changed', handleOrgChange);
+    };
+  }, []);
   const [viewMode, setViewMode] = useState<'table' | 'grid'>(() => {
     return (localStorage.getItem('hrms_trainers_view_mode') as 'table' | 'grid') || 'table';
   });
@@ -420,9 +460,17 @@ export function HrmsTrainersTab() {
     const empNo = (t as any).employee_code || (t as any).emp_no || (t as any).code || '';
     const designation = (t as any).job_designation || (t as any).designation || specialization || '';
     const role = (t as any).role || (t as any).department || '';
-    const matchedBranch = branchesList.find(b => b.id === (t as any).branch_id);
+    const matchedBranch = branchesList.find(b =>
+      b.id === (t as any).branch_id ||
+      (b.branch_name && (t as any).gym_branch && b.branch_name.toLowerCase() === String((t as any).gym_branch).toLowerCase()) ||
+      ((b as any).gym_name && (t as any).gym_branch && String((b as any).gym_name).toLowerCase() === String((t as any).gym_branch).toLowerCase())
+    );
+    const branchId = (t as any).branch_id || matchedBranch?.id || '';
+    const gymBranch = (t as any).gym_branch || (t as any).primary_gym_location || matchedBranch?.branch_name || '';
+    const ownerId = (t as any).owner_id || (matchedBranch as any)?.owner_id || '';
+    const hoId = (t as any).ho_id || (matchedBranch as any)?.ho_id || '';
     const district = (t as any).district || (t as any).location || (t as any).city || (matchedBranch as any)?.city || '';
-    const placeOfWork = (t as any).gym_branch || (t as any).primary_gym_location || (t as any).branch_name || (t as any).organisation || (t as any).organisation_name || (t as any).place_of_work || (t as any).work_location || (t as any).branch || matchedBranch?.branch_name || matchedBranch?.name || (branchesList.length === 1 ? branchesList[0].branch_name : '—');
+    const placeOfWork = gymBranch || (t as any).branch_name || (t as any).organisation || (t as any).organisation_name || (t as any).place_of_work || (t as any).work_location || (t as any).branch || matchedBranch?.branch_name || (matchedBranch as any)?.gym_name || matchedBranch?.name || (branchesList.length === 1 ? branchesList[0].branch_name : '—');
 
     const assignedMembers = members.filter(
       (m) =>
@@ -519,6 +567,11 @@ export function HrmsTrainersTab() {
 
     return {
       id: t.id || `tr_${idx}`,
+      branch_id: branchId,
+      gym_branch: gymBranch,
+      branch: gymBranch,
+      owner_id: ownerId,
+      ho_id: hoId,
       empNo,
       name,
       email,
@@ -571,12 +624,50 @@ export function HrmsTrainersTab() {
   });
 
   const displayTrainers = allDisplayTrainers.filter((t) => {
-    const matchesBranch =
-      selectedBranch === 'All' ||
-      (t as any).branch_id === selectedBranch ||
-      (t as any).gym_branch === selectedBranch ||
-      t.placeOfWork === selectedBranch;
-    if (!matchesBranch) return false;
+    const isAll = !selectedBranch || selectedBranch.toLowerCase() === 'all';
+    if (!isAll) {
+      const targetBranch = branchesList.find(
+        (b) => b.id === selectedBranch || b.branch_name === selectedBranch || (b as any).gym_name === selectedBranch
+      );
+
+      const matchesBranchId = Boolean(
+        t.branch_id && (t.branch_id === selectedBranch || (targetBranch && t.branch_id === targetBranch.id))
+      );
+
+      const targetNames = [
+        selectedBranch.toLowerCase(),
+        targetBranch?.branch_name?.toLowerCase(),
+        (targetBranch as any)?.gym_name?.toLowerCase(),
+        targetBranch?.name?.toLowerCase(),
+      ].filter(Boolean) as string[];
+
+      const tNames = [
+        t.gym_branch?.toLowerCase(),
+        t.branch?.toLowerCase(),
+        t.placeOfWork?.toLowerCase(),
+        (t as any).primary_gym_location?.toLowerCase(),
+      ].filter(Boolean) as string[];
+
+      const matchesName = targetNames.some((tn) =>
+        tNames.some((en) => en === tn || en.includes(tn) || tn.includes(en))
+      );
+
+      const matchesOwner = Boolean(
+        targetBranch && (targetBranch as any).owner_id && t.owner_id === (targetBranch as any).owner_id
+      );
+
+      if (!matchesBranchId && !matchesName && !matchesOwner) {
+        return false;
+      }
+    }
+
+    if (selectedSubBranch && selectedSubBranch !== 'all') {
+      const matchesSub =
+        t.branch_id === selectedSubBranch ||
+        t.placeOfWork === selectedSubBranch ||
+        t.gym_branch === selectedSubBranch;
+      if (!matchesSub) return false;
+    }
 
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
@@ -587,18 +678,18 @@ export function HrmsTrainersTab() {
     );
   });
 
-  const totalTrainersCount = allDisplayTrainers.length;
-  const activeTrainersCount = allDisplayTrainers.filter((t) => t.status === 'Active').length;
-  const presentEmployeesCount = allDisplayTrainers.filter(
+  const totalTrainersCount = displayTrainers.length;
+  const activeTrainersCount = displayTrainers.filter((t) => t.status === 'Active').length;
+  const presentEmployeesCount = displayTrainers.filter(
     (t) => t.todayPunch.status === 'Present' || t.todayPunch.status === 'Early Logout'
   ).length;
 
-  const ratedTrainers = allDisplayTrainers.filter((t) => t.rating > 0);
+  const ratedTrainers = displayTrainers.filter((t) => t.rating > 0);
   const avgRating = ratedTrainers.length > 0
     ? (ratedTrainers.reduce((acc, t) => acc + t.rating, 0) / ratedTrainers.length).toFixed(1)
     : '0.0';
 
-  const totalPayoutVal = allDisplayTrainers.reduce((acc, t) => acc + (t.base_monthly_salary || 0), 0);
+  const totalPayoutVal = displayTrainers.reduce((acc, t) => acc + (t.base_monthly_salary || 0), 0);
   const formattedPayout = totalPayoutVal > 0
     ? `₹${totalPayoutVal.toLocaleString('en-IN')}`
     : '₹0';
@@ -664,6 +755,25 @@ export function HrmsTrainersTab() {
     setSelectedTrainerIds((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
     );
+  };
+
+  const handleUpdateEmployeeStatus = async (empId: string, newStatus: string) => {
+    const isAct = newStatus === 'Active';
+    // Optimistic UI update
+    setTrainers((prev) =>
+      prev.map((tr) => (tr.id === empId ? { ...tr, status: newStatus, is_active: isAct } : tr))
+    );
+    try {
+      try {
+        await apiClient.put(`/hrms/employees/${empId}`, { status: newStatus, is_active: isAct });
+      } catch {
+        await apiClient.put(`/trainers/${empId.replace('emp_', '')}`, { status: newStatus, is_active: isAct });
+      }
+      fetchTrainersData();
+    } catch (e) {
+      console.error('Failed to update employee status', e);
+      fetchTrainersData();
+    }
   };
 
   return (
@@ -798,22 +908,22 @@ export function HrmsTrainersTab() {
             />
           </div>
 
-          {/* Organisation Filter Dropdown */}
-          {branchesList.length > 0 && (
+          {/* Sub-Branch Filter Dropdown: Only shown if the selected organisation has multiple sub-branches */}
+          {subBranches.length > 1 && (
             <div className="relative min-w-[170px] sm:w-52 shrink-0">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-indigo-600">
-                <Icon name="building-2" size={14} />
+                <Icon name="map-pin" size={14} />
               </div>
               <select
-                value={selectedBranch}
+                value={selectedSubBranch}
                 onChange={(e) => {
-                  setSelectedBranch(e.target.value);
+                  setSelectedSubBranch(e.target.value);
                   setCurrentPage(1);
                 }}
                 className="w-full pl-9 pr-8 py-2 bg-navy-50/60 border border-navy-100 rounded-xl text-xs font-bold text-navy-900 focus:outline-none focus:border-purple-500 appearance-none cursor-pointer shadow-xs truncate"
               >
-                <option value="All">All Organisations ({branchesList.length})</option>
-                {branchesList.map((b) => (
+                <option value="all">All Branches ({subBranches.length})</option>
+                {subBranches.map((b) => (
                   <option key={b.id} value={b.id}>
                     {b.branch_name || b.name}
                   </option>
@@ -915,7 +1025,19 @@ export function HrmsTrainersTab() {
                     </div>
                     <div>
                       <div className="text-[10px] text-navy-400 font-bold uppercase">Status</div>
-                      <div className="text-[10px] font-bold text-emerald-600">{t.status}</div>
+                      <select
+                        value={t.status}
+                        onChange={(e) => handleUpdateEmployeeStatus(t.id, e.target.value)}
+                        className={cn(
+                          'mt-0.5 px-2 py-0.5 rounded-md text-[10px] font-extrabold border cursor-pointer outline-none transition',
+                          t.status === 'Active'
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            : 'bg-rose-50 text-rose-600 border-rose-200'
+                        )}
+                      >
+                        <option value="Active">Active</option>
+                        <option value="Inactive">Inactive</option>
+                      </select>
                     </div>
                   </div>
 
@@ -979,7 +1101,7 @@ export function HrmsTrainersTab() {
                         className="w-4 h-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
                       />
                     </th>
-                    {visibleColumns.empNo && <th className="py-3.5 px-4 font-bold tracking-wider">EMP NO.</th>}
+                    {visibleColumns.empNo && <th className="py-3.5 px-4 font-bold tracking-wider" title="Unique Employee Serial / Registration Code">EMP CODE / NO.</th>}
                     {visibleColumns.name && <th className="py-3.5 px-4 font-bold tracking-wider">NAME</th>}
                     {visibleColumns.mobile && <th className="py-3.5 px-4 font-bold tracking-wider">MOBILE</th>}
                     {visibleColumns.email && <th className="py-3.5 px-4 font-bold tracking-wider">EMAIL</th>}
@@ -1235,14 +1357,19 @@ export function HrmsTrainersTab() {
                         {/* STATUS */}
                         {visibleColumns.status && (
                           <td className="py-3.5 px-4 whitespace-nowrap">
-                            <span className={cn(
-                              'px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border inline-block whitespace-nowrap',
-                              t.status === 'Active'
-                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200/60'
-                                : 'bg-navy-100 text-navy-500 border-navy-200'
-                            )}>
-                              {t.status}
-                            </span>
+                            <select
+                              value={t.status}
+                              onChange={(e) => handleUpdateEmployeeStatus(t.id, e.target.value)}
+                              className={cn(
+                                'px-2.5 py-1 rounded-full text-[10px] font-extrabold border inline-block cursor-pointer outline-none transition shadow-2xs',
+                                t.status === 'Active'
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100 focus:ring-2 focus:ring-emerald-500/20'
+                                  : 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100 focus:ring-2 focus:ring-rose-500/20'
+                              )}
+                            >
+                              <option value="Active">Active</option>
+                              <option value="Inactive">Inactive</option>
+                            </select>
                           </td>
                         )}
 
@@ -1415,7 +1542,7 @@ export function HrmsTrainersTab() {
       <EmployeeAttendanceReportsModal
         isOpen={emailReportsOpen}
         onClose={() => setEmailReportsOpen(false)}
-        branchId={selectedBranch !== 'All' ? selectedBranch : undefined}
+        branchId={selectedBranch && selectedBranch.toLowerCase() !== 'all' ? selectedBranch : undefined}
       />
 
       {/* 6. Renewal Modal */}

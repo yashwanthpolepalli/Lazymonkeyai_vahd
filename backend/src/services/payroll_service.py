@@ -99,16 +99,36 @@ class PayrollService:
                 else:
                     query = query.filter(TrainerProfile.id == "__none__")
 
-                if branch_id and branch_id != "All":
+                if branch_id and str(branch_id).lower() not in ["all", ""]:
+                    matched_b = db.query(GymBranch).filter(
+                        or_(GymBranch.id == branch_id, GymBranch.branch_name == branch_id, GymBranch.gym_name == branch_id)
+                    ).first()
+                    b_ids = [branch_id]
+                    b_names = [branch_id]
+                    if matched_b:
+                        b_ids.append(matched_b.id)
+                        if matched_b.branch_name:
+                            b_names.append(matched_b.branch_name)
+                        if matched_b.gym_name:
+                            b_names.append(matched_b.gym_name)
+
+                    emp_recs = db.query(Employee).filter(
+                        or_(Employee.branch_id.in_(b_ids), Employee.gym_branch.in_(b_names))
+                    ).all()
+                    emp_tr_ids = [e.id.replace("emp_", "") for e in emp_recs] + [e.id for e in emp_recs]
+                    emp_emails = [e.email for e in emp_recs if e.email]
+
                     query = query.filter(
                         or_(
-                            TrainerProfile.primary_gym_location.ilike(f"%{branch_id}%"),
+                            TrainerProfile.primary_gym_location.in_(b_names),
+                            TrainerProfile.id.in_(emp_tr_ids),
+                            TrainerProfile.email.in_(emp_emails),
                             TrainerProfile.user_id.in_(
-                                db.query(User.id).filter(User.branch_id == branch_id)
+                                db.query(User.id).filter(User.branch_id.in_(b_ids))
                             )
                         )
                     )
-            elif branch_id and branch_id != "All":
+            elif branch_id and str(branch_id).lower() not in ["all", ""]:
                 query = query.filter(TrainerProfile.primary_gym_location.ilike(f"%{branch_id}%"))
 
         trainers = query.order_by(TrainerProfile.created_at.desc()).all()

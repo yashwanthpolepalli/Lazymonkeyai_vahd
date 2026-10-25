@@ -89,6 +89,7 @@ export function HrmsPage() {
 
     const handleOrgChanged = () => {
       checkBranchGeofenceStatus();
+      fetchData();
     };
     window.addEventListener('vahd:org_changed', handleOrgChanged);
     window.addEventListener('vahd:branch_geofence_toggled', handleOrgChanged);

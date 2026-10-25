@@ -21,6 +21,63 @@ export interface CourseOptionItem {
   department?: string;
 }
 
+export const DEFAULT_LANGUAGES = [
+  'English',
+  'Telugu',
+  'Hindi',
+  'Urdu',
+  'Tamil',
+  'Kannada',
+  'Marathi',
+  'Bengali',
+  'Sanskrit',
+];
+
+export const DEFAULT_COURSES: CourseOptionItem[] = [
+  { name: 'B.Tech Computer Science and Engineering', period: '4 Years' },
+  { name: 'B.Tech Artificial Intelligence & Data Science', period: '4 Years' },
+  { name: 'B.Tech Electronics & Communication Engineering', period: '4 Years' },
+  { name: 'B.Tech Mechanical Engineering', period: '4 Years' },
+  { name: 'B.Tech Civil Engineering', period: '4 Years' },
+  { name: 'B.Tech Electrical & Electronics Engineering', period: '4 Years' },
+  { name: 'B.Sc Computer Science', period: '3 Years' },
+  { name: 'B.Sc Data Science & Analytics', period: '3 Years' },
+  { name: 'B.Com Computer Applications', period: '3 Years' },
+  { name: 'BBA Business Administration', period: '3 Years' },
+  { name: 'MCA Master of Computer Applications', period: '2 Years' },
+  { name: 'MBA Business Administration', period: '2 Years' },
+  { name: 'Diploma in Polytechnic Engineering', period: '3 Years' },
+];
+
+export const DEFAULT_STUDENT_DEPARTMENTS = [
+  'Computer Science & Engineering',
+  'Electronics & Electrical Engineering',
+  'Mechanical & Civil Engineering',
+  'Science & Mathematics',
+  'Commerce & Banking',
+  'Management Studies',
+  'Humanities & Social Sciences',
+  'Polytechnic & Vocational Education',
+  'Physical Education & Sports Sciences',
+  'Other',
+];
+
+export const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+export const CASTE_OPTIONS = [
+  { value: 'OC', label: 'OC / General' },
+  { value: 'BC-A', label: 'BC-A' },
+  { value: 'BC-B', label: 'BC-B' },
+  { value: 'BC-C', label: 'BC-C' },
+  { value: 'BC-D', label: 'BC-D' },
+  { value: 'BC-E', label: 'BC-E' },
+  { value: 'SC', label: 'SC (Scheduled Caste)' },
+  { value: 'ST', label: 'ST (Scheduled Tribe)' },
+  { value: 'EWS', label: 'EWS (Economically Weaker Section)' },
+  { value: 'Other', label: 'Other' },
+];
+export const MARITAL_STATUS_OPTIONS = ['Single / Unmarried', 'Married', 'Divorced', 'Widowed', 'Separated'];
+export const GENDER_OPTIONS = ['Male', 'Female', 'Other'];
+
 export function StudentEnrollmentModal({
   isOpen,
   open,
@@ -45,7 +102,9 @@ export function StudentEnrollmentModal({
   const [medium, setMedium] = useState<string>('');
   const [customMedium, setCustomMedium] = useState<string>('');
   const [isCustomMedium, setIsCustomMedium] = useState<boolean>(false);
+  const [department, setDepartment] = useState<string>('');
   const [academicYear, setAcademicYear] = useState<string>(defaultAcademicYear);
+  const [status, setStatus] = useState<string>('ACTIVE');
 
   // Form Fields
   const [fullName, setFullName] = useState('');
@@ -116,6 +175,7 @@ export function StudentEnrollmentModal({
   const [gender, setGender] = useState<string>('Male');
   const [caste, setCaste] = useState<string>('');
   const [subCaste, setSubCaste] = useState('');
+  const [bloodGroup, setBloodGroup] = useState<string>('');
   const [motherTongue, setMotherTongue] = useState('');
   const [nationality, setNationality] = useState('');
   const [maritalStatus, setMaritalStatus] = useState<string>('');
@@ -244,6 +304,7 @@ export function StudentEnrollmentModal({
       }
 
       setAcademicYear(meta.academic_year || defaultAcademicYear);
+      setStatus((studentToEdit.status || 'ACTIVE').toUpperCase());
       setFullName(studentToEdit.full_name || studentToEdit.name || '');
       setFatherName(meta.father_name || studentToEdit.father_name || '');
       setMotherName(meta.mother_name || studentToEdit.mother_name || '');
@@ -271,9 +332,11 @@ export function StudentEnrollmentModal({
 
       setDob(meta.dob || '');
       setAge(String(studentToEdit.age || meta.age || ''));
-      setGender(studentToEdit.gender ? (studentToEdit.gender.toLowerCase() === 'female' ? 'Female' : 'Male') : (meta.gender || 'Male'));
+      setGender(studentToEdit.gender ? (studentToEdit.gender.toLowerCase() === 'female' ? 'Female' : studentToEdit.gender.toLowerCase() === 'other' ? 'Other' : 'Male') : (meta.gender || 'Male'));
       setCaste(meta.caste || '');
       setSubCaste(meta.sub_caste || '');
+      setBloodGroup(meta.blood_group || meta.bloodGroup || '');
+      setDepartment(meta.department || '');
       setMotherTongue(meta.mother_tongue || '');
       setNationality(meta.nationality || '');
       setMaritalStatus(meta.marital_status || '');
@@ -300,6 +363,9 @@ export function StudentEnrollmentModal({
       setMedium('');
       setCustomMedium('');
       setIsCustomMedium(false);
+      setDepartment('');
+      setStatus('ACTIVE');
+      setBloodGroup('');
       setAcademicYear(defaultAcademicYear);
       setFullName('');
       setFatherName('');
@@ -506,7 +572,7 @@ export function StudentEnrollmentModal({
       profile_image: photoBase64 || undefined,
       face_image: photoBase64 || undefined,
       face_registered: !!photoBase64,
-      status: 'ACTIVE',
+      status: status || 'ACTIVE',
       meta_data: {
         admission_type: 'DEGREE_ADMISSION',
         college_name: collegeName.toUpperCase().trim(),
@@ -517,6 +583,7 @@ export function StudentEnrollmentModal({
         organisation_name: branchesList.find((b) => b.id === selectedBranchId)?.branch_name || branchesList.find((b) => b.id === selectedBranchId)?.name || undefined,
         course: selectedFinalCourse,
         medium: selectedFinalMedium,
+        department: department || undefined,
         email: validEmail,
         father_name: fatherName.toUpperCase(),
         mother_name: motherName.toUpperCase(),
@@ -546,6 +613,7 @@ export function StudentEnrollmentModal({
         gender,
         caste,
         sub_caste: subCaste,
+        blood_group: bloodGroup,
         mother_tongue: motherTongue,
         nationality,
         marital_status: maritalStatus,
@@ -617,6 +685,8 @@ export function StudentEnrollmentModal({
       identificationMark2,
       parentOccupation,
       annualIncome,
+      bloodGroup,
+      department,
       aadharNumber,
       photoBase64,
     });
@@ -795,24 +865,62 @@ export function StudentEnrollmentModal({
                     </select>
                   </div>
                 )}
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400">Academic Year:</span>
-                  <input
-                    type="text"
-                    value={academicYear}
-                    onChange={(e) => setAcademicYear(e.target.value)}
-                    placeholder="Academic Year (e.g. 2026 - 2027)"
-                    className="w-32 px-2.5 py-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-xs font-bold text-center text-blue-700 dark:text-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400">Academic Year:</span>
+                    <input
+                      type="text"
+                      value={academicYear}
+                      onChange={(e) => setAcademicYear(e.target.value)}
+                      placeholder="Academic Year (e.g. 2026 - 2027)"
+                      className="w-32 px-2.5 py-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-xs font-bold text-center text-blue-700 dark:text-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400">Status:</span>
+                    <select
+                      value={status}
+                      onChange={(e) => setStatus(e.target.value)}
+                      className={cn(
+                        'px-2.5 py-1 bg-white dark:bg-slate-900 border rounded-lg text-xs font-black focus:outline-none focus:ring-2 cursor-pointer shadow-xs',
+                        status === 'ACTIVE'
+                          ? 'text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-700'
+                          : 'text-rose-700 dark:text-rose-400 border-rose-300 dark:border-rose-700'
+                      )}
+                    >
+                      <option value="ACTIVE">ACTIVE</option>
+                      <option value="INACTIVE">INACTIVE</option>
+                    </select>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Side-by-Side Dropdowns: Medium of Instruction & Course Program (Right Side) */}
+            {/* Side-by-Side Dropdowns: Department, Medium of Instruction & Course Program */}
             <div className="grid grid-cols-1 md:grid-cols-12 gap-3 pt-1">
               
-              {/* Left Box: Medium of Instruction Dropdown (5 cols) */}
-              <div className="md:col-span-5 space-y-1.5">
+              {/* Department Dropdown (4 cols) */}
+              <div className="md:col-span-4 space-y-1.5">
+                <label className="block font-bold text-slate-800 dark:text-slate-200 text-xs">
+                  Department:
+                </label>
+                <div className="relative">
+                  <select
+                    value={department}
+                    onChange={(e) => setDepartment(e.target.value)}
+                    className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none pr-8 cursor-pointer shadow-xs"
+                  >
+                    <option value="">-- Select Department --</option>
+                    {DEFAULT_STUDENT_DEPARTMENTS.map((dept) => (
+                      <option key={dept} value={dept}>{dept}</option>
+                    ))}
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-500">
+                    <Icon name="chevron-down" size={14} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Medium of Instruction Dropdown (3 cols) */}
+              <div className="md:col-span-3 space-y-1.5">
                 <label className="block font-bold text-slate-800 dark:text-slate-200 text-xs">
                   Medium of Instruction: <span className="text-rose-500">*</span>
                 </label>
@@ -831,8 +939,8 @@ export function StudentEnrollmentModal({
                     }}
                     className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none pr-8 cursor-pointer shadow-xs"
                   >
-                    <option value="">-- Select Medium of Instruction --</option>
-                    {languagesList.map((lang) => (
+                    <option value="">-- Select Medium --</option>
+                    {(languagesList.length > 0 ? languagesList : DEFAULT_LANGUAGES).map((lang) => (
                       <option key={lang} value={lang}>
                         {lang}
                       </option>
@@ -853,7 +961,7 @@ export function StudentEnrollmentModal({
                         setCustomMedium(e.target.value);
                         setMedium(e.target.value);
                       }}
-                      placeholder="Enter Medium (e.g. Sanskrit, Kannada, Urdu)"
+                      placeholder="Enter Custom Medium"
                       className="w-full px-3 py-1.5 bg-white dark:bg-slate-900 border border-blue-400 rounded-lg text-xs font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
                       autoFocus
                     />
@@ -861,10 +969,10 @@ export function StudentEnrollmentModal({
                 )}
               </div>
 
-              {/* Right Box: Degree / Course Dropdown with Duration (7 cols) */}
-              <div className="md:col-span-7 space-y-1.5">
+              {/* Course Dropdown (5 cols) */}
+              <div className="md:col-span-5 space-y-1.5">
                 <label className="block font-bold text-slate-800 dark:text-slate-200 text-xs">
-                  Degree / Course Program (with Duration): <span className="text-rose-500">*</span>
+                  Degree / Course Program: <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
                   <select
@@ -882,7 +990,7 @@ export function StudentEnrollmentModal({
                     className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none pr-8 cursor-pointer shadow-xs"
                   >
                     <option value="">-- Select Course / Program --</option>
-                    {coursesList.map((c) => (
+                    {(coursesList.length > 0 ? coursesList : DEFAULT_COURSES).map((c) => (
                       <option key={c.id || c.name} value={c.name}>
                         {c.name} {c.period ? `(${c.period})` : ''}
                       </option>
@@ -903,7 +1011,7 @@ export function StudentEnrollmentModal({
                         setCustomCourse(e.target.value);
                         setCourse(e.target.value);
                       }}
-                      placeholder="Enter Course / Degree Program Name (e.g. B.Tech Computer Science)"
+                      placeholder="Enter Course / Degree Program Name"
                       className="w-full px-3 py-1.5 bg-white dark:bg-slate-900 border border-blue-400 rounded-lg text-xs font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
                       autoFocus
                     />
@@ -1273,32 +1381,24 @@ export function StudentEnrollmentModal({
               </div>
             </div>
 
-            {/* 8. Sex */}
-            <div className="border border-slate-200 dark:border-slate-700 rounded-2xl p-3 bg-white dark:bg-slate-800/40 space-y-2">
-              <label className="block font-bold text-slate-800 dark:text-slate-200">
-                8. Sex / Gender:
+            {/* 8. Sex / Gender Dropdown */}
+            <div className="border border-slate-200 dark:border-slate-700 rounded-2xl p-3 bg-white dark:bg-slate-800/40 space-y-1.5">
+              <label className="block font-bold text-slate-800 dark:text-slate-200 text-xs">
+                8. Sex / Gender: <span className="text-rose-500">*</span>
               </label>
-              <div className="flex items-center gap-5 pt-2">
-                <label className="flex items-center gap-2 cursor-pointer font-bold">
-                  <input
-                    type="radio"
-                    name="sex"
-                    checked={gender === 'Male'}
-                    onChange={() => setGender('Male')}
-                    className="accent-blue-600"
-                  />
-                  <span>Male</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer font-bold">
-                  <input
-                    type="radio"
-                    name="sex"
-                    checked={gender === 'Female'}
-                    onChange={() => setGender('Female')}
-                    className="accent-blue-600"
-                  />
-                  <span>Female</span>
-                </label>
+              <div className="relative">
+                <select
+                  value={gender}
+                  onChange={(e) => setGender(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 cursor-pointer shadow-xs focus:ring-2 focus:ring-blue-500 appearance-none pr-8"
+                >
+                  {GENDER_OPTIONS.map((g) => (
+                    <option key={g} value={g}>{g}</option>
+                  ))}
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-500">
+                  <Icon name="chevron-down" size={14} />
+                </div>
               </div>
             </div>
 
@@ -1327,11 +1427,11 @@ export function StudentEnrollmentModal({
 
           </div>
 
-          {/* 9. Caste Selection Checkboxes */}
+          {/* 9. Caste Dropdown Selection */}
           <div className="border border-slate-200 dark:border-slate-700 rounded-2xl p-4 bg-white dark:bg-slate-800/40 space-y-2">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <label className="font-bold text-slate-800 dark:text-slate-200">
-                9. Caste Category:
+                9. Caste Category: <span className="text-rose-500">*</span>
               </label>
               <div className="flex items-center gap-2">
                 <span className="text-[11px] font-semibold text-slate-500">Sub Caste:</span>
@@ -1340,64 +1440,74 @@ export function StudentEnrollmentModal({
                   value={subCaste}
                   onChange={(e) => setSubCaste(e.target.value)}
                   placeholder="Sub Caste Name"
-                  className="px-2.5 py-1 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-xs"
+                  className="px-2.5 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-xs"
                 />
               </div>
             </div>
-            <div className="grid grid-cols-4 sm:grid-cols-8 gap-2 pt-1">
-              {['SC', 'ST', 'BC-A', 'BC-B', 'BC-C', 'BC-D', 'BC-E', 'OC'].map((c) => (
-                <label
-                  key={c}
-                  className={cn(
-                    'flex items-center justify-center gap-1.5 p-2 rounded-xl border text-center cursor-pointer font-extrabold text-xs transition',
-                    caste === c
-                      ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                      : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
-                  )}
-                >
-                  <input
-                    type="radio"
-                    name="caste"
-                    checked={caste === c}
-                    onChange={() => setCaste(c)}
-                    className="sr-only"
-                  />
-                  <span>{c}</span>
-                </label>
-              ))}
+            <div className="relative">
+              <select
+                value={caste}
+                onChange={(e) => setCaste(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 cursor-pointer shadow-xs focus:ring-2 focus:ring-blue-500 appearance-none pr-8"
+              >
+                <option value="">-- Select Caste Category --</option>
+                {CASTE_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-500">
+                <Icon name="chevron-down" size={14} />
+              </div>
             </div>
           </div>
 
-          {/* 11 & 12: Marital Status, Place of Birth, Identification Marks */}
+          {/* 11 & 12: Marital Status, Blood Group, Place of Birth */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* 11. Marital Status & Place of Birth */}
-            <div className="border border-slate-200 dark:border-slate-700 rounded-2xl p-3.5 bg-white dark:bg-slate-800/40 space-y-2">
-              <label className="block font-bold text-slate-800 dark:text-slate-200">
-                11. Marital Status & Place of Birth:
+            <div className="border border-slate-200 dark:border-slate-700 rounded-2xl p-3.5 bg-white dark:bg-slate-800/40 space-y-3">
+              <label className="block font-bold text-slate-800 dark:text-slate-200 text-xs">
+                11. Marital Status & Blood Group:
               </label>
-              <div className="flex items-center gap-5 pt-1">
-                <label className="flex items-center gap-2 cursor-pointer font-bold">
-                  <input
-                    type="radio"
-                    name="maritalStatus"
-                    checked={maritalStatus === 'Married'}
-                    onChange={() => setMaritalStatus('Married')}
-                    className="accent-blue-600"
-                  />
-                  <span>Married</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer font-bold">
-                  <input
-                    type="radio"
-                    name="maritalStatus"
-                    checked={maritalStatus === 'Unmarried'}
-                    onChange={() => setMaritalStatus('Unmarried')}
-                    className="accent-blue-600"
-                  />
-                  <span>Unmarried</span>
-                </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <span className="text-[10px] text-slate-500 font-semibold block">Marital Status:</span>
+                  <div className="relative">
+                    <select
+                      value={maritalStatus}
+                      onChange={(e) => setMaritalStatus(e.target.value)}
+                      className="w-full px-2.5 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 cursor-pointer shadow-xs focus:ring-2 focus:ring-blue-500 appearance-none pr-8"
+                    >
+                      <option value="">-- Select Status --</option>
+                      {MARITAL_STATUS_OPTIONS.map((ms) => (
+                        <option key={ms} value={ms}>{ms}</option>
+                      ))}
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-500">
+                      <Icon name="chevron-down" size={13} />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <span className="text-[10px] text-slate-500 font-semibold block">Blood Group:</span>
+                  <div className="relative">
+                    <select
+                      value={bloodGroup}
+                      onChange={(e) => setBloodGroup(e.target.value)}
+                      className="w-full px-2.5 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl text-xs font-bold text-rose-600 dark:text-rose-400 cursor-pointer shadow-xs focus:ring-2 focus:ring-blue-500 appearance-none pr-8"
+                    >
+                      <option value="">-- Select Blood Group --</option>
+                      {BLOOD_GROUPS.map((bg) => (
+                        <option key={bg} value={bg}>{bg}</option>
+                      ))}
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-500">
+                      <Icon name="chevron-down" size={13} />
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div className="pt-2">
+
+              <div>
                 <span className="text-[10px] text-slate-500 block mb-1">Place of Birth:</span>
                 <input
                   type="text"

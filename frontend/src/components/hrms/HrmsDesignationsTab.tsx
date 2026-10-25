@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/utils/cn';
 import { hrmsApi, DesignationItem, DepartmentItem, MappedEmployee } from '@/services/hrmsApi';
+import { HrmsImportExportControls } from './HrmsImportExportControls';
 
 export interface CareerLevelItem {
   id: string;
@@ -11,15 +12,9 @@ export interface CareerLevelItem {
   description?: string;
 }
 
-const DEFAULT_LEVELS: CareerLevelItem[] = [
-  { id: 'lvl_1', name: 'Entry Level', code: 'L1', color: 'slate', description: 'Junior & trainee positions' },
-  { id: 'lvl_2', name: 'Mid Level', code: 'L2', color: 'blue', description: 'Independent operational staff' },
-  { id: 'lvl_3', name: 'Senior Specialist', code: 'L3', color: 'purple', description: 'Subject matter experts' },
-  { id: 'lvl_4', name: 'Team Lead', code: 'TL', color: 'amber', description: 'Supervisors and pod leaders' },
-  { id: 'lvl_5', name: 'Executive / Head', code: 'EXEC', color: 'rose', description: 'Department heads & directors' },
-];
+const DEFAULT_LEVELS: CareerLevelItem[] = [];
 
-const STORAGE_LEVELS_KEY = 'hrms_career_levels_v2';
+const STORAGE_LEVELS_KEY = 'hrms_career_levels_custom';
 
 export function HrmsDesignationsTab() {
   const [designations, setDesignations] = useState<DesignationItem[]>([]);
@@ -45,7 +40,7 @@ export function HrmsDesignationsTab() {
       const saved = localStorage.getItem(STORAGE_LEVELS_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) return parsed;
       }
     } catch {
       // fallback
@@ -385,6 +380,14 @@ export function HrmsDesignationsTab() {
         </div>
 
         <div className="flex items-center gap-2.5 self-start sm:self-auto flex-wrap">
+          <HrmsImportExportControls
+            type="designations"
+            dataToExport={designations}
+            onImportSuccess={() => {
+              fetchData();
+            }}
+          />
+
           <button
             type="button"
             onClick={handleOpenLevelManager}

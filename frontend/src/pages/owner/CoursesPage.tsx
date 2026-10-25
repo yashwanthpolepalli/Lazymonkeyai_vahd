@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/Badge';
 import { api } from '@/services/api';
 import { apiClient } from '@/services/apiClient';
 import { hrmsApi } from '@/services/hrmsApi';
+import { HrmsImportExportControls } from '@/components/hrms/HrmsImportExportControls';
 import type { Member } from '@/types';
 import { cn } from '@/utils/cn';
 
@@ -123,8 +124,10 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
     return [];
   });
 
-  // Category Manager State
+  // Category / Academic Branch Manager State with Checkbox Selection
   const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
+  const [editingBranch, setEditingBranch] = useState<CategoryBranchItem | null>(null);
+  const [selectedBranchCodes, setSelectedBranchCodes] = useState<string[]>([]);
   const [newCatCode, setNewCatCode] = useState('');
   const [newCatName, setNewCatName] = useState('');
 
@@ -296,12 +299,23 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
         setClassifications(fetchedClasses);
       }
 
-      // Merge departments from HRMS into branch categories if not already present
+      // Merge departments from HRMS into branch categories if not already present and not deleted
+      let deletedBranchCodes = new Set<string>();
+      try {
+        const rawDel = localStorage.getItem('course_deleted_branches_v1');
+        if (rawDel) {
+          const parsed = JSON.parse(rawDel);
+          if (Array.isArray(parsed)) {
+            deletedBranchCodes = new Set(parsed.map((s: string) => String(s).toUpperCase()));
+          }
+        }
+      } catch {}
+
       const existingCodes = new Set(categories.map((c) => c.code.toUpperCase()));
       const newFromDepts: CategoryBranchItem[] = [];
       fetchedDepts.forEach((dept) => {
         const code = (dept.code || dept.name.substring(0, 4)).toUpperCase();
-        if (!existingCodes.has(code)) {
+        if (!existingCodes.has(code) && !deletedBranchCodes.has(code)) {
           existingCodes.add(code);
           newFromDepts.push({
             id: `cat_dept_${dept.id}`,
@@ -439,25 +453,154 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
     return list;
   })();
 
-  const handleCreateCategory = (e: React.FormEvent) => {
+  const handleSaveCategory = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCatCode.trim()) return;
     const code = newCatCode.trim().toUpperCase();
     const name = newCatName.trim() || code;
-    const existing = categories.find((c) => c.code.toUpperCase() === code);
-    if (!existing) {
-      const newCat: CategoryBranchItem = {
-        id: `cat_${Date.now()}`,
-        code,
-        name,
-        color: 'blue',
-      };
-      const updated = [...categories, newCat];
+
+    if (editingBranch) {
+      const oldCode = editingBranch.code;
+      const updated = categories.map((c) =>
+        c.id === editingBranch.id ? { ...c, code, name } : c
+      );
       saveCategories(updated);
+
+      // If code changed, update in rawPlans and forms
+      if (oldCode !== code) {
+        setRawPlans((prev) =>
+          prev.map((plan) => {
+            const cats = (plan.category || '').split(',').map((c) => c.trim()).filter(Boolean);
+            if (cats.includes(oldCode)) {
+              const updatedCats = cats.map((c) => (c === oldCode ? code : c)).join(', ');
+              return { ...plan, category: updatedCats };
+            }
+            return plan;
+          })
+        );
+      }
+
+      // If backed by backend department, sync with backend
+      if (editingBranch.id.includes('cat_dept_')) {
+        const deptId = editingBranch.id.replace(/^(cat_dept_)+/, '');
+        await apiClient.put(`/hrms/departments/${deptId}`, { code, name }).catch(() => {});
+      }
+    } else {
+      const existing = categories.find((c) => c.code.toUpperCase() === code);
+      if (!existing) {
+        const newCat: CategoryBranchItem = {
+          id: `cat_${Date.now()}`,
+          code,
+          name,
+          color: 'purple',
+        };
+        const updated = [...categories, newCat];
+        saveCategories(updated);
+
+        // Also post to backend departments so HRMS stays in sync
+        apiClient.post('/hrms/departments', { code, name, description: `Academic stream ${code}` }).catch(() => {});
+      }
     }
+
+    setEditingBranch(null);
     setNewCatCode('');
     setNewCatName('');
     setShowAddCategoryModal(false);
+  };
+
+  const handleDeleteBranch = async (branch: CategoryBranchItem) => {
+    if (!confirm(`Are you sure you want to delete branch "${branch.code} - ${branch.name}"?`)) return;
+
+    // 1. Remove from categories
+    const updated = categories.filter((c) => c.id !== branch.id);
+    saveCategories(updated);
+
+    // 2. Remember deleted code so it doesn't resurrect
+    try {
+      const raw = localStorage.getItem('course_deleted_branches_v1') || '[]';
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && !parsed.includes(branch.code)) {
+        parsed.push(branch.code);
+        localStorage.setItem('course_deleted_branches_v1', JSON.stringify(parsed));
+      }
+    } catch {}
+
+    // 3. Remove from raw plans
+    setRawPlans((prev) =>
+      prev.map((plan) => {
+        const cats = (plan.category || '').split(',').map((c) => c.trim()).filter(Boolean);
+        if (cats.includes(branch.code)) {
+          const updatedCats = cats.filter((c) => c !== branch.code).join(', ');
+          return { ...plan, category: updatedCats };
+        }
+        return plan;
+      })
+    );
+
+    // 4. Remove from selected checkboxes
+    setSelectedBranchCodes((prev) => prev.filter((c) => c !== branch.code));
+
+    // 5. If backed by backend department, delete from backend
+    if (branch.id.includes('cat_dept_')) {
+      const deptId = branch.id.replace(/^(cat_dept_)+/, '');
+      await apiClient.delete(`/hrms/departments/${deptId}`).catch(() => {});
+    }
+  };
+
+  const handleDeleteSelectedBranches = async () => {
+    if (selectedBranchCodes.length === 0) return;
+    if (!confirm(`Are you sure you want to delete ${selectedBranchCodes.length} selected branch(es)?`)) return;
+
+    const toDeleteCodes = new Set(selectedBranchCodes);
+    const toDeleteBranches = categories.filter((c) => toDeleteCodes.has(c.code));
+
+    // 1. Update categories
+    const updated = categories.filter((c) => !toDeleteCodes.has(c.code));
+    saveCategories(updated);
+
+    // 2. Remember in deleted branches list
+    try {
+      const raw = localStorage.getItem('course_deleted_branches_v1') || '[]';
+      const parsed: string[] = JSON.parse(raw);
+      selectedBranchCodes.forEach((code) => {
+        if (!parsed.includes(code)) parsed.push(code);
+      });
+      localStorage.setItem('course_deleted_branches_v1', JSON.stringify(parsed));
+    } catch {}
+
+    // 3. Update raw plans
+    setRawPlans((prev) =>
+      prev.map((plan) => {
+        const cats = (plan.category || '').split(',').map((c) => c.trim()).filter(Boolean);
+        if (cats.some((c) => toDeleteCodes.has(c))) {
+          const updatedCats = cats.filter((c) => !toDeleteCodes.has(c)).join(', ');
+          return { ...plan, category: updatedCats };
+        }
+        return plan;
+      })
+    );
+
+    // 4. Backend sync
+    for (const b of toDeleteBranches) {
+      if (b.id.includes('cat_dept_')) {
+        const deptId = b.id.replace(/^(cat_dept_)+/, '');
+        await apiClient.delete(`/hrms/departments/${deptId}`).catch(() => {});
+      }
+    }
+
+    // 5. Clear selection
+    setSelectedBranchCodes([]);
+  };
+
+  const handleStartEditSelectedBranch = () => {
+    if (selectedBranchCodes.length !== 1) return;
+    const targetCode = selectedBranchCodes[0];
+    const target = categories.find((c) => c.code === targetCode);
+    if (!target) return;
+    setEditingBranch(target);
+    setNewCatCode(target.code);
+    setNewCatName(target.name);
+    setShowAddCategoryModal(true);
   };
 
   const handleToggleBranchSelection = (code: string) => {
@@ -844,44 +987,68 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
   return (
     <div className="space-y-6 animate-fade-in pb-8">
       {embedded ? (
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
+        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3">
+          <div className="shrink-0">
             <h2 className="text-xl font-black text-navy-900 tracking-tight flex items-center gap-2">
               <Icon name="book-open" size={22} className="text-brand-600" />
               <span>Courses, Degree Programs &amp; Fee Structure</span>
             </h2>
-            <p className="text-xs text-navy-500 font-medium">
-              Map courses across branches (CSE, EEE, ECE, etc.) with custom duration fee tiers.
-            </p>
           </div>
-          <div className="flex items-center gap-2.5 self-start sm:self-auto flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap overflow-x-auto pb-1 sm:pb-0">
+            <button
+              type="button"
+              onClick={() => {
+                setEditingBranch(null);
+                setNewCatCode('');
+                setNewCatName('');
+                setShowAddCategoryModal(true);
+              }}
+              className="px-3 py-1.5 rounded-xl text-xs font-bold border border-navy-200 bg-white hover:bg-navy-50 text-navy-700 flex items-center gap-1.5 shadow-2xs transition whitespace-nowrap shrink-0 cursor-pointer"
+            >
+              <Icon name="layers" size={14} className="text-indigo-600" />
+              <span>Branches ({categories.length})</span>
+            </button>
             <button
               type="button"
               onClick={() => setClassificationManagerOpen(true)}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold border border-navy-200 bg-white hover:bg-navy-50 text-navy-700 flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+              className="px-3 py-1.5 rounded-xl text-xs font-bold border border-navy-200 bg-white hover:bg-navy-50 text-navy-700 flex items-center gap-1.5 shadow-2xs transition whitespace-nowrap shrink-0 cursor-pointer"
             >
-              <Icon name="tag" size={15} className="text-purple-600" />
+              <Icon name="tag" size={14} className="text-purple-600" />
               <span>Classifications ({classifications.length})</span>
             </button>
             <button
               type="button"
               onClick={() => setLanguageManagerOpen(true)}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold border border-navy-200 bg-white hover:bg-navy-50 text-navy-700 flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+              className="px-3 py-1.5 rounded-xl text-xs font-bold border border-navy-200 bg-white hover:bg-navy-50 text-navy-700 flex items-center gap-1.5 shadow-2xs transition whitespace-nowrap shrink-0 cursor-pointer"
             >
-              <Icon name="globe" size={15} className="text-blue-600" />
+              <Icon name="globe" size={14} className="text-blue-600" />
               <span>Mediums / Languages ({languages.length})</span>
             </button>
             <button
               type="button"
               onClick={handleOpenTierManager}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold border border-navy-200 bg-white hover:bg-navy-50 text-navy-700 flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+              className="px-3 py-1.5 rounded-xl text-xs font-bold border border-navy-200 bg-white hover:bg-navy-50 text-navy-700 flex items-center gap-1.5 shadow-2xs transition whitespace-nowrap shrink-0 cursor-pointer"
             >
-              <Icon name="clock" size={15} className="text-brand-600" />
+              <Icon name="clock" size={14} className="text-brand-600" />
               <span>Manage Duration Tiers ({durationTiers.length})</span>
             </button>
-            <button onClick={openCreateModal} className="btn-primary flex items-center gap-2 shadow-glow">
-              <Icon name="plus" size={16} /> Add Course / Program
-            </button>
+            <HrmsImportExportControls
+              type="courses"
+              className="shrink-0"
+              dataToExport={rawPlans.length > 0 ? rawPlans : structuredPrograms}
+              onImportSuccess={async () => {
+                await fetchPlansAndMembers();
+              }}
+            >
+              <button
+                type="button"
+                onClick={openCreateModal}
+                className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-brand-600 hover:bg-brand-700 text-white flex items-center gap-1.5 shadow-sm transition whitespace-nowrap shrink-0 cursor-pointer active:scale-[0.98]"
+              >
+                <Icon name="plus" size={15} />
+                <span>Add Course / Program</span>
+              </button>
+            </HrmsImportExportControls>
           </div>
         </div>
       ) : (
@@ -889,34 +1056,61 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
           title="Courses, Degree Programs & Fee Structure"
           breadcrumb={['Owner', 'Courses']}
           actions={
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap overflow-x-auto pb-1 sm:pb-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingBranch(null);
+                  setNewCatCode('');
+                  setNewCatName('');
+                  setShowAddCategoryModal(true);
+                }}
+                className="px-3 py-1.5 rounded-xl text-xs font-bold border border-navy-200 bg-white hover:bg-navy-50 text-navy-700 flex items-center gap-1.5 shadow-2xs transition whitespace-nowrap shrink-0 cursor-pointer"
+              >
+                <Icon name="layers" size={14} className="text-indigo-600" />
+                <span>Branches ({categories.length})</span>
+              </button>
               <button
                 type="button"
                 onClick={() => setClassificationManagerOpen(true)}
-                className="px-3.5 py-2 rounded-xl text-xs font-bold border border-navy-200 bg-white hover:bg-navy-50 text-navy-700 flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+                className="px-3 py-1.5 rounded-xl text-xs font-bold border border-navy-200 bg-white hover:bg-navy-50 text-navy-700 flex items-center gap-1.5 shadow-2xs transition whitespace-nowrap shrink-0 cursor-pointer"
               >
-                <Icon name="tag" size={15} className="text-purple-600" />
+                <Icon name="tag" size={14} className="text-purple-600" />
                 <span>Classifications ({classifications.length})</span>
               </button>
               <button
                 type="button"
                 onClick={() => setLanguageManagerOpen(true)}
-                className="px-3.5 py-2 rounded-xl text-xs font-bold border border-navy-200 bg-white hover:bg-navy-50 text-navy-700 flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+                className="px-3 py-1.5 rounded-xl text-xs font-bold border border-navy-200 bg-white hover:bg-navy-50 text-navy-700 flex items-center gap-1.5 shadow-2xs transition whitespace-nowrap shrink-0 cursor-pointer"
               >
-                <Icon name="globe" size={15} className="text-blue-600" />
+                <Icon name="globe" size={14} className="text-blue-600" />
                 <span>Mediums / Languages ({languages.length})</span>
               </button>
               <button
                 type="button"
                 onClick={handleOpenTierManager}
-                className="px-3.5 py-2 rounded-xl text-xs font-bold border border-navy-200 bg-white hover:bg-navy-50 text-navy-700 flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+                className="px-3 py-1.5 rounded-xl text-xs font-bold border border-navy-200 bg-white hover:bg-navy-50 text-navy-700 flex items-center gap-1.5 shadow-2xs transition whitespace-nowrap shrink-0 cursor-pointer"
               >
-                <Icon name="clock" size={15} className="text-brand-600" />
+                <Icon name="clock" size={14} className="text-brand-600" />
                 <span>Manage Duration Tiers ({durationTiers.length})</span>
               </button>
-              <button onClick={openCreateModal} className="btn-primary flex items-center gap-2 shadow-glow">
-                <Icon name="plus" size={16} /> Add Course / Program
-              </button>
+              <HrmsImportExportControls
+                type="courses"
+                className="shrink-0"
+                dataToExport={rawPlans.length > 0 ? rawPlans : structuredPrograms}
+                onImportSuccess={async () => {
+                  await fetchPlansAndMembers();
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={openCreateModal}
+                  className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-brand-600 hover:bg-brand-700 text-white flex items-center gap-1.5 shadow-sm transition whitespace-nowrap shrink-0 cursor-pointer active:scale-[0.98]"
+                >
+                  <Icon name="plus" size={15} />
+                  <span>Add Course / Program</span>
+                </button>
+              </HrmsImportExportControls>
             </div>
           }
         />
@@ -945,7 +1139,6 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
               </div>
             </div>
             <div className="text-2xl font-bold text-navy-900">{expiringCount}</div>
-            <div className="text-xs text-warning-600 font-semibold mt-1">within 7 days</div>
           </div>
           <div className="card p-5">
             <div className="flex items-center justify-between mb-2">
@@ -955,7 +1148,6 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
               </div>
             </div>
             <div className="text-2xl font-bold text-navy-900">{categories.length} Branches</div>
-            <div className="text-xs text-purple-600 font-semibold mt-1">CSE, EEE, ECE, MECH, etc.</div>
           </div>
           <div className="card p-5">
             <div className="flex items-center justify-between mb-2">
@@ -969,6 +1161,171 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
           </div>
         </div>
       )}
+
+      {/* ── ACADEMIC BRANCHES & STREAMS MANAGEMENT (WITH CHECKBOXES FOR EDIT & DELETE) ── */}
+      <div className="card p-5 space-y-4 border border-navy-200/90 shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-navy-100">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600 shrink-0">
+              <Icon name="layers" size={17} />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-navy-900 flex items-center gap-2">
+                <span>Academic Branches &amp; Streams</span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-100 text-purple-800 border border-purple-200">
+                  {categories.length} Registered
+                </span>
+              </h3>
+              <p className="text-xs text-navy-400">
+                Select branches using checkboxes to edit details or delete. Mapped across degree courses.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            {selectedBranchCodes.length > 0 && (
+              <div className="flex items-center gap-1.5 animate-fade-in">
+                {selectedBranchCodes.length === 1 && (
+                  <button
+                    type="button"
+                    onClick={handleStartEditSelectedBranch}
+                    className="px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white flex items-center gap-1.5 shadow-xs transition cursor-pointer active:scale-95"
+                  >
+                    <Icon name="pencil" size={13} />
+                    <span>Edit Selected</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleDeleteSelectedBranches}
+                  className="px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white flex items-center gap-1.5 shadow-xs transition cursor-pointer active:scale-95"
+                >
+                  <Icon name="trash-2" size={13} />
+                  <span>Delete Selected ({selectedBranchCodes.length})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedBranchCodes([])}
+                  className="px-2.5 py-1.5 rounded-xl text-xs font-bold border border-navy-200 bg-white hover:bg-navy-50 text-navy-600 cursor-pointer"
+                >
+                  Clear ({selectedBranchCodes.length})
+                </button>
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                setEditingBranch(null);
+                setNewCatCode('');
+                setNewCatName('');
+                setShowAddCategoryModal(true);
+              }}
+              className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white flex items-center gap-1.5 shadow-sm transition whitespace-nowrap cursor-pointer active:scale-95"
+            >
+              <Icon name="plus" size={14} />
+              <span>+ Add Branch</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Branches Grid with Checkboxes */}
+        {categories.length === 0 ? (
+          <div className="text-center py-6 border border-dashed border-navy-200 rounded-2xl bg-navy-50/40">
+            <Icon name="layers" size={28} className="text-navy-300 mx-auto mb-2" />
+            <p className="text-xs font-bold text-navy-700">No Academic Branches Created Yet</p>
+            <p className="text-[11px] text-navy-400 mt-0.5">Click "+ Add Branch" above to create your institution's academic branches.</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-[11px] text-navy-500 font-bold px-1">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={categories.length > 0 && selectedBranchCodes.length === categories.length}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setSelectedBranchCodes(categories.map((c) => c.code));
+                    } else {
+                      setSelectedBranchCodes([]);
+                    }
+                  }}
+                  className="w-4 h-4 rounded text-purple-600 border-navy-300 focus:ring-purple-500 cursor-pointer"
+                />
+                <span>Select All Branches ({categories.length})</span>
+              </label>
+              <span>{selectedBranchCodes.length} of {categories.length} selected</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5">
+              {categories.map((cat) => {
+                const isSelected = selectedBranchCodes.includes(cat.code);
+                const coursesCount = structuredPrograms.filter((p) => p.categories.includes(cat.code)).length;
+                return (
+                  <div
+                    key={cat.id}
+                    className={cn(
+                      'p-3 rounded-2xl border transition-all flex items-center justify-between gap-2.5',
+                      isSelected
+                        ? 'bg-purple-50/70 border-purple-300 shadow-xs ring-1 ring-purple-300'
+                        : 'bg-white border-navy-200/80 hover:border-purple-200 hover:shadow-xs'
+                    )}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => {
+                          setSelectedBranchCodes((prev) =>
+                            prev.includes(cat.code) ? prev.filter((c) => c !== cat.code) : [...prev, cat.code]
+                          );
+                        }}
+                        className="w-4 h-4 rounded text-purple-600 border-navy-300 focus:ring-purple-500 cursor-pointer shrink-0"
+                      />
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className={cn('px-2 py-0.5 rounded-lg text-xs font-black tracking-tight border', getBranchBadgeStyle(cat.code))}>
+                            {cat.code}
+                          </span>
+                          <span className="text-[10px] text-navy-400 font-semibold shrink-0">
+                            {coursesCount} course{coursesCount !== 1 ? 's' : ''}
+                          </span>
+                        </div>
+                        <p className="text-xs font-medium text-navy-700 truncate mt-0.5" title={cat.name}>
+                          {cat.name}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingBranch(cat);
+                          setNewCatCode(cat.code);
+                          setNewCatName(cat.name);
+                          setShowAddCategoryModal(true);
+                        }}
+                        className="p-1.5 rounded-lg text-navy-500 hover:text-navy-900 hover:bg-navy-100 transition cursor-pointer"
+                        title={`Edit ${cat.code}`}
+                      >
+                        <Icon name="pencil" size={13} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteBranch(cat)}
+                        className="p-1.5 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition cursor-pointer"
+                        title={`Delete ${cat.code}`}
+                      >
+                        <Icon name="trash-2" size={13} />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Courses & Degree Programs Grid */}
       <div className="card p-5 space-y-4">
@@ -1287,7 +1644,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
                   <Icon name="book-open" size={18} className="text-brand-600" />
                   <span>{editingProgramId ? 'Edit Course & Fee Structure' : 'Add New Course / Subject'}</span>
                 </h3>
-                <p className="text-xs text-navy-400">Configure subject details, branches (CSE, EEE, ECE, etc.), and fee tiers.</p>
+                <p className="text-xs text-navy-400">Configure subject details, branches, and fee tiers.</p>
               </div>
               <button onClick={() => setModalOpen(false)} className="text-navy-400 hover:text-navy-600 p-1 cursor-pointer">
                 <Icon name="x" size={18} />
@@ -1713,7 +2070,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
         </div>
       )}
 
-      {/* Quick Add Branch / Category Modal */}
+      {/* Quick Add / Edit Branch Modal */}
       {showAddCategoryModal && (
         <div className="fixed inset-0 bg-navy-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
           <div className="bg-white rounded-3xl p-6 w-full max-w-sm space-y-4 shadow-2xl animate-scale-in border border-navy-100">
@@ -1722,18 +2079,23 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
                 <div className="w-8 h-8 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600">
                   <Icon name="layers" size={16} />
                 </div>
-                <h3 className="font-extrabold text-navy-900 text-sm">Add Branch / Department</h3>
+                <h3 className="font-extrabold text-navy-900 text-sm">
+                  {editingBranch ? 'Edit Academic Branch' : 'Add Academic Branch'}
+                </h3>
               </div>
               <button
                 type="button"
-                onClick={() => setShowAddCategoryModal(false)}
-                className="text-navy-400 hover:text-navy-600"
+                onClick={() => {
+                  setEditingBranch(null);
+                  setShowAddCategoryModal(false);
+                }}
+                className="text-navy-400 hover:text-navy-600 cursor-pointer"
               >
                 <Icon name="x" size={16} />
               </button>
             </div>
 
-            <form onSubmit={handleCreateCategory} className="space-y-3 text-xs">
+            <form onSubmit={handleSaveCategory} className="space-y-3 text-xs">
               <div className="space-y-1">
                 <label className="font-bold text-navy-700">Branch Code *</label>
                 <input
@@ -1760,16 +2122,19 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setShowAddCategoryModal(false)}
-                  className="px-3.5 py-1.5 rounded-xl border border-navy-200 text-navy-600 font-bold"
+                  onClick={() => {
+                    setEditingBranch(null);
+                    setShowAddCategoryModal(false);
+                  }}
+                  className="px-3.5 py-1.5 rounded-xl border border-navy-200 text-navy-600 font-bold hover:bg-navy-50 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold shadow-xs"
+                  className="px-4 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold shadow-xs cursor-pointer active:scale-95"
                 >
-                  Add Branch
+                  {editingBranch ? 'Save Changes' : 'Add Branch'}
                 </button>
               </div>
             </form>

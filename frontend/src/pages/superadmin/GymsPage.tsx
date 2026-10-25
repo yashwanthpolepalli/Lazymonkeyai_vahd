@@ -470,14 +470,14 @@ export function GymsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Organizations Directory"
-        breadcrumb={['Super Admin', 'Organizations & Tenants']}
+        title="Head Office Directory"
+        breadcrumb={['Super Admin', 'Head Office']}
         actions={
           <button
             onClick={handleOpenOnboard}
             className="btn-primary flex items-center gap-2 shadow-lg shadow-blue-600/20"
           >
-            <Icon name="plus" size={16} /> Onboard Owner
+            <Icon name="plus" size={16} /> Onboard HO's
           </button>
         }
       />
@@ -488,7 +488,7 @@ export function GymsPage() {
           <Icon name="search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
-            placeholder="Search organization, owner, email, city, plan..."
+            placeholder="Search head office, branch, owner, email, city, plan..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-blue-500 outline-none"
@@ -497,7 +497,7 @@ export function GymsPage() {
 
         <div className="flex items-center gap-2">
           <div className="text-xs text-slate-500 font-semibold bg-white border border-slate-200 px-3 py-1.5 rounded-xl shadow-xs">
-            Total Organizations: <span className="text-blue-600 font-bold">{gyms.length}</span>
+            Total Head Offices: <span className="text-blue-600 font-bold">{gyms.length}</span>
           </div>
           <button onClick={fetchGyms} className="btn-secondary flex items-center gap-1.5 text-xs font-bold py-2 px-3">
             <Icon name="refresh-cw" size={14} /> Refresh
@@ -514,7 +514,7 @@ export function GymsPage() {
             </div>
             <div>
               <span className="text-xs font-bold text-slate-900 block leading-tight">
-                {selectedOrgIds.length} {selectedOrgIds.length === 1 ? 'Organization' : 'Organizations'} Selected
+                {selectedOrgIds.length} {selectedOrgIds.length === 1 ? 'Head Office' : 'Head Offices'} Selected
               </span>
               <span className="text-[11px] text-slate-500 font-medium block">
                 Apply bulk management actions
@@ -546,7 +546,7 @@ export function GymsPage() {
         </div>
       )}
 
-      {/* Organizations Table */}
+      {/* Head Offices Table */}
       <div className="card p-4">
         {loading ? (
           <SkeletonTable rows={6} cols={9} />
@@ -564,8 +564,8 @@ export function GymsPage() {
                       title="Select / Deselect All"
                     />
                   </th>
-                  <th className="px-3 py-3">Organization &amp; Branch</th>
-                  <th className="px-3 py-3">Owner Credentials</th>
+                  <th className="px-3 py-3">Head Office &amp; Branch</th>
+                  <th className="px-3 py-3">HO Credentials</th>
                   <th className="px-3 py-3">City / Location</th>
                   <th className="px-3 py-3">Members</th>
                   <th className="px-3 py-3">SaaS Plan</th>
@@ -768,17 +768,17 @@ export function GymsPage() {
               </div>
             )}
 
-            {/* ── STEP 1: ORGANIZATION PROFILE & OWNER CREDENTIALS ────── */}
+            {/* ── STEP 1: HEAD OFFICE PROFILE & HO CREDENTIALS ────── */}
             {wizardStep === 1 && (
               <div className="space-y-4 animate-fade-in">
-                {/* Organization Details */}
+                {/* Head Office Details */}
                 <div>
                   <div className="text-[11px] font-bold text-blue-600 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
-                    <Icon name="building-2" size={13} /> Organization &amp; Location Details
+                    <Icon name="building-2" size={13} /> Head Office &amp; Location Details
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="sm:col-span-2">
-                      <label className="text-xs font-bold text-slate-700 block mb-1">Organization / Business Name *</label>
+                      <label className="text-xs font-bold text-slate-700 block mb-1">Head Office / Business Name *</label>
                       <input
                         type="text"
                         required

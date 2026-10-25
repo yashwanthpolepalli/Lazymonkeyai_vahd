@@ -7,7 +7,7 @@ import { cn } from '@/utils/cn';
 
 const mobileNavItems: Record<string, string[]> = {
   super_admin: ['Overview', 'Organizations', 'SaaS Plans', 'AI Platform', 'Settings'],
-  owner: ['Executive Overview', 'Customers', 'Sales & CRM', 'POS', 'Settings'],
+  owner: ['Dashboard', 'Customers', 'Sales & CRM', 'POS', 'Settings'],
   trainer: ['Dashboard', 'My Customers', 'HRMS', 'AI Coach', 'Profile'],
   customer: ['Home', 'Attendance', 'Workouts', 'Food Scanner', 'Profile'],
 };

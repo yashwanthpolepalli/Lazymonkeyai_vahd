@@ -55,11 +55,11 @@ export function SuperAdminDashboard() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Platform Overview"
-        breadcrumb={['Super Admin', 'Overview']}
+        title="Platform Dashboard"
+        breadcrumb={['Super Admin', 'Dashboard']}
         actions={
           <button onClick={() => setOnboardOpen(true)} className="btn-primary flex items-center gap-2">
-            <Icon name="plus" size={16} /> Onboard Owner
+            <Icon name="plus" size={16} /> Onboard HO's
           </button>
         }
       />
@@ -80,13 +80,13 @@ export function SuperAdminDashboard() {
         <div className="card p-5">
           <h3 className="text-base font-bold text-navy-900 mb-4">Revenue by Plan</h3>
           {loading ? <Skeleton className="h-48 w-full" /> : (() => {
-            const totalGyms = kpis.find(k => k.id === 'total_gyms' || k.label === 'Total Gyms' || k.label === 'Total Organizations')?.value || 0;
+            const totalGyms = kpis.find(k => k.id === 'total_gyms' || k.label === 'Total Gyms' || k.label === 'Total Organizations' || k.label === 'Total Head Offices')?.value || 0;
             const planDistribution = (revenue as any)?.planDistribution || [];
 
             return (
               <>
                 <div className="flex justify-center mb-4">
-                  <DonutChart segments={planDistribution} size={160} centerLabel={String(totalGyms)} centerSublabel="Organizations" />
+                  <DonutChart segments={planDistribution} size={160} centerLabel={String(totalGyms)} centerSublabel="Head Offices" />
                 </div>
                 {planDistribution.length > 0 ? (
                   <div className="space-y-2">
@@ -209,7 +209,7 @@ export function SuperAdminDashboard() {
                   Cancel
                 </button>
                 <button type="submit" disabled={onboarding} className="btn-primary py-2 px-4 text-xs font-bold">
-                  {onboarding ? 'Onboarding...' : 'Save & Onboard Owner'}
+                  {onboarding ? 'Onboarding...' : "Save & Onboard HO's"}
                 </button>
               </div>
             </form>

@@ -41,6 +41,30 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
   const [formStartDate, setFormStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [formEndDate, setFormEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [formReason, setFormReason] = useState('');
+  const [selectedReasonName, setSelectedReasonName] = useState('');
+
+  // Dynamically derived from DB-backed leaveTypes (zero hardcoded mock data)
+  const leaveReasonsList = useMemo(() => {
+    return leaveTypes
+      .filter((r) => r.is_active !== false)
+      .map((r) => ({
+        id: r.id,
+        name: r.name,
+        days: r.annual_quota || 0,
+      }));
+  }, [leaveTypes]);
+
+  useEffect(() => {
+    const handleSync = () => {
+      hrmsApi.getLeaveTypes().then((types) => {
+        if (Array.isArray(types)) setLeaveTypes(types);
+      }).catch(() => {});
+    };
+    window.addEventListener('vahd_master_data_updated', handleSync);
+    return () => window.removeEventListener('vahd_master_data_updated', handleSync);
+  }, []);
+
+
   const [formAttachmentUrl, setFormAttachmentUrl] = useState('');
   const [formAttachmentName, setFormAttachmentName] = useState('');
   const [formAttachmentSize, setFormAttachmentSize] = useState('');
@@ -77,13 +101,13 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
   }>({
     name: '',
     code: '',
-    category: 'General Leave',
+    category: '',
     description: '',
     paid_type: 'PAID',
-    gender_eligibility: ['MALE', 'FEMALE', 'OTHER'],
-    annual_quota: 12,
+    gender_eligibility: [],
+    annual_quota: 0,
     min_service_days: 0,
-    max_consecutive_days: 15,
+    max_consecutive_days: 0,
     carry_forward_allowed: false,
     max_carry_forward_days: 0,
     encashment_allowed: false,
@@ -162,13 +186,14 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
           const match = eligibleTypesForForm.find(
             (e) => e.id === p.id || e.code === p.code || e.name.toLowerCase() === p.name.toLowerCase()
           );
-          const remDays = match?.balance?.remaining_days ?? p.annual_quota;
+          const remDays = (match as any)?.remaining_days ?? match?.balance?.remaining_days ?? p.annual_quota;
+          const usedDays = (match as any)?.used_days ?? match?.balance?.used_days ?? 0;
           return {
             ...p,
             balance: {
               allocated_days: p.annual_quota || 0,
-              used_days: 0,
-              pending_days: 0,
+              used_days: usedDays,
+              pending_days: (match as any)?.pending_days ?? 0,
               buffer_days: 0,
               remaining_days: remDays,
             },
@@ -190,8 +215,8 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 15 * 1024 * 1024) {
-      setApplyError('File size exceeds 15MB. Please upload a smaller document.');
+    if (file.size > 2 * 1024 * 1024) {
+      setApplyError('File size exceeds 2MB. Please upload a smaller document.');
       return;
     }
 
@@ -302,13 +327,13 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
     setPolicyForm({
       name: '',
       code: '',
-      category: 'General Leave',
+      category: '',
       description: '',
       paid_type: 'PAID',
-      gender_eligibility: ['MALE', 'FEMALE', 'OTHER'],
-      annual_quota: 12,
+      gender_eligibility: [],
+      annual_quota: 0,
       min_service_days: 0,
-      max_consecutive_days: 15,
+      max_consecutive_days: 0,
       carry_forward_allowed: false,
       max_carry_forward_days: 0,
       encashment_allowed: false,
@@ -325,13 +350,13 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
     setPolicyForm({
       name: policy.name,
       code: policy.code,
-      category: policy.category || 'General Leave',
+      category: policy.category || '',
       description: policy.description || '',
       paid_type: policy.paid_type || (policy.is_paid ? 'PAID' : 'UNPAID'),
-      gender_eligibility: policy.gender_eligibility || ['MALE', 'FEMALE', 'OTHER'],
+      gender_eligibility: policy.gender_eligibility || [],
       annual_quota: policy.annual_quota || 0,
       min_service_days: policy.min_service_days || 0,
-      max_consecutive_days: policy.max_consecutive_days || 15,
+      max_consecutive_days: policy.max_consecutive_days || 0,
       carry_forward_allowed: Boolean(policy.carry_forward_allowed),
       max_carry_forward_days: policy.max_carry_forward_days || 0,
       encashment_allowed: Boolean(policy.encashment_allowed),
@@ -1627,7 +1652,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                               : '⚠️ Unpaid / Loss of Pay'}
                         </span>
                         <span>
-                          Annual Quota / Balance: <strong>{selectedType.balance?.remaining_days ?? selectedType.annual_quota} Days</strong>
+                          Annual Quota / Balance: <strong>{(selectedType as any).remaining_days ?? selectedType.balance?.remaining_days ?? selectedType.annual_quota} Days</strong>
                         </span>
                       </div>
                       {selectedType.description && (
@@ -1670,14 +1695,46 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                 </div>
               </div>
 
-              {/* Reason */}
-              <div>
-                <label className="block text-xs font-bold text-navy-700 mb-1.5">Reason / Description</label>
+              {/* Reason for Leave Dropdown & Description */}
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-navy-700">
+                  Reason for Leave <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative">
+                  <select
+                    value={selectedReasonName}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setSelectedReasonName(val);
+                      if (val && val !== '__custom__') {
+                        setFormReason((prev) => {
+                          if (!prev || leaveReasonsList.some((r) => prev.startsWith(r.name))) {
+                            return val;
+                          }
+                          return `${val}: ${prev}`;
+                        });
+                      }
+                    }}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-navy-50 border border-navy-200 text-xs font-bold text-navy-900 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none cursor-pointer appearance-none pr-8"
+                  >
+                    <option value="">-- Select Reason for Leave --</option>
+                    {leaveReasonsList.map((r) => (
+                      <option key={r.id || r.name} value={r.name}>
+                        {r.name} {r.days ? `(${r.days} days)` : ''}
+                      </option>
+                    ))}
+                    <option value="__custom__">+ Other / Custom Reason</option>
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-navy-500">
+                    <Icon name="chevron-down" size={14} />
+                  </div>
+                </div>
+
                 <textarea
                   rows={2}
                   value={formReason}
                   onChange={(e) => setFormReason(e.target.value)}
-                  placeholder="e.g. Scheduled surgery, parental duties, family vacation..."
+                  placeholder="Additional remarks or specific justification..."
                   className="w-full px-3.5 py-2 rounded-xl bg-navy-50 border border-navy-200 text-xs font-medium text-navy-900 placeholder-navy-400 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none resize-none"
                 />
               </div>
@@ -1688,7 +1745,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                   <label className="block text-xs font-bold text-navy-700">
                     Supporting Document / Certificate
                   </label>
-                  <span className="text-[10px] text-navy-400 font-medium">PDF, DOC, DOCX, JPG, PNG (Max 15MB)</span>
+                  <span className="text-[10px] text-navy-400 font-medium">PDF, DOC, DOCX, JPG, PNG (Max 2MB)</span>
                 </div>
 
                 {formAttachmentUrl ? (

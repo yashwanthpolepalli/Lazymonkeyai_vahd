@@ -50,6 +50,8 @@ class Customer(Base):
     status = Column(String, default="ACTIVE")
     primary_gym_location = Column(String, nullable=True)
     enable_workout_videos = Column(Boolean, default=True)
+    qualification = Column(String, nullable=True)
+    specialization = Column(String, nullable=True)
     meta_data = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=now_ist_naive)
     updated_at = Column(DateTime, default=now_ist_naive, onupdate=now_ist_naive)

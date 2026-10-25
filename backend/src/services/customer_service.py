@@ -172,6 +172,9 @@ class CustomerService:
             "fitness_level": c.fitness_level or "",
             "training_preference": c.training_preference or "",
             "goal": c.goal or "",
+            "qualification": getattr(c, "qualification", None) or meta.get("qualification") or "",
+            "specialization": getattr(c, "specialization", None) or meta.get("specialization") or "",
+            "department": meta.get("department") or "",
             "meta_data": meta,
             "course": meta.get("course") or c.goal or "",
             "medium": meta.get("medium") or "",
@@ -591,6 +594,17 @@ class CustomerService:
             or ""
         ).strip()
 
+        qualification = (
+            data.get("qualification")
+            or (meta_data_payload.get("qualification") if isinstance(meta_data_payload, dict) else None)
+            or ""
+        ).strip()
+        specialization = (
+            data.get("specialization")
+            or (meta_data_payload.get("specialization") if isinstance(meta_data_payload, dict) else None)
+            or ""
+        ).strip()
+
         existing_cust = db.query(Customer).filter(Customer.user_id == user.id).first()
         if existing_cust:
             cust = existing_cust
@@ -607,6 +621,10 @@ class CustomerService:
                 cust.status = data.get("status")
             if profile_image:
                 cust.profile_image = profile_image
+            if qualification:
+                cust.qualification = qualification
+            if specialization:
+                cust.specialization = specialization
             if meta_data_payload:
                 cust.meta_data = meta_data_payload
             if resolved_branch_name:
@@ -631,6 +649,8 @@ class CustomerService:
                 fitness_score=fitness_score,
                 goal=goal,
                 profile_image=profile_image,
+                qualification=qualification or None,
+                specialization=specialization or None,
                 meta_data=meta_data_payload,
                 owner_id=resolved_owner_id,
                 branch_id=resolved_branch_id,
@@ -797,6 +817,14 @@ class CustomerService:
             meta_val = data.get("meta_data") if "meta_data" in data else data.get("metaData")
             if isinstance(meta_val, dict):
                 cust.meta_data = meta_val
+                if "qualification" in meta_val and meta_val["qualification"]:
+                    cust.qualification = meta_val["qualification"]
+                if "specialization" in meta_val and meta_val["specialization"]:
+                    cust.specialization = meta_val["specialization"]
+        if "qualification" in data:
+            cust.qualification = data.get("qualification")
+        if "specialization" in data:
+            cust.specialization = data.get("specialization")
         if "profile_image" in data or "profileImage" in data:
             cust.profile_image = data.get("profile_image") or data.get("profileImage")
         if "face_image" in data or "faceImage" in data:

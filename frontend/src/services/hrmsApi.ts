@@ -173,6 +173,9 @@ export interface EmployeeLeaveBalanceItem {
 }
 
 export interface EligibleLeaveType extends LeaveTypeItem {
+  remaining_days?: number;
+  used_days?: number;
+  pending_days?: number;
   balance?: {
     allocated_days: number;
     used_days: number;
@@ -213,8 +216,8 @@ export function formatLeaveOptionLabel(leave: {
       ? 'Half Pay'
       : 'Unpaid';
 
-  // Balance days formatting
-  const remaining = leave.balance?.remaining_days ?? leave.annual_quota ?? 0;
+  // Balance days formatting (dynamically accounts for remaining_days from API)
+  const remaining = (leave as any).remaining_days ?? leave.balance?.remaining_days ?? leave.annual_quota ?? 0;
   const isCompOff = code === 'COMP' || cleanName.toLowerCase().includes('comp');
   const isUnpaid = paidType === 'UNPAID';
 

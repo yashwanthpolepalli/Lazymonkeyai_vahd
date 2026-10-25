@@ -239,6 +239,8 @@ class HrmsService:
                 "salary": float(e.salary or 0.0),
                 "avatar": e.avatar or "",
                 "skills": e.skills or [],
+                "qualification": getattr(e, "qualification", None) or "",
+                "specialization": getattr(e, "specialization", None) or "",
                 "gym_branch": e.gym_branch or "",
                 "branch_id": e.branch_id or "",
                 "ho_id": e.ho_id or "",
@@ -319,6 +321,10 @@ class HrmsService:
         if emp:
             if payload.get("status"):
                 emp.status = str(payload["status"]).capitalize()
+            if payload.get("qualification"):
+                emp.qualification = payload["qualification"]
+            if payload.get("specialization"):
+                emp.specialization = payload["specialization"]
             if branch_id:
                 emp.branch_id = branch_id
             if ho_id:
@@ -1574,9 +1580,21 @@ class HrmsService:
         # Query all active leave types
         active_policies = db.query(LeaveType).filter(LeaveType.is_active == True).order_by(LeaveType.created_at.asc()).all()
 
+        matching_emp_ids = list(filter(None, {
+            str(employee_id),
+            str(emp.id) if emp else None,
+            str(emp.code) if emp and emp.code else None,
+            f"emp_{employee_id}" if not str(employee_id).startswith("emp_") else None,
+            str(employee_id).replace("emp_", "") if str(employee_id).startswith("emp_") else None,
+            getattr(emp, "email", None),
+            getattr(trainer, "id", None) if "trainer" in locals() and trainer else None,
+            f"emp_{trainer.id}" if "trainer" in locals() and trainer else None,
+            getattr(trainer, "email", None) if "trainer" in locals() and trainer else None,
+        }))
+
         # Query employee approved leaves this year
         approved_leaves = db.query(LeaveRequest).filter(
-            LeaveRequest.employee_id == (emp.id if emp else employee_id),
+            LeaveRequest.employee_id.in_(matching_emp_ids),
             LeaveRequest.status == "Approved",
             LeaveRequest.start_date >= year_start,
             LeaveRequest.start_date <= year_end
@@ -1584,7 +1602,7 @@ class HrmsService:
 
         # Query employee pending leaves this year
         pending_leaves = db.query(LeaveRequest).filter(
-            LeaveRequest.employee_id == (emp.id if emp else employee_id),
+            LeaveRequest.employee_id.in_(matching_emp_ids),
             LeaveRequest.status == "Pending",
             LeaveRequest.start_date >= year_start,
             LeaveRequest.start_date <= year_end
@@ -1592,7 +1610,7 @@ class HrmsService:
 
         # Custom balance overrides
         balances = db.query(EmployeeLeaveBalance).filter(
-            EmployeeLeaveBalance.employee_id == (emp.id if emp else employee_id),
+            EmployeeLeaveBalance.employee_id.in_(matching_emp_ids),
             EmployeeLeaveBalance.year == current_year
         ).all()
         bal_map = {b.leave_type_id: b for b in balances}
@@ -1624,8 +1642,8 @@ class HrmsService:
             is_eligible = is_gender_eligible and is_service_eligible and is_emp_type_eligible and is_dept_eligible
 
             # Calculate days used for this leave type
-            used_days = sum(l.days for l in approved_leaves if (l.leave_type_id == policy.id or l.leave_type.lower() == policy.name.lower() or l.leave_type.lower() == policy.code.lower()))
-            pending_days = sum(l.days for l in pending_leaves if (l.leave_type_id == policy.id or l.leave_type.lower() == policy.name.lower() or l.leave_type.lower() == policy.code.lower()))
+            used_days = sum(l.days for l in approved_leaves if (l.leave_type_id == policy.id or str(l.leave_type or "").lower() == str(policy.name or "").lower() or str(l.leave_type or "").lower() == str(policy.code or "").lower()))
+            pending_days = sum(l.days for l in pending_leaves if (l.leave_type_id == policy.id or str(l.leave_type or "").lower() == str(policy.name or "").lower() or str(l.leave_type or "").lower() == str(policy.code or "").lower()))
 
             allocated_days = policy.annual_quota or 0.0
             if policy.id in bal_map:
@@ -1648,6 +1666,12 @@ class HrmsService:
                 "used_days": used_days,
                 "pending_days": pending_days,
                 "remaining_days": remaining_days,
+                "balance": {
+                    "allocated_days": allocated_days,
+                    "used_days": used_days,
+                    "pending_days": pending_days,
+                    "remaining_days": remaining_days,
+                },
                 "max_consecutive_days": policy.max_consecutive_days,
                 "carry_forward_allowed": policy.carry_forward_allowed,
                 "max_carry_forward_days": policy.max_carry_forward_days or 0,

@@ -15,6 +15,9 @@ class CustomerBase(BaseModel):
     status: Optional[str] = None
     owner_id: Optional[str] = None
     branch_id: Optional[str] = None
+    qualification: Optional[str] = None
+    specialization: Optional[str] = None
+    meta_data: Optional[dict] = None
 
 class CustomerCreate(CustomerBase):
     role: Optional[str] = "CUSTOMER"

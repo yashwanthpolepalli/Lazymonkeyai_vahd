@@ -9,14 +9,173 @@ import { notifyModuleVisibilityChanged } from '@/config/navigation';
 import { CoursesPage } from '@/pages/owner/CoursesPage';
 import { ReportsPage } from '@/pages/owner/ReportsPage';
 import { CompanyManagement } from '@/components/erp/CompanyManagement';
+import { MasterDataSettings } from '@/components/settings/MasterDataSettings';
 import { cn } from '@/utils/cn';
 
-export type SettingsTab =
-  | 'General'
-  | 'ERP & Google Reviews'
-  | 'Courses'
-  | 'Memberships'
-  | 'Reports';
+export interface SettingCardConfig {
+  id: string;
+  title: string;
+  type: 'master' | 'courses' | 'reports' | 'erp' | 'general';
+  categoryKey?: string;
+  icon: string;
+  bgLight: string;
+  textColor: string;
+  borderLight: string;
+  description: string;
+}
+
+export const SETTING_CARDS: SettingCardConfig[] = [
+  {
+    id: 'districts',
+    title: 'District',
+    type: 'master',
+    categoryKey: 'districts',
+    icon: 'map',
+    bgLight: 'bg-sky-50 dark:bg-sky-950/40',
+    textColor: 'text-sky-600',
+    borderLight: 'border-sky-200/70',
+    description: '33 Districts in Telangana'
+  },
+  {
+    id: 'mandals',
+    title: 'Mandal',
+    type: 'master',
+    categoryKey: 'mandals',
+    icon: 'map-pin',
+    bgLight: 'bg-rose-50 dark:bg-rose-950/40',
+    textColor: 'text-rose-600',
+    borderLight: 'border-rose-200/70',
+    description: 'Sub-district mandal units'
+  },
+  {
+    id: 'towns',
+    title: 'Village/Town',
+    type: 'master',
+    categoryKey: 'towns',
+    icon: 'home',
+    bgLight: 'bg-amber-50 dark:bg-amber-950/40',
+    textColor: 'text-amber-600',
+    borderLight: 'border-amber-200/70',
+    description: 'Local villages & wards'
+  },
+  {
+    id: 'institution_types',
+    title: 'Type of Institution',
+    type: 'master',
+    categoryKey: 'institution_types',
+    icon: 'building',
+    bgLight: 'bg-blue-50 dark:bg-blue-950/40',
+    textColor: 'text-blue-600',
+    borderLight: 'border-blue-200/70',
+    description: 'Veterinary clinics & hospitals'
+  },
+  {
+    id: 'roles',
+    title: 'Role',
+    type: 'master',
+    categoryKey: 'roles',
+    icon: 'shield',
+    bgLight: 'bg-purple-50 dark:bg-purple-950/40',
+    textColor: 'text-purple-600',
+    borderLight: 'border-purple-200/70',
+    description: 'System roles & privileges'
+  },
+  {
+    id: 'designations',
+    title: 'Designation',
+    type: 'master',
+    categoryKey: 'designations',
+    icon: 'award',
+    bgLight: 'bg-indigo-50 dark:bg-indigo-950/40',
+    textColor: 'text-indigo-600',
+    borderLight: 'border-indigo-200/70',
+    description: 'Officer departmental titles'
+  },
+  {
+    id: 'departments',
+    title: 'Departments',
+    type: 'master',
+    categoryKey: 'departments',
+    icon: 'layers',
+    bgLight: 'bg-teal-50 dark:bg-teal-950/40',
+    textColor: 'text-teal-600',
+    borderLight: 'border-teal-200/70',
+    description: 'Clinical & admin divisions'
+  },
+  {
+    id: 'qualifications',
+    title: 'Qualification',
+    type: 'master',
+    categoryKey: 'qualifications',
+    icon: 'book-open',
+    bgLight: 'bg-cyan-50 dark:bg-cyan-950/40',
+    textColor: 'text-cyan-600',
+    borderLight: 'border-cyan-200/70',
+    description: 'Degrees, diplomas & SSC'
+  },
+  {
+    id: 'specializations',
+    title: 'Specialization',
+    type: 'master',
+    categoryKey: 'specializations',
+    icon: 'file-text',
+    bgLight: 'bg-slate-100 dark:bg-slate-800',
+    textColor: 'text-slate-700 dark:text-slate-200',
+    borderLight: 'border-slate-300/70',
+    description: 'Veterinary medical branches'
+  },
+  {
+    id: 'leave_reasons',
+    title: 'Leave Reasons',
+    type: 'master',
+    categoryKey: 'leave_reasons',
+    icon: 'calendar',
+    bgLight: 'bg-emerald-50 dark:bg-emerald-950/40',
+    textColor: 'text-emerald-600',
+    borderLight: 'border-emerald-200/70',
+    description: 'Leave categories & quotas'
+  },
+  {
+    id: 'courses',
+    title: 'Courses',
+    type: 'courses',
+    icon: 'graduation-cap',
+    bgLight: 'bg-emerald-50 dark:bg-emerald-950/40',
+    textColor: 'text-emerald-600',
+    borderLight: 'border-emerald-200/70',
+    description: 'Branch courses & streams'
+  },
+  {
+    id: 'reports',
+    title: 'Reports',
+    type: 'reports',
+    icon: 'bar-chart-3',
+    bgLight: 'bg-blue-50 dark:bg-blue-950/40',
+    textColor: 'text-blue-600',
+    borderLight: 'border-blue-200/70',
+    description: 'Reports & performance logs'
+  },
+  {
+    id: 'erp',
+    title: 'ERP & Google Reviews',
+    type: 'erp',
+    icon: 'star',
+    bgLight: 'bg-amber-50 dark:bg-amber-950/40',
+    textColor: 'text-amber-600',
+    borderLight: 'border-amber-200/70',
+    description: 'Company & online review sync'
+  },
+  {
+    id: 'general',
+    title: 'General Profile',
+    type: 'general',
+    icon: 'settings',
+    bgLight: 'bg-violet-50 dark:bg-violet-950/40',
+    textColor: 'text-violet-600',
+    borderLight: 'border-violet-200/70',
+    description: 'Profile, contact & security'
+  },
+];
 
 export function SettingsPage() {
   const { user, updateUser } = useAuth();
@@ -25,32 +184,47 @@ export function SettingsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const rawTab = searchParams.get('tab')?.toLowerCase();
 
-  const getInitialTab = (): SettingsTab => {
-    if (rawTab === 'erp' || rawTab === 'company' || rawTab === 'reviews' || rawTab === 'google-reviews') return 'ERP & Google Reviews';
-    if (rawTab === 'courses' || rawTab === 'memberships' || rawTab === 'plans') return 'Courses';
-    if (rawTab === 'reports' || rawTab === 'analytics') return 'Reports';
-    return 'General';
+  const getInitialSection = (): string | null => {
+    if (!rawTab) return null;
+    const match = SETTING_CARDS.find(
+      (c) => c.id === rawTab || (c.categoryKey && c.categoryKey === rawTab)
+    );
+    if (match) return match.id;
+    if (rawTab === 'district') return 'districts';
+    if (rawTab === 'mandal') return 'mandals';
+    if (rawTab === 'village' || rawTab === 'town') return 'towns';
+    if (rawTab === 'institution' || rawTab === 'institution-types' || rawTab === 'type-of-institution') return 'institution_types';
+    if (rawTab === 'role') return 'roles';
+    if (rawTab === 'designation') return 'designations';
+    if (rawTab === 'department') return 'departments';
+    if (rawTab === 'qualification') return 'qualifications';
+    if (rawTab === 'specialization') return 'specializations';
+    if (rawTab === 'course' || rawTab === 'memberships' || rawTab === 'plans') return 'courses';
+    if (rawTab === 'report' || rawTab === 'analytics') return 'reports';
+    if (rawTab === 'company' || rawTab === 'reviews' || rawTab === 'google-reviews') return 'erp';
+    if (rawTab === 'general' || rawTab === 'profile' || rawTab === 'security') return 'general';
+    return null;
   };
 
-  const [activeTab, setActiveTab] = useState<SettingsTab>(getInitialTab);
+  const [selectedSection, setSelectedSection] = useState<string | null>(getInitialSection);
 
   useEffect(() => {
     if (rawTab) {
-      if (rawTab === 'erp' || rawTab === 'company' || rawTab === 'reviews' || rawTab === 'google-reviews') setActiveTab('ERP & Google Reviews');
-      else if (rawTab === 'courses' || rawTab === 'memberships' || rawTab === 'plans') setActiveTab('Courses');
-      else if (rawTab === 'reports' || rawTab === 'analytics') setActiveTab('Reports');
-      else if (rawTab === 'general' || rawTab === 'profile' || rawTab === 'security') setActiveTab('General');
+      setSelectedSection(getInitialSection());
+    } else {
+      setSelectedSection(null);
     }
   }, [rawTab]);
 
-  const handleTabChange = (tabId: SettingsTab) => {
-    setActiveTab(tabId);
-    const paramKey =
-      tabId === 'ERP & Google Reviews' ? 'erp' :
-      tabId === 'Courses' || tabId === 'Memberships' ? 'courses' :
-      tabId === 'Reports' ? 'reports' : 'general';
-    setSearchParams({ tab: paramKey });
+  const handleSelectSection = (sectionId: string | null) => {
+    setSelectedSection(sectionId);
+    if (sectionId) {
+      setSearchParams({ tab: sectionId });
+    } else {
+      setSearchParams({});
+    }
   };
+
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -219,12 +393,9 @@ export function SettingsPage() {
     );
   };
 
-  const tabs = [
-    { id: 'General', label: 'General', icon: 'settings' },
-    { id: 'ERP & Google Reviews', label: 'ERP & Google Reviews', icon: 'building-2' },
-    { id: 'Courses', label: 'Courses', icon: 'book-open' },
-    { id: 'Reports', label: 'Reports & Analytics', icon: 'file-bar-chart' },
-  ] as const;
+  const activeCard = SETTING_CARDS.find(
+    (c) => c.id === selectedSection || c.categoryKey === selectedSection
+  );
 
   return (
     <div className="space-y-6 animate-fade-in relative pb-12">
@@ -236,71 +407,106 @@ export function SettingsPage() {
         </div>
       )}
 
-      {/* Top Glassmorphic Hero Card */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-navy-900 via-brand-950 to-navy-900 p-6 md:p-8 text-white shadow-2xl border border-navy-800/80">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-brand-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-1/3 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <span className="px-3 py-1 rounded-full bg-brand-500/20 text-brand-300 text-xs font-bold border border-brand-500/30 backdrop-blur-md">
-                {isHo ? 'VAHD Enterprise • Head Office Management' : 'VAHD Enterprise • Branch Admin'}
-              </span>
-              <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold border border-emerald-500/30 backdrop-blur-md flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                Active & Synchronized
-              </span>
-            </div>
-            <h1 className="text-2xl md:text-3xl font-black tracking-tight text-white font-serif">
-              System Settings & Configurations
-            </h1>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {hasUnsavedChanges && (
-              <span className="text-amber-400 text-xs font-bold bg-amber-500/10 px-3 py-1.5 rounded-xl border border-amber-500/20 animate-pulse">
-                Unsaved Changes
-              </span>
-            )}
-            <button
-              onClick={handleSaveSettings}
-              className="btn-primary py-2.5 px-5 bg-gradient-to-r from-brand-500 to-indigo-600 hover:from-brand-600 hover:to-indigo-700 text-white font-bold text-xs rounded-2xl shadow-glow flex items-center gap-2 transition-all active:scale-95"
-            >
-              <Icon name="check" size={16} />
-              Save All Changes
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Tab Navigation Bar */}
-      <div className="card p-2 bg-white/80 backdrop-blur-md border border-navy-100/80 shadow-sm rounded-2xl">
-        <div className="flex gap-1 overflow-x-auto scrollbar-none">
-          {tabs.map((tab) => {
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => handleTabChange(tab.id as SettingsTab)}
-                className={cn(
-                  'px-4 py-2.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-2 relative',
-                  isActive
-                    ? 'bg-brand-600 text-white shadow-glow'
-                    : 'text-navy-600 hover:bg-navy-50 hover:text-navy-900'
-                )}
-              >
-                <Icon name={tab.icon} size={15} className={isActive ? 'text-white' : 'text-navy-400'} />
-                <span>{tab.label}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* TAB 1: GENERAL SETTINGS (includes Branch Profile, Owner Profile, and Security) */}
-      {activeTab === 'General' && (
+      {/* ───────────────────────────────────────────────────────────────── */}
+      {/* VIEW 1: 13 SETTING CARDS GRID (Exactly matching reference UI)       */}
+      {/* ───────────────────────────────────────────────────────────────── */}
+      {selectedSection === null && (
         <div className="space-y-6 animate-fade-in">
+          {/* Header directly matching Screenshot */}
+          <div className="space-y-1">
+            <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight font-serif">
+              Settings
+            </h1>
+            <p className="text-xs text-slate-500 font-medium">
+              Master data — geography, clinical, HR, finance, pharmacy, and fodder
+            </p>
+          </div>
+
+          {/* Subtab indicator */}
+          <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
+            <span className="text-blue-600 font-black text-sm">|</span>
+            <span className="text-xs font-bold text-blue-600">Settings</span>
+          </div>
+
+          {/* 13 Setting Cards Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 gap-3 sm:gap-4 pt-1">
+            {SETTING_CARDS.map((card) => (
+              <button
+                key={card.id}
+                type="button"
+                onClick={() => handleSelectSection(card.id)}
+                className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 hover:border-blue-500 p-4 sm:p-5 flex flex-col items-center justify-center text-center gap-3 transition-all duration-200 hover:shadow-md hover:-translate-y-1 active:translate-y-0 cursor-pointer group shadow-2xs min-h-[135px]"
+              >
+                <div
+                  className={cn(
+                    'w-14 h-14 rounded-full flex items-center justify-center transition-transform group-hover:scale-110 shadow-2xs border',
+                    card.bgLight,
+                    card.textColor,
+                    card.borderLight
+                  )}
+                >
+                  <Icon name={card.icon} size={24} />
+                </div>
+                <div>
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-100 block leading-tight">
+                    {card.title}
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-medium mt-0.5 block line-clamp-1">
+                    {card.description}
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ───────────────────────────────────────────────────────────────── */}
+      {/* VIEW 2: MASTER DATA DETAILED TABLE VIEWS (9 Categories)            */}
+      {/* ───────────────────────────────────────────────────────────────── */}
+      {selectedSection && activeCard?.type === 'master' && (
+        <MasterDataSettings
+          selectedCatId={activeCard.categoryKey || selectedSection}
+          onBack={() => handleSelectSection(null)}
+        />
+      )}
+
+      {/* ───────────────────────────────────────────────────────────────── */}
+      {/* VIEW 6: GENERAL PROFILE (Branch info, Owner profile & Security)    */}
+      {/* ───────────────────────────────────────────────────────────────── */}
+      {selectedSection === 'general' && (
+        <div className="space-y-6 animate-fade-in">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-3">
+            <div>
+              <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-1">
+                <span className="hover:text-blue-600 cursor-pointer" onClick={() => handleSelectSection(null)}>Home</span>
+                <Icon name="chevron-right" size={12} />
+                <span className="hover:text-blue-600 cursor-pointer" onClick={() => handleSelectSection(null)}>Settings</span>
+                <Icon name="chevron-right" size={12} />
+                <span className="text-slate-800 dark:text-slate-200 font-bold">General Profile</span>
+              </div>
+              <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">General Profile</h2>
+              <p className="text-xs text-slate-500 font-medium">Settings · Organization Details, Profile & Security</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => handleSelectSection(null)}
+                className="px-3.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+              >
+                <Icon name="chevron-left" size={14} />
+                <span>Back</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveSettings}
+                className="px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+              >
+                <Icon name="check" size={14} />
+                <span>Save Profile</span>
+              </button>
+            </div>
+          </div>
           {/* Section 1: Branch Information / Head Office Information */}
           <div className="card p-6 border border-navy-100 bg-white space-y-6 shadow-sm rounded-3xl">
             <div className="flex items-center justify-between border-b border-navy-100 pb-4">
@@ -633,24 +839,93 @@ export function SettingsPage() {
         </div>
       )}
 
-      {/* TAB 5: ERP & GOOGLE REVIEWS */}
-      {activeTab === 'ERP & Google Reviews' && (
-        <div className="space-y-6 animate-fade-in">
-          <CompanyManagement />
-        </div>
-      )}
-
-      {/* TAB 6: COURSES */}
-      {(activeTab === 'Courses' || activeTab === 'Memberships') && (
-        <div className="space-y-6 animate-fade-in">
+      {/* ───────────────────────────────────────────────────────────────── */}
+      {/* VIEW 3: COURSES & STREAMS MANAGEMENT                              */}
+      {/* ───────────────────────────────────────────────────────────────── */}
+      {selectedSection === 'courses' && (
+        <div className="space-y-4 animate-fade-in">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-3">
+            <div>
+              <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-1">
+                <span className="hover:text-blue-600 cursor-pointer" onClick={() => handleSelectSection(null)}>Home</span>
+                <Icon name="chevron-right" size={12} />
+                <span className="hover:text-blue-600 cursor-pointer" onClick={() => handleSelectSection(null)}>Settings</span>
+                <Icon name="chevron-right" size={12} />
+                <span className="text-slate-800 dark:text-slate-200 font-bold">Courses</span>
+              </div>
+              <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Courses</h2>
+              <p className="text-xs text-slate-500 font-medium">Settings · Branch Courses & Stream Structures</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleSelectSection(null)}
+              className="px-3.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+            >
+              <Icon name="chevron-left" size={14} />
+              <span>Back</span>
+            </button>
+          </div>
           <CoursesPage embedded={true} />
         </div>
       )}
 
-      {/* TAB 7: REPORTS */}
-      {activeTab === 'Reports' && (
-        <div className="space-y-6 animate-fade-in">
+      {/* ───────────────────────────────────────────────────────────────── */}
+      {/* VIEW 4: REPORTS & ANALYTICS                                       */}
+      {/* ───────────────────────────────────────────────────────────────── */}
+      {selectedSection === 'reports' && (
+        <div className="space-y-4 animate-fade-in">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-3">
+            <div>
+              <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-1">
+                <span className="hover:text-blue-600 cursor-pointer" onClick={() => handleSelectSection(null)}>Home</span>
+                <Icon name="chevron-right" size={12} />
+                <span className="hover:text-blue-600 cursor-pointer" onClick={() => handleSelectSection(null)}>Settings</span>
+                <Icon name="chevron-right" size={12} />
+                <span className="text-slate-800 dark:text-slate-200 font-bold">Reports</span>
+              </div>
+              <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Reports</h2>
+              <p className="text-xs text-slate-500 font-medium">Settings · Executive Reports & Analytics</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleSelectSection(null)}
+              className="px-3.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+            >
+              <Icon name="chevron-left" size={14} />
+              <span>Back</span>
+            </button>
+          </div>
           <ReportsPage embedded={true} />
+        </div>
+      )}
+
+      {/* ───────────────────────────────────────────────────────────────── */}
+      {/* VIEW 5: ERP & GOOGLE REVIEWS                                      */}
+      {/* ───────────────────────────────────────────────────────────────── */}
+      {selectedSection === 'erp' && (
+        <div className="space-y-4 animate-fade-in">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-3">
+            <div>
+              <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-1">
+                <span className="hover:text-blue-600 cursor-pointer" onClick={() => handleSelectSection(null)}>Home</span>
+                <Icon name="chevron-right" size={12} />
+                <span className="hover:text-blue-600 cursor-pointer" onClick={() => handleSelectSection(null)}>Settings</span>
+                <Icon name="chevron-right" size={12} />
+                <span className="text-slate-800 dark:text-slate-200 font-bold">ERP & Google Reviews</span>
+              </div>
+              <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">ERP & Google Reviews</h2>
+              <p className="text-xs text-slate-500 font-medium">Settings · Organization Details & Online Reputation Sync</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleSelectSection(null)}
+              className="px-3.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+            >
+              <Icon name="chevron-left" size={14} />
+              <span>Back</span>
+            </button>
+          </div>
+          <CompanyManagement />
         </div>
       )}
     </div>

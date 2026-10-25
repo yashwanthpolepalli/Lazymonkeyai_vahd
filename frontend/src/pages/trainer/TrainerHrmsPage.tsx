@@ -58,6 +58,31 @@ export function TrainerHrmsPage() {
   const [formStartDate, setFormStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [formEndDate, setFormEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [formReason, setFormReason] = useState('');
+  const [selectedReasonName, setSelectedReasonName] = useState('');
+  const [leaveReasonsList, setLeaveReasonsList] = useState<Array<{ id: string; name: string; days?: number }>>([]);
+
+  useEffect(() => {
+    const fetchReasons = () => {
+      hrmsApi.getLeaveTypes(true).then((types) => {
+        if (Array.isArray(types) && types.length > 0) {
+          setLeaveReasonsList(
+            types
+              .filter((r) => r.is_active !== false)
+              .map((r) => ({
+                id: r.id,
+                name: r.name,
+                days: r.annual_quota || 0,
+              }))
+          );
+        }
+      }).catch(() => {});
+    };
+
+    fetchReasons();
+    window.addEventListener('vahd_master_data_updated', fetchReasons);
+    return () => window.removeEventListener('vahd_master_data_updated', fetchReasons);
+  }, []);
+
   const [formAttachmentUrl, setFormAttachmentUrl] = useState('');
   const [formAttachmentName, setFormAttachmentName] = useState('');
   const [formAttachmentSize, setFormAttachmentSize] = useState('');
@@ -67,8 +92,8 @@ export function TrainerHrmsPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 15 * 1024 * 1024) {
-      setFormError('File size exceeds 15MB. Please upload a smaller document.');
+    if (file.size > 2 * 1024 * 1024) {
+      setFormError('File size exceeds 2MB. Please upload a smaller document.');
       return;
     }
 
@@ -135,12 +160,33 @@ export function TrainerHrmsPage() {
           ]);
           let types = eligRes?.eligible_leave_types || [];
           if (types.length === 0 && allPolicies.length > 0) {
-            types = allPolicies.map((p) => ({
-              ...p,
-              annual_quota: p.annual_quota || 0,
-              remaining_days: p.annual_quota || 0,
-              paid_type: (p.paid_type || (p.is_paid ? 'PAID' : 'UNPAID')) as 'PAID' | 'UNPAID' | 'HALF_PAY',
-            }));
+            types = allPolicies.map((p) => {
+              const usedForP = (leavesRes || [])
+                .filter(
+                  (l) =>
+                    (l.status === 'Approved' || l.status === 'Approved') &&
+                    (l.employee_id === tid || l.employee_id === `emp_${tid}`) &&
+                    (l.leave_type_id === p.id || l.leave_type?.toLowerCase() === p.name.toLowerCase() || l.leave_type?.toLowerCase() === p.code.toLowerCase())
+                )
+                .reduce((sum, l) => sum + (l.days || 0), 0);
+              const quota = p.annual_quota || 0;
+              const rem = Math.max(0, quota - usedForP);
+              return {
+                ...p,
+                annual_quota: quota,
+                allocated_days: quota,
+                used_days: usedForP,
+                remaining_days: rem,
+                balance: {
+                  allocated_days: quota,
+                  used_days: usedForP,
+                  pending_days: 0,
+                  buffer_days: 0,
+                  remaining_days: rem,
+                },
+                paid_type: (p.paid_type || (p.is_paid ? 'PAID' : 'UNPAID')) as 'PAID' | 'UNPAID' | 'HALF_PAY',
+              };
+            });
           }
           setEligibleLeaveTypes(types);
           if (types.length > 0) {
@@ -452,7 +498,8 @@ export function TrainerHrmsPage() {
           {/* Dynamic Leave Balances Header Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {eligibleLeaveTypes.slice(0, 3).map((policy) => {
-              const rem = policy.balance?.remaining_days ?? policy.annual_quota;
+              const rem = policy.remaining_days ?? policy.balance?.remaining_days ?? Math.max(0, (policy.annual_quota || 0) - (policy.used_days || 0));
+              const used = policy.used_days ?? policy.balance?.used_days ?? 0;
               const isPaid = policy.paid_type === 'PAID' || policy.is_paid;
               return (
                 <div key={policy.id} className="bg-white rounded-2xl p-5 border border-navy-100 shadow-sm">
@@ -469,7 +516,7 @@ export function TrainerHrmsPage() {
                   </div>
                   <div className="text-2xl font-black text-purple-700">{rem} Days</div>
                   <div className="text-[11px] text-navy-400 mt-1">
-                    {policy.annual_quota > 0 ? `${policy.balance?.used_days || 0}d used of ${policy.annual_quota}d quota` : 'Unlimited quota'}
+                    {policy.annual_quota > 0 ? `${used}d used of ${policy.annual_quota}d quota` : 'Unlimited quota'}
                   </div>
                 </div>
               );
@@ -792,7 +839,7 @@ export function TrainerHrmsPage() {
                             : '⚠️ Unpaid / Loss of Pay'}
                         </span>
                         <span>
-                          Remaining: <strong>{sel.balance?.remaining_days ?? sel.annual_quota} Days</strong>
+                          Remaining: <strong>{sel.remaining_days ?? sel.balance?.remaining_days ?? Math.max(0, (sel.annual_quota || 0) - (sel.used_days || 0))} Days</strong>
                         </span>
                       </div>
                       {sel.description && <p className="text-purple-700 text-[10px]">{sel.description}</p>}
@@ -829,14 +876,46 @@ export function TrainerHrmsPage() {
                 </div>
               </div>
 
-              {/* Reason */}
-              <div>
-                <label className="block text-xs font-bold text-navy-700 mb-1.5">Reason for Absence</label>
+              {/* Reason for Absence Selector & Description */}
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-navy-700">
+                  Reason for Absence <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative">
+                  <select
+                    value={selectedReasonName}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setSelectedReasonName(val);
+                      if (val && val !== '__custom__') {
+                        setFormReason((prev) => {
+                          if (!prev || leaveReasonsList.some((r) => prev.startsWith(r.name))) {
+                            return val;
+                          }
+                          return `${val}: ${prev}`;
+                        });
+                      }
+                    }}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-navy-50 border border-navy-200 text-xs font-bold text-navy-900 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none cursor-pointer appearance-none pr-8"
+                  >
+                    <option value="">-- Select Reason for Leave --</option>
+                    {leaveReasonsList.map((r) => (
+                      <option key={r.id || r.name} value={r.name}>
+                        {r.name} {r.days ? `(${r.days} days)` : ''}
+                      </option>
+                    ))}
+                    <option value="__custom__">+ Other / Custom Reason</option>
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-navy-500">
+                    <Icon name="chevron-down" size={14} />
+                  </div>
+                </div>
+
                 <textarea
                   rows={2}
                   value={formReason}
                   onChange={(e) => setFormReason(e.target.value)}
-                  placeholder="e.g. Personal emergency, family event, medical rest..."
+                  placeholder="Additional remarks or specific justification..."
                   className="w-full px-3.5 py-2 rounded-xl bg-navy-50 border border-navy-200 text-xs font-medium text-navy-900 placeholder-navy-400 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none resize-none"
                 />
               </div>
@@ -847,7 +926,7 @@ export function TrainerHrmsPage() {
                   <label className="block text-xs font-bold text-navy-700">
                     Supporting Document / Certificate
                   </label>
-                  <span className="text-[10px] text-navy-400 font-medium">PDF, DOC, DOCX, JPG, PNG (Max 15MB)</span>
+                  <span className="text-[10px] text-navy-400 font-medium">PDF, DOC, DOCX, JPG, PNG (Max 2MB)</span>
                 </div>
 
                 {formAttachmentUrl ? (

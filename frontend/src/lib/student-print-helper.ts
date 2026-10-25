@@ -11,6 +11,8 @@ export interface StudentPrintData {
   academicYear?: string;
   course?: string;
   medium?: string;
+  qualification?: string;
+  specialization?: string;
   fullName?: string;
   fatherName?: string;
   motherName?: string;

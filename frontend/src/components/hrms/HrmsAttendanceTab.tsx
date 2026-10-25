@@ -172,9 +172,6 @@ export function HrmsAttendanceTab({ attendanceLogs }: HrmsAttendanceTabProps) {
             <Icon name="clock" size={24} className="text-purple-600" />
             <span>Attendance &amp; Biometrics Hub</span>
           </h2>
-          <p className="text-xs text-navy-500 font-medium mt-1">
-            Real-time live attendance logs from database for Customers and Trainers/Staff
-          </p>
         </div>
 
         {/* Dynamic Controls: Role Dropdown Filter & Sub-View Selector */}
@@ -234,17 +231,17 @@ export function HrmsAttendanceTab({ attendanceLogs }: HrmsAttendanceTabProps) {
               <Icon name="calendar-check" size={14} />
               <span>Staff Shifts ({attendanceLogs.length})</span>
             </button>
-          </div>
 
-          {/* Monthly Attendance Emails Button */}
-          <button
-            onClick={() => setEmailReportsOpen(true)}
-            className="px-3.5 py-2 rounded-xl text-xs font-bold border border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
-            title="Track & dispatch monthly employee attendance emails with Excel attachments"
-          >
-            <Icon name="mail" size={14} className="text-indigo-600" />
-            <span>Monthly Email Reports</span>
-          </button>
+            {/* Email Reports Button right side of staff shift button */}
+            <button
+              onClick={() => setEmailReportsOpen(true)}
+              className="px-3 py-1.5 rounded-lg text-xs font-bold border border-indigo-200 text-indigo-700 bg-indigo-50/80 hover:bg-indigo-100/90 flex items-center gap-1.5 shadow-xs transition-all cursor-pointer whitespace-nowrap"
+              title="Track & dispatch monthly employee attendance emails with Excel attachments"
+            >
+              <Icon name="mail" size={14} className="text-indigo-600" />
+              <span>Email Reports</span>
+            </button>
+          </div>
         </div>
       </div>
 

@@ -137,6 +137,9 @@ SCHEMA_COLUMNS: Dict[str, List[Tuple[str, str]]] = {
         ("status", "VARCHAR"),
         ("primary_gym_location", "VARCHAR"),
         ("enable_workout_videos", "BOOLEAN"),
+        ("qualification", "VARCHAR"),
+        ("specialization", "VARCHAR"),
+        ("meta_data", "JSON"),
         ("updated_at", "TIMESTAMP"),
     ],
     "inbody_reports": [
@@ -231,6 +234,8 @@ SCHEMA_COLUMNS: Dict[str, List[Tuple[str, str]]] = {
         ("branch_id", "VARCHAR"),
         ("ho_id", "VARCHAR"),
         ("owner_id", "VARCHAR"),
+        ("qualification", "VARCHAR"),
+        ("specialization", "VARCHAR"),
     ],
     "hrms_leaves": [
         ("leave_type_id", "VARCHAR"),

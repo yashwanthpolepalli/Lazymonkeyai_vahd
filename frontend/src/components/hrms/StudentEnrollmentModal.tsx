@@ -1,6 +1,7 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import { apiClient } from '@/services/apiClient';
+import { hrmsApi } from '@/services/hrmsApi';
 import { cn } from '@/utils/cn';
 import { printStudentAdmissionForm } from '@/lib/student-print-helper';
 
@@ -93,8 +94,46 @@ export function StudentEnrollmentModal({
   // Dynamic Courses & Languages strictly from Settings / Database
   const [coursesList, setCoursesList] = useState<CourseOptionItem[]>([]);
   const [languagesList, setLanguagesList] = useState<string[]>([]);
-  const [branchesList, setBranchesList] = useState<Array<{ id: string; branch_name: string; name?: string }>>([]);
-  const [selectedBranchId, setSelectedBranchId] = useState<string>('');
+  const [branchesList, setBranchesList] = useState<Array<{ id: string; branch_name: string; gym_name?: string; name?: string; city?: string }>>([]);
+
+  const getOrgDisplayName = (b?: any) => {
+    if (!b) return '';
+    return (b.gym_name || b.name || b.branch_name || '').trim();
+  };
+  const [selectedBranchId, setSelectedBranchId] = useState<string>(() => {
+    const saved = localStorage.getItem('vahd_selected_org_id');
+    return saved && saved !== 'all' ? saved : '';
+  });
+
+  const currentOrg = useMemo(() => {
+    if (selectedBranchId) {
+      const match = branchesList.find((b) => b.id === selectedBranchId);
+      if (match) return match;
+    }
+    const savedOrgId = localStorage.getItem('vahd_selected_org_id');
+    if (savedOrgId && savedOrgId !== 'all') {
+      const match = branchesList.find((b) => b.id === savedOrgId);
+      if (match) return match;
+    }
+    return branchesList.length > 0 ? branchesList[0] : null;
+  }, [branchesList, selectedBranchId]);
+
+  useEffect(() => {
+    if (currentOrg && currentOrg.id !== selectedBranchId) {
+      setSelectedBranchId(currentOrg.id);
+    }
+  }, [currentOrg, selectedBranchId]);
+
+  useEffect(() => {
+    const handleOrgChanged = (e: any) => {
+      const newId = e?.detail?.id;
+      if (newId && newId !== 'all') {
+        setSelectedBranchId(newId);
+      }
+    };
+    window.addEventListener('vahd:org_changed', handleOrgChanged);
+    return () => window.removeEventListener('vahd:org_changed', handleOrgChanged);
+  }, []);
 
   const [course, setCourse] = useState<string>('');
   const [customCourse, setCustomCourse] = useState<string>('');
@@ -103,8 +142,93 @@ export function StudentEnrollmentModal({
   const [customMedium, setCustomMedium] = useState<string>('');
   const [isCustomMedium, setIsCustomMedium] = useState<boolean>(false);
   const [department, setDepartment] = useState<string>('');
+  const [qualification, setQualification] = useState<string>('');
+  const [customQualification, setCustomQualification] = useState<string>('');
+  const [isCustomQualification, setIsCustomQualification] = useState<boolean>(false);
+  const [specialization, setSpecialization] = useState<string>('');
+  const [customSpecialization, setCustomSpecialization] = useState<string>('');
+  const [isCustomSpecialization, setIsCustomSpecialization] = useState<boolean>(false);
   const [academicYear, setAcademicYear] = useState<string>(defaultAcademicYear);
   const [status, setStatus] = useState<string>('ACTIVE');
+
+  // Master data options for Qualification and Specialization (strictly from master data, no mock text)
+  const [qualificationOptions, setQualificationOptions] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem('vahd_master_data_v3') || localStorage.getItem('vahd_master_data_v2');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed.qualifications)) {
+          return parsed.qualifications.map((q: any) => q.name);
+        }
+      }
+    } catch {}
+    return [];
+  });
+
+  const [specializationOptions, setSpecializationOptions] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem('vahd_master_data_v3') || localStorage.getItem('vahd_master_data_v2');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed.specializations)) {
+          const mockNames = new Set([
+            'Animal Genetics & Breeding', 'Poultry Science', 'Veterinary Epidemiology',
+            'Veterinary Gynecology', 'Veterinary Medicine', 'Veterinary Microbiology',
+            'Veterinary Parasiteology', 'Veterinary Pharmacology', 'Veterinary Surgery'
+          ]);
+          return parsed.specializations
+            .filter((s: any) => !mockNames.has(s?.name) && !String(s?.id || '').startsWith('spc_'))
+            .map((s: any) => s.name);
+        }
+      }
+    } catch {}
+    return [];
+  });
+
+  // Keep options synchronized dynamically whenever master data changes
+  useEffect(() => {
+    const handleMasterUpdate = () => {
+      try {
+        const stored = localStorage.getItem('vahd_master_data_v3') || localStorage.getItem('vahd_master_data_v2');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed.qualifications)) {
+            setQualificationOptions(parsed.qualifications.map((q: any) => q.name));
+          }
+          if (Array.isArray(parsed.specializations)) {
+            const mockNames = new Set([
+              'Animal Genetics & Breeding', 'Poultry Science', 'Veterinary Epidemiology',
+              'Veterinary Gynecology', 'Veterinary Medicine', 'Veterinary Microbiology',
+              'Veterinary Parasiteology', 'Veterinary Pharmacology', 'Veterinary Surgery'
+            ]);
+            setSpecializationOptions(
+              parsed.specializations
+                .filter((s: any) => !mockNames.has(s?.name) && !String(s?.id || '').startsWith('spc_'))
+                .map((s: any) => s.name)
+            );
+          }
+        }
+      } catch {}
+    };
+    window.addEventListener('vahd_master_data_updated', handleMasterUpdate);
+    return () => window.removeEventListener('vahd_master_data_updated', handleMasterUpdate);
+  }, []);
+
+  // Dynamic Departments from DB via hrmsApi
+  const [departmentOptions, setDepartmentOptions] = useState<string[]>(DEFAULT_STUDENT_DEPARTMENTS);
+  useEffect(() => {
+    const fetchDepts = () => {
+      hrmsApi.getDepartments().then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          const names = data.filter((d: any) => d.is_active !== false).map((d: any) => d.name);
+          if (names.length > 0) setDepartmentOptions(names);
+        }
+      }).catch(() => {});
+    };
+    fetchDepts();
+    window.addEventListener('vahd_master_data_updated', fetchDepts);
+    return () => window.removeEventListener('vahd_master_data_updated', fetchDepts);
+  }, []);
 
   // Form Fields
   const [fullName, setFullName] = useState('');
@@ -222,7 +346,11 @@ export function StudentEnrollmentModal({
       .then((res) => {
         if (Array.isArray(res)) {
           setBranchesList(res);
-          if (res.length > 0 && !selectedBranchId) {
+          const savedOrgId = localStorage.getItem('vahd_selected_org_id');
+          const matched = savedOrgId && savedOrgId !== 'all' ? res.find((b) => b.id === savedOrgId) : null;
+          if (matched) {
+            setSelectedBranchId(matched.id);
+          } else if (res.length > 0 && !selectedBranchId) {
             setSelectedBranchId(res[0].id);
           }
         }
@@ -239,6 +367,10 @@ export function StudentEnrollmentModal({
       if (meta.college_logo) setCollegeLogo(meta.college_logo);
       if (studentToEdit.branch_id || meta.branch_id) {
         setSelectedBranchId(studentToEdit.branch_id || meta.branch_id);
+      } else {
+        const savedOrgId = localStorage.getItem('vahd_selected_org_id');
+        const matched = savedOrgId && savedOrgId !== 'all' ? branchesList.find((b) => b.id === savedOrgId) : null;
+        if (matched) setSelectedBranchId(matched.id);
       }
 
       // 1. Dynamic Course & Medium Resolution from metadata, direct properties, or goal
@@ -336,7 +468,23 @@ export function StudentEnrollmentModal({
       setCaste(meta.caste || '');
       setSubCaste(meta.sub_caste || '');
       setBloodGroup(meta.blood_group || meta.bloodGroup || '');
-      setDepartment(meta.department || '');
+      const qVal = meta.qualification || (studentToEdit as any).qualification || '';
+      setQualification(qVal);
+      if (qVal && !qualificationOptions.includes(qVal)) {
+        setCustomQualification(qVal);
+        setIsCustomQualification(true);
+      } else {
+        setIsCustomQualification(false);
+      }
+
+      const sVal = meta.specialization || (studentToEdit as any).specialization || '';
+      setSpecialization(sVal);
+      if (sVal && !specializationOptions.includes(sVal)) {
+        setCustomSpecialization(sVal);
+        setIsCustomSpecialization(true);
+      } else {
+        setIsCustomSpecialization(false);
+      }
       setMotherTongue(meta.mother_tongue || '');
       setNationality(meta.nationality || '');
       setMaritalStatus(meta.marital_status || '');
@@ -364,6 +512,12 @@ export function StudentEnrollmentModal({
       setCustomMedium('');
       setIsCustomMedium(false);
       setDepartment('');
+      setQualification('');
+      setCustomQualification('');
+      setIsCustomQualification(false);
+      setSpecialization('');
+      setCustomSpecialization('');
+      setIsCustomSpecialization(false);
       setStatus('ACTIVE');
       setBloodGroup('');
       setAcademicYear(defaultAcademicYear);
@@ -402,7 +556,11 @@ export function StudentEnrollmentModal({
       setAnnualIncome('');
       setAadharNumber(['', '', '', '', '', '', '', '', '', '', '', '']);
       setPhotoBase64(null);
-      if (branchesList.length > 0) {
+      const savedOrgId = localStorage.getItem('vahd_selected_org_id');
+      const matched = savedOrgId && savedOrgId !== 'all' ? branchesList.find((b) => b.id === savedOrgId) : null;
+      if (matched) {
+        setSelectedBranchId(matched.id);
+      } else if (branchesList.length > 0) {
         setSelectedBranchId(branchesList[0].id);
       } else {
         setSelectedBranchId('');
@@ -564,7 +722,7 @@ export function StudentEnrollmentModal({
       phone: finalMobile,
       parent_phone: cleanParentMobile,
       parent_mobile: cleanParentMobile,
-      branch_id: selectedBranchId || undefined,
+      branch_id: selectedBranchId || currentOrg?.id || undefined,
       gender: gender.toLowerCase(),
       age: age ? parseInt(age, 10) : undefined,
       role: 'STUDENT',
@@ -573,17 +731,21 @@ export function StudentEnrollmentModal({
       face_image: photoBase64 || undefined,
       face_registered: !!photoBase64,
       status: status || 'ACTIVE',
+      qualification: qualification.trim() || undefined,
+      specialization: specialization.trim() || undefined,
       meta_data: {
         admission_type: 'DEGREE_ADMISSION',
         college_name: collegeName.toUpperCase().trim(),
         affiliation: affiliation.trim(),
         college_logo: collegeLogo || undefined,
         academic_year: academicYear,
-        branch_id: selectedBranchId || undefined,
-        organisation_name: branchesList.find((b) => b.id === selectedBranchId)?.branch_name || branchesList.find((b) => b.id === selectedBranchId)?.name || undefined,
+        branch_id: selectedBranchId || currentOrg?.id || undefined,
+        organisation_name: getOrgDisplayName(currentOrg) || undefined,
         course: selectedFinalCourse,
         medium: selectedFinalMedium,
         department: department || undefined,
+        qualification: qualification.trim() || undefined,
+        specialization: specialization.trim() || undefined,
         email: validEmail,
         father_name: fatherName.toUpperCase(),
         mother_name: motherName.toUpperCase(),
@@ -652,6 +814,8 @@ export function StudentEnrollmentModal({
       academicYear,
       course: selectedFinalCourse,
       medium: selectedFinalMedium,
+      qualification: qualification.trim() || undefined,
+      specialization: specialization.trim() || undefined,
       fullName,
       fatherName,
       motherName,
@@ -846,23 +1010,15 @@ export function StudentEnrollmentModal({
           <div className="border-2 border-slate-800 dark:border-slate-600 rounded-2xl p-4 bg-slate-50/60 dark:bg-slate-800/40 space-y-3.5 shadow-xs">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-700 pb-2.5">
               <span className="font-extrabold uppercase tracking-wide text-slate-900 dark:text-white text-xs">
-                APPLICATION FORM FOR ADMISSION TO DEGREE / COURSE FOR:
+                APPLICATION FORM
               </span>
               <div className="flex items-center gap-3 flex-wrap">
-                {branchesList.length > 0 && (
+                {currentOrg && (
                   <div className="flex items-center gap-1.5">
                     <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400">Organisation:</span>
-                    <select
-                      value={selectedBranchId}
-                      onChange={(e) => setSelectedBranchId(e.target.value)}
-                      className="px-2.5 py-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-xs font-bold text-blue-700 dark:text-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-xs max-w-[200px] truncate"
-                    >
-                      {branchesList.map((b) => (
-                        <option key={b.id} value={b.id}>
-                          {b.branch_name || b.name}
-                        </option>
-                      ))}
-                    </select>
+                    <span className="px-2.5 py-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-xs font-black text-blue-700 dark:text-blue-400 shadow-2xs uppercase">
+                      {getOrgDisplayName(currentOrg)}
+                    </span>
                   </div>
                 )}
                   <div className="flex items-center gap-1.5">
@@ -909,7 +1065,7 @@ export function StudentEnrollmentModal({
                     className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none pr-8 cursor-pointer shadow-xs"
                   >
                     <option value="">-- Select Department --</option>
-                    {DEFAULT_STUDENT_DEPARTMENTS.map((dept) => (
+                    {departmentOptions.map((dept) => (
                       <option key={dept} value={dept}>{dept}</option>
                     ))}
                   </select>
@@ -1019,6 +1175,114 @@ export function StudentEnrollmentModal({
                 )}
               </div>
 
+              {/* Qualification & Specialization Fields (Full 12 columns across) */}
+              <div className="col-span-1 md:col-span-12 grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 mt-1 border-t border-slate-200 dark:border-slate-700">
+                {/* Qualification Dropdown */}
+                <div className="space-y-1.5">
+                  <label className="block font-bold text-slate-800 dark:text-slate-200 text-xs">
+                    Highest Qualification:
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={isCustomQualification ? '__custom__' : (qualification || '')}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === '__custom__') {
+                          setIsCustomQualification(true);
+                          setQualification(customQualification);
+                        } else {
+                          setIsCustomQualification(false);
+                          setQualification(val);
+                        }
+                      }}
+                      className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none pr-8 cursor-pointer shadow-xs"
+                    >
+                      <option value="">-- Select Qualification --</option>
+                      {qualificationOptions.map((q) => (
+                        <option key={q} value={q}>
+                          {q}
+                        </option>
+                      ))}
+                      {qualification && !qualificationOptions.includes(qualification) && !isCustomQualification && (
+                        <option value={qualification}>{qualification}</option>
+                      )}
+                      <option value="__custom__">+ Other / Custom Qualification</option>
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-500">
+                      <Icon name="chevron-down" size={14} />
+                    </div>
+                  </div>
+
+                  {isCustomQualification && (
+                    <div className="pt-1 animate-fade-in">
+                      <input
+                        type="text"
+                        value={customQualification}
+                        onChange={(e) => {
+                          setCustomQualification(e.target.value);
+                          setQualification(e.target.value);
+                        }}
+                        placeholder="Enter Custom Qualification"
+                        className="w-full px-3 py-1.5 bg-white dark:bg-slate-900 border border-blue-400 rounded-lg text-xs font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
+                        autoFocus
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Specialization Dropdown */}
+                <div className="space-y-1.5">
+                  <label className="block font-bold text-slate-800 dark:text-slate-200 text-xs">
+                    Specialization / Branch:
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={isCustomSpecialization ? '__custom__' : (specialization || '')}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === '__custom__') {
+                          setIsCustomSpecialization(true);
+                          setSpecialization(customSpecialization);
+                        } else {
+                          setIsCustomSpecialization(false);
+                          setSpecialization(val);
+                        }
+                      }}
+                      className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none pr-8 cursor-pointer shadow-xs"
+                    >
+                      <option value="">-- Select Specialization / Branch --</option>
+                      {specializationOptions.map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
+                      {specialization && !specializationOptions.includes(specialization) && !isCustomSpecialization && (
+                        <option value={specialization}>{specialization}</option>
+                      )}
+                      <option value="__custom__">+ Other / Custom Specialization</option>
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-500">
+                      <Icon name="chevron-down" size={14} />
+                    </div>
+                  </div>
+
+                  {isCustomSpecialization && (
+                    <div className="pt-1 animate-fade-in">
+                      <input
+                        type="text"
+                        value={customSpecialization}
+                        onChange={(e) => {
+                          setCustomSpecialization(e.target.value);
+                          setSpecialization(e.target.value);
+                        }}
+                        placeholder="Enter Custom Specialization"
+                        className="w-full px-3 py-1.5 bg-white dark:bg-slate-900 border border-blue-400 rounded-lg text-xs font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
+                        autoFocus
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 

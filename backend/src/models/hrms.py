@@ -30,6 +30,8 @@ class Employee(Base):
     owner_id = Column(String, nullable=True, index=True)
     address = Column(String, nullable=True)
     emergency_contact = Column(String, nullable=True)
+    qualification = Column(String, nullable=True)
+    specialization = Column(String, nullable=True)
     skills = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 

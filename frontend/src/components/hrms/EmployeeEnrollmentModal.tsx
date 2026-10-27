@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import { apiClient } from '@/services/apiClient';
 import { hrmsApi, DepartmentItem, DesignationItem } from '@/services/hrmsApi';
+import { masterDataApi } from '@/services/masterDataApi';
 import { cn } from '@/utils/cn';
 
 export interface EmployeeEnrollmentModalProps {
@@ -46,7 +47,7 @@ const MARITAL_STATUS_OPTIONS = ['Single', 'Married', 'Unmarried', 'Divorced', 'W
 
 const GENDER_OPTIONS = ['Male', 'Female', 'Other'];
 
-const EMPLOYEE_ROLES = [
+const DEFAULT_EMPLOYEE_ROLES = [
   { value: 'STAFF', label: 'Staff' },
   { value: 'FACULTY', label: 'Faculty / Teacher' },
   { value: 'TRAINER', label: 'Trainer / Coach' },
@@ -54,6 +55,7 @@ const EMPLOYEE_ROLES = [
   { value: 'ADMIN', label: 'Administrator' },
   { value: 'EMPLOYEE', label: 'Employee' },
 ];
+const EMPLOYEE_ROLES = DEFAULT_EMPLOYEE_ROLES;
 
 const getOrgBranchLabel = (b: any) => {
   const orgName = (b.gym_name || b.organisation || '').trim();
@@ -161,42 +163,267 @@ export function EmployeeEnrollmentModal({
   const [branchesList, setBranchesList] = useState<Array<{ id: string; branch_name: string; name?: string; gym_name?: string; city?: string }>>([]);
   const [selectedBranchId, setSelectedBranchId] = useState<string>('');
 
-  useEffect(() => {
-    if (!visible) return;
-    hrmsApi.getDepartments().then((data) => {
-      if (Array.isArray(data)) setDepartmentsList(data);
-    }).catch(() => {});
-
-    hrmsApi.getDesignations().then((data) => {
-      if (Array.isArray(data)) setDesignationsList(data);
-    }).catch(() => {});
-
-    const fetchBranches = async () => {
-      try {
-        const hoRes = await apiClient.get<any>('/ho/organizations').catch(() => null);
-        let list: any[] = [];
-        if (hoRes?.organizations && Array.isArray(hoRes.organizations) && hoRes.organizations.length > 0) {
-          list = hoRes.organizations;
-        } else {
-          const branchRes = await apiClient.get<any[]>('/gym/branches').catch(() => []);
-          if (Array.isArray(branchRes)) list = branchRes;
+  // Dynamic Master Data options (Gender, Blood Groups, Caste, Roles, Locations, Service Areas)
+  const [dynamicBloodGroups, setDynamicBloodGroups] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem('vahd_master_data_v3') || localStorage.getItem('vahd_master_data_v2');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed.blood_groups) && parsed.blood_groups.length > 0) {
+          return parsed.blood_groups.filter((b: any) => b.is_active !== false).map((b: any) => b.name);
         }
+      }
+    } catch {}
+    return BLOOD_GROUPS;
+  });
 
-        setBranchesList(list);
+  const [dynamicCastes, setDynamicCastes] = useState<Array<{ value: string; label: string }>>(() => {
+    try {
+      const stored = localStorage.getItem('vahd_master_data_v3') || localStorage.getItem('vahd_master_data_v2');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed.castes) && parsed.castes.length > 0) {
+          return parsed.castes.filter((c: any) => c.is_active !== false).map((c: any) => ({
+            value: c.code || c.name,
+            label: c.name,
+          }));
+        }
+      }
+    } catch {}
+    return CASTE_OPTIONS;
+  });
 
-        if (list.length > 0) {
-          const activeOrgId = localStorage.getItem('vahd_selected_org_id');
-          const matchedActive = activeOrgId && activeOrgId !== 'all' ? list.find((b) => b.id === activeOrgId) : null;
-          const target = matchedActive || (employeeToEdit ? list.find((b) => b.id === (employeeToEdit.branch_id || employeeToEdit.meta_data?.branch_id)) : null) || list[0];
-          
-          if (target && !selectedBranchId) {
-            setSelectedBranchId(target.id);
-            if (!location) setLocation(getOrgBranchLabel(target));
+  const [dynamicGenders, setDynamicGenders] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem('vahd_master_data_v3') || localStorage.getItem('vahd_master_data_v2');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed.gender_types) && parsed.gender_types.length > 0) {
+          return parsed.gender_types.filter((g: any) => g.is_active !== false).map((g: any) => g.name);
+        }
+      }
+    } catch {}
+    return GENDER_OPTIONS;
+  });
+
+  const [dynamicRoles, setDynamicRoles] = useState<Array<{ value: string; label: string }>>(() => {
+    try {
+      const stored = localStorage.getItem('vahd_master_data_v3') || localStorage.getItem('vahd_master_data_v2');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed.roles) && parsed.roles.length > 0) {
+          const activeRoles = parsed.roles.filter((r: any) => r.is_active !== false);
+          if (activeRoles.length > 0) {
+            return activeRoles.map((r: any) => ({
+              value: (r.code || r.name).toUpperCase().replace(/\s+/g, '_'),
+              label: r.name,
+            }));
           }
         }
-      } catch (e) {}
-    };
-    fetchBranches();
+      }
+    } catch {}
+    return DEFAULT_EMPLOYEE_ROLES;
+  });
+
+  const [masterDistricts, setMasterDistricts] = useState<string[]>([]);
+  const [masterMandals, setMasterMandals] = useState<string[]>([]);
+  const [masterTowns, setMasterTowns] = useState<string[]>([]);
+  const [masterAreaOfServiceList, setMasterAreaOfServiceList] = useState<string[]>([]);
+
+  // Synchronize departments, designations, branches, roles, and master lookup values
+  const syncAllMasterAndApiData = async () => {
+    try {
+      let parsed: Record<string, any> = {};
+      try {
+        const stored = localStorage.getItem('vahd_master_data_v3') || localStorage.getItem('vahd_master_data_v2');
+        if (stored) parsed = JSON.parse(stored);
+      } catch {}
+
+      // Fetch fresh master data from backend DB
+      const apiMaster = await masterDataApi.getAll().catch(() => null);
+      if (apiMaster && typeof apiMaster === 'object') {
+        parsed = { ...parsed, ...apiMaster };
+      }
+
+      // 1. Roles
+      if (Array.isArray(parsed.roles)) {
+        const activeRoles = parsed.roles.filter((r: any) => r.is_active !== false);
+        if (activeRoles.length > 0) {
+          setDynamicRoles(activeRoles.map((r: any) => ({
+            value: (r.code || r.name).toUpperCase().replace(/\s+/g, '_'),
+            label: r.name,
+          })));
+        } else {
+          setDynamicRoles(DEFAULT_EMPLOYEE_ROLES);
+        }
+      }
+
+      // 2. Blood Groups, Castes, Genders
+      if (Array.isArray(parsed.blood_groups) && parsed.blood_groups.length > 0) {
+        setDynamicBloodGroups(parsed.blood_groups.filter((b: any) => b.is_active !== false).map((b: any) => b.name));
+      }
+      if (Array.isArray(parsed.castes) && parsed.castes.length > 0) {
+        setDynamicCastes(parsed.castes.filter((c: any) => c.is_active !== false).map((c: any) => ({
+          value: c.code || c.name,
+          label: c.name,
+        })));
+      }
+      if (Array.isArray(parsed.gender_types) && parsed.gender_types.length > 0) {
+        setDynamicGenders(parsed.gender_types.filter((g: any) => g.is_active !== false).map((g: any) => g.name));
+      }
+
+      // 3. Districts, Mandals, Towns
+      if (Array.isArray(parsed.districts)) {
+        setMasterDistricts(parsed.districts.filter((d: any) => d.is_active !== false).map((d: any) => d.name));
+      }
+      if (Array.isArray(parsed.mandals)) {
+        setMasterMandals(parsed.mandals.filter((m: any) => m.is_active !== false).map((m: any) => m.name));
+      }
+      if (Array.isArray(parsed.towns)) {
+        setMasterTowns(parsed.towns.filter((t: any) => t.is_active !== false).map((t: any) => t.name));
+      }
+
+      // 4. Area of Service (Specializations + Posting Types)
+      const serviceOptions: string[] = [];
+      if (Array.isArray(parsed.specializations)) {
+        parsed.specializations.filter((s: any) => s.is_active !== false).forEach((s: any) => {
+          if (s.name && !serviceOptions.includes(s.name)) serviceOptions.push(s.name);
+        });
+      }
+      if (Array.isArray(parsed.posting_types)) {
+        parsed.posting_types.filter((p: any) => p.is_active !== false).forEach((p: any) => {
+          if (p.name && !serviceOptions.includes(p.name)) serviceOptions.push(p.name);
+        });
+      }
+      if (serviceOptions.length > 0) {
+        setMasterAreaOfServiceList(serviceOptions);
+      }
+
+      // 5. Departments (HRMS API + Settings masterStore)
+      hrmsApi.getDepartments().then((data) => {
+        const apiDepts = Array.isArray(data) ? data : [];
+        const existingNames = new Set(apiDepts.map((d: any) => d.name.toLowerCase()));
+        const merged = [...apiDepts];
+        if (Array.isArray(parsed.departments)) {
+          parsed.departments.filter((d: any) => d.is_active !== false).forEach((md: any) => {
+            if (!existingNames.has(md.name.toLowerCase())) {
+              existingNames.add(md.name.toLowerCase());
+              merged.push({
+                id: md.id || `dept_${md.name}`,
+                name: md.name,
+                code: md.code || '',
+                description: md.description || md.extra_info || '',
+                is_active: true,
+              });
+            }
+          });
+        }
+        setDepartmentsList(merged);
+      }).catch(() => {
+        if (Array.isArray(parsed.departments)) {
+          setDepartmentsList(parsed.departments.filter((d: any) => d.is_active !== false).map((md: any) => ({
+            id: md.id || `dept_${md.name}`,
+            name: md.name,
+            code: md.code || '',
+            description: md.description || '',
+            is_active: true,
+          })));
+        }
+      });
+
+      // 6. Designations (HRMS API + Settings masterStore)
+      hrmsApi.getDesignations().then((data) => {
+        const apiDesgs = Array.isArray(data) ? data : [];
+        const existingTitles = new Set(apiDesgs.map((d: any) => d.title.toLowerCase()));
+        const merged = [...apiDesgs];
+        if (Array.isArray(parsed.designations)) {
+          parsed.designations.filter((d: any) => d.is_active !== false).forEach((md: any) => {
+            if (!existingTitles.has(md.name.toLowerCase())) {
+              existingTitles.add(md.name.toLowerCase());
+              merged.push({
+                id: md.id || `desg_${md.name}`,
+                title: md.name,
+                department: md.parent_name || 'ALL',
+                level: md.level ? String(md.level) : '',
+                description: md.description || md.extra_info || '',
+                is_active: true,
+              });
+            }
+          });
+        }
+        setDesignationsList(merged);
+      }).catch(() => {
+        if (Array.isArray(parsed.designations)) {
+          setDesignationsList(parsed.designations.filter((d: any) => d.is_active !== false).map((md: any) => ({
+            id: md.id || `desg_${md.name}`,
+            title: md.name,
+            department: md.parent_name || 'ALL',
+            level: md.level ? String(md.level) : '',
+            description: md.description || '',
+            is_active: true,
+          })));
+        }
+      });
+
+      // 7. Branches & Institutions (API + institution_types + place_of_working)
+      const hoRes = await apiClient.get<any>('/ho/organizations').catch(() => null);
+      let list: any[] = [];
+      if (hoRes?.organizations && Array.isArray(hoRes.organizations) && hoRes.organizations.length > 0) {
+        list = hoRes.organizations;
+      } else {
+        const branchRes = await apiClient.get<any[]>('/gym/branches').catch(() => []);
+        if (Array.isArray(branchRes)) list = branchRes;
+      }
+
+      const existingBranchNames = new Set(list.map((b) => (b.branch_name || b.name || b.gym_name || '').toLowerCase()));
+      const extraInstitutions: any[] = [];
+      const addMasterInstitutions = (items: any[], typeLabel: string) => {
+        if (Array.isArray(items)) {
+          items.filter((it: any) => it.is_active !== false).forEach((it: any) => {
+            const name = (it.name || '').trim();
+            if (name && !existingBranchNames.has(name.toLowerCase())) {
+              existingBranchNames.add(name.toLowerCase());
+              extraInstitutions.push({
+                id: it.id || `inst_${name}`,
+                branch_name: name,
+                name: name,
+                gym_name: it.parent_name || typeLabel,
+                city: it.extra_info || '',
+              });
+            }
+          });
+        }
+      };
+
+      addMasterInstitutions(parsed.institution_types, 'Institution');
+      addMasterInstitutions(parsed.place_of_working, 'Place of Working');
+
+      const allBranches = [...list, ...extraInstitutions];
+      setBranchesList(allBranches);
+
+      if (allBranches.length > 0) {
+        const activeOrgId = localStorage.getItem('vahd_selected_org_id');
+        const matchedActive = activeOrgId && activeOrgId !== 'all' ? allBranches.find((b) => b.id === activeOrgId) : null;
+        const target = matchedActive || (employeeToEdit ? allBranches.find((b) => b.id === (employeeToEdit.branch_id || employeeToEdit.meta_data?.branch_id)) : null) || allBranches[0];
+        
+        if (target && !selectedBranchId) {
+          setSelectedBranchId(target.id);
+          if (!location) setLocation(getOrgBranchLabel(target));
+        }
+      }
+    } catch {}
+  };
+
+  useEffect(() => {
+    syncAllMasterAndApiData();
+    window.addEventListener('vahd_master_data_updated', syncAllMasterAndApiData);
+    return () => window.removeEventListener('vahd_master_data_updated', syncAllMasterAndApiData);
+  }, []);
+
+  useEffect(() => {
+    if (visible) {
+      syncAllMasterAndApiData();
+    }
   }, [visible]);
 
   // Populate or Reset data
@@ -1331,9 +1558,10 @@ export function EmployeeEnrollmentModal({
                         <span className="font-bold text-blue-950 shrink-0">Area of service:</span>
                         <input
                           type="text"
+                          list="employeeAreaOfServiceList"
                           value={areaOfService}
                           onChange={(e) => setAreaOfService(e.target.value)}
-                          placeholder="E.g. Training, Operations"
+                          placeholder="E.g. Training, Operations, Specialization"
                           className="w-full bg-transparent outline-none text-slate-900 px-1 py-0.5 focus:bg-blue-100/50"
                         />
                       </div>
@@ -1345,10 +1573,10 @@ export function EmployeeEnrollmentModal({
                           className="w-full bg-transparent outline-none text-slate-900 px-1 py-0.5 focus:bg-blue-100/50 cursor-pointer font-medium"
                         >
                           <option value="">Select Caste / Category</option>
-                          {CASTE_OPTIONS.map((c) => (
+                          {dynamicCastes.map((c) => (
                             <option key={c.value} value={c.value}>{c.label}</option>
                           ))}
-                          {caste && !CASTE_OPTIONS.some((c) => c.value === caste || c.label === caste) && (
+                          {caste && !dynamicCastes.some((c) => c.value === caste || c.label === caste) && (
                             <option value={caste}>{caste}</option>
                           )}
                         </select>
@@ -1416,10 +1644,10 @@ export function EmployeeEnrollmentModal({
                       className="w-full bg-transparent outline-none font-bold text-rose-700 px-1 py-0.5 focus:bg-blue-100/50 cursor-pointer uppercase"
                     >
                       <option value="">Select Blood Group</option>
-                      {BLOOD_GROUPS.map((bg) => (
+                      {dynamicBloodGroups.map((bg) => (
                         <option key={bg} value={bg}>{bg}</option>
                       ))}
-                      {bloodGroup && !BLOOD_GROUPS.includes(bloodGroup) && (
+                      {bloodGroup && !dynamicBloodGroups.includes(bloodGroup) && (
                         <option value={bloodGroup}>{bloodGroup}</option>
                       )}
                     </select>
@@ -1448,7 +1676,7 @@ export function EmployeeEnrollmentModal({
                       className="w-full bg-transparent outline-none text-blue-950 font-semibold px-1 py-0.5 focus:bg-blue-100/50 cursor-pointer"
                     >
                       <option value="">Select Gender</option>
-                      {GENDER_OPTIONS.map((g) => (
+                      {dynamicGenders.map((g) => (
                         <option key={g} value={g}>{g}</option>
                       ))}
                     </select>
@@ -1743,12 +1971,12 @@ export function EmployeeEnrollmentModal({
                       onChange={(e) => setEmployeeRole(e.target.value)}
                       className="w-full bg-transparent outline-none text-purple-900 font-bold px-1 py-0.5 focus:bg-purple-100/50 cursor-pointer uppercase"
                     >
-                      {EMPLOYEE_ROLES.map((r) => (
+                      {dynamicRoles.map((r) => (
                         <option key={r.value} value={r.value}>
                           {r.label}
                         </option>
                       ))}
-                      {employeeRole && !EMPLOYEE_ROLES.some((r) => r.value === employeeRole) && (
+                      {employeeRole && !dynamicRoles.some((r) => r.value === employeeRole) && (
                         <option value={employeeRole}>{employeeRole}</option>
                       )}
                     </select>
@@ -2209,6 +2437,28 @@ export function EmployeeEnrollmentModal({
               </button>
             </div>
           </div>
+
+          {/* Dynamic Master Datalists for Autocomplete (Area of Service, Districts, Mandals, Towns) */}
+          <datalist id="employeeAreaOfServiceList">
+            {masterAreaOfServiceList.map((svc) => (
+              <option key={svc} value={svc} />
+            ))}
+          </datalist>
+          <datalist id="employeeDistrictsList">
+            {masterDistricts.map((dst) => (
+              <option key={dst} value={dst} />
+            ))}
+          </datalist>
+          <datalist id="employeeMandalsList">
+            {masterMandals.map((mdl) => (
+              <option key={mdl} value={mdl} />
+            ))}
+          </datalist>
+          <datalist id="employeeTownsList">
+            {masterTowns.map((twn) => (
+              <option key={twn} value={twn} />
+            ))}
+          </datalist>
 
         </form>
 

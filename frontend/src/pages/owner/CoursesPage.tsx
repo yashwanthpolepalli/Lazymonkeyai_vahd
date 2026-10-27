@@ -299,6 +299,25 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
         setClassifications(fetchedClasses);
       }
 
+      // Sync courses & languages into shared master storage for student/employee enrollment modals
+      try {
+        const mappedCourses = fetchedPlans.map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          category: p.category,
+          period: p.period || (p.duration_days ? `${p.duration_days} Days` : ''),
+          price: p.price,
+          duration_days: p.duration_days,
+          is_active: true,
+        }));
+        localStorage.setItem('vahd_cached_courses_v1', JSON.stringify(mappedCourses));
+        if (fetchedLangs.length > 0) {
+          localStorage.setItem('vahd_cached_languages_v1', JSON.stringify(fetchedLangs));
+        }
+        window.dispatchEvent(new Event('vahd_courses_updated'));
+        window.dispatchEvent(new Event('vahd_master_data_updated'));
+      } catch {}
+
       // Merge departments from HRMS into branch categories if not already present and not deleted
       let deletedBranchCodes = new Set<string>();
       try {

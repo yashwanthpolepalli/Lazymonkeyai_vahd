@@ -2,7 +2,8 @@ import uuid
 from typing import List, Dict, Any, Optional
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
-from src.models.settings import GymBranch, GymSetting, PaymentMethod
+from src.models.settings import GymBranch, GymSetting, PaymentMethod, MasterData
+from src.models.hrms import Department, Designation
 from src.models.customer import Customer
 from src.models.biometric_device import BiometricDevice
 
@@ -253,6 +254,307 @@ class SettingsService:
         db.commit()
         db.refresh(new_pm)
         return new_pm
+
+    @staticmethod
+    def get_master_data(db: Session, category: Optional[str] = None) -> Any:
+        query = db.query(MasterData)
+        if category:
+            query = query.filter(MasterData.category == category)
+        items = query.order_by(MasterData.display_order.asc(), MasterData.name.asc()).all()
+
+        item_dicts = []
+        for it in items:
+            item_dicts.append({
+                "id": it.id,
+                "category": it.category,
+                "name": it.name,
+                "code": it.code or "",
+                "description": it.description or "",
+                "is_active": it.is_active is not False,
+                "parent_id": it.parent_id or "",
+                "parent_name": it.parent_name or "",
+                "extra_info": it.extra_info or "",
+                "level": it.level or "",
+                "display_order": it.display_order or 0,
+                "created_at": it.created_at.isoformat() if it.created_at else None,
+            })
+
+        # Also merge departments from hrms_departments if category is 'departments' or all
+        if not category or category == "departments":
+            existing_dept_names = {d["name"].lower() for d in item_dicts if d["category"] == "departments"}
+            db_depts = db.query(Department).all()
+            for d in db_depts:
+                if d.name and d.name.lower() not in existing_dept_names:
+                    existing_dept_names.add(d.name.lower())
+                    item_dicts.append({
+                        "id": d.id,
+                        "category": "departments",
+                        "name": d.name,
+                        "code": d.code or "",
+                        "description": d.description or "",
+                        "is_active": d.is_active is not False,
+                        "parent_id": "",
+                        "parent_name": "",
+                        "extra_info": "",
+                        "level": "",
+                        "display_order": 0,
+                        "created_at": d.created_at.isoformat() if d.created_at else None,
+                    })
+
+        # Also merge designations from hrms_designations if category is 'designations' or all
+        if not category or category == "designations":
+            existing_desg_names = {d["name"].lower() for d in item_dicts if d["category"] == "designations"}
+            db_desgs = db.query(Designation).all()
+            for d in db_desgs:
+                if d.title and d.title.lower() not in existing_desg_names:
+                    existing_desg_names.add(d.title.lower())
+                    item_dicts.append({
+                        "id": d.id,
+                        "category": "designations",
+                        "name": d.title,
+                        "code": "",
+                        "description": d.description or "",
+                        "is_active": True,
+                        "parent_id": "",
+                        "parent_name": d.department or "",
+                        "extra_info": "",
+                        "level": d.level or "",
+                        "display_order": 0,
+                        "created_at": d.created_at.isoformat() if d.created_at else None,
+                    })
+
+        if category:
+            return [it for it in item_dicts if it["category"] == category]
+
+        # Group by category
+        grouped: Dict[str, List[Dict[str, Any]]] = {}
+        for it in item_dicts:
+            cat = it["category"]
+            if cat not in grouped:
+                grouped[cat] = []
+            grouped[cat].append(it)
+        return grouped
+
+    @staticmethod
+    def create_master_data_item(db: Session, category: str, data: Dict[str, Any]) -> Dict[str, Any]:
+        name = str(data.get("name") or "").strip()
+        if not name:
+            raise ValueError("Item name is required")
+
+        item_id = str(data.get("id") or "").strip()
+        if not item_id:
+            prefix = category[:3].lower()
+            item_id = f"{prefix}_{uuid.uuid4().hex[:8]}"
+
+        code = str(data.get("code") or "").strip() or None
+        description = str(data.get("description") or "").strip() or None
+        is_active = bool(data.get("is_active", True))
+        parent_id = str(data.get("parent_id") or "").strip() or None
+        parent_name = str(data.get("parent_name") or "").strip() or None
+        extra_info = str(data.get("extra_info") or "").strip() or None
+        level = str(data.get("level") or "").strip() or None
+        display_order = int(data.get("display_order") or 0)
+
+        # Check if already exists in MasterData
+        existing = db.query(MasterData).filter(
+            MasterData.category == category,
+            or_(MasterData.id == item_id, MasterData.name.ilike(name))
+        ).first()
+
+        if existing:
+            existing.name = name
+            if code: existing.code = code
+            if description is not None: existing.description = description
+            existing.is_active = is_active
+            if parent_id is not None: existing.parent_id = parent_id
+            if parent_name is not None: existing.parent_name = parent_name
+            if extra_info is not None: existing.extra_info = extra_info
+            if level is not None: existing.level = level
+            target_obj = existing
+        else:
+            new_item = MasterData(
+                id=item_id,
+                category=category,
+                name=name,
+                code=code,
+                description=description,
+                is_active=is_active,
+                parent_id=parent_id,
+                parent_name=parent_name,
+                extra_info=extra_info,
+                level=level,
+                display_order=display_order,
+            )
+            db.add(new_item)
+            target_obj = new_item
+
+        # Synchronize with Department table if category is departments
+        if category == "departments":
+            dept = db.query(Department).filter(
+                or_(Department.id == item_id, Department.name.ilike(name))
+            ).first()
+            if dept:
+                dept.name = name
+                if code: dept.code = code
+                if description: dept.description = description
+                dept.is_active = is_active
+            else:
+                db.add(Department(
+                    id=item_id if item_id.startswith("dept_") else f"dept_{uuid.uuid4().hex[:8]}",
+                    name=name,
+                    code=code or name[:4].upper(),
+                    description=description or "",
+                    is_active=is_active
+                ))
+
+        # Synchronize with Designation table if category is designations
+        if category == "designations":
+            desg = db.query(Designation).filter(
+                or_(Designation.id == item_id, Designation.title.ilike(name))
+            ).first()
+            if desg:
+                desg.title = name
+                if parent_name: desg.department = parent_name
+                if level: desg.level = level
+                if description: desg.description = description
+            else:
+                db.add(Designation(
+                    id=item_id if item_id.startswith("desg_") else f"desg_{uuid.uuid4().hex[:8]}",
+                    title=name,
+                    department=parent_name or "ALL",
+                    level=level or "",
+                    description=description or ""
+                ))
+
+        db.commit()
+        db.refresh(target_obj)
+        return {
+            "id": target_obj.id,
+            "category": target_obj.category,
+            "name": target_obj.name,
+            "code": target_obj.code or "",
+            "description": target_obj.description or "",
+            "is_active": target_obj.is_active is not False,
+            "parent_id": target_obj.parent_id or "",
+            "parent_name": target_obj.parent_name or "",
+            "extra_info": target_obj.extra_info or "",
+            "level": target_obj.level or "",
+            "display_order": target_obj.display_order or 0,
+            "created_at": target_obj.created_at.isoformat() if target_obj.created_at else None,
+        }
+
+    @staticmethod
+    def update_master_data_item(db: Session, category: str, item_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
+        item = db.query(MasterData).filter(
+            MasterData.category == category,
+            or_(MasterData.id == item_id, MasterData.code.ilike(item_id), MasterData.name.ilike(item_id))
+        ).first()
+
+        name = str(data.get("name") or (item.name if item else "")).strip()
+        code = str(data.get("code") or (item.code if item else "")).strip() or None
+        description = str(data.get("description") or (item.description if item else "")).strip() or None
+        is_active = bool(data.get("is_active", item.is_active if item else True))
+        parent_id = str(data.get("parent_id") or (item.parent_id if item else "")).strip() or None
+        parent_name = str(data.get("parent_name") or (item.parent_name if item else "")).strip() or None
+        extra_info = str(data.get("extra_info") or (item.extra_info if item else "")).strip() or None
+        level = str(data.get("level") or (item.level if item else "")).strip() or None
+
+        if not item:
+            item = MasterData(
+                id=item_id,
+                category=category,
+                name=name or item_id,
+                code=code,
+                description=description,
+                is_active=is_active,
+                parent_id=parent_id,
+                parent_name=parent_name,
+                extra_info=extra_info,
+                level=level,
+            )
+            db.add(item)
+        else:
+            if "name" in data and data["name"]:
+                item.name = name
+            if "code" in data:
+                item.code = code
+            if "description" in data:
+                item.description = description
+            if "is_active" in data:
+                item.is_active = is_active
+            if "parent_id" in data:
+                item.parent_id = parent_id
+            if "parent_name" in data:
+                item.parent_name = parent_name
+            if "extra_info" in data:
+                item.extra_info = extra_info
+            if "level" in data:
+                item.level = level
+
+        # Sync department if category is departments
+        if category == "departments":
+            dept = db.query(Department).filter(
+                or_(Department.id == item_id, Department.name.ilike(name))
+            ).first()
+            if dept:
+                dept.name = name
+                if code: dept.code = code
+                if description: dept.description = description
+                dept.is_active = is_active
+
+        # Sync designation if category is designations
+        if category == "designations":
+            desg = db.query(Designation).filter(
+                or_(Designation.id == item_id, Designation.title.ilike(name))
+            ).first()
+            if desg:
+                desg.title = name
+                if parent_name: desg.department = parent_name
+                if level: desg.level = level
+                if description: desg.description = description
+
+        db.commit()
+        db.refresh(item)
+        return {
+            "id": item.id,
+            "category": item.category,
+            "name": item.name,
+            "code": item.code or "",
+            "description": item.description or "",
+            "is_active": item.is_active is not False,
+            "parent_id": item.parent_id or "",
+            "parent_name": item.parent_name or "",
+            "extra_info": item.extra_info or "",
+            "level": item.level or "",
+            "display_order": item.display_order or 0,
+            "created_at": item.created_at.isoformat() if item.created_at else None,
+        }
+
+    @staticmethod
+    def delete_master_data_item(db: Session, category: str, item_id: str) -> bool:
+        item = db.query(MasterData).filter(
+            MasterData.category == category,
+            or_(MasterData.id == item_id, MasterData.code.ilike(item_id), MasterData.name.ilike(item_id))
+        ).first()
+        if item:
+            db.delete(item)
+
+        if category == "departments":
+            dept = db.query(Department).filter(
+                or_(Department.id == item_id, Department.name.ilike(item_id))
+            ).first()
+            if dept:
+                db.delete(dept)
+
+        if category == "designations":
+            desg = db.query(Designation).filter(
+                or_(Designation.id == item_id, Designation.title.ilike(item_id))
+            ).first()
+            if desg:
+                db.delete(desg)
+
+        db.commit()
+        return True
 
 # Alias for backwards compatibility
 GymSettingService = SettingsService

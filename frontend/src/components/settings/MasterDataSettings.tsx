@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/utils/cn';
 import { hrmsApi } from '@/services/hrmsApi';
+import { masterDataApi } from '@/services/masterDataApi';
 
 export interface MasterDataItem {
   id: string;
@@ -35,6 +36,9 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
   { id: 'districts', title: 'District', icon: 'map', bgLight: 'bg-sky-100', textColor: 'text-sky-700', codePrefix: 'DST' },
   { id: 'mandals', title: 'Mandal', icon: 'map-pin', bgLight: 'bg-rose-100', textColor: 'text-rose-700', parentCategory: 'districts', codePrefix: 'MDL' },
   { id: 'towns', title: 'Village/Town', icon: 'home', bgLight: 'bg-amber-100', textColor: 'text-amber-700', parentCategory: 'mandals', codePrefix: 'VLG' },
+  { id: 'gender_types', title: 'Gender Types', icon: 'users', bgLight: 'bg-pink-100', textColor: 'text-pink-700', codePrefix: 'GND' },
+  { id: 'blood_groups', title: 'Blood Groups', icon: 'droplet', bgLight: 'bg-red-100', textColor: 'text-red-700', codePrefix: 'BLD' },
+  { id: 'castes', title: 'Caste', icon: 'tag', bgLight: 'bg-purple-100', textColor: 'text-purple-700', codePrefix: 'CST' },
   { id: 'institution_types', title: 'Type of Institution', icon: 'building', bgLight: 'bg-indigo-100', textColor: 'text-indigo-700', codePrefix: 'TOI' },
   { id: 'place_of_working', title: 'Place of Working', icon: 'briefcase', bgLight: 'bg-stone-100', textColor: 'text-stone-700', codePrefix: 'POW' },
   { id: 'dashboard_locations', title: 'Dashboard Locations', icon: 'compass', bgLight: 'bg-red-100', textColor: 'text-red-700', codePrefix: 'DBL' },
@@ -68,159 +72,8 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
   { id: 'sex_sorted_semen', title: 'Sex Sorted Semen', icon: 'dna', bgLight: 'bg-fuchsia-100', textColor: 'text-fuchsia-700', codePrefix: 'SSS' },
 ];
 
-// Initial 33 Telangana Districts
-const SEED_DISTRICTS: MasterDataItem[] = [
-  { id: 'dst_1', name: 'Adilabad', code: '501', is_active: true, extra_info: 'ADB' },
-  { id: 'dst_2', name: 'Bhadradri Kothagudem', code: '690', is_active: true, extra_info: 'BDK' },
-  { id: 'dst_3', name: 'Hanumakonda', code: '686', is_active: true, extra_info: 'HNK' },
-  { id: 'dst_4', name: 'Hyderabad', code: '507', is_active: true, extra_info: 'HYD' },
-  { id: 'dst_5', name: 'Jagitial', code: '681', is_active: true, extra_info: 'JGL' },
-  { id: 'dst_6', name: 'Jangaon', code: '689', is_active: true, extra_info: 'JGN' },
-  { id: 'dst_7', name: 'Jayashankar Bhupalapally', code: '687', is_active: true, extra_info: 'JBP' },
-  { id: 'dst_8', name: 'Jogulamba Gadwal', code: '695', is_active: true, extra_info: 'JGD' },
-  { id: 'dst_9', name: 'Kamareddy', code: '685', is_active: true, extra_info: 'KMR' },
-  { id: 'dst_10', name: 'Karimnagar', code: '508', is_active: true, extra_info: 'KNR' },
-  { id: 'dst_11', name: 'Khammam', code: '509', is_active: true, extra_info: 'KMM' },
-  { id: 'dst_12', name: 'Kumuram Bheem Asifabad', code: '680', is_active: true, extra_info: 'KBA' },
-  { id: 'dst_13', name: 'Mahabubabad', code: '691', is_active: true, extra_info: 'MBD' },
-  { id: 'dst_14', name: 'Mahabubnagar', code: '510', is_active: true, extra_info: 'MBN' },
-  { id: 'dst_15', name: 'Mancherial', code: '682', is_active: true, extra_info: 'MCL' },
-  { id: 'dst_16', name: 'Medak', code: '511', is_active: true, extra_info: 'MDK' },
-  { id: 'dst_17', name: 'Medchal-Malkajgiri', code: '693', is_active: true, extra_info: 'MDM' },
-  { id: 'dst_18', name: 'Mulugu', code: '698', is_active: true, extra_info: 'MLG' },
-  { id: 'dst_19', name: 'Nagarkurnool', code: '696', is_active: true, extra_info: 'NGK' },
-  { id: 'dst_20', name: 'Nalgonda', code: '512', is_active: true, extra_info: 'NLG' },
-  { id: 'dst_21', name: 'Narayanpet', code: '699', is_active: true, extra_info: 'NPT' },
-  { id: 'dst_22', name: 'Nirmal', code: '683', is_active: true, extra_info: 'NRM' },
-  { id: 'dst_23', name: 'Nizamabad', code: '513', is_active: true, extra_info: 'NZB' },
-  { id: 'dst_24', name: 'Peddapalli', code: '684', is_active: true, extra_info: 'PDP' },
-  { id: 'dst_25', name: 'Rajanna Sircilla', code: '688', is_active: true, extra_info: 'RJS' },
-  { id: 'dst_26', name: 'Ranga Reddy', code: '514', is_active: true, extra_info: 'RRD' },
-  { id: 'dst_27', name: 'Sangareddy', code: '694', is_active: true, extra_info: 'SRD' },
-  { id: 'dst_28', name: 'Siddipet', code: '692', is_active: true, extra_info: 'SDP' },
-  { id: 'dst_29', name: 'Suryapet', code: '697', is_active: true, extra_info: 'SYP' },
-  { id: 'dst_30', name: 'Vikarabad', code: '695', is_active: true, extra_info: 'VKB' },
-  { id: 'dst_31', name: 'Wanaparthy', code: '696', is_active: true, extra_info: 'WNP' },
-  { id: 'dst_32', name: 'Warangal', code: '515', is_active: true, extra_info: 'WGL' },
-  { id: 'dst_33', name: 'Yadadri Bhuvanagiri', code: '698', is_active: true, extra_info: 'YDB' },
-];
-
-// Initial Mandals
-const SEED_MANDALS: MasterDataItem[] = [
-  { id: 'mdl_1', name: 'Adilabad Urban', code: '4310', is_active: true, parent_id: 'dst_1', parent_name: 'Adilabad' },
-  { id: 'mdl_2', name: 'Adilabad Rural', code: '4311', is_active: true, parent_id: 'dst_1', parent_name: 'Adilabad' },
-  { id: 'mdl_3', name: 'Gudihanoor', code: '4312', is_active: true, parent_id: 'dst_1', parent_name: 'Adilabad' },
-  { id: 'mdl_4', name: 'Ichoda', code: '4322', is_active: true, parent_id: 'dst_1', parent_name: 'Adilabad' },
-  { id: 'mdl_5', name: 'Inderavelly', code: '4313', is_active: true, parent_id: 'dst_1', parent_name: 'Adilabad' },
-  { id: 'mdl_6', name: 'Amberpet', code: '5001', is_active: true, parent_id: 'dst_4', parent_name: 'Hyderabad' },
-  { id: 'mdl_7', name: 'Ameerpet', code: '5002', is_active: true, parent_id: 'dst_4', parent_name: 'Hyderabad' },
-  { id: 'mdl_8', name: 'Secunderabad', code: '5003', is_active: true, parent_id: 'dst_4', parent_name: 'Hyderabad' },
-  { id: 'mdl_9', name: 'Khairatabad', code: '5004', is_active: true, parent_id: 'dst_4', parent_name: 'Hyderabad' },
-  { id: 'mdl_10', name: 'Hanamkonda', code: '6001', is_active: true, parent_id: 'dst_3', parent_name: 'Hanumakonda' },
-  { id: 'mdl_11', name: 'Kazipet', code: '6002', is_active: true, parent_id: 'dst_3', parent_name: 'Hanumakonda' },
-];
-
-// Initial Villages / Towns
-const SEED_TOWNS: MasterDataItem[] = [
-  { id: 'twn_1', name: 'Adilabad Ward No 15', code: '126681', is_active: true, parent_id: 'mdl_1', parent_name: 'Adilabad Urban', extra_info: '501' },
-  { id: 'twn_2', name: 'Adilabad Ward No 16', code: '126682', is_active: true, parent_id: 'mdl_1', parent_name: 'Adilabad Urban', extra_info: '501' },
-  { id: 'twn_3', name: 'Adilabad Ward No 17', code: '126683', is_active: true, parent_id: 'mdl_1', parent_name: 'Adilabad Urban', extra_info: '501' },
-  { id: 'twn_4', name: 'Gudihanoor Village', code: '50316', is_active: true, parent_id: 'mdl_3', parent_name: 'Gudihanoor', extra_info: '501' },
-  { id: 'twn_5', name: 'Ichoda Town', code: '126677', is_active: true, parent_id: 'mdl_4', parent_name: 'Ichoda', extra_info: '501' },
-  { id: 'twn_6', name: 'Inderavelly Colony', code: '126679', is_active: true, parent_id: 'mdl_5', parent_name: 'Inderavelly', extra_info: '501' },
-];
-
-// Type of Institution (Exact 27 records from Screenshot 1)
-const SEED_INSTITUTION_TYPES: MasterDataItem[] = [
-  { id: 'toi_1', name: 'ADDL', code: 'ADDL', is_active: true, level: '0', display_order: 1 },
-  { id: 'toi_2', name: 'AVH', code: 'AVH', is_active: true, level: '0', display_order: 2 },
-  { id: 'toi_3', name: 'CADDL', code: 'CADDL', is_active: true, level: '0', display_order: 3 },
-  { id: 'toi_4', name: 'Directorate', code: 'Directorate', is_active: true, level: '0', display_order: 4 },
-  { id: 'toi_5', name: 'District Medicine Store', code: 'DMS', is_active: true, level: '0', display_order: 5 },
-  { id: 'toi_6', name: 'DLDA', code: 'DLDA', is_active: true, level: '0', display_order: 6 },
-  { id: 'toi_7', name: 'DTA', code: 'DTA', is_active: true, level: '0', display_order: 7 },
-  { id: 'toi_8', name: 'DVAHD', code: 'DVAHD', is_active: true, level: '0', display_order: 8 },
-  { id: 'toi_9', name: 'DVH', code: 'DVH', is_active: true, level: '0', display_order: 9 },
-  { id: 'toi_10', name: 'ISDP', code: 'ISDP', is_active: true, check_in_time: '09:10 AM', check_out_time: '05:00 PM', level: 'Level 0', display_order: 1 },
-  { id: 'toi_11', name: 'Mobile Veterinary Clinic', code: 'MVC', is_active: true, check_in_time: '09:00 AM', check_out_time: '05:00 PM', level: 'Level 1', display_order: 11 },
-  { id: 'toi_12', name: 'Polyclinic', code: 'PVC', is_active: true, check_in_time: '08:30 AM', check_out_time: '04:30 PM', level: 'Level 1', display_order: 12 },
-  { id: 'toi_13', name: 'Primary Veterinary Center', code: 'PVCTR', is_active: true, check_in_time: '09:00 AM', check_out_time: '05:00 PM', level: 'Level 2', display_order: 13 },
-  { id: 'toi_14', name: 'Regional Training Center', code: 'RTC', is_active: true, level: 'Level 0', display_order: 14 },
-  { id: 'toi_15', name: 'State Veterinary Institute', code: 'SVI', is_active: true, level: 'Level 0', display_order: 15 },
-  { id: 'toi_16', name: 'Veterinary Dispensary', code: 'VD', is_active: true, check_in_time: '09:00 AM', check_out_time: '05:00 PM', level: 'Level 1', display_order: 16 },
-  { id: 'toi_17', name: 'Veterinary Hospital', code: 'VH', is_active: true, check_in_time: '08:00 AM', check_out_time: '05:00 PM', level: 'Level 1', display_order: 17 },
-];
-
-// Initial Qualifications (Exact 9 from Screenshot 2)
-const SEED_QUALIFICATIONS: MasterDataItem[] = [
-  { id: 'qlf_1', name: 'Degree', code: 'DEGREE', is_active: true },
-  { id: 'qlf_2', name: 'Intermediate', code: 'INTER', is_active: true },
-  { id: 'qlf_3', name: 'M.sc', code: 'MSC', is_active: true },
-  { id: 'qlf_4', name: 'm.tech', code: 'MTECH', is_active: true },
-  { id: 'qlf_5', name: 'M.TECH', code: 'MTECH-ADV', is_active: true },
-  { id: 'qlf_6', name: 'M V S c', code: '617d2d2e-f113-430c-b6e5-f0e9673f0e8b', is_active: true },
-  { id: 'qlf_7', name: 'M V S c & Phd', code: '4db9e66d-e97a-4416-8d3e-9934f7f69a73', is_active: true },
-  { id: 'qlf_8', name: 'Post Graduation', code: 'PG', is_active: true },
-  { id: 'qlf_9', name: 'SSC', code: 'SSC', is_active: true },
-];
-
-// Mock items to filter out if cached in browser storage
-const MOCK_ITEM_IDS = new Set([
-  'spc_1', 'spc_2', 'spc_3', 'spc_4', 'spc_5', 'spc_6', 'spc_7', 'spc_8', 'spc_9',
-  'rol_1', 'rol_2', 'rol_3', 'rol_4', 'rol_5', 'rol_6',
-  'des_1', 'des_2', 'des_3', 'des_4', 'des_5', 'des_6', 'des_7', 'des_8',
-  'dept_1', 'dept_2', 'dept_3', 'dept_4', 'dept_5', 'dept_6',
-]);
-
-const MOCK_CODES = new Set([
-  'SPC-01', 'SPC-02', 'SPC-03', 'SPC-04', 'SPC-05', 'SPC-06', 'SPC-07', 'SPC-08', 'SPC-09',
-  'ROLE-SUPER', 'ROLE-HO', 'ROLE-DVO', 'ROLE-VAS', 'ROLE-PV', 'ROLE-ATT',
-  'DES-DAH', 'DES-ADDL', 'DES-JD', 'DES-DD', 'DES-AD', 'DES-VAS', 'DES-JVO', 'DES-VA',
-  'DEPT-CS', 'DEPT-PMV', 'DEPT-AI', 'DEPT-VDS', 'DEPT-PDL', 'DEPT-HR'
-]);
-
-function sanitizeMasterStore(store: Record<string, MasterDataItem[]>): { store: Record<string, MasterDataItem[]>; modified: boolean } {
-  let modified = false;
-  const categoriesToCheck = ['specializations', 'roles', 'designations', 'departments'];
-  for (const cat of categoriesToCheck) {
-    if (Array.isArray(store[cat])) {
-      const filtered = store[cat].filter((item) => !MOCK_ITEM_IDS.has(item.id) && !MOCK_CODES.has(item.code));
-      if (filtered.length !== store[cat].length) {
-        store[cat] = filtered;
-        modified = true;
-      }
-    } else {
-      store[cat] = [];
-      modified = true;
-    }
-  }
-  return { store, modified };
-}
-
-// Initial Leave Reasons (Exact 11 from Screenshot)
-const SEED_LEAVE_REASONS: MasterDataItem[] = [
-  { id: 'lvr_1', name: 'Casual Leave', code: 'LVR-01', is_active: true, days: 15 },
-  { id: 'lvr_2', name: 'Child Care Leave', code: 'LVR-02', is_active: true, days: 180 },
-  { id: 'lvr_3', name: 'Emergency Leave', code: 'LVR-03', is_active: true, days: 30 },
-  { id: 'lvr_4', name: 'Extraordinary Leave', code: 'LVR-04', is_active: true, days: 1794 },
-  { id: 'lvr_5', name: 'Maternity Leave', code: 'LVR-05', is_active: true, days: 180 },
-  { id: 'lvr_6', name: 'Medical Leave', code: 'LVR-06', is_active: true, days: 300 },
-  { id: 'lvr_7', name: 'Optional Holiday', code: 'LVR-07', is_active: true, days: 5 },
-  { id: 'lvr_8', name: 'Paternity Leave', code: 'LVR-08', is_active: true, days: 15 },
-  { id: 'lvr_9', name: 'Special Leave', code: 'LVR-09', is_active: true, days: 5 },
-  { id: 'lvr_10', name: 'Study Leave', code: 'LVR-10', is_active: true, days: 300 },
-  { id: 'lvr_11', name: 'Surrender Leave', code: 'LVR-11', is_active: true, days: 15 },
-];
-
-// Helper to get seed data for any category
-function getSeedDataForCategory(catId: string): MasterDataItem[] {
-  if (catId === 'districts') return SEED_DISTRICTS;
-  if (catId === 'mandals') return SEED_MANDALS;
-  if (catId === 'towns') return SEED_TOWNS;
-  if (catId === 'institution_types') return SEED_INSTITUTION_TYPES;
-  if (catId === 'qualifications') return SEED_QUALIFICATIONS;
-  if (catId === 'leave_reasons') return SEED_LEAVE_REASONS;
-
+// Helper to get seed data for any category (returns empty by default)
+function getSeedDataForCategory(_catId: string): MasterDataItem[] {
   return [];
 }
 
@@ -243,38 +96,37 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
       const stored = localStorage.getItem('vahd_master_data_v3');
       if (stored) {
         const parsed = JSON.parse(stored);
-        const { store: cleaned, modified } = sanitizeMasterStore(parsed);
-        let updated = false;
-        if (!Array.isArray(cleaned.leave_reasons) || cleaned.leave_reasons.length === 0) {
-          cleaned.leave_reasons = SEED_LEAVE_REASONS;
-          updated = true;
-        }
-        if (modified || updated) {
-          localStorage.setItem('vahd_master_data_v3', JSON.stringify(cleaned));
-        }
-        return cleaned;
-      }
-
-      // Purge old mock data from previous version if exists
-      const oldStored = localStorage.getItem('vahd_master_data_v2');
-      if (oldStored) {
-        const parsed = JSON.parse(oldStored);
-        const { store: cleaned } = sanitizeMasterStore(parsed);
-        if (!Array.isArray(cleaned.leave_reasons) || cleaned.leave_reasons.length === 0) {
-          cleaned.leave_reasons = SEED_LEAVE_REASONS;
-        }
-        localStorage.setItem('vahd_master_data_v3', JSON.stringify(cleaned));
-        return cleaned;
+        if (parsed && typeof parsed === 'object') return parsed;
       }
     } catch {}
 
-    // Clean initial store
     const initial: Record<string, MasterDataItem[]> = {};
     MASTER_CATEGORIES.forEach((cat) => {
-      initial[cat.id] = getSeedDataForCategory(cat.id);
+      initial[cat.id] = [];
     });
     return initial;
   });
+
+  // Fetch all master data directly from backend database on mount
+  useEffect(() => {
+    masterDataApi.getAll().then((data) => {
+      if (data && typeof data === 'object') {
+        setMasterStore((prev) => {
+          const merged = { ...prev };
+          Object.keys(data).forEach((cat) => {
+            if (Array.isArray(data[cat])) {
+              merged[cat] = data[cat];
+            }
+          });
+          try {
+            localStorage.setItem('vahd_master_data_v3', JSON.stringify(merged));
+            window.dispatchEvent(new Event('vahd_master_data_updated'));
+          } catch {}
+          return merged;
+        });
+      }
+    }).catch(() => {});
+  }, []);
 
   const saveMasterStore = (updated: Record<string, MasterDataItem[]>) => {
     setMasterStore(updated);
@@ -508,6 +360,19 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
         }).catch(() => {});
       }
 
+      // Also persist to backend database for all master categories
+      masterDataApi.update(selectedCatId, editingItem.id, {
+        name: formName.trim(),
+        code: formCode.trim() || editingItem.code,
+        is_active: formActive,
+        parent_id: formParentId || undefined,
+        parent_name: resolvedParentName || editingItem.parent_name,
+        extra_info: formExtra.trim() || resolvedParentCode || editingItem.extra_info,
+        level: formLevel || undefined,
+        display_order: parseInt(formDisplayOrder, 10) || 0,
+        description: formDescription.trim() || undefined,
+      }).catch((err) => console.error('Failed to update master data in DB:', err));
+
       const updatedList = currentItems.map((item) => {
         if (item.id === editingItem.id) {
           return {
@@ -563,8 +428,9 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
         }).catch(() => {});
       }
 
+      const tempId = `${selectedCatId}_${Date.now()}`;
       const newItem: MasterDataItem = {
-        id: `${selectedCatId}_${Date.now()}`,
+        id: tempId,
         name: formName.trim(),
         code: autoCode,
         is_active: formActive,
@@ -579,6 +445,33 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
         days: formDays ? parseInt(formDays, 10) : undefined,
         created_at: new Date().toISOString(),
       };
+
+      // Persist to backend database for all master categories
+      masterDataApi.create(selectedCatId, {
+        name: newItem.name,
+        code: newItem.code,
+        is_active: newItem.is_active,
+        parent_id: newItem.parent_id,
+        parent_name: newItem.parent_name,
+        extra_info: newItem.extra_info,
+        level: newItem.level,
+        display_order: newItem.display_order,
+        description: newItem.description,
+      }).then((created) => {
+        if (created?.id) {
+          setMasterStore((prev) => {
+            const list = prev[selectedCatId] || [];
+            const updated = list.map((item) => (item.id === tempId ? { ...item, id: created.id } : item));
+            const next = { ...prev, [selectedCatId]: updated };
+            try {
+              localStorage.setItem('vahd_master_data_v3', JSON.stringify(next));
+              window.dispatchEvent(new Event('vahd_master_data_updated'));
+            } catch {}
+            return next;
+          });
+        }
+      }).catch((err) => console.error('Failed to create master data in DB:', err));
+
       saveMasterStore({ ...masterStore, [selectedCatId]: [newItem, ...currentItems] });
     }
 
@@ -598,6 +491,9 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
       hrmsApi.deleteDesignation(itemId).catch(() => {});
     }
 
+    // Call masterDataApi delete
+    masterDataApi.delete(selectedCatId, itemId).catch((err) => console.error('Failed to delete master data from DB:', err));
+
     const currentItems = masterStore[selectedCatId] || [];
     const updated = currentItems.filter((i) => i.id !== itemId);
     saveMasterStore({ ...masterStore, [selectedCatId]: updated });
@@ -609,6 +505,9 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
   const handleDeleteSelected = () => {
     if (!selectedCatId || selectedItemIds.length === 0) return;
     if (!confirm(`Are you sure you want to delete ${selectedItemIds.length} selected record(s)?`)) return;
+    selectedItemIds.forEach((id) => {
+      masterDataApi.delete(selectedCatId, id).catch(() => {});
+    });
     const currentItems = masterStore[selectedCatId] || [];
     const deleteSet = new Set(selectedItemIds);
     const updated = currentItems.filter((i) => !deleteSet.has(i.id));
@@ -619,6 +518,10 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
   const handleDeleteAll = () => {
     if (!selectedCatId) return;
     if (!confirm(`Are you sure you want to delete ALL records for ${selectedCategory?.title}?`)) return;
+    const currentItems = masterStore[selectedCatId] || [];
+    currentItems.forEach((item) => {
+      masterDataApi.delete(selectedCatId, item.id).catch(() => {});
+    });
     saveMasterStore({ ...masterStore, [selectedCatId]: [] });
     setSelectedItemIds([]);
   };
@@ -888,6 +791,9 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                       {selectedCategory.id === 'districts' && (
                         <th className="py-3.5 px-4">DISTRICT CODE</th>
                       )}
+                      {['gender_types', 'blood_groups', 'castes'].includes(selectedCategory.id) && (
+                        <th className="py-3.5 px-4">DESCRIPTION / INFO</th>
+                      )}
                     </>
                   )}
 
@@ -1048,6 +954,11 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                                 {item.extra_info || item.code}
                               </td>
                             )}
+                            {['gender_types', 'blood_groups', 'castes'].includes(selectedCategory.id) && (
+                              <td className="py-3.5 px-4 text-slate-600 dark:text-slate-300 font-medium">
+                                {item.extra_info || item.description || '—'}
+                              </td>
+                            )}
                           </>
                         )}
 
@@ -1148,6 +1059,12 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                       ? 'LEAVE REASON *'
                       : isInstitutionType
                       ? 'INSTITUTION TYPE NAME *'
+                      : selectedCategory.id === 'gender_types'
+                      ? 'GENDER TYPE *'
+                      : selectedCategory.id === 'blood_groups'
+                      ? 'BLOOD GROUP *'
+                      : selectedCategory.id === 'castes'
+                      ? 'CASTE / CATEGORY NAME *'
                       : `${selectedCategory.title.toUpperCase()} NAME *`}
                   </label>
                   <input
@@ -1159,6 +1076,12 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                         ? 'e.g. Polyclinic'
                         : isLeaveReasons
                         ? 'e.g. Casual Leave'
+                        : selectedCategory.id === 'gender_types'
+                        ? 'e.g. Male, Female, Other'
+                        : selectedCategory.id === 'blood_groups'
+                        ? 'e.g. O+, AB+, A-'
+                        : selectedCategory.id === 'castes'
+                        ? 'e.g. BC-A, SC, OC'
                         : `e.g. ${selectedCategory.title} name`
                     }
                     disabled={modalMode === 'view'}
@@ -1197,7 +1120,44 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                       placeholder={
                         isInstitutionType
                           ? 'Optional — e.g. PVC'
+                          : selectedCategory.id === 'gender_types'
+                          ? 'Optional — e.g. MALE, FEMALE'
+                          : selectedCategory.id === 'blood_groups'
+                          ? 'Optional — e.g. A_POS, O_NEG'
+                          : selectedCategory.id === 'castes'
+                          ? 'Optional — e.g. OC, SC, BC-A'
                           : 'Optional — e.g. HYD, or leave blank to auto-generate'
+                      }
+                      disabled={modalMode === 'view'}
+                      className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
+                    />
+                  </div>
+                )}
+
+                {/* 5. Extra Info / Notes for Gender, Blood Groups, Castes, and Districts */}
+                {['gender_types', 'blood_groups', 'castes', 'districts'].includes(selectedCategory.id) && (
+                  <div className="space-y-1">
+                    <label className="block font-black uppercase text-[10px] tracking-wider text-slate-700 dark:text-slate-300">
+                      {selectedCategory.id === 'districts'
+                        ? 'DISTRICT SHORT CODE'
+                        : selectedCategory.id === 'blood_groups'
+                        ? 'RH FACTOR / NOTES'
+                        : selectedCategory.id === 'gender_types'
+                        ? 'SHORT NOTATION / NOTES'
+                        : 'DESCRIPTION / FULL NAME'}
+                    </label>
+                    <input
+                      type="text"
+                      value={formExtra}
+                      onChange={(e) => setFormExtra(e.target.value)}
+                      placeholder={
+                        selectedCategory.id === 'districts'
+                          ? 'e.g. HYD, ADB'
+                          : selectedCategory.id === 'blood_groups'
+                          ? 'e.g. Rh Positive, Universal Donor'
+                          : selectedCategory.id === 'gender_types'
+                          ? 'e.g. M, F, Transgender'
+                          : 'e.g. Backward Class Group A'
                       }
                       disabled={modalMode === 'view'}
                       className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"

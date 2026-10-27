@@ -1,6 +1,6 @@
 from src.utils.timezone import now_ist_naive
 import datetime
-from sqlalchemy import Column, String, Boolean, DateTime, Float, JSON
+from sqlalchemy import Column, String, Boolean, DateTime, Float, JSON, Integer
 from src.database.base import Base
 
 class Branch(Base):
@@ -99,6 +99,26 @@ class FeatureControl(Base):
     pro = Column(Boolean, default=False)
     business = Column(Boolean, default=True)
     enterprise = Column(Boolean, default=True)
+    updated_at = Column(DateTime, default=now_ist_naive, onupdate=now_ist_naive)
+
+
+class MasterData(Base):
+    """Dynamic Master Data table for all configurable categories (roles, departments, castes, etc.)."""
+    __tablename__ = "master_data"
+    __table_args__ = {'extend_existing': True}
+
+    id = Column(String, primary_key=True, index=True)
+    category = Column(String, nullable=False, index=True)
+    name = Column(String, nullable=False, index=True)
+    code = Column(String, nullable=True)
+    description = Column(String, nullable=True)
+    is_active = Column(Boolean, default=True, nullable=True)
+    parent_id = Column(String, nullable=True)
+    parent_name = Column(String, nullable=True)
+    extra_info = Column(String, nullable=True)
+    level = Column(String, nullable=True)
+    display_order = Column(Integer, nullable=True, default=0)
+    created_at = Column(DateTime, default=now_ist_naive)
     updated_at = Column(DateTime, default=now_ist_naive, onupdate=now_ist_naive)
 
 

@@ -109,3 +109,68 @@ def update_billing_settings(payload: dict = Body(...), db: Session = Depends(get
         "message": "GST and discount billing settings saved successfully",
         "billing": SettingsService.get_billing_dict(setting)
     }
+
+
+# -----------------------------------------------------------------
+# DYNAMIC MASTER DATA ENDPOINTS (Database-driven for all categories)
+# -----------------------------------------------------------------
+@router.get("/settings/master-data")
+@router.get("/gym/settings/master-data")
+def get_all_master_data(
+    category: Optional[str] = Query(None),
+    db: Session = Depends(get_db)
+):
+    return SettingsService.get_master_data(db, category=category)
+
+
+@router.get("/settings/master-data/{category}")
+@router.get("/gym/settings/master-data/{category}")
+def get_master_data_by_category(
+    category: str,
+    db: Session = Depends(get_db)
+):
+    return SettingsService.get_master_data(db, category=category)
+
+
+@router.post("/settings/master-data/{category}")
+@router.post("/gym/settings/master-data/{category}")
+def create_master_data(
+    category: str,
+    payload: dict = Body(...),
+    db: Session = Depends(get_db)
+):
+    try:
+        return SettingsService.create_master_data_item(db, category=category, data=payload)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create master data item: {e}")
+
+
+@router.put("/settings/master-data/{category}/{item_id}")
+@router.put("/gym/settings/master-data/{category}/{item_id}")
+def update_master_data(
+    category: str,
+    item_id: str,
+    payload: dict = Body(...),
+    db: Session = Depends(get_db)
+):
+    try:
+        return SettingsService.update_master_data_item(db, category=category, item_id=item_id, data=payload)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update master data item: {e}")
+
+
+@router.delete("/settings/master-data/{category}/{item_id}")
+@router.delete("/gym/settings/master-data/{category}/{item_id}")
+def delete_master_data(
+    category: str,
+    item_id: str,
+    db: Session = Depends(get_db)
+):
+    try:
+        SettingsService.delete_master_data_item(db, category=category, item_id=item_id)
+        return {"message": "Item deleted successfully", "id": item_id, "category": category}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete master data item: {e}")
+

@@ -59,6 +59,39 @@ export const SETTING_CARDS: SettingCardConfig[] = [
     description: 'Local villages & wards'
   },
   {
+    id: 'gender_types',
+    title: 'Gender Types',
+    type: 'master',
+    categoryKey: 'gender_types',
+    icon: 'users',
+    bgLight: 'bg-pink-50 dark:bg-pink-950/40',
+    textColor: 'text-pink-600',
+    borderLight: 'border-pink-200/70',
+    description: 'Male, Female & Other types'
+  },
+  {
+    id: 'blood_groups',
+    title: 'Blood Groups',
+    type: 'master',
+    categoryKey: 'blood_groups',
+    icon: 'droplet',
+    bgLight: 'bg-red-50 dark:bg-red-950/40',
+    textColor: 'text-red-600',
+    borderLight: 'border-red-200/70',
+    description: 'A+, B+, O+, AB+ blood types'
+  },
+  {
+    id: 'castes',
+    title: 'Caste',
+    type: 'master',
+    categoryKey: 'castes',
+    icon: 'tag',
+    bgLight: 'bg-purple-50 dark:bg-purple-950/40',
+    textColor: 'text-purple-600',
+    borderLight: 'border-purple-200/70',
+    description: 'OC, BC, SC, ST & categories'
+  },
+  {
     id: 'institution_types',
     title: 'Type of Institution',
     type: 'master',

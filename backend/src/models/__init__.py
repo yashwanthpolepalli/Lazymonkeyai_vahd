@@ -7,7 +7,7 @@ from .trainer import TrainerProfile
 from .payroll import PayrollInvoice
 from .plan import MembershipPlan
 from .course import Course, StudentCourse
-from .settings import Branch, Setting, PaymentMethod, FeatureControl, GymBranch, GymSetting
+from .settings import Branch, Setting, PaymentMethod, FeatureControl, GymBranch, GymSetting, MasterData
 from .crm import (
     PushNotificationTemplate, NotificationBroadcast, LiveNotification, UserDeviceToken,
     WhatsAppSessionModel, WhatsAppMessageModel
@@ -37,7 +37,7 @@ __all__ = [
     "User", "Customer", "Membership",
     "BiometricLog", "BiometricDevice",
     "TrainerProfile", "PayrollInvoice", "MembershipPlan",
-    "Branch", "Setting", "GymBranch", "GymSetting", "PaymentMethod", "FeatureControl",
+    "Branch", "Setting", "GymBranch", "GymSetting", "PaymentMethod", "FeatureControl", "MasterData",
     "PushNotificationTemplate", "NotificationBroadcast", "LiveNotification", "UserDeviceToken",
     "WhatsAppSessionModel", "WhatsAppMessageModel",
     "Employee", "Department", "Designation", "Team", "EmployeeDocument",

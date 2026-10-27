@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import { apiClient } from '@/services/apiClient';
 import { hrmsApi } from '@/services/hrmsApi';
+import { masterDataApi } from '@/services/masterDataApi';
 import { cn } from '@/utils/cn';
 import { printStudentAdmissionForm } from '@/lib/student-print-helper';
 
@@ -92,8 +93,26 @@ export function StudentEnrollmentModal({
   const defaultAcademicYear = `${currentYear} - ${currentYear + 1}`;
 
   // Dynamic Courses & Languages strictly from Settings / Database
-  const [coursesList, setCoursesList] = useState<CourseOptionItem[]>([]);
-  const [languagesList, setLanguagesList] = useState<string[]>([]);
+  const [coursesList, setCoursesList] = useState<CourseOptionItem[]>(() => {
+    try {
+      const stored = localStorage.getItem('vahd_cached_courses_v1');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return [];
+  });
+  const [languagesList, setLanguagesList] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem('vahd_cached_languages_v1');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return [];
+  });
   const [branchesList, setBranchesList] = useState<Array<{ id: string; branch_name: string; gym_name?: string; name?: string; city?: string }>>([]);
 
   const getOrgDisplayName = (b?: any) => {
@@ -151,14 +170,14 @@ export function StudentEnrollmentModal({
   const [academicYear, setAcademicYear] = useState<string>(defaultAcademicYear);
   const [status, setStatus] = useState<string>('ACTIVE');
 
-  // Master data options for Qualification and Specialization (strictly from master data, no mock text)
+  // Master data options for Qualification and Specialization
   const [qualificationOptions, setQualificationOptions] = useState<string[]>(() => {
     try {
       const stored = localStorage.getItem('vahd_master_data_v3') || localStorage.getItem('vahd_master_data_v2');
       if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed.qualifications)) {
-          return parsed.qualifications.map((q: any) => q.name);
+          return parsed.qualifications.filter((q: any) => q.is_active !== false).map((q: any) => q.name);
         }
       }
     } catch {}
@@ -171,14 +190,7 @@ export function StudentEnrollmentModal({
       if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed.specializations)) {
-          const mockNames = new Set([
-            'Animal Genetics & Breeding', 'Poultry Science', 'Veterinary Epidemiology',
-            'Veterinary Gynecology', 'Veterinary Medicine', 'Veterinary Microbiology',
-            'Veterinary Parasiteology', 'Veterinary Pharmacology', 'Veterinary Surgery'
-          ]);
-          return parsed.specializations
-            .filter((s: any) => !mockNames.has(s?.name) && !String(s?.id || '').startsWith('spc_'))
-            .map((s: any) => s.name);
+          return parsed.specializations.filter((s: any) => s.is_active !== false).map((s: any) => s.name);
         }
       }
     } catch {}
@@ -186,48 +198,227 @@ export function StudentEnrollmentModal({
   });
 
   // Keep options synchronized dynamically whenever master data changes
-  useEffect(() => {
-    const handleMasterUpdate = () => {
+  const [dynamicBloodGroups, setDynamicBloodGroups] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem('vahd_master_data_v3') || localStorage.getItem('vahd_master_data_v2');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed.blood_groups) && parsed.blood_groups.length > 0) {
+          return parsed.blood_groups.filter((b: any) => b.is_active !== false).map((b: any) => b.name);
+        }
+      }
+    } catch {}
+    return BLOOD_GROUPS;
+  });
+
+  const [dynamicCastes, setDynamicCastes] = useState<Array<{ value: string; label: string }>>(() => {
+    try {
+      const stored = localStorage.getItem('vahd_master_data_v3') || localStorage.getItem('vahd_master_data_v2');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed.castes) && parsed.castes.length > 0) {
+          return parsed.castes.filter((c: any) => c.is_active !== false).map((c: any) => ({
+            value: c.code || c.name,
+            label: c.name,
+          }));
+        }
+      }
+    } catch {}
+    return CASTE_OPTIONS;
+  });
+
+  const [dynamicGenders, setDynamicGenders] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem('vahd_master_data_v3') || localStorage.getItem('vahd_master_data_v2');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed.gender_types) && parsed.gender_types.length > 0) {
+          return parsed.gender_types.filter((g: any) => g.is_active !== false).map((g: any) => g.name);
+        }
+      }
+    } catch {}
+    return GENDER_OPTIONS;
+  });
+
+  const [departmentOptions, setDepartmentOptions] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem('vahd_master_data_v3') || localStorage.getItem('vahd_master_data_v2');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed.departments) && parsed.departments.length > 0) {
+          const names = parsed.departments.filter((d: any) => d.is_active !== false).map((d: any) => d.name);
+          if (names.length > 0) return names;
+        }
+      }
+    } catch {}
+    return DEFAULT_STUDENT_DEPARTMENTS;
+  });
+
+  const [masterDistricts, setMasterDistricts] = useState<string[]>([]);
+  const [masterMandals, setMasterMandals] = useState<string[]>([]);
+  const [masterTowns, setMasterTowns] = useState<string[]>([]);
+
+  // Synchronize all master data, courses, departments, and institutions
+  const syncAllMasterAndSettingsData = async () => {
+    try {
+      let parsed: Record<string, any> = {};
       try {
         const stored = localStorage.getItem('vahd_master_data_v3') || localStorage.getItem('vahd_master_data_v2');
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed.qualifications)) {
-            setQualificationOptions(parsed.qualifications.map((q: any) => q.name));
-          }
-          if (Array.isArray(parsed.specializations)) {
-            const mockNames = new Set([
-              'Animal Genetics & Breeding', 'Poultry Science', 'Veterinary Epidemiology',
-              'Veterinary Gynecology', 'Veterinary Medicine', 'Veterinary Microbiology',
-              'Veterinary Parasiteology', 'Veterinary Pharmacology', 'Veterinary Surgery'
-            ]);
-            setSpecializationOptions(
-              parsed.specializations
-                .filter((s: any) => !mockNames.has(s?.name) && !String(s?.id || '').startsWith('spc_'))
-                .map((s: any) => s.name)
-            );
-          }
-        }
+        if (stored) parsed = JSON.parse(stored);
       } catch {}
-    };
-    window.addEventListener('vahd_master_data_updated', handleMasterUpdate);
-    return () => window.removeEventListener('vahd_master_data_updated', handleMasterUpdate);
-  }, []);
 
-  // Dynamic Departments from DB via hrmsApi
-  const [departmentOptions, setDepartmentOptions] = useState<string[]>(DEFAULT_STUDENT_DEPARTMENTS);
-  useEffect(() => {
-    const fetchDepts = () => {
+      // Fetch fresh master data from backend DB
+      const apiMaster = await masterDataApi.getAll().catch(() => null);
+      if (apiMaster && typeof apiMaster === 'object') {
+        parsed = { ...parsed, ...apiMaster };
+      }
+
+      // 1. Qualifications & Specializations
+      if (Array.isArray(parsed.qualifications)) {
+        setQualificationOptions(parsed.qualifications.filter((q: any) => q.is_active !== false).map((q: any) => q.name));
+      }
+      if (Array.isArray(parsed.specializations)) {
+        setSpecializationOptions(parsed.specializations.filter((s: any) => s.is_active !== false).map((s: any) => s.name));
+      }
+
+      // 2. Blood Groups, Castes, Genders
+      if (Array.isArray(parsed.blood_groups) && parsed.blood_groups.length > 0) {
+        setDynamicBloodGroups(parsed.blood_groups.filter((b: any) => b.is_active !== false).map((b: any) => b.name));
+      }
+      if (Array.isArray(parsed.castes) && parsed.castes.length > 0) {
+        setDynamicCastes(parsed.castes.filter((c: any) => c.is_active !== false).map((c: any) => ({
+          value: c.code || c.name,
+          label: c.name,
+        })));
+      }
+      if (Array.isArray(parsed.gender_types) && parsed.gender_types.length > 0) {
+        setDynamicGenders(parsed.gender_types.filter((g: any) => g.is_active !== false).map((g: any) => g.name));
+      }
+
+      // 3. Districts, Mandals, Towns
+      if (Array.isArray(parsed.districts)) {
+        setMasterDistricts(parsed.districts.filter((d: any) => d.is_active !== false).map((d: any) => d.name));
+      }
+      if (Array.isArray(parsed.mandals)) {
+        setMasterMandals(parsed.mandals.filter((m: any) => m.is_active !== false).map((m: any) => m.name));
+      }
+      if (Array.isArray(parsed.towns)) {
+        setMasterTowns(parsed.towns.filter((t: any) => t.is_active !== false).map((t: any) => t.name));
+      }
+
+      // 4. Departments (HRMS API + Master Data)
       hrmsApi.getDepartments().then((data) => {
-        if (Array.isArray(data) && data.length > 0) {
-          const names = data.filter((d: any) => d.is_active !== false).map((d: any) => d.name);
-          if (names.length > 0) setDepartmentOptions(names);
+        const apiDepts = Array.isArray(data) ? data.filter((d: any) => d.is_active !== false).map((d: any) => d.name) : [];
+        let masterDepts: string[] = [];
+        if (Array.isArray(parsed.departments)) {
+          masterDepts = parsed.departments.filter((d: any) => d.is_active !== false).map((d: any) => d.name);
         }
-      }).catch(() => {});
+        const combined = Array.from(new Set([...apiDepts, ...masterDepts]));
+        setDepartmentOptions(combined.length > 0 ? combined : DEFAULT_STUDENT_DEPARTMENTS);
+      }).catch(() => {
+        if (Array.isArray(parsed.departments)) {
+          const masterDepts = parsed.departments.filter((d: any) => d.is_active !== false).map((d: any) => d.name);
+          setDepartmentOptions(masterDepts.length > 0 ? masterDepts : DEFAULT_STUDENT_DEPARTMENTS);
+        }
+      });
+
+      // 5. Courses & Languages
+      apiClient.get<CourseOptionItem[]>('/courses').then((res) => {
+        if (Array.isArray(res) && res.length > 0) {
+          setCoursesList(res);
+        } else {
+          const cached = localStorage.getItem('vahd_cached_courses_v1');
+          if (cached) {
+            const p = JSON.parse(cached);
+            if (Array.isArray(p) && p.length > 0) setCoursesList(p);
+          }
+        }
+      }).catch(() => {
+        const cached = localStorage.getItem('vahd_cached_courses_v1');
+        if (cached) {
+          try {
+            const p = JSON.parse(cached);
+            if (Array.isArray(p) && p.length > 0) setCoursesList(p);
+          } catch {}
+        }
+      });
+
+      apiClient.get<string[]>('/courses/languages').then((res) => {
+        if (Array.isArray(res) && res.length > 0) {
+          setLanguagesList(res);
+        } else {
+          const cachedL = localStorage.getItem('vahd_cached_languages_v1');
+          if (cachedL) {
+            const p = JSON.parse(cachedL);
+            if (Array.isArray(p) && p.length > 0) setLanguagesList(p);
+          }
+        }
+      }).catch(() => {
+        const cachedL = localStorage.getItem('vahd_cached_languages_v1');
+        if (cachedL) {
+          try {
+            const p = JSON.parse(cachedL);
+            if (Array.isArray(p) && p.length > 0) setLanguagesList(p);
+          } catch {}
+        }
+      });
+
+      // 6. Branches & Institutions
+      const hoRes = await apiClient.get<any>('/ho/organizations').catch(() => null);
+      let list: any[] = [];
+      if (hoRes?.organizations && Array.isArray(hoRes.organizations) && hoRes.organizations.length > 0) {
+        list = hoRes.organizations;
+      } else {
+        const branchRes = await apiClient.get<any[]>('/gym/branches').catch(() => []);
+        if (Array.isArray(branchRes)) list = branchRes;
+      }
+
+      const existingBranchNames = new Set(list.map((b) => (b.branch_name || b.name || b.gym_name || '').toLowerCase()));
+      const extraInstitutions: any[] = [];
+      const addMasterInstitutions = (items: any[], typeLabel: string) => {
+        if (Array.isArray(items)) {
+          items.filter((it: any) => it.is_active !== false).forEach((it: any) => {
+            const name = (it.name || '').trim();
+            if (name && !existingBranchNames.has(name.toLowerCase())) {
+              existingBranchNames.add(name.toLowerCase());
+              extraInstitutions.push({
+                id: it.id || `inst_${name}`,
+                branch_name: name,
+                name: name,
+                gym_name: it.parent_name || typeLabel,
+                city: it.extra_info || '',
+              });
+            }
+          });
+        }
+      };
+
+      addMasterInstitutions(parsed.institution_types, 'Institution');
+      addMasterInstitutions(parsed.place_of_working, 'Place of Working');
+
+      const allBranches = [...list, ...extraInstitutions];
+      setBranchesList(allBranches);
+
+      if (allBranches.length > 0) {
+        const savedOrgId = localStorage.getItem('vahd_selected_org_id');
+        const matched = savedOrgId && savedOrgId !== 'all' ? allBranches.find((b) => b.id === savedOrgId) : null;
+        if (matched) {
+          setSelectedBranchId(matched.id);
+        } else if (!selectedBranchId) {
+          setSelectedBranchId(allBranches[0].id);
+        }
+      }
+    } catch {}
+  };
+
+  useEffect(() => {
+    syncAllMasterAndSettingsData();
+    window.addEventListener('vahd_master_data_updated', syncAllMasterAndSettingsData);
+    window.addEventListener('vahd_courses_updated', syncAllMasterAndSettingsData);
+    return () => {
+      window.removeEventListener('vahd_master_data_updated', syncAllMasterAndSettingsData);
+      window.removeEventListener('vahd_courses_updated', syncAllMasterAndSettingsData);
     };
-    fetchDepts();
-    window.addEventListener('vahd_master_data_updated', fetchDepts);
-    return () => window.removeEventListener('vahd_master_data_updated', fetchDepts);
   }, []);
 
   // Form Fields
@@ -324,38 +515,9 @@ export function StudentEnrollmentModal({
 
   // Fetch available courses, languages, and branches from Settings API on modal open
   useEffect(() => {
-    if (!visible) return;
-
-    apiClient.get<CourseOptionItem[]>('/courses')
-      .then((res) => {
-        if (Array.isArray(res)) {
-          setCoursesList(res);
-        }
-      })
-      .catch(() => {});
-
-    apiClient.get<string[]>('/courses/languages')
-      .then((res) => {
-        if (Array.isArray(res)) {
-          setLanguagesList(res);
-        }
-      })
-      .catch(() => {});
-
-    apiClient.get<any[]>('/gym/branches')
-      .then((res) => {
-        if (Array.isArray(res)) {
-          setBranchesList(res);
-          const savedOrgId = localStorage.getItem('vahd_selected_org_id');
-          const matched = savedOrgId && savedOrgId !== 'all' ? res.find((b) => b.id === savedOrgId) : null;
-          if (matched) {
-            setSelectedBranchId(matched.id);
-          } else if (res.length > 0 && !selectedBranchId) {
-            setSelectedBranchId(res[0].id);
-          }
-        }
-      })
-      .catch(() => {});
+    if (visible) {
+      syncAllMasterAndSettingsData();
+    }
   }, [visible]);
 
   // Pre-fill form dynamically when editing an existing student, or reset to empty
@@ -1013,14 +1175,36 @@ export function StudentEnrollmentModal({
                 APPLICATION FORM
               </span>
               <div className="flex items-center gap-3 flex-wrap">
-                {currentOrg && (
+                {branchesList.length > 0 ? (
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400">Institution:</span>
+                    <select
+                      value={selectedBranchId}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setSelectedBranchId(val);
+                        const match = branchesList.find((b) => b.id === val);
+                        if (match) {
+                          setCollegeName(getOrgDisplayName(match));
+                        }
+                      }}
+                      className="px-2 py-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-xs font-black text-blue-700 dark:text-blue-400 shadow-2xs uppercase cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500 max-w-[220px] truncate"
+                    >
+                      {branchesList.map((b) => (
+                        <option key={b.id} value={b.id}>
+                          {getOrgDisplayName(b)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : currentOrg ? (
                   <div className="flex items-center gap-1.5">
                     <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400">Organisation:</span>
                     <span className="px-2.5 py-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-xs font-black text-blue-700 dark:text-blue-400 shadow-2xs uppercase">
                       {getOrgDisplayName(currentOrg)}
                     </span>
                   </div>
-                )}
+                ) : null}
                   <div className="flex items-center gap-1.5">
                     <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400">Academic Year:</span>
                     <input
@@ -1464,6 +1648,7 @@ export function StudentEnrollmentModal({
                 <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">Village / Town :</label>
                 <input
                   type="text"
+                  list="studentTownsList"
                   value={permVillage}
                   onChange={(e) => setPermVillage(e.target.value)}
                   placeholder="Bobbili / Town"
@@ -1474,6 +1659,7 @@ export function StudentEnrollmentModal({
                 <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">Mandal :</label>
                 <input
                   type="text"
+                  list="studentMandalsList"
                   value={permMandal}
                   onChange={(e) => setPermMandal(e.target.value)}
                   placeholder="Mandal"
@@ -1484,6 +1670,7 @@ export function StudentEnrollmentModal({
                 <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">District :</label>
                 <input
                   type="text"
+                  list="studentDistrictsList"
                   value={permDistrict}
                   onChange={(e) => setPermDistrict(e.target.value)}
                   placeholder="Vizianagaram"
@@ -1556,6 +1743,7 @@ export function StudentEnrollmentModal({
                 <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">Village / Town :</label>
                 <input
                   type="text"
+                  list="studentTownsList"
                   value={presVillage}
                   onChange={(e) => setPresVillage(e.target.value)}
                   placeholder="Village"
@@ -1566,6 +1754,7 @@ export function StudentEnrollmentModal({
                 <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">Mandal :</label>
                 <input
                   type="text"
+                  list="studentMandalsList"
                   value={presMandal}
                   onChange={(e) => setPresMandal(e.target.value)}
                   placeholder="Mandal"
@@ -1576,6 +1765,7 @@ export function StudentEnrollmentModal({
                 <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">District :</label>
                 <input
                   type="text"
+                  list="studentDistrictsList"
                   value={presDistrict}
                   onChange={(e) => setPresDistrict(e.target.value)}
                   placeholder="District"
@@ -1656,7 +1846,7 @@ export function StudentEnrollmentModal({
                   onChange={(e) => setGender(e.target.value)}
                   className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 cursor-pointer shadow-xs focus:ring-2 focus:ring-blue-500 appearance-none pr-8"
                 >
-                  {GENDER_OPTIONS.map((g) => (
+                  {dynamicGenders.map((g) => (
                     <option key={g} value={g}>{g}</option>
                   ))}
                 </select>
@@ -1715,7 +1905,7 @@ export function StudentEnrollmentModal({
                 className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 cursor-pointer shadow-xs focus:ring-2 focus:ring-blue-500 appearance-none pr-8"
               >
                 <option value="">-- Select Caste Category --</option>
-                {CASTE_OPTIONS.map((opt) => (
+                {dynamicCastes.map((opt) => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </select>
@@ -1760,7 +1950,7 @@ export function StudentEnrollmentModal({
                       className="w-full px-2.5 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl text-xs font-bold text-rose-600 dark:text-rose-400 cursor-pointer shadow-xs focus:ring-2 focus:ring-blue-500 appearance-none pr-8"
                     >
                       <option value="">-- Select Blood Group --</option>
-                      {BLOOD_GROUPS.map((bg) => (
+                      {dynamicBloodGroups.map((bg) => (
                         <option key={bg} value={bg}>{bg}</option>
                       ))}
                     </select>
@@ -1775,6 +1965,7 @@ export function StudentEnrollmentModal({
                 <span className="text-[10px] text-slate-500 block mb-1">Place of Birth:</span>
                 <input
                   type="text"
+                  list="studentDistrictsList"
                   value={placeOfBirth}
                   onChange={(e) => setPlaceOfBirth(e.target.value)}
                   placeholder="Town / City of Birth"
@@ -1901,6 +2092,23 @@ export function StudentEnrollmentModal({
               </button>
             </div>
           </div>
+
+          {/* Dynamic Master Datalists for Autocomplete (Districts, Mandals, Towns) */}
+          <datalist id="studentDistrictsList">
+            {masterDistricts.map((dst) => (
+              <option key={dst} value={dst} />
+            ))}
+          </datalist>
+          <datalist id="studentMandalsList">
+            {masterMandals.map((mdl) => (
+              <option key={mdl} value={mdl} />
+            ))}
+          </datalist>
+          <datalist id="studentTownsList">
+            {masterTowns.map((twn) => (
+              <option key={twn} value={twn} />
+            ))}
+          </datalist>
 
         </form>
 

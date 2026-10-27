@@ -231,7 +231,7 @@ export function CustomerGoogleReviewCard() {
                     rows={3}
                     value={customText}
                     onChange={(e) => setCustomText(e.target.value)}
-                    placeholder="Share your favorite workout equipment, employee experience, or vahd vibe..."
+                    placeholder="Share your experience, organization environment, or team feedback..."
                     className="w-full mt-2 p-3 rounded-xl border border-border bg-background text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/30 resize-none"
                   />
                 )}

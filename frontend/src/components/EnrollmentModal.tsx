@@ -581,8 +581,8 @@ export function EnrollmentModal({
                 {/* Header & Search */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                   <div>
-                    <label className="text-sm font-bold text-navy-900 block">Select Membership Program & Plan</label>
-                    <p className="text-xs text-navy-400">Choose workout program and duration tier. Price and billing auto-accommodate.</p>
+                    <label className="text-sm font-bold text-navy-900 block">Select Membership Plan</label>
+                    <p className="text-xs text-navy-400">Choose membership plan and duration tier. Price and billing auto-accommodate.</p>
                   </div>
                   <div className="relative min-w-[200px]">
                     <input

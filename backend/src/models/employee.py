@@ -13,12 +13,10 @@ class employeeProfile(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     phone = Column(String, nullable=True)
     gender = Column(String, nullable=True)  # Male, Female, Other
-    role = Column(String, nullable=False)  # OWNER, MANAGER, employee, STAFF
+    role = Column(String, nullable=False)  # OWNER, MANAGER, EMPLOYEE, STAFF
     specialization = Column(String, nullable=True)
     primary_vahd_location = Column(String, nullable=True)
-    primary_gym_location = Column(String, nullable=True)
-    base_monthly_salary = Column(Float, nullable=False)
-    pt_session_rate = Column(Float, nullable=False)
+    base_monthly_salary = Column(Float, default=0.0, nullable=False)
     bank_account_no = Column(String, nullable=True)
     bank_ifsc = Column(String, nullable=True)
     upi_id = Column(String, nullable=True)
@@ -32,4 +30,3 @@ class employeeProfile(Base):
 
 # Aliases
 EmployeeProfile = employeeProfile
-

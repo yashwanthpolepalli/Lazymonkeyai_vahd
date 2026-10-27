@@ -53,6 +53,8 @@ export const api = {
           vahdId: res.vahd_id || '',
           vahdName: res.vahd_name || '',
           branchName: res.branch_name || '',
+          permissions: res.permissions || {},
+          role_title: res.role_title || '',
         };
       } catch (err) {
         throw err;
@@ -124,6 +126,8 @@ export const api = {
           vahdId: res.vahd_id || '',
           vahdName: res.vahd_name || '',
           branchName: res.branch_name || '',
+          permissions: res.permissions || {},
+          role_title: res.role_title || '',
         };
       } catch (_err) {
         return null;

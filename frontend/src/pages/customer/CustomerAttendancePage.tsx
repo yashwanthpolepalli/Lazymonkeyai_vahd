@@ -283,7 +283,7 @@ export function CustomerAttendancePage() {
             <div>
               <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
                 <Icon name="calendar" size={16} className="text-purple-600" />
-                <span>Monthly Workout &amp; Attendance Consistency</span>
+                <span>Monthly Attendance Consistency</span>
               </h3>
               <p className="text-xs text-slate-500 font-medium">
                 {new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' })} activity tracker
@@ -297,7 +297,7 @@ export function CustomerAttendancePage() {
                 <span className="w-3 h-3 rounded-md bg-purple-600 inline-block ring-2 ring-purple-300" /> Today
               </span>
               <span className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-md bg-slate-100 inline-block border border-slate-200" /> Rest
+                <span className="w-3 h-3 rounded-md bg-slate-100 inline-block border border-slate-200" /> Absent
               </span>
             </div>
           </div>
@@ -333,7 +333,7 @@ export function CustomerAttendancePage() {
           <div className="p-3 rounded-xl bg-purple-50/60 border border-purple-100 flex items-center justify-between text-xs text-purple-900 font-semibold">
             <span className="flex items-center gap-2">
               <Icon name="sparkles" size={15} className="text-purple-600 shrink-0" />
-              <span>Attending regularly unlocks bonus AI workout progressions and recovery badges.</span>
+              <span>Attending regularly ensures continuous learning progress and recognition.</span>
             </span>
             <span className="font-extrabold text-purple-700 shrink-0">{monthlyVisits} Days Logged</span>
           </div>

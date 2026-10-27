@@ -126,31 +126,6 @@ export const SYSTEM_MODULES: SystemModule[] = [
     ],
   },
   {
-    id: "crm",
-    name: "Sales & CRM",
-    shortLabel: "Sales & CRM",
-    description: "Leads pipeline, deals, customer profiles, discount rules, and quotations.",
-    category: "Commerce & POS",
-    icon: ShoppingCart,
-    navGroup: "Sales & CRM",
-    permissionKey: "view:crm",
-    defaultRoute: "/crm?tab=customers",
-    routePrefix: "/crm",
-    subTabs: [
-      { id: "customers", label: "Customer Directory", route: "/crm?tab=customers" },
-      { id: "customer_groups", label: "Customer Groups", route: "/crm?tab=customer_groups" },
-      { id: "customer_segments", label: "Customer Segments", route: "/crm?tab=customer_segments" },
-      { id: "leads", label: "Leads Pipeline", route: "/crm?tab=leads" },
-      { id: "deals", label: "Deals & Opportunities", route: "/crm?tab=deals" },
-      { id: "quotations", label: "Quotations & Proposals", route: "/crm?tab=quotations" },
-      { id: "sales_orders", label: "Sales Orders", route: "/crm?tab=sales_orders" },
-      { id: "discounts", label: "Discounts & Coupons", route: "/crm?tab=discounts" },
-      { id: "loyalty_program", label: "Loyalty & Points", route: "/crm?tab=loyalty_program" },
-      { id: "customer_wallet", label: "Customer Wallets", route: "/crm?tab=customer_wallet" },
-      { id: "support_tickets", label: "Customer Support Tickets", route: "/crm?tab=support_tickets" },
-    ],
-  },
-  {
     id: "marketplace",
     name: "B2B Marketplace",
     shortLabel: "Marketplace",
@@ -336,7 +311,7 @@ export const MODULE_PRESETS: ModulePreset[] = [
     name: "Sales & Client Relations",
     description: "CRM leads, deals, quotations, product catalog, and retail sales.",
     badge: "Sales",
-    modules: ["dashboard", "crm", "inventory", "pos"],
+    modules: ["dashboard", "inventory", "pos"],
   },
   {
     id: "finance_desk",
@@ -488,7 +463,6 @@ export const DEFAULT_STANDARD_MODULES = [
   "dashboard",
   "pos",
   "inventory",
-  "crm",
   "operations",
   "marketplace",
   "analytics",
@@ -592,7 +566,6 @@ export function resolveEffectiveModules(
         if (mod.id === "pos" && (p.startsWith("view:pos") || p.startsWith("manage:pos") || p.includes("pos_terminal") || p.includes("pos_register") || p.includes("pos"))) return true;
         if (mod.id === "inventory" && (p.startsWith("view:inventory") || p.startsWith("manage:inventory") || p.includes("stock_") || p.includes("warehouse") || p.includes("product") || p.includes("catalog"))) return true;
         if (mod.id === "operations" && (p.startsWith("view:procurement") || p.startsWith("manage:procurement") || p.includes("purchase_") || p.includes("suppliers") || p.includes("rfq") || p.includes("procurement") || p.includes("operations") || p.includes("grn"))) return true;
-        if (mod.id === "crm" && (p.startsWith("view:crm") || p.startsWith("manage:crm") || p.includes("crm_") || p.includes("customer") || p.includes("lead") || p.includes("deal") || p.includes("quotation"))) return true;
         if (mod.id === "accounting" && (p.startsWith("view:accounting") || p.startsWith("manage:accounting") || p.includes("chart_of_accounts") || p.includes("journal") || p.includes("bank_") || p.includes("fixed_assets") || p.includes("finance") || p.includes("tax") || p.includes("invoice"))) return true;
         if (mod.id === "hrms" && (p.startsWith("view:hrms") || p.startsWith("manage:hrms") || p.includes("hrms_") || p.startsWith("view:ess") || p.startsWith("manage:ess") || p.includes("employee") || p.includes("payroll") || p.includes("attendance") || p.includes("leave"))) return true;
         if (mod.id === "marketplace" && (p.startsWith("view:marketplace") || p.startsWith("manage:marketplace") || p.includes("marketplace") || p.includes("vendor"))) return true;

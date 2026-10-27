@@ -977,10 +977,9 @@ class SuperAdminService:
         if count == 0:
             default_routings = [
                 AiModelRouting(capability="vision_ocr", provider="Google", model_id="gemini-3.6-flash", status="operational", avg_latency_sec=0.8, cost_per_1k_tokens=0.0001),
-                AiModelRouting(capability="food_scanner", provider="OpenAI", model_id="gpt-4o", status="operational", avg_latency_sec=1.1, cost_per_1k_tokens=0.0025),
                 AiModelRouting(capability="ai_coach", provider="Anthropic", model_id="claude-3-5-sonnet", status="operational", avg_latency_sec=0.9, cost_per_1k_tokens=0.003),
                 AiModelRouting(capability="brochure_generator", provider="Black Forest Labs", model_id="flux-1-pro", status="operational", avg_latency_sec=2.4, cost_per_1k_tokens=0.04),
-                AiModelRouting(capability="workout_progression", provider="Google", model_id="gemini-3.6-flash", status="operational", avg_latency_sec=0.5, cost_per_1k_tokens=0.0001),
+                AiModelRouting(capability="analytics_insight", provider="Google", model_id="gemini-3.6-flash", status="operational", avg_latency_sec=0.5, cost_per_1k_tokens=0.0001),
             ]
             for r in default_routings:
                 db.add(r)
@@ -1489,10 +1488,6 @@ class SuperAdminService:
         db.delete(plan)
         db.commit()
         return {"success": True, "message": "SaaS Plan removed"}
-
-    @staticmethod
-    def save_nutrition_policy(db: Session, payload: dict) -> Dict[str, Any]:
-        return {"success": True, "message": "Nutrition policy updated"}
 
 
 

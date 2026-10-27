@@ -15,8 +15,5 @@ export interface Member {
   joinDate: string;
   age: number;
   gender: string;
-  weight: number;
-  bodyFat: number;
-  goal: string;
   employee: string;
 }

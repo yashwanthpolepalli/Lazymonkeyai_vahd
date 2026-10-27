@@ -518,7 +518,7 @@ class InventoryService:
                             p = data["product"]
                             p_name = (p.get("product_name") or p.get("product_name_en") or p.get("generic_name") or "").strip()
                             b_name = (p.get("brands") or "").strip()
-                            c_name = (p.get("categories") or "Nutrition").split(",")[0].strip()
+                            c_name = (p.get("categories") or "General Supplies").split(",")[0].strip()
                             img = p.get("image_front_url") or p.get("image_url") or ""
                             if p_name:
                                 full_title = f"{b_name} {p_name}".strip() if b_name and b_name.lower() not in p_name.lower() else p_name
@@ -526,7 +526,7 @@ class InventoryService:
                                 discovered_item = {
                                     "name": full_title,
                                     "brand": b_name or "Generic",
-                                    "category": c_name or "Nutrition",
+                                    "category": c_name or "General Supplies",
                                     "barcode": clean_q,
                                     "sku": f"SKU-{clean_q[-6:]}",
                                     "image_url": img,
@@ -571,7 +571,7 @@ class InventoryService:
                                         discovered_item = {
                                             "name": prod_title,
                                             "brand": brand,
-                                            "category": "Supplements / Nutrition",
+                                            "category": "Supplies / Consumables",
                                             "barcode": clean_q,
                                             "sku": f"SKU-{clean_q[-6:]}",
                                             "image_url": img_url,
@@ -626,7 +626,7 @@ Respond ONLY with a JSON array with this exact schema:
     "sku": "BRAND-PRODUCT-SIZE",
     "barcode": "{clean_q if is_barcode_query else 'EAN13 digits'}",
     "hsn_code": "21069099",
-    "category": "Supplements | Nutrition | Accessories | Merchandise | Equipment",
+    "category": "Supplies | Consumables | Accessories | Merchandise | Equipment",
     "brand": "Brand Name",
     "unit": "Pcs",
     "mrp": 0.0,

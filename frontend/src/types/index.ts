@@ -1,24 +1,4 @@
-export type Role = 'super_admin' | 'ho' | 'owner' | 'employee' | 'student' | 'employee' | 'customer';
-
-export interface User {
-  id: string;
-  name: string;
-  full_name?: string;
-  email: string;
-  phone?: string;
-  role: Role;
-  avatar: string;
-  ho_id?: string;
-  hoId?: string;
-  ho_name?: string;
-  vahdId?: string;
-  vahdName?: string;
-  vahd_name?: string;
-  branchName?: string;
-  branch_name?: string;
-  branchId?: string;
-  branch_id?: string;
-}
+export * from './auth';
 
 export interface KpiCard {
   id: string;
@@ -34,7 +14,7 @@ export interface KpiCard {
 
 export interface ActivityEvent {
   id: string;
-  type: 'checkin' | 'membership' | 'payment' | 'lead' | 'expired' | 'body_scan' | 'workout';
+  type: 'checkin' | 'membership' | 'payment' | 'expired';
   title: string;
   description: string;
   time: string;
@@ -62,7 +42,6 @@ export interface RevenueData {
   revenue: number[];
   mrr: number[];
   membershipSales: number[];
-  ptRevenue: number[];
   posRevenue: number[];
   renewals: number[];
   newCustomers: number[];
@@ -86,118 +65,7 @@ export interface Member {
   joinDate: string;
   age: number;
   gender: string;
-  weight: number;
-  bodyFat: number;
-  goal: string;
   employee: string;
-}
-
-export interface Exercise {
-  id: string;
-  name: string;
-  primaryMuscle: string;
-  equipment: string;
-  difficulty: 'beginner' | 'intermediate' | 'advanced';
-  instructions: string;
-  thumbnail: string;
-  sets?: number;
-  reps?: string;
-  weight?: string;
-  previousPerformance?: string;
-}
-
-export interface WorkoutPlan {
-  id: string;
-  title: string;
-  focus: string;
-  duration: number;
-  exerciseCount: number;
-  exercises: Exercise[];
-  split: string;
-  aiReasoning: string;
-}
-
-export interface NutritionSummary {
-  calories: { current: number; target: number };
-  protein: { current: number; target: number };
-  carbs: { current: number; target: number };
-  fat: { current: number; target: number };
-  fiber: { current: number; target: number };
-  sugar: { current: number; target: number };
-}
-
-export interface FoodItem {
-  id: string;
-  name: string;
-  quantity: string;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-  confidence: number;
-}
-
-export interface FoodScanResult {
-  foods: FoodItem[];
-  totalCalories: number;
-  totalProtein: number;
-  totalCarbs: number;
-  totalFat: number;
-  totalSugar: number;
-  totalFiber: number;
-  vitamins: { name: string; value: string }[];
-  minerals: { name: string; value: string }[];
-}
-
-export interface BodyComposition {
-  weight: { current: number; previous: number; target: number; unit: string };
-  bmi: { current: number; previous: number; target: number };
-  bodyFat: { current: number; previous: number; target: number; unit: string };
-  muscleMass: { current: number; previous: number; target: number; unit: string };
-  visceralFat: { current: number; previous: number; target: number };
-  water: { current: number; previous: number; target: number; unit: string };
-  bmr: { current: number; previous: number; target: number };
-  boneMass: { current: number; previous: number; target: number; unit: string };
-  weightTrend: { labels: string[]; values: number[] };
-  bodyFatTrend: { labels: string[]; values: number[] };
-  muscleTrend: { labels: string[]; values: number[] };
-}
-
-export interface HealthConnection {
-  id: string;
-  name: string;
-  icon: string;
-  connected: boolean;
-  metrics: { name: string; available: boolean }[];
-}
-
-export interface HealthSummary {
-  steps: number;
-  activeCalories: number;
-  sleep: string;
-  distance: number;
-  heartRate: number;
-  workouts: number;
-}
-
-export interface TrainingReadiness {
-  score: number;
-  steps: { value: number; available: boolean };
-  sleep: { value: string; available: boolean };
-  heartRate: { value: number; available: boolean };
-  workoutLoad: { value: number; available: boolean };
-}
-
-export interface Lead {
-  id: string;
-  name: string;
-  phone: string;
-  source: string;
-  interest: string;
-  assignedemployee: string;
-  lastFollowUp: string;
-  probability: number;
-  status: 'lead' | 'enquiry' | 'trial' | 'follow_up' | 'negotiation' | 'enrollment' | 'active';
 }
 
 export interface Product {
@@ -230,7 +98,7 @@ export interface vahd {
 export interface Device {
   id: string;
   name: string;
-  type: 'cctv' | 'biometric' | 'face_recognition' | 'body_scanner' | 'pos';
+  type: 'cctv' | 'biometric' | 'face_recognition' | 'pos';
   status: 'online' | 'warning' | 'offline';
   lastHeartbeat: string;
   location: string;

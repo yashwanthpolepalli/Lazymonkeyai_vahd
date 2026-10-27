@@ -12,7 +12,6 @@ class PayrollInvoice(Base):
     month_year = Column(String, nullable=False, index=True)  # e.g., "2026-08"
     days_present = Column(Integer, default=0)
     days_absent = Column(Integer, default=0)
-    pt_sessions_count = Column(Integer, default=0)
     base_salary_earned = Column(Float, default=0.0)
     commission_earned = Column(Float, default=0.0)
     deductions = Column(Float, default=0.0)

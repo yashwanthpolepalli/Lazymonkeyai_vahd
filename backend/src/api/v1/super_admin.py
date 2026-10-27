@@ -248,14 +248,5 @@ def save_feature_controls(payload: dict = Body(...), db: Session = Depends(get_d
     return SuperAdminService.save_feature_controls(db, payload)
 
 
-@router.get("/nutrition-policies")
-def get_nutrition_policies(db: Session = Depends(get_db)):
-    """Fetch all nutrition goal policy rules directly from PostgreSQL nutrition_goal_policies DB table."""
-    return SuperAdminService.get_nutrition_policies(db)
 
-
-@router.post("/nutrition-policies")
-def save_nutrition_policy(payload: dict = Body(...), db: Session = Depends(get_db)):
-    """Create or update a nutrition goal policy rule directly in PostgreSQL DB."""
-    return SuperAdminService.save_nutrition_policy(db, payload)
 

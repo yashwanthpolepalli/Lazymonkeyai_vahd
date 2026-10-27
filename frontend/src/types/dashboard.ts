@@ -29,7 +29,7 @@ export interface RevenueBreakdownData {
 
 export interface LiveActivityItem {
   id: string;
-  type: 'checkin' | 'checkout' | 'membership' | 'payment' | 'body_scan' | 'workout' | 'lead';
+  type: 'checkin' | 'checkout' | 'membership' | 'payment' | 'expired';
   title: string;
   description: string;
   time: string;

@@ -224,7 +224,7 @@ const hrmsAnalyticsCards: ReportCardConfig[] = [
   {
     id: 'departments-abstract',
     title: 'Departments Abstract',
-    description: 'Breakdown by Clinical, Administration, Field Staff, Laboratory and Research wings',
+    description: 'Breakdown by , Administration, Field Staff, Laboratory and Research wings',
     icon: 'building-2',
     iconBg: 'bg-purple-50 text-purple-600 border border-purple-100',
     iconColor: 'text-purple-600',

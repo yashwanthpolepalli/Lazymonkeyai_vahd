@@ -17,6 +17,8 @@ class Token(BaseModel):
     vahd_name: Optional[str] = None
     branch_name: Optional[str] = None
     city: Optional[str] = None
+    permissions: Optional[dict] = None
+    role_title: Optional[str] = None
 
 class TokenData(BaseModel):
     user_id: Optional[str] = None

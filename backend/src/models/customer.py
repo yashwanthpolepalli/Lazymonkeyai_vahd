@@ -20,8 +20,6 @@ class Customer(Base):
     email = Column(String, nullable=False)
     gender = Column(String, nullable=True)
     age = Column(Integer, nullable=True)
-    fitness_score = Column(Integer, nullable=True)
-    training_preference = Column(String, nullable=True)
     profile_image = Column(String, nullable=True)
     face_registered = Column(Boolean, default=False)
     face_image = Column(String, nullable=True)

@@ -60,9 +60,6 @@ export const membersApi = {
         joinDate: item.joinDate || item.created_at || '',
         age: Number(item.age) || 0,
         gender: item.gender || '',
-        weight: Number(item.weight) || 0,
-        bodyFat: Number(item.bodyFat) || 0,
-        goal: item.goal || '',
         employee: item.employee || '',
       };
     });
@@ -88,9 +85,6 @@ export const membersApi = {
         joinDate: item.joinDate || item.created_at || '',
         age: Number(item.age) || 0,
         gender: item.gender || '',
-        weight: Number(item.weight) || 0,
-        bodyFat: Number(item.bodyFat) || 0,
-        goal: item.goal || '',
         employee: item.employee || '',
       };
     } catch (_err) {
@@ -120,7 +114,7 @@ export const membersApi = {
       role: data.role || 'CUSTOMER',
       gender: data.gender,
       age: data.age ? Number(data.age) : undefined,
-      goal: data.goal,
+      goal: (data as any).goal,
       branch: data.branch || data.primary_vahd_location,
       primary_vahd_location: data.primary_vahd_location || data.branch,
       membership_plan: data.membership,

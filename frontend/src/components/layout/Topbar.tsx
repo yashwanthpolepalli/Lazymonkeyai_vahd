@@ -26,14 +26,14 @@ export function Topbar() {
   const [showOrgDropdown, setShowOrgDropdown] = useState(false);
   const [topbarOrgs, setTopbarOrgs] = useState<Array<{ id: string; name: string; branch: string; city: string }>>([]);
   const [selectedTopbarOrg, setSelectedTopbarOrg] = useState<string>(() => localStorage.getItem('vahd_selected_org_id') || 'all');
-  const [items, setItems] = useState(() => (user ? getNavItems(user.role) : []));
+  const [items, setItems] = useState(() => (user ? getNavItems(user.role, user.permissions) : []));
   const [liveLeads, setLiveLeads] = useState<LiveLeadNotification[]>(() => getStoredLeads());
   const [systemNotifs, setSystemNotifs] = useState<SystemNotificationItem[]>([]);
   const [toastAlert, setToastAlert] = useState<LiveLeadNotification | null>(null);
 
   useEffect(() => {
     const updateItems = () => {
-      if (user) setItems(getNavItems(user.role));
+      if (user) setItems(getNavItems(user.role, user.permissions));
     };
     updateItems();
     window.addEventListener('vahd_modules_changed', updateItems);

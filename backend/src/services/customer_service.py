@@ -149,8 +149,6 @@ class CustomerService:
             "email": c.email,
             "phone": c.phone,
             "gender": c.gender or "",
-            "fitness_score": c.fitness_score or 0,
-            "training_preference": c.training_preference or "",
             "qualification": getattr(c, "qualification", None) or meta.get("qualification") or "",
             "specialization": getattr(c, "specialization", None) or meta.get("specialization") or "",
             "department": meta.get("department") or "",
@@ -429,7 +427,6 @@ class CustomerService:
         raw_email = data.get("email") or ""
         clean_email = raw_email.strip().lower()
         phone = (data.get("phone") or "").strip()
-        fitness_score = int(data["fitness_score"]) if data.get("fitness_score") else None
         profile_image = data.get("profile_image")
         membership_plan = data.get("membership_plan") or data.get("membership")
 
@@ -561,7 +558,6 @@ class CustomerService:
                 phone=phone,
                 parent_phone=parent_phone or None,
                 gender=gender,
-                fitness_score=fitness_score,
                 profile_image=profile_image,
                 qualification=qualification or None,
                 specialization=specialization or None,

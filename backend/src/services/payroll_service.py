@@ -332,8 +332,6 @@ class PayrollService:
                 existing_employee.specialization = data["specialization"]
             if "base_monthly_salary" in data and data["base_monthly_salary"] is not None:
                 existing_employee.base_monthly_salary = float(data["base_monthly_salary"])
-            if "pt_session_rate" in data and data["pt_session_rate"] is not None:
-                existing_employee.pt_session_rate = float(data["pt_session_rate"])
             if "bank_account_no" in data:
                 existing_employee.bank_account_no = data["bank_account_no"]
             if "bank_ifsc" in data:
@@ -418,7 +416,6 @@ class PayrollService:
             role=employee_role,
             specialization=data.get("specialization"),
             base_monthly_salary=float(data.get("base_monthly_salary") or 0.0),
-            pt_session_rate=float(data.get("pt_session_rate") or 0.0),
             bank_account_no=data.get("bank_account_no"),
             bank_ifsc=data.get("bank_ifsc"),
             upi_id=data.get("upi_id"),
@@ -469,8 +466,6 @@ class PayrollService:
             employee.specialization = data["specialization"]
         if "base_monthly_salary" in data and data["base_monthly_salary"] is not None:
             employee.base_monthly_salary = float(data["base_monthly_salary"])
-        if "pt_session_rate" in data and data["pt_session_rate"] is not None:
-            employee.pt_session_rate = float(data["pt_session_rate"])
         if "bank_account_no" in data:
             employee.bank_account_no = data["bank_account_no"]
         if "bank_ifsc" in data:
@@ -519,8 +514,7 @@ class PayrollService:
     def generate_monthly_payroll(
         db: Session,
         employee_id: str,
-        month_year: Optional[str] = None,
-        pt_sessions_count: int = 0
+        month_year: Optional[str] = None
     ) -> PayrollInvoice:
         """
         Generates or updates a monthly salary invoice for a employee/staff based on eSSL biometric attendance.
@@ -545,7 +539,7 @@ class PayrollService:
         days_absent = max(0, 30 - days_present)
 
         base_salary_earned = round((employee.base_monthly_salary / 30.0) * days_present, 2)
-        commission_earned = round(pt_sessions_count * employee.pt_session_rate, 2)
+        commission_earned = 0.0
         net_salary = round(base_salary_earned + commission_earned, 2)
 
         invoice_id = f"pay_{employee_id}_{month_year.replace('-', '')}"
@@ -554,7 +548,6 @@ class PayrollService:
         if existing:
             existing.days_present = days_present
             existing.days_absent = days_absent
-            existing.pt_sessions_count = pt_sessions_count
             existing.base_salary_earned = base_salary_earned
             existing.commission_earned = commission_earned
             existing.net_salary = net_salary
@@ -568,7 +561,6 @@ class PayrollService:
             month_year=month_year,
             days_present=days_present,
             days_absent=days_absent,
-            pt_sessions_count=pt_sessions_count,
             base_salary_earned=base_salary_earned,
             commission_earned=commission_earned,
             deductions=0.0,

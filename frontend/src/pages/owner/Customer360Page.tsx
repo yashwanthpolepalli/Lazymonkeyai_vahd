@@ -12,7 +12,7 @@ import type { Member } from '@/types';
 import { cn } from '@/utils/cn';
 import { formatDateDDMMYY } from '@/utils/date';
 
-const tabs = ['Overview', 'Attendance', 'Membership', 'Payments', 'Workouts', 'Nutrition', 'Body Composition', 'Health', 'Progress', 'Notes'];
+const tabs = ['Overview', 'Attendance', 'Membership', 'Payments', 'Progress', 'Notes'];
 
 export function Customer360Page() {
   const { id } = useParams();
@@ -65,18 +65,15 @@ export function Customer360Page() {
             <div className="flex flex-wrap gap-4 text-sm">
               <div><span className="stat-label">Membership</span> <span className="font-semibold text-navy-900">{member.membership}</span></div>
               <div><span className="stat-label">Branch</span> <span className="font-semibold text-navy-900">{member.branch}</span></div>
-              <div><span className="stat-label">employee</span> <span className="font-semibold text-navy-900">{member.employee}</span></div>
-              <div><span className="stat-label">Goal</span> <span className="font-semibold text-navy-900">{member.goal}</span></div>
+              <div><span className="stat-label">Employee</span> <span className="font-semibold text-navy-900">{member.employee}</span></div>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mt-6 pt-6 border-t border-navy-100">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6 pt-6 border-t border-navy-100">
           {[
             { label: 'Attendance', value: `${member.attendance || 0}%`, icon: 'calendar-check', color: 'text-brand-600' },
-            { label: 'Weight', value: `${member.weight || 0} kg`, icon: 'scale', color: 'text-navy-600' },
-            { label: 'Body Fat', value: `${member.bodyFat || 0}%`, icon: 'ruler', color: 'text-warning-600' },
-            { label: 'Workout Streak', value: `${member.attendance ? Math.round(member.attendance / 10) : 0} days`, icon: 'flame', color: 'text-danger-600' },
+            { label: 'Attendance Days', value: `${member.attendance ? Math.round(member.attendance / 3.3) : 0} days`, icon: 'calendar', color: 'text-brand-600' },
             { label: 'Days Left', value: member.expiry || '—', icon: 'clock', color: 'text-success-600' },
             { label: 'Revenue', value: member.revenue || '₹0', icon: 'indian-rupee', color: 'text-success-600' },
           ].map((s) => (
@@ -113,14 +110,10 @@ export function Customer360Page() {
               <h3 className="text-base font-bold text-navy-900 mb-4">Attendance Trend</h3>
               <LineChart data={[member.attendance || 0]} labels={['Current']} height={160} color="#2563eb" />
             </div>
-            <div>
-              <h3 className="text-base font-bold text-navy-900 mb-4">Weight Progress</h3>
-              <LineChart data={[member.weight || 0]} labels={['Current']} height={160} color="#059669" />
-            </div>
             <div className="flex items-center justify-center">
-              <ProgressRing value={member.attendance || 0} max={100} label={`${member.attendance || 0}%`} sublabel="Overall Health" color="#2563eb" size={140} />
+              <ProgressRing value={member.attendance || 0} max={100} label={`${member.attendance || 0}%`} sublabel="Attendance Rate" color="#2563eb" size={140} />
             </div>
-            <div className="space-y-3">
+            <div className="space-y-3 lg:col-span-2">
               <h3 className="text-base font-bold text-navy-900">Recent Activity</h3>
               <div className="text-xs text-navy-400 py-4 text-center">Live activity feed connected</div>
             </div>

@@ -7,7 +7,6 @@ class CustomerBase(BaseModel):
     email: Optional[str] = None
     phone: Optional[str] = None
     gender: Optional[str] = None
-    fitness_score: Optional[int] = None
     profile_image: Optional[str] = None
     status: Optional[str] = None
     owner_id: Optional[str] = None

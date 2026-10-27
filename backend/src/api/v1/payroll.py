@@ -27,8 +27,7 @@ def generate_payroll_invoice(payload: PayrollGenerateRequest, db: Session = Depe
         return PayrollService.generate_monthly_payroll(
             db=db,
             employee_id=payload.employee_id,
-            month_year=payload.month_year,
-            pt_sessions_count=payload.pt_sessions_count
+            month_year=payload.month_year
         )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))

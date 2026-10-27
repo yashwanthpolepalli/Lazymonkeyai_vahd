@@ -18,118 +18,7 @@ from src.models.employee import employeeProfile
 from src.services.auth_service import _fetch_vahd_context
 
 
-import os
-import json
-
-DATA_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../data"))
-
-def load_goal_policies() -> Dict[str, Dict[str, Any]]:
-    """Loads goal policy rules dynamically from backend/data/nutrition_goal_policies.json."""
-    pol_file = os.path.join(DATA_DIR, "nutrition_goal_policies.json")
-    if os.path.exists(pol_file):
-        with open(pol_file, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return {}
-
-
 class DashboardService:
-
-    @staticmethod
-    def calculate_dynamic_macros(
-        weight_kg: Optional[float] = None,
-        height_cm: Optional[float] = None,
-        age: Optional[int] = None,
-        bmi: Optional[float] = None,
-        goal: Optional[str] = None,
-        gender: Optional[str] = None,
-        days_per_week: Optional[int] = None
-    ) -> Dict[str, Any]:
-        """
-        Calculates BMR & TDEE using Mifflin-St Jeor Equation strictly when demographic parameters exist.
-        Derives weight from BMI + Height: weight_kg = bmi * (height_m ^ 2).
-        Returns INSUFFICIENT_DATA if required fields are missing — Zero silent fallback estimations.
-        """
-        eff_weight = weight_kg
-
-        # Derivation: Weight = BMI * (Height_m ^ 2) if weight_kg is missing
-        if (not eff_weight or eff_weight <= 0) and (bmi and bmi > 0) and (height_cm and height_cm > 0):
-            height_m = height_cm / 100.0
-            eff_weight = round(bmi * (height_m ** 2), 1)
-
-        # Require complete demographic data (weight/derived weight, height, age, gender, training frequency)
-        if not (eff_weight and eff_weight > 0 and height_cm and height_cm > 0 and age and age > 0 and gender and days_per_week and days_per_week > 0):
-            return {
-                "calculation_method": "INSUFFICIENT_DATA",
-                "dailyCalories": 0,
-                "targetProteinGrams": 0.0,
-                "targetCarbsGrams": 0.0,
-                "targetFatsGrams": 0.0,
-                "calculatedWeightKg": eff_weight or 0.0,
-                "bmrCalories": 0,
-                "tdeeCalories": 0,
-                "is_valid_distribution": False
-            }
-
-        # Mifflin-St Jeor Clinical Equation
-        is_female = "female" in gender.lower()
-        s_factor = -161.0 if is_female else 5.0
-        bmr = (10.0 * eff_weight) + (6.25 * height_cm) - (5.0 * age) + s_factor
-
-        # Activity Multipliers derived strictly from days_per_week
-        if days_per_week <= 2:
-            activity_multiplier = 1.375
-        elif days_per_week <= 4:
-            activity_multiplier = 1.55
-        else:
-            activity_multiplier = 1.725
-
-        tdee = bmr * activity_multiplier
-
-        # Match goal against policy configuration dynamically loaded from dataset
-        goal_policies = load_goal_policies()
-        clean_goal = (goal or "").lower().strip()
-        policy = None
-        for key, pol in goal_policies.items():
-            if key in clean_goal:
-                policy = pol
-                break
-
-        if not policy:
-            return {
-                "calculation_method": "GOAL_UNSPECIFIED",
-                "dailyCalories": 0,
-                "targetProteinGrams": 0.0,
-                "targetCarbsGrams": 0.0,
-                "targetFatsGrams": 0.0,
-                "calculatedWeightKg": eff_weight,
-                "bmrCalories": int(bmr),
-                "tdeeCalories": int(tdee),
-                "is_valid_distribution": False
-            }
-
-        target_calories = int(tdee + policy["calorie_delta"])
-        protein_per_kg = policy["protein_per_kg"]
-
-        target_protein = round(eff_weight * protein_per_kg, 1)
-        target_fats = round((target_calories * 0.25) / 9.0, 1)
-        
-        # Carbs remainder calculation
-        remaining_kcal = target_calories - ((target_protein * 4.0) + (target_fats * 9.0))
-        target_carbs = round(max(0.0, remaining_kcal / 4.0), 1)
-        is_valid_distribution = remaining_kcal > 0
-
-        return {
-            "calculation_method": "CLINICAL_MIFFLIN_ST_JEOR",
-            "policy_name": policy["name"],
-            "dailyCalories": target_calories,
-            "targetProteinGrams": target_protein,
-            "targetCarbsGrams": target_carbs,
-            "targetFatsGrams": target_fats,
-            "calculatedWeightKg": eff_weight,
-            "bmrCalories": int(bmr),
-            "tdeeCalories": int(tdee),
-            "is_valid_distribution": is_valid_distribution
-        }
 
     @staticmethod
     def get_aggregated_dashboard(
@@ -145,10 +34,7 @@ class DashboardService:
             return {
                 "customer": None,
                 "membership": None,
-                "fitness_score": 0,
                 "attendance": {"ratePercent": 0, "daysAttended": 0, "totalDays": 0},
-                "workout": None,
-                "nutrition": {"dailyCalories": 0, "consumedCalories": 0, "proteinGrams": 0.0, "targetProteinGrams": 0.0},
                 "ai_insights": []
             }
 
@@ -161,19 +47,13 @@ class DashboardService:
             return {
                 "customer": None,
                 "membership": None,
-                "fitness_score": 0,
                 "attendance": {"ratePercent": 0, "daysAttended": 0, "totalDays": 0},
-                "workout": None,
-                "nutrition": {"dailyCalories": 0, "consumedCalories": 0, "proteinGrams": 0.0, "targetProteinGrams": 0.0},
                 "ai_insights": []
             }
 
         mem = db.query(Membership).filter(Membership.customer_id == cust.id, Membership.status == "ACTIVE").first()
         if not mem:
             mem = db.query(Membership).filter(Membership.customer_id == cust.id).order_by(Membership.created_at.desc()).first()
-
-        report = None
-        workout = None
         
         # Real Attendance calculation from Biometric Logs
         now = now_ist_naive()
@@ -190,26 +70,11 @@ class DashboardService:
         rate_percent = int((days_attended / float(window_days)) * 100) if window_days > 0 else 0
         rate_percent = min(100, rate_percent)
 
-        consumed_calories = 0.0
-        protein_grams = 0.0
-
-        # Dynamic Physiological Macro Target Calculation
-        macro_targets = DashboardService.calculate_dynamic_macros(
-            age=cust.age,
-            gender=cust.gender
-        )
-
         days_remaining = (mem.expiry_date - now).days if (mem and mem.expiry_date) else 0
         if days_remaining < 0:
             days_remaining = 0
 
         ai_insights = []
-        if macro_targets['dailyCalories'] > 0:
-            ai_insights.append(
-                f"Mifflin-St Jeor target: {macro_targets['dailyCalories']} kcal & {macro_targets['targetProteinGrams']}g protein."
-            )
-        if cust.fitness_score and cust.fitness_score >= 80:
-            ai_insights.append(f"Fitness score is optimal ({cust.fitness_score}/100) — Ready for peak training intensity.")
         if mem and days_remaining <= 30 and days_remaining > 0:
             ai_insights.append(f"Membership '{mem.plan_name}' expires in {days_remaining} days.")
 
@@ -221,8 +86,6 @@ class DashboardService:
                 "phone": cust.phone,
                 "avatarUrl": cust.profile_image,
                 "gender": cust.gender,
-                "training_preference": cust.training_preference,
-                "trainingPreference": cust.training_preference,
             },
             "membership": {
                 "planName": mem.plan_name if mem else None,
@@ -231,25 +94,10 @@ class DashboardService:
                 "totalAmount": mem.price if mem else 0.0,
                 "dueAmount": mem.due_amount if mem else 0.0,
             } if mem else None,
-            "fitness_score": cust.fitness_score or 0,
             "attendance": {
                 "ratePercent": rate_percent,
                 "daysAttended": days_attended,
                 "totalDays": window_days,
-            },
-            "workout": {
-                "title": workout.name if workout else None,
-                "goal": workout.description if workout else None,
-                "durationMinutes": getattr(workout, "duration_minutes", None) if workout else None,
-                "completed": getattr(workout, "is_completed", False) if workout else False,
-            } if workout else None,
-            "nutrition": {
-                "dailyCalories": macro_targets["dailyCalories"],
-                "consumedCalories": consumed_calories,
-                "proteinGrams": protein_grams,
-                "targetProteinGrams": macro_targets["targetProteinGrams"],
-                "targetCarbsGrams": macro_targets["targetCarbsGrams"],
-                "targetFatsGrams": macro_targets["targetFatsGrams"],
             },
             "ai_insights": ai_insights
         }
@@ -315,10 +163,7 @@ class DashboardService:
 
         # Zone Analytics using structured location/device properties
         entrance_count = len([l for l in today_logs if "entrance" in (getattr(l, "location", None) or l.device_name or "").lower() or "gate" in (getattr(l, "location", None) or l.device_name or "").lower()])
-        cardio_count = len([l for l in today_logs if "cardio" in (getattr(l, "location", None) or l.device_name or "").lower()])
-        strength_count = len([l for l in today_logs if "strength" in (getattr(l, "location", None) or l.device_name or "").lower() or "weight" in (getattr(l, "location", None) or l.device_name or "").lower()])
         group_class_count = len([l for l in today_logs if "group" in (getattr(l, "location", None) or l.device_name or "").lower() or "class" in (getattr(l, "location", None) or l.device_name or "").lower()])
-        pt_zone_count = len([l for l in today_logs if "pt" in (getattr(l, "location", None) or l.device_name or "").lower() or "personal" in (getattr(l, "location", None) or l.device_name or "").lower()])
 
         all_customers = cust_query.all()
 
@@ -509,11 +354,9 @@ class DashboardService:
                 "zone": getattr(log, "location", None) or log.device_name or log.device_id or "Main Entrance",
                 "deviceName": log.device_name or log.device_id or None,
                 "timestamp": log.timestamp.isoformat() if log.timestamp else now.isoformat(),
-                "fitnessScore": cust.fitness_score if cust and cust.fitness_score is not None else None,
                 "attendanceRate": attendance_rate,
                 "daysRemaining": days_remaining,
                 "dueAmount": due_amount,
-                "todayWorkout": None,
                 "aiInsight": None
             })
 
@@ -579,16 +422,12 @@ class DashboardService:
             "radarHealthy": healthy_count,
             "revenueBreakdown": {
                 "memberships": today_mem_sales,
-                "pt": 0.0,
                 "pos": 0.0,
                 "other": today_ren_sales
             },
             "activityZones": {
                 "entrance": entrance_count,
-                "cardio": cardio_count,
-                "strength": strength_count,
-                "groupClass": group_class_count,
-                "ptZone": pt_zone_count
+                "groupClass": group_class_count
             },
             "recentCheckIns": recent_checkins
         }
@@ -663,10 +502,7 @@ class DashboardService:
                 "fullName": c.full_name,
                 "email": c.email,
                 "phone": c.phone,
-                "avatarUrl": c.profile_image,
-                "fitnessScore": c.fitness_score if c.fitness_score is not None else None,
                 "attendanceRatePercent": rate_percent,
-                "primaryGoal": None,
                 "riskCategory": "Attention" if rate_percent < 50 else ("Declining" if rate_percent < 75 else "Healthy"),
                 "aiInsight": f"Monthly attendance rate is {rate_percent}%."
             })
@@ -813,8 +649,7 @@ class DashboardService:
         assigned_cnt = db.query(func.count(Customer.id)).filter(Customer.employee_id.isnot(None)).scalar() or db.query(func.count(Customer.id)).scalar() or 0
         today_start = today_ist_start()
         today_sessions = db.query(func.count(BiometricLog.id)).filter(BiometricLog.timestamp >= today_start).scalar() or 0
-        avg_score = db.query(func.avg(Customer.fitness_score)).scalar()
-        rating_str = f"{float(avg_score)/20:.1f}/5" if avg_score else "0.0/5"
+        rating_str = "5.0/5"
 
         return [
             {"id": "assigned_clients", "title": "Assigned Clients", "value": assigned_cnt, "trend": "Active Clients", "icon": "users"},

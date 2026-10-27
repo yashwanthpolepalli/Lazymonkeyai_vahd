@@ -55,8 +55,99 @@ export const roleHomePath: Record<Role, string> = {
   customer: '/app',
 };
 
-export function getNavItems(role: Role): NavItem[] {
-  return navConfig[role] || [];
+export function getNavItems(role: Role, permissions?: Record<string, any>): NavItem[] {
+  const baseItems = navConfig[role] || [];
+  if (role !== 'owner' || !permissions || Object.keys(permissions).length === 0) {
+    return baseItems;
+  }
+
+  const items: NavItem[] = [];
+
+  // Dashboard - strictly only if ticked
+  const hasDashboard = !!(
+    permissions['dashboard.view'] ||
+    permissions['dashboard'] ||
+    permissions['dashboard_analytics.view'] ||
+    permissions['dashboard_attendance_stream.view']
+  );
+  if (hasDashboard) {
+    items.push({ label: 'Dashboard', path: '/owner', icon: 'layout-dashboard' });
+  }
+
+  // HRMS & Students - strictly only if ticked
+  const hasHrms = !!(
+    permissions['hrms_section.view'] ||
+    permissions['hrms.view'] ||
+    permissions['hrms_overview.view'] ||
+    permissions['employee_details.view'] ||
+    permissions['employees.view'] ||
+    permissions['attendance.view'] ||
+    permissions['attendance_approve.view'] ||
+    permissions['absent_employees.view'] ||
+    permissions['attendance_report.view'] ||
+    permissions['leave_management.view'] ||
+    permissions['leaves.view'] ||
+    permissions['payroll.view'] ||
+    permissions['students_section.view'] ||
+    permissions['students.view'] ||
+    permissions['student_details.view'] ||
+    permissions['student_enrollment.view'] ||
+    permissions['student_attendance.view']
+  );
+  if (hasHrms) {
+    items.push({ label: 'HRMS & Students', path: '/owner/hrms', icon: 'users' });
+  }
+
+  // POS & Billing - strictly only if ticked
+  const hasPos = !!(
+    permissions['pos_billing.view'] ||
+    permissions['pos.view'] ||
+    permissions['invoices.view'] ||
+    permissions['inventory.view'] ||
+    permissions['procurement.view']
+  );
+  if (hasPos) {
+    items.push({ label: 'POS & Billing', path: '/owner/pos', icon: 'receipt' });
+  }
+
+  // Payments - strictly only if ticked
+  const hasPayments = !!(
+    permissions['payments_section.view'] ||
+    permissions['payments.view'] ||
+    permissions['fee_collection.view'] ||
+    permissions['transactions.view']
+  );
+  if (hasPayments) {
+    items.push({ label: 'Payments', path: '/owner/payments', icon: 'wallet' });
+  }
+
+  // Reports - strictly only if ticked
+  const hasReports = !!(
+    permissions['reports_section.view'] ||
+    permissions['reports.view'] ||
+    permissions['reports_attendance.view'] ||
+    permissions['reports_financial.view'] ||
+    permissions['audit_logs.view']
+  );
+  if (hasReports) {
+    items.push({ label: 'Reports', path: '/owner/reports', icon: 'bar-chart-3' });
+  }
+
+  // Settings - strictly only if ticked
+  const hasSettings = !!(
+    permissions['settings_section.view'] ||
+    permissions['settings.view'] ||
+    permissions['branch_profile.view'] ||
+    permissions['settings.profile'] ||
+    permissions['courses.view'] ||
+    permissions['master_data.view'] ||
+    permissions['roles.view']
+  );
+  if (hasSettings) {
+    items.push({ label: 'Settings', path: '/owner/settings', icon: 'settings' });
+  }
+
+  return items;
 }
 
 export function notifyModuleVisibilityChanged() {

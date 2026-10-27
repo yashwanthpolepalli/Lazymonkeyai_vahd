@@ -1,7 +1,7 @@
 from __future__ import annotations
 """
 vahd — Live Gemini AI Coach Chat Endpoint
-Receives user questions, retrieves active customer metrics, workouts, and nutrition logs from PostgreSQL,
+Receives user questions, retrieves active customer metrics and attendance logs from PostgreSQL,
 and invokes Gemini 2.0 Flash to generate real-time intelligent responses.
 """
 import os
@@ -432,23 +432,23 @@ Output strictly valid JSON with no markdown formatting.
         "badgeText": offer.upper() if offer else "LIMITED TIME SPECIAL",
         "accentStampText": "BE STRONGER THAN YOUR EXCUSES",
         "bottomBannerText": "JOIN TODAY & START YOUR TRANSFORMATION JOURNEY!",
-        "templateId": "powerzone-split",
-        "logoPreset": "kettlebell-bolt",
+        "templateId": "academic-split",
+        "logoPreset": "institution-shield",
         "logoSize": 52,
         "checklistItems": [
-            {"title": "MODERN EQUIPMENT", "subtitle": "Train with the best biomechanics.", "icon": "dumbbell"},
-            {"title": "EXPERT COACHING", "subtitle": "Certified employees you can trust.", "icon": "user"},
-            {"title": "NUTRITION PROTOCOL", "subtitle": "Fuel muscle & shred body fat.", "icon": "apple"},
-            {"title": "24/7 VIP ACCESS", "subtitle": "Workout on your schedule.", "icon": "clock"},
+            {"title": "MODERN INFRASTRUCTURE", "subtitle": "Learn with state-of-the-art facilities.", "icon": "building"},
+            {"title": "EXPERT FACULTY", "subtitle": "Certified professionals you can trust.", "icon": "user"},
+            {"title": "STRUCTURED CURRICULUM", "subtitle": "Master your discipline with rigor.", "icon": "book-open"},
+            {"title": "FLEXIBLE SCHEDULING", "subtitle": "Learn on your schedule.", "icon": "clock"},
         ],
         "bulletHighlights": [
-            {"title": "STRONGER", "desc": "BODY", "icon": "dumbbell"},
-            {"title": "BETTER", "desc": "HEALTH", "icon": "heart-pulse"},
+            {"title": "FOCUS", "desc": "GROWTH", "icon": "book-open"},
+            {"title": "BETTER", "desc": "SKILLS", "icon": "award"},
             {"title": "BIGGER", "desc": "GOALS", "icon": "target"},
         ],
         "quoteBox": {
-            "highlight": "SORE TODAY",
-            "subtext": "STRONG TOMORROW"
+            "highlight": "LEARN TODAY",
+            "subtext": "LEAD TOMORROW"
         },
         "pricing": {
             "planName": "UNLIMITED ALL-ACCESS",

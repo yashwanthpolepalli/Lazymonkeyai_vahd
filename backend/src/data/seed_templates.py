@@ -285,7 +285,7 @@ MASTER_SYSTEM_TEMPLATES: List[Dict[str, Any]] = [
     {
         "id": "template_focus_moodboard",
         "name": "Focus Moodboard Collage (Image 5)",
-        "description": "Moody luxury collage with distressed quotes, workout vignettes, and understated gold elegance.",
+        "description": "Moody luxury collage with distressed quotes, lifestyle vignettes, and understated gold elegance.",
         "source_type": "system",
         "source_asset_id": "/assets/brochures/focus_moodboard_bg.png",
         "preview_asset_id": "https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=600&q=80",

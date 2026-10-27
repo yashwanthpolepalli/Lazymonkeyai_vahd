@@ -8,18 +8,19 @@ import { cn } from '@/utils/cn';
 const mobileNavItems: Record<string, string[]> = {
   super_admin: ['Overview', 'Organizations', 'SaaS Plans', 'AI Platform', 'Settings'],
   ho: ['Dashboard', 'HRMS & Students', 'Organisations', 'Settings'],
-  owner: ['Dashboard', 'Customers', 'Sales & CRM', 'POS', 'Settings'],
+  owner: ['Dashboard', 'Customers', 'POS', 'Settings'],
   employee: ['Dashboard', 'My Customers', 'HRMS', 'AI Coach', 'Profile'],
-  customer: ['Home', 'Attendance', 'Workouts', 'Food Scanner', 'Profile'],
+  student: ['Home', 'Attendance', 'AI Coach', 'Profile'],
+  customer: ['Home', 'Attendance', 'AI Coach', 'Profile'],
 };
 
 export function BottomNav() {
   const { user } = useAuth();
-  const [items, setItems] = useState(() => (user ? getNavItems(user.role) : []));
+  const [items, setItems] = useState(() => (user ? getNavItems(user.role, user.permissions) : []));
 
   useEffect(() => {
     const updateItems = () => {
-      if (user) setItems(getNavItems(user.role));
+      if (user) setItems(getNavItems(user.role, user.permissions));
     };
     updateItems();
     window.addEventListener('vahd_modules_changed', updateItems);

@@ -23,68 +23,8 @@ import src.models  # noqa: F401
 
 logger = logging.getLogger("VAHD_DB_MIGRATE")
 
-# Legacy / obsolete tables that must be safely dropped if detected
-OBSOLETE_TABLES: List[str] = [
-    # Legacy duplicate/child tables
-    "trainer_profiles",
-    "master_data_items",
-    "erp_vendor_credit_notes",
-    "erp_vendor_debit_notes",
-    "erp_purchase_request_items",
-    "erp_purchase_quotation_items",
-    "erp_purchase_order_items",
-    "erp_goods_received_note_items",
-    "erp_purchase_return_items",
-    "erp_blacklisted_suppliers",
-    "erp_procurement_ai_suggestions",
-    "erp_supplier_categories",
-    "erp_supplier_contacts",
-    "erp_supplier_contracts",
-    "erp_supplier_performance",
-    # Legacy gym/CRM/workout tables
-    "crm_discount_usages",
-    "crm_discounts",
-    "crm_leads",
-    "crm_marketing_ads",
-    "crm_marketing_assets",
-    "crm_opportunities",
-    "crm_quotations",
-    "crm_sales_orders",
-    "crm_social_posts",
-    "crm_support_tickets",
-    "crm_voice_call_logs",
-    "customer_program_assignments",
-    "customer_transformations",
-    "customer_workout_preferences",
-    "exercise_taxonomy_rules",
-    "exercises",
-    "training_split_days",
-    "training_splits",
-    "workout_exercises",
-    "workout_program_days",
-    "workout_program_exercises",
-    "workout_program_weeks",
-    "workout_programming_rules",
-    "workout_programs",
-    "workout_session_exercises",
-    "workout_sessions",
-    "workout_template_days",
-    "workout_template_exercises",
-    "workout_templates",
-    "workouts",
-    "nutrition_food_master",
-    "nutrition_log_items",
-    "nutrition_logs",
-    "inbody_reports",
-    "health_connections",
-    "health_daily_summaries",
-    "health_workouts",
-    "bmi_classification_config",
-    "readiness_configs",
-    "brochure_templates",
-    "vahd_slot_bookings",
-    "gym_slot_bookings",
-]
+# Tables explicitly protected from any drop operation
+PROTECTED_TABLES: Set[str] = {"users", "alembic_version", "sqlite_sequence"}
 
 
 def seed_default_leave_types(db) -> None:
@@ -248,6 +188,7 @@ def run_database_migrations() -> None:
     Ensures all 78 canonical tables and missing columns exist in the database.
     Compatible with both SQLite and PostgreSQL.
     Dynamically introspects all registered SQLAlchemy models in Base.metadata.
+    Safely drops any non-canonical tables while preserving user logins and core data.
     """
     try:
         # 1. Create all 78 canonical tables from Base.metadata if any are missing
@@ -255,67 +196,32 @@ def run_database_migrations() -> None:
 
         inspector = inspect(engine)
         existing_tables: Set[str] = set(inspector.get_table_names())
+        canonical_tables: Set[str] = set(Base.metadata.tables.keys())
+
+        # Automatically detect any table in the DB that is not part of the canonical 78 models
+        obsolete_tables = [
+            tbl for tbl in existing_tables
+            if tbl not in canonical_tables and tbl not in PROTECTED_TABLES
+        ]
 
         added_columns_count = 0
+        dropped_tables_count = 0
 
         with engine.connect() as conn:
-            # 2. Legacy Migration: Merge trainer_profiles into employee_profiles if found
-            if "trainer_profiles" in existing_tables:
+
+            # 2. Safely drop any non-canonical tables detected in the database
+            for tbl in obsolete_tables:
                 try:
-                    # Ensure employee_profiles exists and has primary_gym_location
-                    emp_cols = {col["name"] for col in inspector.get_columns("employee_profiles")}
-                    if "primary_gym_location" not in emp_cols:
-                        conn.execute(text("ALTER TABLE employee_profiles ADD COLUMN primary_gym_location VARCHAR;"))
-                        conn.commit()
-
-                    # Merge rows without conflict
-                    merge_sql = text("""
-                        INSERT INTO employee_profiles (
-                            id, user_id, full_name, email, phone, gender, role, specialization,
-                            primary_vahd_location, primary_gym_location, base_monthly_salary,
-                            pt_session_rate, bank_account_no, bank_ifsc, upi_id, is_active, created_at
-                        )
-                        SELECT
-                            id, user_id, full_name, email, phone, gender, role, specialization,
-                            COALESCE(primary_vahd_location, primary_gym_location),
-                            primary_gym_location, base_monthly_salary, pt_session_rate,
-                            bank_account_no, bank_ifsc, upi_id, is_active, created_at
-                        FROM trainer_profiles
-                        ON CONFLICT (id) DO UPDATE SET
-                            user_id = EXCLUDED.user_id,
-                            full_name = EXCLUDED.full_name,
-                            email = EXCLUDED.email,
-                            phone = EXCLUDED.phone,
-                            gender = EXCLUDED.gender,
-                            role = EXCLUDED.role,
-                            specialization = EXCLUDED.specialization,
-                            primary_vahd_location = EXCLUDED.primary_vahd_location,
-                            primary_gym_location = EXCLUDED.primary_gym_location,
-                            base_monthly_salary = EXCLUDED.base_monthly_salary,
-                            pt_session_rate = EXCLUDED.pt_session_rate,
-                            bank_account_no = EXCLUDED.bank_account_no,
-                            bank_ifsc = EXCLUDED.bank_ifsc,
-                            upi_id = EXCLUDED.upi_id,
-                            is_active = EXCLUDED.is_active;
-                    """)
-                    conn.execute(merge_sql)
+                    conn.execute(text(f'DROP TABLE IF EXISTS "{tbl}" CASCADE;'))
                     conn.commit()
-                except Exception as merge_err:
+                    existing_tables.discard(tbl)
+                    dropped_tables_count += 1
+                    print(f"[DB Migration Notice] Safely dropped obsolete non-canonical table: {tbl}")
+                except Exception as drop_err:
                     conn.rollback()
-                    print(f"[DB Migration Notice] Trainer merge notice: {merge_err}")
+                    print(f"[DB Migration Notice] Could not drop table {tbl}: {drop_err}")
 
-            # 3. Drop obsolete / duplicate tables
-            for tbl in OBSOLETE_TABLES:
-                if tbl in existing_tables:
-                    try:
-                        conn.execute(text(f'DROP TABLE IF EXISTS "{tbl}" CASCADE;'))
-                        conn.commit()
-                        existing_tables.discard(tbl)
-                    except Exception as drop_err:
-                        conn.rollback()
-                        print(f"[DB Migration Notice] Could not drop obsolete table {tbl}: {drop_err}")
-
-            # 4. Introspect all registered SQLAlchemy models in Base.metadata.tables and add missing columns
+            # 3. Introspect all registered SQLAlchemy models in Base.metadata.tables and add missing columns
             for table_name, table_obj in Base.metadata.tables.items():
                 if table_name not in existing_tables:
                     continue
@@ -336,17 +242,17 @@ def run_database_migrations() -> None:
                             conn.rollback()
                             print(f"[DB Migration Notice] Column {table_name}.{col_name} skipped: {col_err}")
 
-        # 5. Seed canonical leave policies
+        # 4. Seed canonical leave policies
         seed_db = SessionLocal()
         try:
             seed_default_leave_types(seed_db)
         finally:
             seed_db.close()
 
-        if added_columns_count > 0:
-            print(f"✅ Database Schema Migration Completed ({added_columns_count} missing columns added)!")
-        else:
-            print("✅ Database Schema Integrity Verified — All 78 tables and columns up to date!")
+        print(
+            f"✅ Database Schema Migration Completed ({len(canonical_tables)} canonical tables verified, "
+            f"{dropped_tables_count} obsolete tables dropped, {added_columns_count} missing columns added)!"
+        )
 
     except Exception as e:
         print(f"[DB Migration Warning] {e}")

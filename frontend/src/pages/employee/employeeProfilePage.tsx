@@ -40,7 +40,7 @@ export function EmployeeProfilePage() {
         <div className="card p-5">
           <h3 className="text-sm font-bold text-navy-900 mb-4">Specializations</h3>
           <div className="flex flex-wrap gap-2">
-            {['Weight Loss', 'Nutrition Planning', 'Strength Training', 'Functional Fitness', 'Body Composition', 'Post-Rehab', 'Group Training'].map((s) => (
+            {['Curriculum Planning', 'Student Mentorship', 'Classroom Instruction', 'Skills Assessment', 'Performance Tracking', 'Group Sessions'].map((s) => (
               <Badge key={s} variant="brand">{s}</Badge>
             ))}
           </div>
@@ -49,9 +49,9 @@ export function EmployeeProfilePage() {
           <h3 className="text-sm font-bold text-navy-900 mb-4">Certifications</h3>
           <div className="space-y-2">
             {[
-              { name: 'ACE Certified Personal employee', year: '2019' },
-              { name: 'Precision Nutrition Level 2', year: '2021' },
-              { name: 'NASM Corrective Exercise Specialist', year: '2022' },
+              { name: 'Certified Enterprise Instructor', year: '2020' },
+              { name: 'Advanced Professional Educator', year: '2022' },
+              { name: 'Curriculum & Pedagogy Specialist', year: '2024' },
             ].map((c) => (
               <div key={c.name} className="flex items-center gap-3 p-3 rounded-xl bg-navy-50">
                 <div className="w-9 h-9 rounded-lg bg-success-50 flex items-center justify-center"><Icon name="award" size={16} className="text-success-600" /></div>

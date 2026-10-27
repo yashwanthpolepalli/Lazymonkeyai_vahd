@@ -545,8 +545,8 @@ export function MembersPage() {
               <div className="space-y-3">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
-                    <label className="text-xs font-bold text-navy-900 block">Select Program & Training Plan</label>
-                    <p className="text-[11px] text-navy-400">Choose workout program and duration tier. Price and billing auto-accommodate.</p>
+                    <label className="text-xs font-bold text-navy-900 block">Select Membership Plan</label>
+                    <p className="text-[11px] text-navy-400">Choose membership plan and duration tier. Price and billing auto-accommodate.</p>
                   </div>
                   <div className="relative min-w-[180px]">
                     <input

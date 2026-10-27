@@ -21,14 +21,14 @@ class ReviewService:
         membership_plan = ""
         goal = ""
         employee = ""
-        workout_count = 0
+        attendance_count = 0
 
         # Dynamic lookup from DB
         if customer_id:
             cust = db.query(Customer).filter((Customer.id == customer_id) | (Customer.user_id == customer_id)).first()
             if cust:
                 customer_name = cust.full_name or ""
-                goal = cust.training_preference or ""
+                goal = getattr(cust, "specialization", "") or getattr(cust, "qualification", "") or ""
                 if cust.employee_id:
                     from src.models.user import User
                     employee_user = db.query(User).filter(User.id == cust.employee_id).first()
@@ -40,29 +40,29 @@ class ReviewService:
                     membership_plan = mem.plan_name
 
                 if getattr(cust, "biometric_logs", None):
-                    workout_count = len(cust.biometric_logs)
+                    attendance_count = len(cust.biometric_logs)
 
                 if not vahd_name and cust.primary_vahd_location:
                     vahd_name = cust.primary_vahd_location
 
         if not vahd_name:
             active_company = db.query(Company).filter(Company.status == "active").first()
-            vahd_name = active_company.name if active_company else "this vahd"
+            vahd_name = active_company.name if active_company else "this facility"
 
         api_key = get_gemini_key()
         models = build_gemini_fallback_list()
 
-        context_lines = [f"- Facility / vahd Name: {vahd_name}"]
+        context_lines = [f"- Facility Name: {vahd_name}"]
         if customer_name:
             context_lines.append(f"- Member Name: {customer_name}")
         if membership_plan:
             context_lines.append(f"- Membership Tier / Plan: {membership_plan}")
         if goal:
-            context_lines.append(f"- Fitness Goal / Routine: {goal}")
+            context_lines.append(f"- Specialization / Focus: {goal}")
         if employee:
-            context_lines.append(f"- Personal employee / Coach: {employee}")
-        if workout_count > 0:
-            context_lines.append(f"- Completed Workout Sessions: {workout_count}")
+            context_lines.append(f"- Assigned Mentor / Staff: {employee}")
+        if attendance_count > 0:
+            context_lines.append(f"- Completed Attendance Sessions: {attendance_count}")
 
         context_str = "\n".join(context_lines)
 
@@ -120,25 +120,25 @@ JSON only without markdown fences:
             generated_data = [
                 {
                     "id": 1,
-                    "category": "Equipment & Atmosphere",
-                    "title": "Best Fitness Center in Town!",
-                    "text": f"Hands down the best vahd experience at {vahd_name}! The imported machines, cleanliness, and motivating vibe make every workout session incredible. Highly recommended for anyone serious about fitness!",
+                    "category": "Infrastructure & Atmosphere",
+                    "title": "Outstanding Facility & Services!",
+                    "text": f"Hands down the best experience at {vahd_name}! The modern amenities, cleanliness, and motivating environment make every visit productive. Highly recommended!",
                     "rating": 5,
-                    "tags": ["Modern Equipment", "Pristine Hygiene", "Great Vibe"]
+                    "tags": ["Modern Facility", "Pristine Hygiene", "Great Experience"]
                 },
                 {
                     "id": 2,
-                    "category": "Transformation & Coaching",
+                    "category": "Operations & Mentorship",
                     "title": "Incredible Results & Support",
-                    "text": f"I've been working{goal_desc}{employee_desc} here and the guidance is top-notch. The customized workout routines and positive environment have helped me achieve noticeable results!",
+                    "text": f"I've been working with the team here and the guidance is top-notch. The structured programs and positive environment have helped me achieve noticeable progress!",
                     "rating": 5,
-                    "tags": ["Expert Guidance", "Body Transformation", "Great Coaching"]
+                    "tags": ["Expert Guidance", "Professional Growth", "Great Mentorship"]
                 },
                 {
                     "id": 3,
                     "category": "Value & Community",
                     "title": "Premium Facility with Welcoming Staff",
-                    "text": f"From the friendly front desk team to the spacious training zones and spotless locker rooms, {vahd_name} sets a high standard. Worth every penny{plan_desc}!",
+                    "text": f"From the friendly front desk team to the dedicated zones and spotless premises, {vahd_name} sets a high standard. Worth every investment!",
                     "rating": 5,
                     "tags": ["Friendly Staff", "Value for Money", "Spacious"]
                 }

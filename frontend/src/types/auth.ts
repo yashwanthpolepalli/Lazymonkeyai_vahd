@@ -16,6 +16,10 @@ export interface User {
   vahd_name?: string;
   branchName?: string;
   branch_name?: string;
+  branchId?: string;
+  branch_id?: string;
+  permissions?: Record<string, any>;
+  role_title?: string;
 }
 
 export interface AuthState {

@@ -1968,10 +1968,8 @@ class HrmsService:
         - Base monthly salary from employeeProfile
         - Biometric punches & attendance records for the month
         - Approved paid leaves (no deduction for approved paid/casual/sick leaves)
-        - Assigned active customer enrollments and conducted PT sessions
         - Unexcused absent days deduction = (base_monthly_salary / total_days) * absent_days
-        - Commission = pt_sessions_count * pt_session_rate
-        - Net Salary = Base Salary Earned + PT Commission + Allowances - Deductions
+        - Net Salary = Base Salary Earned + Allowances - Deductions
         """
         month_num, year_num, month_name = HrmsService._parse_month_year(month, year)
         _, days_in_month = calendar.monthrange(year_num, month_num)
@@ -2025,15 +2023,6 @@ class HrmsService:
 
             full_name = employee.full_name if employee else f"{emp.first_name} {emp.last_name or ''}".strip()
             base_salary = float(employee.base_monthly_salary if employee else (emp.salary or 0.0))
-            pt_rate = float(employee.pt_session_rate if employee else 0.0)
-
-            # 1. Count Assigned PT Customers and Conducted PT sessions
-            assigned_cust_count = 0
-            if employee:
-                assigned_cust_count = db.query(Customer).filter(
-                    (Customer.employee_id == employee.id) | (Customer.employee_id == employee.user_id)
-                ).count()
-            pt_sessions_count = assigned_cust_count
 
             # 2. Count Biometric Punch days present in this month
             distinct_punch_days = set()
@@ -2091,7 +2080,7 @@ class HrmsService:
             per_day_salary = base_salary / float(days_in_month) if days_in_month > 0 else 0.0
             base_salary_earned = round(per_day_salary * effective_present_days, 2)
             absent_deduction = round(per_day_salary * days_absent, 2)
-            commission_earned = round(pt_sessions_count * pt_rate, 2)
+            commission_earned = 0.0
             allowances = 0.0
             deductions = absent_deduction
             net_salary = round(base_salary_earned + commission_earned + allowances, 2)
@@ -2133,7 +2122,6 @@ class HrmsService:
                         month_year=month_year_key,
                         days_present=effective_present_days,
                         days_absent=days_absent,
-                        pt_sessions_count=pt_sessions_count,
                         base_salary_earned=base_salary_earned,
                         commission_earned=commission_earned,
                         deductions=deductions,
@@ -2144,7 +2132,6 @@ class HrmsService:
                 else:
                     existing_inv.days_present = effective_present_days
                     existing_inv.days_absent = days_absent
-                    existing_inv.pt_sessions_count = pt_sessions_count
                     existing_inv.base_salary_earned = base_salary_earned
                     existing_inv.commission_earned = commission_earned
                     existing_inv.deductions = deductions
@@ -2168,8 +2155,6 @@ class HrmsService:
                 "days_present": effective_present_days,
                 "days_absent": days_absent,
                 "paid_leave_days": paid_leave_days,
-                "pt_sessions_count": pt_sessions_count,
-                "pt_session_rate": pt_rate,
                 "commission_earned": commission_earned,
                 "allowances": allowances,
                 "deductions": deductions,
@@ -2226,8 +2211,6 @@ class HrmsService:
                 "base_salary_earned": float(inv.base_salary_earned if inv else (p.base_salary or 0.0)),
                 "days_present": int(inv.days_present if inv else 0),
                 "days_absent": int(inv.days_absent if inv else 0),
-                "pt_sessions_count": int(inv.pt_sessions_count if inv else 0),
-                "pt_session_rate": float(employee.pt_session_rate if employee else 0.0),
                 "commission_earned": float(inv.commission_earned if inv else 0.0),
                 "allowances": float(p.allowances or 0.0),
                 "deductions": float(p.deductions or (inv.deductions if inv else 0.0)),

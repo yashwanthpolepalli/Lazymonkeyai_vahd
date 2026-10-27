@@ -211,6 +211,8 @@ class AuthService:
             "email": user.email,
             "avatar_url": user.avatar_url or (cust.profile_image if cust else "") or "",
             "phone": user.phone or (cust.phone if cust else "") or "",
+            "permissions": user.permissions or {},
+            "role_title": getattr(user, "role_title", None) or ("Head Office Admin" if final_role == "HEAD_OFFICE" else "Owner" if final_role == "OWNER" else final_role.title()),
             **vahd_ctx,
         }
 
@@ -331,5 +333,7 @@ class AuthService:
             "phone": user.phone or (cust.phone if cust else "") or "",
             "avatar_url": user.avatar_url or (cust.profile_image if cust else "") or "",
             "ho_id": user.ho_id,
+            "permissions": user.permissions or {},
+            "role_title": getattr(user, "role_title", None) or ("Head Office Admin" if mapped_role == "HEAD_OFFICE" else "Owner" if mapped_role == "OWNER" else mapped_role.title()),
             **vahd_ctx,
         }

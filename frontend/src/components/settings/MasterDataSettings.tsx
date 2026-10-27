@@ -98,7 +98,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
         const parsed = JSON.parse(stored);
         if (parsed && typeof parsed === 'object') return parsed;
       }
-    } catch {}
+    } catch { }
 
     const initial: Record<string, MasterDataItem[]> = {};
     MASTER_CATEGORIES.forEach((cat) => {
@@ -121,11 +121,11 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
           try {
             localStorage.setItem('vahd_master_data_v3', JSON.stringify(merged));
             window.dispatchEvent(new Event('vahd_master_data_updated'));
-          } catch {}
+          } catch { }
           return merged;
         });
       }
-    }).catch(() => {});
+    }).catch(() => { });
   }, []);
 
   const saveMasterStore = (updated: Record<string, MasterDataItem[]>) => {
@@ -134,7 +134,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
       localStorage.setItem('vahd_master_data_v3', JSON.stringify(updated));
       localStorage.setItem('vahd_master_data_v2', JSON.stringify(updated));
       window.dispatchEvent(new Event('vahd_master_data_updated'));
-    } catch {}
+    } catch { }
   };
 
   // Synchronize DB-backed categories with live backend database
@@ -154,11 +154,11 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
             const next = { ...prev, leave_reasons: mapped };
             try {
               localStorage.setItem('vahd_master_data_v3', JSON.stringify(next));
-            } catch {}
+            } catch { }
             return next;
           });
         }
-      }).catch(() => {});
+      }).catch(() => { });
     }
 
     if (selectedCatId === 'departments' || !selectedCatId) {
@@ -175,11 +175,11 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
             const next = { ...prev, departments: mapped };
             try {
               localStorage.setItem('vahd_master_data_v3', JSON.stringify(next));
-            } catch {}
+            } catch { }
             return next;
           });
         }
-      }).catch(() => {});
+      }).catch(() => { });
     }
 
     if (selectedCatId === 'designations' || !selectedCatId) {
@@ -198,11 +198,11 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
             const next = { ...prev, designations: mapped };
             try {
               localStorage.setItem('vahd_master_data_v3', JSON.stringify(next));
-            } catch {}
+            } catch { }
             return next;
           });
         }
-      }).catch(() => {});
+      }).catch(() => { });
     }
   }, [selectedCatId]);
 
@@ -345,19 +345,19 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
           code: formCode.trim() || editingItem.code,
           annual_quota: parseFloat(formDays) || 15,
           is_active: formActive,
-        }).catch(() => {});
+        }).catch(() => { });
       } else if (selectedCatId === 'departments') {
         hrmsApi.updateDepartment(editingItem.id, {
           name: formName.trim(),
           code: formCode.trim() || editingItem.code,
           is_active: formActive,
-        }).catch(() => {});
+        }).catch(() => { });
       } else if (selectedCatId === 'designations') {
         hrmsApi.updateDesignation(editingItem.id, {
           title: formName.trim(),
           level: formLevel,
           department: resolvedParentName,
-        }).catch(() => {});
+        }).catch(() => { });
       }
 
       // Also persist to backend database for all master categories
@@ -413,19 +413,19 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
           max_carry_forward_days: 0,
           attachment_required: false,
           is_active: formActive,
-        }).catch(() => {});
+        }).catch(() => { });
       } else if (selectedCatId === 'departments') {
         hrmsApi.createDepartment({
           name: formName.trim(),
           code: autoCode,
           is_active: formActive,
-        }).catch(() => {});
+        }).catch(() => { });
       } else if (selectedCatId === 'designations') {
         hrmsApi.createDesignation({
           title: formName.trim(),
           level: formLevel,
           department: resolvedParentName,
-        }).catch(() => {});
+        }).catch(() => { });
       }
 
       const tempId = `${selectedCatId}_${Date.now()}`;
@@ -466,7 +466,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
             try {
               localStorage.setItem('vahd_master_data_v3', JSON.stringify(next));
               window.dispatchEvent(new Event('vahd_master_data_updated'));
-            } catch {}
+            } catch { }
             return next;
           });
         }
@@ -484,11 +484,11 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
     if (!confirm(`Are you sure you want to delete "${itemName}"? This cannot be undone.`)) return;
 
     if (selectedCatId === 'leave_reasons') {
-      hrmsApi.deleteLeaveType(itemId).catch(() => {});
+      hrmsApi.deleteLeaveType(itemId).catch(() => { });
     } else if (selectedCatId === 'departments') {
-      hrmsApi.deleteDepartment(itemId).catch(() => {});
+      hrmsApi.deleteDepartment(itemId).catch(() => { });
     } else if (selectedCatId === 'designations') {
-      hrmsApi.deleteDesignation(itemId).catch(() => {});
+      hrmsApi.deleteDesignation(itemId).catch(() => { });
     }
 
     // Call masterDataApi delete
@@ -506,7 +506,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
     if (!selectedCatId || selectedItemIds.length === 0) return;
     if (!confirm(`Are you sure you want to delete ${selectedItemIds.length} selected record(s)?`)) return;
     selectedItemIds.forEach((id) => {
-      masterDataApi.delete(selectedCatId, id).catch(() => {});
+      masterDataApi.delete(selectedCatId, id).catch(() => { });
     });
     const currentItems = masterStore[selectedCatId] || [];
     const deleteSet = new Set(selectedItemIds);
@@ -520,7 +520,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
     if (!confirm(`Are you sure you want to delete ALL records for ${selectedCategory?.title}?`)) return;
     const currentItems = masterStore[selectedCatId] || [];
     currentItems.forEach((item) => {
-      masterDataApi.delete(selectedCatId, item.id).catch(() => {});
+      masterDataApi.delete(selectedCatId, item.id).catch(() => { });
     });
     saveMasterStore({ ...masterStore, [selectedCatId]: [] });
     setSelectedItemIds([]);
@@ -1016,8 +1016,8 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                   {modalMode === 'add'
                     ? `Add ${selectedCategory.title}`
                     : modalMode === 'edit'
-                    ? `Edit ${selectedCategory.title}`
-                    : `View ${selectedCategory.title}`}
+                      ? `Edit ${selectedCategory.title}`
+                      : `View ${selectedCategory.title}`}
                 </h3>
                 <button
                   type="button"
@@ -1058,14 +1058,14 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                     {isLeaveReasons
                       ? 'LEAVE REASON *'
                       : isInstitutionType
-                      ? 'INSTITUTION TYPE NAME *'
-                      : selectedCategory.id === 'gender_types'
-                      ? 'GENDER TYPE *'
-                      : selectedCategory.id === 'blood_groups'
-                      ? 'BLOOD GROUP *'
-                      : selectedCategory.id === 'castes'
-                      ? 'CASTE / CATEGORY NAME *'
-                      : `${selectedCategory.title.toUpperCase()} NAME *`}
+                        ? 'INSTITUTION TYPE NAME *'
+                        : selectedCategory.id === 'gender_types'
+                          ? 'GENDER TYPE *'
+                          : selectedCategory.id === 'blood_groups'
+                            ? 'BLOOD GROUP *'
+                            : selectedCategory.id === 'castes'
+                              ? 'CASTE / CATEGORY NAME *'
+                              : `${selectedCategory.title.toUpperCase()} NAME *`}
                   </label>
                   <input
                     type="text"
@@ -1075,14 +1075,14 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                       isInstitutionType
                         ? 'e.g. Polyclinic'
                         : isLeaveReasons
-                        ? 'e.g. Casual Leave'
-                        : selectedCategory.id === 'gender_types'
-                        ? 'e.g. Male, Female, Other'
-                        : selectedCategory.id === 'blood_groups'
-                        ? 'e.g. O+, AB+, A-'
-                        : selectedCategory.id === 'castes'
-                        ? 'e.g. BC-A, SC, OC'
-                        : `e.g. ${selectedCategory.title} name`
+                          ? 'e.g. Casual Leave'
+                          : selectedCategory.id === 'gender_types'
+                            ? 'e.g. Male, Female, Other'
+                            : selectedCategory.id === 'blood_groups'
+                              ? 'e.g. O+, AB+, A-'
+                              : selectedCategory.id === 'castes'
+                                ? 'e.g. BC-A, SC, OC'
+                                : `e.g. ${selectedCategory.title} name`
                     }
                     disabled={modalMode === 'view'}
                     required
@@ -1121,12 +1121,12 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                         isInstitutionType
                           ? 'Optional — e.g. PVC'
                           : selectedCategory.id === 'gender_types'
-                          ? 'Optional — e.g. MALE, FEMALE'
-                          : selectedCategory.id === 'blood_groups'
-                          ? 'Optional — e.g. A_POS, O_NEG'
-                          : selectedCategory.id === 'castes'
-                          ? 'Optional — e.g. OC, SC, BC-A'
-                          : 'Optional — e.g. HYD, or leave blank to auto-generate'
+                            ? 'Optional — e.g. MALE, FEMALE'
+                            : selectedCategory.id === 'blood_groups'
+                              ? 'Optional — e.g. A_POS, O_NEG'
+                              : selectedCategory.id === 'castes'
+                                ? 'Optional — e.g. OC, SC, BC-A'
+                                : 'Optional — e.g. HYD, or leave blank to auto-generate'
                       }
                       disabled={modalMode === 'view'}
                       className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
@@ -1141,10 +1141,10 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                       {selectedCategory.id === 'districts'
                         ? 'DISTRICT SHORT CODE'
                         : selectedCategory.id === 'blood_groups'
-                        ? 'RH FACTOR / NOTES'
-                        : selectedCategory.id === 'gender_types'
-                        ? 'SHORT NOTATION / NOTES'
-                        : 'DESCRIPTION / FULL NAME'}
+                          ? 'RH FACTOR / NOTES'
+                          : selectedCategory.id === 'gender_types'
+                            ? 'SHORT NOTATION / NOTES'
+                            : 'DESCRIPTION / FULL NAME'}
                     </label>
                     <input
                       type="text"
@@ -1154,10 +1154,10 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                         selectedCategory.id === 'districts'
                           ? 'e.g. HYD, ADB'
                           : selectedCategory.id === 'blood_groups'
-                          ? 'e.g. Rh Positive, Universal Donor'
-                          : selectedCategory.id === 'gender_types'
-                          ? 'e.g. M, F, Transgender'
-                          : 'e.g. Backward Class Group A'
+                            ? 'e.g. Rh Positive, Universal Donor'
+                            : selectedCategory.id === 'gender_types'
+                              ? 'e.g. M, F, Transgender'
+                              : 'e.g. Backward Class Group A'
                       }
                       disabled={modalMode === 'view'}
                       className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
@@ -1292,7 +1292,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
           Settings
         </h1>
         <p className="text-xs text-slate-500 font-medium">
-          Master data — geography, clinical, HR, finance, pharmacy, and fodder
+          Master data — geography, , HR, finance, pharmacy, and fodder
         </p>
       </div>
 

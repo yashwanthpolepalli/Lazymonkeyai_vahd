@@ -10,12 +10,13 @@ import { CoursesPage } from '@/pages/owner/CoursesPage';
 import { ReportsPage } from '@/pages/owner/ReportsPage';
 import { CompanyManagement } from '@/components/erp/CompanyManagement';
 import { MasterDataSettings } from '@/components/settings/MasterDataSettings';
+import { OwnerPermissionsTab } from '@/components/settings/OwnerPermissionsTab';
 import { cn } from '@/utils/cn';
 
 export interface SettingCardConfig {
   id: string;
   title: string;
-  type: 'master' | 'courses' | 'reports' | 'erp' | 'general';
+  type: 'master' | 'courses' | 'reports' | 'erp' | 'general' | 'permissions';
   categoryKey?: string;
   icon: string;
   bgLight: string;
@@ -133,7 +134,7 @@ export const SETTING_CARDS: SettingCardConfig[] = [
     bgLight: 'bg-teal-50 dark:bg-teal-950/40',
     textColor: 'text-teal-600',
     borderLight: 'border-teal-200/70',
-    description: 'Clinical & admin divisions'
+    description: ' admin divisions'
   },
   {
     id: 'qualifications',
@@ -208,6 +209,16 @@ export const SETTING_CARDS: SettingCardConfig[] = [
     borderLight: 'border-violet-200/70',
     description: 'Profile, contact & security'
   },
+  {
+    id: 'permissions',
+    title: 'Permissions',
+    type: 'permissions',
+    icon: 'shield-check',
+    bgLight: 'bg-emerald-50 dark:bg-emerald-950/40',
+    textColor: 'text-emerald-600',
+    borderLight: 'border-emerald-200/70',
+    description: 'Owner roles & module access'
+  },
 ];
 
 export function SettingsPage() {
@@ -234,8 +245,12 @@ export function SettingsPage() {
     if (rawTab === 'specialization') return 'specializations';
     if (rawTab === 'course' || rawTab === 'memberships' || rawTab === 'plans') return 'courses';
     if (rawTab === 'report' || rawTab === 'analytics') return 'reports';
-    if (rawTab === 'company' || rawTab === 'reviews' || rawTab === 'google-reviews') return 'erp';
-    if (rawTab === 'general' || rawTab === 'profile' || rawTab === 'security') return 'general';
+    if (rawTab === 'role' || rawTab === 'roles') {
+      return 'roles';
+    }
+    if (rawTab === 'permission' || rawTab === 'permissions' || rawTab === 'roles-permissions' || rawTab === 'owner-permissions') {
+      return 'permissions';
+    }
     return null;
   };
 
@@ -451,7 +466,7 @@ export function SettingsPage() {
               Settings
             </h1>
             <p className="text-xs text-slate-500 font-medium">
-              Master data — geography, clinical, HR, finance, pharmacy, and fodder
+              Master data — geography, , HR, finance, pharmacy, and fodder
             </p>
           </div>
 
@@ -461,9 +476,33 @@ export function SettingsPage() {
             <span className="text-xs font-bold text-blue-600">Settings</span>
           </div>
 
-          {/* 13 Setting Cards Grid */}
+          {/* Setting Cards Grid (Permissions strictly enforced for Owners) */}
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 gap-3 sm:gap-4 pt-1">
-            {SETTING_CARDS.map((card) => (
+            {SETTING_CARDS.filter((card) => {
+              if (isHo) return true;
+              if (card.id === 'permissions') return false;
+              if (!user?.permissions || Object.keys(user.permissions).length === 0) return true;
+              const perms = user.permissions;
+              if (card.type === 'master') {
+                return !!(perms['master_data.view'] || perms['master_data']);
+              }
+              if (card.id === 'roles') {
+                return !!(perms['roles.view'] || perms['roles'] || perms['master_data.view']);
+              }
+              if (card.id === 'courses') {
+                return !!(perms['courses.view'] || perms['courses']);
+              }
+              if (card.id === 'reports') {
+                return !!(perms['reports.view'] || perms['reports_attendance.view'] || perms['reports_financial.view']);
+              }
+              if (card.id === 'erp') {
+                return !!(perms['branch_profile.view'] || perms['settings.profile']);
+              }
+              if (card.id === 'general') {
+                return !!(perms['settings_section.view'] || perms['settings.view'] || perms['branch_profile.view'] || perms['settings.profile']);
+              }
+              return true;
+            }).map((card) => (
               <button
                 key={card.id}
                 type="button"
@@ -960,6 +999,13 @@ export function SettingsPage() {
           </div>
           <CompanyManagement />
         </div>
+      )}
+
+      {/* ───────────────────────────────────────────────────────────────── */}
+      {/* VIEW 6: PERMISSION MATRIX MANAGEMENT                              */}
+      {/* ───────────────────────────────────────────────────────────────── */}
+      {selectedSection === 'permissions' && (
+        <OwnerPermissionsTab onBack={() => handleSelectSection(null)} />
       )}
     </div>
   );

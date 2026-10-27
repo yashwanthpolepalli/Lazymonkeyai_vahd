@@ -17,10 +17,10 @@ export function MessagesPage() {
         if (data && data.length > 0) {
           const avatars = ['from-brand-400 to-brand-600', 'from-success-400 to-success-600', 'from-warning-400 to-warning-600', 'from-ai-400 to-ai-600'];
           const samplePrompts = [
-            'Coach, should I increase my bench press weight?',
-            'Thank you for updating my workout plan!',
-            'Feeling great after yesterday session.',
-            'What target macros should I aim for today?',
+            'Could you please share the schedule for next week?',
+            'Thank you for updating my learning schedule!',
+            'Understood the concepts covered in yesterday session.',
+            'When is the next batch session scheduled?',
           ];
           const convs = data.slice(0, 8).map((m, i) => ({
             id: m.id,

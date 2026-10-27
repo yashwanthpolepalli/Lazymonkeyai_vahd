@@ -301,78 +301,6 @@ export const nav: NavGroup[] = [
     ]
   },
   {
-    group: "Sales & CRM", theme: "orange", icon: Megaphone, permission: "view:crm", items: [
-      {
-        to: "/crm?tab=customers",
-        label: "Customer Management",
-        icon: Users,
-        subItems: [
-          { to: "/crm?tab=customers", label: "Customers", icon: UsersRound },
-          { to: "/crm?tab=customer_groups", label: "Customer Groups", icon: Network },
-          { to: "/crm?tab=customer_segments", label: "Customer Segments", icon: Target },
-          { to: "/crm?tab=membership_plans", label: "Membership Plans", icon: ShieldCheck },
-          { to: "/crm?tab=customer_wallet", label: "Customer Wallet", icon: CreditCard },
-          { to: "/crm?tab=loyalty_program", label: "Loyalty Program", icon: Tags },
-          { to: "/crm?tab=customer_documents", label: "Customer Documents", icon: Briefcase },
-        ]
-      },
-      {
-        to: "/crm?tab=ad_generator",
-        label: "Marketing & Sales",
-        icon: TrendingUp,
-        subItems: [
-          { to: "/crm?tab=ad_generator", label: "Marketing Ad Generator", icon: Sparkles },
-          { to: "/crm?tab=social_media_dashboard", label: "Social Media Dashboard", icon: BarChart3 },
-          { to: "/crm?tab=ad_history", label: "Ad Post History", icon: History },
-          { to: "/crm?tab=leads", label: "Leads", icon: Crosshair },
-          { to: "/crm?tab=opportunities", label: "Opportunities", icon: Goal },
-          { to: "/crm?tab=deals", label: "Deals", icon: Target },
-          { to: "/crm?tab=sales_pipeline", label: "Sales Pipeline", icon: BarChart3 },
-          { to: "/crm?tab=quotations", label: "Quotations", icon: FileCheck },
-          { to: "/crm?tab=sales_orders", label: "Sales Orders", icon: ShoppingCart },
-          { to: "/crm?tab=discounts", label: "Discounts", icon: Percent },
-        ]
-      },
-      {
-        to: "/crm?tab=support_tickets",
-        label: "Customer Service",
-        icon: Activity,
-        subItems: [
-          { to: "/crm?tab=support_tickets", label: "Support Tickets", icon: AlertTriangle },
-          { to: "/crm?tab=complaints", label: "Complaints", icon: Activity },
-          { to: "/crm?tab=returns", label: "Returns", icon: ArrowRightLeft },
-          { to: "/crm?tab=feedback", label: "Feedback", icon: Sparkles },
-          { to: "/crm?tab=customer_timeline", label: "Customer Timeline", icon: History },
-        ]
-      },
-      {
-        to: "/crm?tab=ai_call_logs",
-        label: "Communication",
-        icon: Radio,
-        subItems: [
-          { to: "/crm?tab=ai_call_logs", label: "AI Voice Calling & Logs", icon: Headset },
-          { to: "/crm?tab=email_campaigns", label: "Email Campaigns", icon: Inbox },
-          { to: "/crm?tab=sms_campaigns", label: "SMS Campaigns", icon: Radio },
-          { to: "/crm?tab=whatsapp_campaigns", label: "WhatsApp Campaigns", icon: Network },
-          { to: "/crm?tab=push_notifications", label: "Push Notifications", icon: Radio },
-        ]
-      },
-      {
-        to: "/crm?tab=customer_analytics",
-        label: "Customer Intelligence",
-        icon: BrainCircuit,
-        subItems: [
-          { to: "/crm?tab=customer_analytics", label: "Customer Analytics", icon: PieChart },
-          { to: "/crm?tab=purchase_behaviour", label: "Purchase Behaviour", icon: Activity },
-          { to: "/crm?tab=churn_prediction", label: "Churn Prediction", icon: Skull },
-          { to: "/crm?tab=lifetime_value", label: "Lifetime Value", icon: LineChart },
-          { to: "/crm?tab=rfm_analysis", label: "RFM Analysis", icon: Grid },
-          { to: "/crm?tab=ai_recommendations", label: "AI Recommendations", icon: Sparkles },
-        ]
-      },
-    ]
-  },
-  {
     group: "Marketplace", theme: "sky", icon: Store, permission: "view:marketplace", items: [
       {
         to: "/marketplace?tab=vendors",
@@ -1016,7 +944,6 @@ export const GROUP_COLORS: Record<string, { text: string; gradient: string; glow
   "Inventory & Warehouse": { text: "text-emerald-600 dark:text-emerald-400", gradient: "bg-gradient-to-r from-emerald-500 to-teal-500", glow: "shadow-emerald-500/25" },
   "Purchase": { text: "text-cyan-600 dark:text-cyan-400", gradient: "bg-gradient-to-r from-cyan-500 to-sky-500", glow: "shadow-cyan-500/25" },
   "Operations": { text: "text-cyan-600 dark:text-cyan-400", gradient: "bg-gradient-to-r from-cyan-500 to-sky-500", glow: "shadow-cyan-500/25" },
-  "Sales & CRM": { text: "text-rose-600 dark:text-rose-400", gradient: "bg-gradient-to-r from-rose-500 to-pink-600", glow: "shadow-rose-500/25" },
   "Marketplace": { text: "text-amber-600 dark:text-amber-400", gradient: "bg-gradient-to-r from-amber-500 to-orange-500", glow: "shadow-amber-500/25" },
   "Accounting & Finance": { text: "text-violet-600 dark:text-violet-400", gradient: "bg-gradient-to-r from-violet-500 to-fuchsia-600", glow: "shadow-violet-500/25" },
   "HRMS": { text: "text-pink-600 dark:text-pink-400", gradient: "bg-gradient-to-r from-pink-500 to-rose-500", glow: "shadow-pink-500/25" },

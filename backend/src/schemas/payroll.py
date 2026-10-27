@@ -9,7 +9,6 @@ class employeeCreateRequest(BaseModel):
     role: str = "EMPLOYEE"  # OWNER, MANAGER, EMPLOYEE, STAFF
     specialization: Optional[str] = None
     base_monthly_salary: float = 0.0
-    pt_session_rate: float = 0.0
     bank_account_no: Optional[str] = None
     bank_ifsc: Optional[str] = None
     upi_id: Optional[str] = None
@@ -29,7 +28,6 @@ class employeeResponse(BaseModel):
     role: str
     specialization: Optional[str] = None
     base_monthly_salary: float
-    pt_session_rate: float
     bank_account_no: Optional[str] = None
     bank_ifsc: Optional[str] = None
     upi_id: Optional[str] = None
@@ -57,7 +55,6 @@ class employeeResponse(BaseModel):
 class PayrollGenerateRequest(BaseModel):
     employee_id: str
     month_year: Optional[str] = None
-    pt_sessions_count: int = 0
 
 class PayrollPayRequest(BaseModel):
     payment_method: str = "UPI"
@@ -69,7 +66,6 @@ class PayrollInvoiceResponse(BaseModel):
     month_year: str
     days_present: int
     days_absent: int
-    pt_sessions_count: int
     base_salary_earned: float
     commission_earned: float
     deductions: float

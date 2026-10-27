@@ -97,11 +97,6 @@ function AppRoutes() {
           <Route index element={<OwnerDashboard />} />
           <Route path="customers" element={<MembersPage />} />
           <Route path="customers/:id" element={<Navigate to="/owner/customers" replace />} />
-          <Route path="nutrition" element={<Navigate to="/owner" replace />} />
-          <Route path="food-scanner" element={<Navigate to="/owner" replace />} />
-          <Route path="body-composition" element={<Navigate to="/owner" replace />} />
-          <Route path="health-sync" element={<Navigate to="/owner" replace />} />
-          <Route path="crm" element={<Navigate to="/owner" replace />} />
           <Route path="pos" element={<PosPage />} />
           <Route path="inventory" element={<Navigate to="/owner/pos?tab=inventory" replace />} />
           <Route path="purchase" element={<Navigate to="/owner/pos?tab=purchase" replace />} />
@@ -147,7 +142,6 @@ function AppRoutes() {
           <Route path="customers" element={<MembersPage />} />
           <Route path="hrms" element={<EmployeeHrmsPage />} />
           <Route path="attendance" element={<Navigate to="/employee/hrms?tab=attendance" replace />} />
-          <Route path="nutrition" element={<Navigate to="/employee" replace />} />
           <Route path="progress" element={<ProgressPage />} />
           <Route path="messages" element={<MessagesPage />} />
           <Route path="ai-coach" element={<AiCoachPage />} />
@@ -158,12 +152,8 @@ function AppRoutes() {
         <Route path="/app" element={<ProtectedRoute><RoleRedirect allowed={['student', 'customer']} /></ProtectedRoute>}>
           <Route index element={<CustomerDashboard />} />
           <Route path="attendance" element={<CustomerAttendancePage />} />
-          <Route path="workouts" element={<Navigate to="/app" replace />} />
-          <Route path="nutrition" element={<Navigate to="/app" replace />} />
-          <Route path="food-scanner" element={<Navigate to="/app" replace />} />
           <Route path="progress" element={<ProgressPage />} />
           <Route path="ai-coach" element={<AiCoachPage />} />
-          <Route path="transformation" element={<Navigate to="/app" replace />} />
           <Route path="history" element={<Navigate to="/app" replace />} />
           <Route path="profile" element={<CustomerProfilePage />} />
         </Route>

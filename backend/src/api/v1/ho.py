@@ -43,10 +43,14 @@ def get_ho_organizations(
     """Fetch all organizations (branches) and their onboarded owners belonging to the logged-in HO."""
     ho_id = _get_ho_context(current_user)
 
-    branches = db.query(vahdBranch).filter(
-        or_(vahdBranch.ho_id == ho_id, vahdBranch.owner_id == current_user.id),
-        vahdBranch.is_active == True
-    ).all()
+    is_super = (current_user.role or "").strip().upper() in ["SUPER_ADMIN", "ADMIN"]
+    if is_super:
+        branches = db.query(vahdBranch).filter(vahdBranch.is_active == True).all()
+    else:
+        branches = db.query(vahdBranch).filter(
+            or_(vahdBranch.ho_id == ho_id, vahdBranch.owner_id == current_user.id),
+            vahdBranch.is_active == True
+        ).all()
 
     result = []
     for b in branches:
@@ -1428,4 +1432,279 @@ def get_ho_organisations_matrix(
         "matrix": matrix_rows,
         "totals": totals
     }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# OWNER ROLES & PERMISSIONS MANAGEMENT (Head Office Exclusive)
+# ─────────────────────────────────────────────────────────────────────────────
+
+@router.get("/owner-permissions")
+def get_owner_permissions(
+    organization_id: Optional[str] = Query(None),
+    branch_id: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Fetch all onboarded owners, their assigned branch/organization,
+    designated role titles, and granular module permissions.
+    """
+    ho_id = _get_ho_context(current_user)
+    is_super = (current_user.role or "").strip().upper() in ["SUPER_ADMIN", "ADMIN"]
+    target_org_id = organization_id or branch_id
+
+    if is_super:
+        branches = db.query(vahdBranch).filter(vahdBranch.is_active == True).all()
+        branch_map = {b.id: b for b in branches}
+        branch_by_owner = {b.owner_id: b for b in branches if b.owner_id}
+        owner_ids = [b.owner_id for b in branches if b.owner_id]
+        owners = db.query(User).filter(
+            or_(User.role == "OWNER", User.id.in_(owner_ids))
+        ).order_by(desc(User.created_at)).all()
+    else:
+        branches = db.query(vahdBranch).filter(
+            or_(vahdBranch.ho_id == ho_id, vahdBranch.owner_id == current_user.id),
+            vahdBranch.is_active == True
+        ).all()
+        branch_map = {b.id: b for b in branches}
+        branch_by_owner = {b.owner_id: b for b in branches if b.owner_id}
+        owners = db.query(User).filter(
+            User.role == "OWNER",
+            or_(User.ho_id == ho_id, User.id.in_(list(branch_by_owner.keys())))
+        ).order_by(desc(User.created_at)).all()
+
+    result = []
+    for owner in owners:
+        branch = branch_by_owner.get(owner.id) or (branch_map.get(owner.branch_id) if owner.branch_id else None)
+        
+        # Apply organization filter if specified
+        if target_org_id and target_org_id.strip() and target_org_id != "all":
+            if not branch or branch.id != target_org_id.strip():
+                continue
+
+        result.append({
+            "owner_id": owner.id,
+            "owner_name": owner.full_name or "",
+            "owner_email": owner.email,
+            "owner_phone": owner.phone or "",
+            "role_title": getattr(owner, "role_title", None) or "Owner",
+            "designation": (owner.permissions or {}).get("_designation") or getattr(owner, "designation", "") or "",
+            "is_active": bool(owner.is_active),
+            "organization_id": branch.id if branch else None,
+            "organization_name": (branch.vahd_name or branch.branch_name) if branch else "Unassigned Organization",
+            "branch_name": branch.branch_name if branch else "",
+            "city": branch.city or "" if branch else "",
+            "permissions": owner.permissions or {},
+            "created_at": owner.created_at.isoformat() if owner.created_at else None,
+        })
+
+    return {
+        "total_owners": len(result),
+        "owners": result
+    }
+
+
+@router.post("/owner-permissions")
+def create_or_assign_owner_permissions(
+    payload: Dict[str, Any] = Body(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Head Office creates a new Owner or assigns permissions to an existing Owner
+    with designated organization and modular permissions.
+    """
+    ho_id = _get_ho_context(current_user)
+
+    owner_name = (payload.get("owner_name") or "").strip()
+    raw_email = (payload.get("owner_email") or "").strip().lower()
+    phone = (payload.get("phone") or "").strip()
+    password = (payload.get("password") or "").strip()
+    org_id = (payload.get("organization_id") or "").strip()
+    vahd_name = (payload.get("vahd_name") or "").strip()
+    branch_name = (payload.get("branch_name") or "").strip() or vahd_name
+    city = (payload.get("city") or "").strip()
+    address = (payload.get("address") or "").strip()
+    role_title = (payload.get("role_title") or "Owner").strip()
+    designation = (payload.get("designation") or "").strip()
+    permissions = payload.get("permissions") or {}
+    if designation and isinstance(permissions, dict):
+        permissions["_designation"] = designation
+    is_active = payload.get("is_active", True)
+
+    if not owner_name:
+        raise HTTPException(status_code=400, detail="Owner full name is required")
+    if not raw_email or "@" not in raw_email:
+        raise HTTPException(status_code=400, detail="Valid owner email is required")
+
+    # 1. Resolve or Create the Branch/Organization
+    branch = None
+    if org_id:
+        branch = db.query(vahdBranch).filter(vahdBranch.id == org_id).first()
+        if not branch:
+            raise HTTPException(status_code=404, detail="Selected organization not found")
+        branch.ho_id = ho_id
+        if vahd_name:
+            branch.vahd_name = vahd_name
+        if branch_name:
+            branch.branch_name = branch_name
+        if city:
+            branch.city = city
+        if address:
+            branch.address = address
+    elif vahd_name:
+        branch_id = f"vahd_{uuid.uuid4().hex[:10]}"
+        branch = vahdBranch(
+            id=branch_id,
+            vahd_name=vahd_name,
+            name=vahd_name,
+            branch_name=branch_name or vahd_name,
+            city=city,
+            address=address,
+            ho_id=ho_id,
+            is_active=True
+        )
+        db.add(branch)
+        db.flush()
+
+    # 2. Check or Create Owner User
+    user = db.query(User).filter(func.lower(User.email) == raw_email).first()
+    if user:
+        user.full_name = owner_name
+        if phone:
+            user.phone = phone
+        user.role = "OWNER"
+        user.ho_id = ho_id
+        user.is_active = is_active
+        user.role_title = role_title
+        user.permissions = permissions
+        if branch:
+            user.branch_id = branch.id
+            user.owner_id = user.id
+            branch.owner_id = user.id
+        if password:
+            user.password_hash = hash_password(password)
+    else:
+        if not password or len(password) < 6:
+            raise HTTPException(status_code=400, detail="Password must be at least 6 characters for a new owner")
+        user_id = f"usr_{uuid.uuid4().hex[:8]}"
+        user = User(
+            id=user_id,
+            email=raw_email,
+            password_hash=hash_password(password),
+            role="OWNER",
+            full_name=owner_name,
+            phone=phone,
+            branch_id=branch.id if branch else None,
+            ho_id=ho_id,
+            owner_id=user_id,
+            is_active=is_active,
+            is_tenant_owner=True,
+            role_title=role_title,
+            permissions=permissions
+        )
+        db.add(user)
+        db.flush()
+        if branch:
+            branch.owner_id = user.id
+
+    db.commit()
+    db.refresh(user)
+
+    return {
+        "success": True,
+        "message": f"Owner permissions successfully saved for {owner_name}",
+        "owner": {
+            "owner_id": user.id,
+            "owner_name": user.full_name,
+            "owner_email": user.email,
+            "owner_phone": user.phone,
+            "role_title": user.role_title,
+            "is_active": user.is_active,
+            "organization_id": branch.id if branch else None,
+            "organization_name": (branch.vahd_name or branch.branch_name) if branch else "",
+            "permissions": user.permissions or {}
+        }
+    }
+
+
+@router.put("/owner-permissions/{owner_id}")
+def update_owner_permissions(
+    owner_id: str,
+    payload: Dict[str, Any] = Body(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Update role title, permissions, credentials, or status for an existing Owner."""
+    ho_id = _get_ho_context(current_user)
+
+    user = db.query(User).filter(User.id == owner_id, User.role == "OWNER").first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Owner not found")
+
+    if payload.get("owner_name"):
+        user.full_name = payload["owner_name"].strip()
+    if payload.get("phone"):
+        user.phone = payload["phone"].strip()
+    if payload.get("role_title"):
+        user.role_title = payload["role_title"].strip()
+    if "is_active" in payload:
+        user.is_active = bool(payload["is_active"])
+    if "permissions" in payload:
+        perms = dict(payload["permissions"] or {})
+        if payload.get("designation"):
+            perms["_designation"] = payload["designation"].strip()
+        user.permissions = perms
+    elif payload.get("designation"):
+        perms = dict(user.permissions or {})
+        perms["_designation"] = payload["designation"].strip()
+        user.permissions = perms
+    if payload.get("password"):
+        pwd = payload["password"].strip()
+        if len(pwd) >= 6:
+            user.password_hash = hash_password(pwd)
+    if payload.get("organization_id"):
+        branch = db.query(vahdBranch).filter(vahdBranch.id == payload["organization_id"]).first()
+        if branch:
+            user.branch_id = branch.id
+            branch.owner_id = user.id
+
+    db.commit()
+    db.refresh(user)
+
+    return {
+        "success": True,
+        "message": f"Permissions updated successfully for {user.full_name}",
+        "owner": {
+            "owner_id": user.id,
+            "owner_name": user.full_name,
+            "owner_email": user.email,
+            "role_title": user.role_title,
+            "is_active": user.is_active,
+            "permissions": user.permissions or {}
+        }
+    }
+
+
+@router.delete("/owner-permissions/{owner_id}")
+def delete_owner_permissions(
+    owner_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Deactivate or unlink an owner."""
+    ho_id = _get_ho_context(current_user)
+
+    user = db.query(User).filter(User.id == owner_id, User.role == "OWNER").first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Owner not found")
+
+    user.is_active = False
+    db.commit()
+
+    return {
+        "success": True,
+        "message": f"Owner {user.full_name} has been deactivated successfully."
+    }
+
 

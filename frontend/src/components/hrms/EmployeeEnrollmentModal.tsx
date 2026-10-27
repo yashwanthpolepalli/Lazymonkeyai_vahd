@@ -313,6 +313,8 @@ export function EmployeeEnrollmentModal({
                 name: md.name,
                 code: md.code || '',
                 description: md.description || md.extra_info || '',
+                head_name: md.head_name || '',
+                employee_count: md.employee_count || 0,
                 is_active: true,
               });
             }
@@ -326,6 +328,8 @@ export function EmployeeEnrollmentModal({
             name: md.name,
             code: md.code || '',
             description: md.description || '',
+            head_name: md.head_name || '',
+            employee_count: md.employee_count || 0,
             is_active: true,
           })));
         }
@@ -346,7 +350,7 @@ export function EmployeeEnrollmentModal({
                 department: md.parent_name || 'ALL',
                 level: md.level ? String(md.level) : '',
                 description: md.description || md.extra_info || '',
-                is_active: true,
+                employee_count: md.employee_count || 0,
               });
             }
           });
@@ -360,7 +364,7 @@ export function EmployeeEnrollmentModal({
             department: md.parent_name || 'ALL',
             level: md.level ? String(md.level) : '',
             description: md.description || '',
-            is_active: true,
+            employee_count: md.employee_count || 0,
           })));
         }
       });

@@ -205,7 +205,7 @@ const dailyAbstractCards: ReportCardConfig[] = [
   {
     id: 'registered-unregistered-users',
     title: 'Registered vs Unregistered',
-    description: 'Biometric & face ID enrolment status breakdown across all veterinary institutions',
+    description: 'Biometric & face ID enrolment status breakdown across all  institutions',
     icon: 'scan-face',
     iconBg: 'bg-emerald-50 text-emerald-600 border border-emerald-100',
     iconColor: 'text-emerald-600',
@@ -232,7 +232,7 @@ const hrmsAnalyticsCards: ReportCardConfig[] = [
   {
     id: 'designations-abstract',
     title: 'Designations Abstract',
-    description: 'Attendance fidelity categorized by rank: DVAHO, VAS, Veterinary Assistant, Attenders',
+    description: 'Attendance fidelity categorized by rank: DVAHO, VAS,  Assistant, Attenders',
     icon: 'users',
     iconBg: 'bg-violet-50 text-violet-600 border border-violet-100',
     iconColor: 'text-violet-600',
@@ -889,10 +889,10 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                         <td className="py-3 px-3 text-center">
                           <span
                             className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${pct >= 75
-                                ? 'bg-emerald-100 text-emerald-800'
-                                : pct >= 60
-                                  ? 'bg-amber-100 text-amber-800'
-                                  : 'bg-rose-100 text-rose-800'
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : pct >= 60
+                                ? 'bg-amber-100 text-amber-800'
+                                : 'bg-rose-100 text-rose-800'
                               }`}
                           >
                             {pct}%
@@ -1234,10 +1234,10 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                         <td className="py-3 px-3 text-center">
                           <span
                             className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${pct >= 75
-                                ? 'bg-emerald-100 text-emerald-800'
-                                : pct >= 60
-                                  ? 'bg-amber-100 text-amber-800'
-                                  : 'bg-rose-100 text-rose-800'
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : pct >= 60
+                                ? 'bg-amber-100 text-amber-800'
+                                : 'bg-rose-100 text-rose-800'
                               }`}
                           >
                             {pct}%

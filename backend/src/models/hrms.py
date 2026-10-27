@@ -429,7 +429,7 @@ class AttendanceCorrection(Base):
     person_id = Column(String, nullable=True)
     person_name = Column(String, nullable=False)
     person_code = Column(String, nullable=True)  # Employee Code or Roll No
-    designation = Column(String, nullable=True)  # e.g., 'Veterinary Assistant', 'B.Tech Student'
+    designation = Column(String, nullable=True)  # e.g., ' Assistant', 'B.Tech Student'
     department = Column(String, nullable=True)  # e.g., 'VA', 'CSE', 'Animal Husbandry'
     district = Column(String, nullable=True)  # e.g., 'Warangal', 'Adilabad', 'Rangareddy', 'Mancherial', 'Nirmal'
     place = Column(String, nullable=True)  # e.g., 'PVC Bhanjipet', 'DLDA Rangareddy', 'PVC Rangapet', 'Campus Main'

@@ -100,7 +100,7 @@ export const SETTING_CARDS: SettingCardConfig[] = [
     bgLight: 'bg-blue-50 dark:bg-blue-950/40',
     textColor: 'text-blue-600',
     borderLight: 'border-blue-200/70',
-    description: 'Veterinary clinics & hospitals'
+    description: ' clinics & hospitals'
   },
   {
     id: 'roles',
@@ -155,7 +155,7 @@ export const SETTING_CARDS: SettingCardConfig[] = [
     bgLight: 'bg-slate-100 dark:bg-slate-800',
     textColor: 'text-slate-700 dark:text-slate-200',
     borderLight: 'border-slate-300/70',
-    description: 'Veterinary medical branches'
+    description: ' medical branches'
   },
   {
     id: 'leave_reasons',

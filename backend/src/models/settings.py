@@ -118,6 +118,9 @@ class MasterData(Base):
     extra_info = Column(String, nullable=True)
     level = Column(String, nullable=True)
     display_order = Column(Integer, nullable=True, default=0)
+    check_in_time = Column(String, nullable=True)
+    check_out_time = Column(String, nullable=True)
+    days = Column(String, nullable=True)
     created_at = Column(DateTime, default=now_ist_naive)
     updated_at = Column(DateTime, default=now_ist_naive, onupdate=now_ist_naive)
 

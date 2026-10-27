@@ -179,8 +179,10 @@ class DebitNote(Base):
 
     id = Column(String, primary_key=True, index=True, default=lambda: f"dn_{uuid.uuid4().hex[:8]}")
     debit_note_number = Column(String(50), index=True, unique=True, nullable=False)
-    bill_number = Column(String(50), nullable=True)
+    supplier_id = Column(String, nullable=True)
     supplier_name = Column(String(150), nullable=False)
+    bill_number = Column(String(50), nullable=True)
+    company_id = Column(String, nullable=True)
     date = Column(String(50), nullable=True)
     amount = Column(Float, default=0.0)
     tax_amount = Column(Float, default=0.0)
@@ -188,6 +190,7 @@ class DebitNote(Base):
     reason = Column(String(200), nullable=True)
     status = Column(String(50), default="Active")
     created_at = Column(DateTime, default=now_ist_naive)
+    updated_at = Column(DateTime, default=now_ist_naive, onupdate=now_ist_naive)
 
 
 class CreditNote(Base):
@@ -196,7 +199,10 @@ class CreditNote(Base):
     id = Column(String, primary_key=True, index=True, default=lambda: f"cn_{uuid.uuid4().hex[:8]}")
     credit_note_number = Column(String(50), index=True, unique=True, nullable=False)
     vendor_ref_number = Column(String(100), nullable=True)
+    supplier_id = Column(String, nullable=True)
     supplier_name = Column(String(150), nullable=False)
+    bill_number = Column(String(50), nullable=True)
+    company_id = Column(String, nullable=True)
     date = Column(String(50), nullable=True)
     amount = Column(Float, default=0.0)
     tax_amount = Column(Float, default=0.0)
@@ -204,3 +210,4 @@ class CreditNote(Base):
     reason = Column(String(200), nullable=True)
     status = Column(String(50), default="Available")
     created_at = Column(DateTime, default=now_ist_naive)
+    updated_at = Column(DateTime, default=now_ist_naive, onupdate=now_ist_naive)

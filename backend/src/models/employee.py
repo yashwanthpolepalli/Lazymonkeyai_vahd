@@ -16,6 +16,7 @@ class employeeProfile(Base):
     role = Column(String, nullable=False)  # OWNER, MANAGER, employee, STAFF
     specialization = Column(String, nullable=True)
     primary_vahd_location = Column(String, nullable=True)
+    primary_gym_location = Column(String, nullable=True)
     base_monthly_salary = Column(Float, nullable=False)
     pt_session_rate = Column(Float, nullable=False)
     bank_account_no = Column(String, nullable=True)

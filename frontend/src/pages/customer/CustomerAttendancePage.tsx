@@ -171,7 +171,7 @@ export function CustomerAttendancePage() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Gym Attendance" breadcrumb={['Customer', 'Attendance']} />
+        <PageHeader title="vahd Attendance" breadcrumb={['Customer', 'Attendance']} />
         <Skeleton className="h-48 w-full rounded-3xl" />
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
@@ -185,7 +185,7 @@ export function CustomerAttendancePage() {
   if (error) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Gym Attendance" breadcrumb={['Customer', 'Attendance']} />
+        <PageHeader title="vahd Attendance" breadcrumb={['Customer', 'Attendance']} />
         <ErrorState message={error} onRetry={() => fetchAttendanceData(true)} />
       </div>
     );
@@ -195,7 +195,7 @@ export function CustomerAttendancePage() {
     <div className="space-y-6">
       {/* Header */}
       <PageHeader
-        title="Gym Attendance & Access"
+        title="vahd Attendance & Access"
         subtitle="Live Face ID, hardware biometric turnstile sync & consistency logs"
         breadcrumb={['Customer', 'Attendance']}
       />
@@ -312,10 +312,10 @@ export function CustomerAttendancePage() {
                   d.isAttended
                     ? 'bg-emerald-50 border-emerald-300 text-emerald-700 shadow-xs'
                     : d.isToday
-                    ? 'bg-purple-50 border-purple-400 text-purple-700 ring-2 ring-purple-400/30'
-                    : d.isFuture
-                    ? 'bg-slate-50/50 border-slate-100 text-slate-300'
-                    : 'bg-slate-50 border-slate-200/80 text-slate-400'
+                      ? 'bg-purple-50 border-purple-400 text-purple-700 ring-2 ring-purple-400/30'
+                      : d.isFuture
+                        ? 'bg-slate-50/50 border-slate-100 text-slate-300'
+                        : 'bg-slate-50 border-slate-200/80 text-slate-400'
                 )}
               >
                 <span>{d.dayNum}</span>
@@ -409,7 +409,7 @@ export function CustomerAttendancePage() {
           </div>
 
           <p className="text-[11px] text-slate-400 leading-relaxed italic pt-1">
-            Gym door access permissions are automatically synced live with your active membership.
+            vahd door access permissions are automatically synced live with your active membership.
           </p>
         </div>
       </div>
@@ -489,7 +489,7 @@ export function CustomerAttendancePage() {
                   const badge = getMethodBadge(item);
                   const inTime = item.check_in || item.time || '--:--';
                   const outTime = item.check_out || '--:--';
-                  const isCurrentlyActive = item.is_active || outTime.includes('Active') || outTime.includes('In Gym');
+                  const isCurrentlyActive = item.is_active || outTime.includes('Active') || outTime.includes('In vahd');
 
                   return (
                     <tr key={item.id || idx} className="hover:bg-slate-50/70 transition-colors">
@@ -518,7 +518,7 @@ export function CustomerAttendancePage() {
                         ) : isCurrentlyActive ? (
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-purple-50 text-purple-700 border border-purple-200">
                             <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse" />
-                            <span>In Gym (Active)</span>
+                            <span>In vahd (Active)</span>
                           </span>
                         ) : (
                           <span className="text-slate-400 font-medium text-xs">--:--</span>
@@ -548,7 +548,7 @@ export function CustomerAttendancePage() {
                       {/* Device Name */}
                       <td className="py-3.5 px-3">
                         <div className="font-semibold text-slate-700">
-                          {item.device_name || user?.branchName || 'Main Gym Entrance'}
+                          {item.device_name || user?.branchName || 'Main vahd Entrance'}
                         </div>
                         <div className="text-[10px] text-slate-400 font-medium">
                           Verified Scan
@@ -584,7 +584,7 @@ export function CustomerAttendancePage() {
             <p className="text-xs text-slate-400 max-w-sm mx-auto">
               {searchQuery || activeFilter !== 'ALL'
                 ? 'No check-in logs match your current search or filter criteria.'
-                : 'You have not checked in to the gym yet. Use the Check-In button above to mark your first session!'}
+                : 'You have not checked in to the vahd yet. Use the Check-In button above to mark your first session!'}
             </p>
             {(searchQuery || activeFilter !== 'ALL') && (
               <button

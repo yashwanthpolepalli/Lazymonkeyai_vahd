@@ -1,5 +1,5 @@
 """
-FIT CLUB AI — Platform Super Admin Database Models
+vahd — Platform Super Admin Database Models
 Multi-tenant platform models for SaaS Plans, Audit Logs, AI Jobs, Platform Settings, and Support Tickets.
 """
 import uuid
@@ -24,7 +24,7 @@ class SaaSPlan(Base):
     price_annual = Column(Float, nullable=True)
     max_branches = Column(Integer, nullable=True)
     max_members = Column(Integer, nullable=True)
-    max_trainers = Column(Integer, nullable=True)
+    max_employees = Column(Integer, nullable=True)
     ai_credits_monthly = Column(Integer, nullable=True)
     storage_gb = Column(Float, nullable=True)
     features = Column(JSON, nullable=True)  # List of enabled feature strings
@@ -43,7 +43,7 @@ class PlatformAuditLog(Base):
     actor_email = Column(String(150), nullable=True)
     organization_id = Column(String(36), nullable=True)
     organization_name = Column(String(150), nullable=True)
-    action = Column(String(100), nullable=False)  # e.g. "CHANGE_PLAN", "SUSPEND_GYM", "PUBLISH_TEMPLATE"
+    action = Column(String(100), nullable=False)  # e.g. "CHANGE_PLAN", "SUSPEND_vahd", "PUBLISH_TEMPLATE"
     resource_type = Column(String(50), nullable=False)  # "organization", "plan", "user", "ai_model", "template"
     resource_id = Column(String(100), nullable=True)
     old_value = Column(JSON, nullable=True)

@@ -2,7 +2,7 @@ import uuid
 from typing import List, Dict, Any, Optional
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
-from src.models.settings import GymBranch, GymSetting, PaymentMethod, MasterData
+from src.models.settings import vahdBranch, vahdSetting, PaymentMethod, MasterData
 from src.models.hrms import Department, Designation
 from src.models.customer import Customer
 from src.models.biometric_device import BiometricDevice
@@ -14,33 +14,33 @@ class SettingsService:
         """
         Returns registered branches scoped by owner_id and role.
         """
-        query = db.query(GymBranch).filter(GymBranch.is_active == True)
+        query = db.query(vahdBranch).filter(vahdBranch.is_active == True)
 
         effective_owner_id = owner_id
         if current_user:
             role = (current_user.role or "").strip().upper()
             if role in ["SUPER_ADMIN", "SUPERADMIN", "ADMIN"]:
                 if owner_id:
-                    query = query.filter(GymBranch.owner_id == owner_id)
+                    query = query.filter(vahdBranch.owner_id == owner_id)
             elif role in ["HEAD_OFFICE", "HO"]:
                 ho_target = current_user.ho_id or current_user.id
-                query = query.filter(or_(GymBranch.ho_id == ho_target, GymBranch.owner_id == current_user.id))
+                query = query.filter(or_(vahdBranch.ho_id == ho_target, vahdBranch.owner_id == current_user.id))
             elif role in ["OWNER"]:
                 effective_owner_id = current_user.id
-                branch_conditions = [GymBranch.owner_id == current_user.id]
+                branch_conditions = [vahdBranch.owner_id == current_user.id]
                 if current_user.branch_id:
-                    branch_conditions.append(GymBranch.id == current_user.branch_id)
+                    branch_conditions.append(vahdBranch.id == current_user.branch_id)
                 query = query.filter(or_(*branch_conditions))
-            elif role in ["TRAINER", "STAFF", "CUSTOMER", "MEMBER"]:
+            elif role in ["employee", "STAFF", "CUSTOMER", "MEMBER"]:
                 if current_user.branch_id:
-                    query = query.filter(GymBranch.id == current_user.branch_id)
+                    query = query.filter(vahdBranch.id == current_user.branch_id)
 
         branches = query.all()
 
         if not branches and not current_user:
             distinct_locs = (
-                db.query(Customer.primary_gym_location)
-                .filter(Customer.primary_gym_location.isnot(None))
+                db.query(Customer.primary_vahd_location)
+                .filter(Customer.primary_vahd_location.isnot(None))
                 .distinct()
                 .all()
             )
@@ -51,22 +51,22 @@ class SettingsService:
                     b_name = parts[0].strip()
                     c_name = parts[1].strip() if len(parts) > 1 else ""
                     b_id = f"vahd_{uuid.uuid4().hex[:10]}"
-                    new_b = GymBranch(id=b_id, gym_name=b_name, branch_name=b_name, city=c_name, is_active=True)
+                    new_b = vahdBranch(id=b_id, vahd_name=b_name, branch_name=b_name, city=c_name, is_active=True)
                     db.add(new_b)
             db.commit()
-            branches = db.query(GymBranch).filter(GymBranch.is_active == True).all()
+            branches = db.query(vahdBranch).filter(vahdBranch.is_active == True).all()
 
         result = []
         for b in branches:
             member_count = db.query(Customer).filter(
                 (Customer.branch_id == b.id) | 
-                (Customer.primary_gym_location.ilike(f"%{b.branch_name}%"))
+                (Customer.primary_vahd_location.ilike(f"%{b.branch_name}%"))
             ).count()
             device_count = db.query(BiometricDevice).filter(BiometricDevice.location.ilike(f"%{b.branch_name}%")).count()
 
             result.append({
                 "id": b.id,
-                "gym_name": b.gym_name or b.branch_name,
+                "vahd_name": b.vahd_name or b.branch_name,
                 "branch_name": b.branch_name,
                 "city": b.city or "",
                 "address": b.address or (f"{b.branch_name}, {b.city}" if b.city else b.branch_name),
@@ -80,14 +80,14 @@ class SettingsService:
         return result
 
     @staticmethod
-    def create_branch(db: Session, data: Dict[str, Any], current_user: Any = None) -> GymBranch:
+    def create_branch(db: Session, data: Dict[str, Any], current_user: Any = None) -> vahdBranch:
         from src.config.settings import settings
         branch_id = f"branch_{uuid.uuid4().hex[:6]}"
         owner_id = (current_user.id if current_user else None) or data.get("owner_id")
         ho_id = (current_user.ho_id if current_user and current_user.ho_id else None) or (current_user.id if current_user and getattr(current_user, "role", "") in ["HEAD_OFFICE", "HO"] else None) or data.get("ho_id")
-        b = GymBranch(
+        b = vahdBranch(
             id=branch_id,
-            gym_name=data.get("gym_name") or settings.GYM_NAME,
+            vahd_name=data.get("vahd_name") or settings.vahd_NAME,
             branch_name=data["branch_name"],
             city=data.get("city") or "",
             address=data.get("address"),
@@ -101,12 +101,12 @@ class SettingsService:
         return b
 
     @staticmethod
-    def get_settings(db: Session) -> GymSetting:
-        setting = db.query(GymSetting).filter(GymSetting.id == "default").first()
+    def get_settings(db: Session) -> vahdSetting:
+        setting = db.query(vahdSetting).filter(vahdSetting.id == "default").first()
         if not setting:
-            setting = GymSetting(
+            setting = vahdSetting(
                 id="default",
-                gym_name="",
+                vahd_name="",
                 address="",
                 phone="",
                 gstin="",
@@ -137,14 +137,14 @@ class SettingsService:
         return setting
 
     @staticmethod
-    def update_settings(db: Session, data: Dict[str, Any]) -> GymSetting:
-        setting = db.query(GymSetting).filter(GymSetting.id == "default").first()
+    def update_settings(db: Session, data: Dict[str, Any]) -> vahdSetting:
+        setting = db.query(vahdSetting).filter(vahdSetting.id == "default").first()
         if not setting:
-            setting = GymSetting(id="default")
+            setting = vahdSetting(id="default")
             db.add(setting)
 
-        if "gym_name" in data:
-            setting.gym_name = data.get("gym_name", "")
+        if "vahd_name" in data:
+            setting.vahd_name = data.get("vahd_name", "")
         if "address" in data:
             setting.address = data.get("address", "")
         if "phone" in data:
@@ -201,9 +201,9 @@ class SettingsService:
         return setting
 
     @staticmethod
-    def get_billing_dict(setting: GymSetting) -> Dict[str, Any]:
+    def get_billing_dict(setting: vahdSetting) -> Dict[str, Any]:
         return {
-            "gym_name": setting.gym_name or "",
+            "vahd_name": setting.vahd_name or "",
             "address": setting.address or "",
             "gstin": setting.gstin or "",
             "sac_code": setting.sac_code or "",
@@ -557,4 +557,4 @@ class SettingsService:
         return True
 
 # Alias for backwards compatibility
-GymSettingService = SettingsService
+vahdSettingService = SettingsService

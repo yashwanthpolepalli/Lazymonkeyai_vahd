@@ -29,8 +29,8 @@ export const dashboardApi = {
 
     return {
       userName: res?.userName || '',
-      gym: {
-        name: res?.gymName || '',
+      vahd: {
+        name: res?.vahdName || '',
         branch: res?.branchName || branch || '',
       },
       summary: {
@@ -59,7 +59,7 @@ export const dashboardApi = {
         pos: res?.revenueBreakdown?.pos ?? 0,
         other: res?.revenueBreakdown?.other ?? 0,
       },
-      top_trainers: [],
+      top_employees: [],
       quick_actions: [
         { id: 'add_member', title: 'Add Member', description: 'Enroll new member', icon: 'user-plus', accent: 'blue', action: 'add_member' },
         { id: 'attendance', title: 'Mark Attendance', description: 'Quick check-in', icon: 'check-square-2', accent: 'green', action: 'attendance' },

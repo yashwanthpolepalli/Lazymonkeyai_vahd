@@ -3,7 +3,7 @@ import uuid
 import datetime
 from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
-from src.models.trainer import TrainerProfile
+from src.models.employee import employeeProfile
 from src.models.payroll import PayrollInvoice
 from src.models.biometric import BiometricLog
 from src.models.customer import Customer
@@ -16,31 +16,31 @@ from sqlalchemy import or_
 class PayrollService:
 
     @staticmethod
-    def get_all_trainers(
+    def get_all_employees(
         db: Session,
         current_user: Optional[User] = None,
         branch_id: Optional[str] = None
-    ) -> List[TrainerProfile]:
+    ) -> List[employeeProfile]:
         """
-        Returns all registered trainers, managers, and staff profiles dynamically from PostgreSQL database
+        Returns all registered employees, managers, and staff profiles dynamically from PostgreSQL database
         scoped to the authenticated user hierarchy with real-time today attendance synchronization.
         """
         from src.models.hrms import EmployeeAttendance, Employee
-        from src.models.settings import Branch as GymBranch
+        from src.models.settings import Branch as vahdBranch
 
-        query = db.query(TrainerProfile).filter(TrainerProfile.is_active == True)
+        query = db.query(employeeProfile).filter(employeeProfile.is_active == True)
 
         if current_user:
             u_role = (current_user.role or "").strip().upper()
             if u_role in ["OWNER"]:
-                owner_branches = db.query(GymBranch).filter(
+                owner_branches = db.query(vahdBranch).filter(
                     or_(
-                        GymBranch.owner_id == current_user.id,
-                        GymBranch.id == current_user.branch_id
+                        vahdBranch.owner_id == current_user.id,
+                        vahdBranch.id == current_user.branch_id
                     )
                 ).all()
                 owner_b_ids = [b.id for b in owner_branches if b.id]
-                owner_b_names = [b.branch_name for b in owner_branches if b.branch_name] + [b.gym_name for b in owner_branches if b.gym_name]
+                owner_b_names = [b.branch_name for b in owner_branches if b.branch_name] + [b.vahd_name for b in owner_branches if b.vahd_name]
 
                 user_ids_for_owner = [
                     u.id for u in db.query(User.id).filter(
@@ -53,31 +53,31 @@ class PayrollService:
 
                 conditions = []
                 if user_ids_for_owner:
-                    conditions.append(TrainerProfile.user_id.in_(user_ids_for_owner))
+                    conditions.append(employeeProfile.user_id.in_(user_ids_for_owner))
                 if owner_b_names:
-                    conditions.append(TrainerProfile.primary_gym_location.in_(owner_b_names))
+                    conditions.append(employeeProfile.primary_vahd_location.in_(owner_b_names))
 
                 if conditions:
                     query = query.filter(or_(*conditions))
                 else:
-                    query = query.filter(TrainerProfile.id == "__none__")
+                    query = query.filter(employeeProfile.id == "__none__")
 
                 if branch_id and branch_id != "All":
                     query = query.filter(
                         or_(
-                            TrainerProfile.primary_gym_location.ilike(f"%{branch_id}%"),
-                            TrainerProfile.user_id.in_(
+                            employeeProfile.primary_vahd_location.ilike(f"%{branch_id}%"),
+                            employeeProfile.user_id.in_(
                                 db.query(User.id).filter(User.branch_id == branch_id)
                             )
                         )
                     )
             elif u_role in ["HEAD_OFFICE", "HO"]:
                 ho_target = current_user.ho_id or current_user.id
-                ho_branches = db.query(GymBranch).filter(
-                    or_(GymBranch.ho_id == ho_target, GymBranch.owner_id == current_user.id)
+                ho_branches = db.query(vahdBranch).filter(
+                    or_(vahdBranch.ho_id == ho_target, vahdBranch.owner_id == current_user.id)
                 ).all()
                 ho_b_ids = [b.id for b in ho_branches if b.id]
-                ho_b_names = [b.branch_name for b in ho_branches if b.branch_name] + [b.gym_name for b in ho_branches if b.gym_name]
+                ho_b_names = [b.branch_name for b in ho_branches if b.branch_name] + [b.vahd_name for b in ho_branches if b.vahd_name]
 
                 user_ids_for_ho = [
                     u.id for u in db.query(User.id).filter(
@@ -90,18 +90,18 @@ class PayrollService:
 
                 conditions = []
                 if user_ids_for_ho:
-                    conditions.append(TrainerProfile.user_id.in_(user_ids_for_ho))
+                    conditions.append(employeeProfile.user_id.in_(user_ids_for_ho))
                 if ho_b_names:
-                    conditions.append(TrainerProfile.primary_gym_location.in_(ho_b_names))
+                    conditions.append(employeeProfile.primary_vahd_location.in_(ho_b_names))
 
                 if conditions:
                     query = query.filter(or_(*conditions))
                 else:
-                    query = query.filter(TrainerProfile.id == "__none__")
+                    query = query.filter(employeeProfile.id == "__none__")
 
                 if branch_id and str(branch_id).lower() not in ["all", ""]:
-                    matched_b = db.query(GymBranch).filter(
-                        or_(GymBranch.id == branch_id, GymBranch.branch_name == branch_id, GymBranch.gym_name == branch_id)
+                    matched_b = db.query(vahdBranch).filter(
+                        or_(vahdBranch.id == branch_id, vahdBranch.branch_name == branch_id, vahdBranch.vahd_name == branch_id)
                     ).first()
                     b_ids = [branch_id]
                     b_names = [branch_id]
@@ -109,29 +109,29 @@ class PayrollService:
                         b_ids.append(matched_b.id)
                         if matched_b.branch_name:
                             b_names.append(matched_b.branch_name)
-                        if matched_b.gym_name:
-                            b_names.append(matched_b.gym_name)
+                        if matched_b.vahd_name:
+                            b_names.append(matched_b.vahd_name)
 
                     emp_recs = db.query(Employee).filter(
-                        or_(Employee.branch_id.in_(b_ids), Employee.gym_branch.in_(b_names))
+                        or_(Employee.branch_id.in_(b_ids), Employee.vahd_branch.in_(b_names))
                     ).all()
                     emp_tr_ids = [e.id.replace("emp_", "") for e in emp_recs] + [e.id for e in emp_recs]
                     emp_emails = [e.email for e in emp_recs if e.email]
 
                     query = query.filter(
                         or_(
-                            TrainerProfile.primary_gym_location.in_(b_names),
-                            TrainerProfile.id.in_(emp_tr_ids),
-                            TrainerProfile.email.in_(emp_emails),
-                            TrainerProfile.user_id.in_(
+                            employeeProfile.primary_vahd_location.in_(b_names),
+                            employeeProfile.id.in_(emp_tr_ids),
+                            employeeProfile.email.in_(emp_emails),
+                            employeeProfile.user_id.in_(
                                 db.query(User.id).filter(User.branch_id.in_(b_ids))
                             )
                         )
                     )
             elif branch_id and str(branch_id).lower() not in ["all", ""]:
-                query = query.filter(TrainerProfile.primary_gym_location.ilike(f"%{branch_id}%"))
+                query = query.filter(employeeProfile.primary_vahd_location.ilike(f"%{branch_id}%"))
 
-        trainers = query.order_by(TrainerProfile.created_at.desc()).all()
+        employees = query.order_by(employeeProfile.created_at.desc()).all()
 
         today_start = today_ist_start()
         today_end = today_ist_end()
@@ -147,27 +147,27 @@ class PayrollService:
             EmployeeAttendance.date == today_date
         ).all()
 
-        for t in trainers:
+        for t in employees:
             t_user = db.query(User).filter(User.id == t.user_id).first() if t.user_id else None
             t_emp = db.query(Employee).filter((Employee.id == f"emp_{t.id}") | (Employee.email == t.email)).first()
 
             branch_id_val = getattr(t_emp, "branch_id", None) or getattr(t_user, "branch_id", None)
             owner_id_val = getattr(t_emp, "owner_id", None) or getattr(t_user, "owner_id", None)
             ho_id_val = getattr(t_emp, "ho_id", None) or getattr(t_user, "ho_id", None)
-            gym_branch_val = getattr(t_emp, "gym_branch", None) or t.primary_gym_location or ""
+            vahd_branch_val = getattr(t_emp, "vahd_branch", None) or t.primary_vahd_location or ""
             emp_code_val = getattr(t_emp, "code", None) or f"EMP-{str(t.id).replace('tr_', '').upper()}"
 
             setattr(t, 'branch_id', branch_id_val)
             setattr(t, 'owner_id', owner_id_val)
             setattr(t, 'ho_id', ho_id_val)
-            setattr(t, 'gym_branch', gym_branch_val)
-            setattr(t, 'primary_gym_location', gym_branch_val)
+            setattr(t, 'vahd_branch', vahd_branch_val)
+            setattr(t, 'primary_vahd_location', vahd_branch_val)
             setattr(t, 'employee_code', emp_code_val)
 
-            count = db.query(Customer).filter((Customer.trainer_id == t.id) | (Customer.trainer_id == t.user_id)).count()
+            count = db.query(Customer).filter((Customer.employee_id == t.id) | (Customer.employee_id == t.user_id)).count()
             setattr(t, 'assigned_customers_count', count)
 
-            # Match keys for this trainer
+            # Match keys for this employee
             emp_keys = {str(t.id), str(t.id).replace('tr_', ''), f"emp_{t.id}", f"tr_{t.id}"}
             if t.user_id:
                 emp_keys.update({str(t.user_id), f"cust_{t.user_id}", f"cust_usr_{t.user_id}", f"emp_{t.user_id}"})
@@ -271,96 +271,96 @@ class PayrollService:
             setattr(t, 'is_early_logout', is_early)
             setattr(t, 'today_punch', {"status": today_status, "in_time": punch_in, "out_time": punch_out})
 
-        return trainers
+        return employees
 
     @staticmethod
-    def get_trainer_customers(db: Session, trainer_id: str) -> List[Customer]:
+    def get_employee_customers(db: Session, employee_id: str) -> List[Customer]:
         """
-        Returns all customer members assigned to a specific trainer.
+        Returns all customer members assigned to a specific employee.
         """
-        trainer = db.query(TrainerProfile).filter(TrainerProfile.id == trainer_id).first()
-        trainer_user_id = trainer.user_id if trainer else None
+        employee = db.query(employeeProfile).filter(employeeProfile.id == employee_id).first()
+        employee_user_id = employee.user_id if employee else None
         return db.query(Customer).filter(
-            (Customer.trainer_id == trainer_id) | 
-            ((Customer.trainer_id == trainer_user_id) if trainer_user_id else False)
+            (Customer.employee_id == employee_id) | 
+            ((Customer.employee_id == employee_user_id) if employee_user_id else False)
         ).all()
 
     @staticmethod
-    def assign_customer(db: Session, trainer_id: str, customer_id: str) -> Customer:
+    def assign_customer(db: Session, employee_id: str, customer_id: str) -> Customer:
         """
-        Assigns or reassigns a customer to a trainer.
+        Assigns or reassigns a customer to a employee.
         """
         cust = db.query(Customer).filter(Customer.id == customer_id).first()
         if not cust:
             raise ValueError(f"Customer '{customer_id}' not found.")
-        cust.trainer_id = trainer_id
+        cust.employee_id = employee_id
         db.commit()
         db.refresh(cust)
         return cust
 
     @staticmethod
-    def register_trainer(db: Session, data: Dict[str, Any]) -> TrainerProfile:
+    def register_employee(db: Session, data: Dict[str, Any]) -> employeeProfile:
         """
-        Registers a new trainer or staff profile dynamically in PostgreSQL database.
+        Registers a new employee or staff profile dynamically in PostgreSQL database.
         """
         full_name = data["full_name"]
         email = data["email"]
         phone = data.get("phone") or ""
-        trainer_role = data.get("role", "EMPLOYEE")
-        if str(trainer_role).upper() == "TRAINER":
-            trainer_role = "EMPLOYEE"
-        trainer_id = data.get("id")
+        employee_role = data.get("role", "EMPLOYEE")
+        if str(employee_role).upper() == "employee":
+            employee_role = "EMPLOYEE"
+        employee_id = data.get("id")
 
         # Check existing User
         existing_user = db.query(User).filter(User.email == email).first()
 
-        # Check existing TrainerProfile by id, email, or user_id
-        existing_trainer = None
-        if trainer_id:
-            existing_trainer = db.query(TrainerProfile).filter(TrainerProfile.id == trainer_id).first()
-        if not existing_trainer and existing_user:
-            existing_trainer = db.query(TrainerProfile).filter(TrainerProfile.user_id == existing_user.id).first()
-        if not existing_trainer:
-            existing_trainer = db.query(TrainerProfile).filter(TrainerProfile.email == email).first()
+        # Check existing employeeProfile by id, email, or user_id
+        existing_employee = None
+        if employee_id:
+            existing_employee = db.query(employeeProfile).filter(employeeProfile.id == employee_id).first()
+        if not existing_employee and existing_user:
+            existing_employee = db.query(employeeProfile).filter(employeeProfile.user_id == existing_user.id).first()
+        if not existing_employee:
+            existing_employee = db.query(employeeProfile).filter(employeeProfile.email == email).first()
 
-        if existing_trainer:
-            existing_trainer.full_name = full_name
-            existing_trainer.email = email
-            existing_trainer.phone = phone or existing_trainer.phone
-            existing_trainer.role = trainer_role
+        if existing_employee:
+            existing_employee.full_name = full_name
+            existing_employee.email = email
+            existing_employee.phone = phone or existing_employee.phone
+            existing_employee.role = employee_role
             if "specialization" in data and data["specialization"]:
-                existing_trainer.specialization = data["specialization"]
+                existing_employee.specialization = data["specialization"]
             if "base_monthly_salary" in data and data["base_monthly_salary"] is not None:
-                existing_trainer.base_monthly_salary = float(data["base_monthly_salary"])
+                existing_employee.base_monthly_salary = float(data["base_monthly_salary"])
             if "pt_session_rate" in data and data["pt_session_rate"] is not None:
-                existing_trainer.pt_session_rate = float(data["pt_session_rate"])
+                existing_employee.pt_session_rate = float(data["pt_session_rate"])
             if "bank_account_no" in data:
-                existing_trainer.bank_account_no = data["bank_account_no"]
+                existing_employee.bank_account_no = data["bank_account_no"]
             if "bank_ifsc" in data:
-                existing_trainer.bank_ifsc = data["bank_ifsc"]
+                existing_employee.bank_ifsc = data["bank_ifsc"]
             if "upi_id" in data:
-                existing_trainer.upi_id = data["upi_id"]
+                existing_employee.upi_id = data["upi_id"]
 
-            if "primary_gym_location" in data or "branch" in data or "branch_name" in data or "location" in data:
-                existing_trainer.primary_gym_location = (data.get("primary_gym_location") or data.get("branch") or data.get("branch_name") or data.get("location") or "").strip() or None
+            if "primary_vahd_location" in data or "branch" in data or "branch_name" in data or "location" in data:
+                existing_employee.primary_vahd_location = (data.get("primary_vahd_location") or data.get("branch") or data.get("branch_name") or data.get("location") or "").strip() or None
 
             if existing_user:
                 existing_user.full_name = full_name
                 existing_user.phone = phone or existing_user.phone
-                existing_user.role = trainer_role
-                if trainer_role in ["OWNER"]:
+                existing_user.role = employee_role
+                if employee_role in ["OWNER"]:
                     existing_user.is_tenant_owner = True
 
             db.commit()
-            db.refresh(existing_trainer)
+            db.refresh(existing_employee)
 
             try:
                 from src.services.hrms_service import HrmsService
-                HrmsService.sync_trainers_to_employees(db)
+                HrmsService.sync_employees_to_employees(db)
             except Exception:
                 pass
 
-            return existing_trainer
+            return existing_employee
 
         # Generate credential: first 4 chars of name + last 4 digits of phone
         generated_password = generate_enrollment_password(full_name, phone)
@@ -374,14 +374,14 @@ class PayrollService:
             existing_user.password_hash = hash_password(generated_password)
             existing_user.full_name = full_name
             existing_user.phone = phone
-            existing_user.role = trainer_role
+            existing_user.role = employee_role
             if t_owner_id:
                 existing_user.owner_id = t_owner_id
             if t_branch_id:
                 existing_user.branch_id = t_branch_id
             if t_ho_id:
                 existing_user.ho_id = t_ho_id
-            if trainer_role in ["OWNER"]:
+            if employee_role in ["OWNER"]:
                 existing_user.is_tenant_owner = True
             user = existing_user
         else:
@@ -389,18 +389,18 @@ class PayrollService:
                 id=f"usr_{uuid.uuid4().hex[:8]}",
                 email=email,
                 password_hash=hash_password(generated_password),
-                role=trainer_role,
+                role=employee_role,
                 full_name=full_name,
                 phone=phone,
                 owner_id=t_owner_id,
                 branch_id=t_branch_id,
                 ho_id=t_ho_id,
-                is_tenant_owner=(trainer_role in ["OWNER"])
+                is_tenant_owner=(employee_role in ["OWNER"])
             )
             db.add(user)
             db.flush()
 
-        new_trainer_id = trainer_id or f"tr_{uuid.uuid4().hex[:6]}"
+        new_employee_id = employee_id or f"tr_{uuid.uuid4().hex[:6]}"
         date_str = data.get("join_date") or data.get("created_at")
         custom_created_at = None
         if date_str:
@@ -409,30 +409,30 @@ class PayrollService:
             except Exception:
                 pass
 
-        new_trainer = TrainerProfile(
-            id=new_trainer_id,
+        new_employee = employeeProfile(
+            id=new_employee_id,
             user_id=user.id,
             full_name=full_name,
             email=email,
             phone=phone,
-            role=trainer_role,
+            role=employee_role,
             specialization=data.get("specialization"),
             base_monthly_salary=float(data.get("base_monthly_salary") or 0.0),
             pt_session_rate=float(data.get("pt_session_rate") or 0.0),
             bank_account_no=data.get("bank_account_no"),
             bank_ifsc=data.get("bank_ifsc"),
             upi_id=data.get("upi_id"),
-            primary_gym_location=(data.get("primary_gym_location") or data.get("branch") or data.get("branch_name") or data.get("location") or "").strip() or None,
+            primary_vahd_location=(data.get("primary_vahd_location") or data.get("branch") or data.get("branch_name") or data.get("location") or "").strip() or None,
             **( {"created_at": custom_created_at} if custom_created_at else {} )
         )
-        db.add(new_trainer)
+        db.add(new_employee)
         db.commit()
-        db.refresh(new_trainer)
+        db.refresh(new_employee)
 
         # Sync to HRMS
         try:
             from src.services.hrms_service import HrmsService
-            HrmsService.sync_trainers_to_employees(db)
+            HrmsService.sync_employees_to_employees(db)
         except Exception:
             pass
 
@@ -442,74 +442,74 @@ class PayrollService:
                 to_email=email,
                 full_name=full_name,
                 password=generated_password,
-                role=trainer_role or "EMPLOYEE"
+                role=employee_role or "EMPLOYEE"
             )
         except Exception:
             pass
 
-        return new_trainer
+        return new_employee
 
     @staticmethod
-    def update_trainer(db: Session, trainer_id: str, data: Dict[str, Any]) -> TrainerProfile:
+    def update_employee(db: Session, employee_id: str, data: Dict[str, Any]) -> employeeProfile:
         """
-        Updates an existing trainer profile in PostgreSQL database.
+        Updates an existing employee profile in PostgreSQL database.
         """
-        trainer = db.query(TrainerProfile).filter(TrainerProfile.id == trainer_id).first()
-        if not trainer:
-            raise ValueError(f"Trainer '{trainer_id}' not found.")
+        employee = db.query(employeeProfile).filter(employeeProfile.id == employee_id).first()
+        if not employee:
+            raise ValueError(f"employee '{employee_id}' not found.")
         if "full_name" in data and data["full_name"]:
-            trainer.full_name = data["full_name"]
+            employee.full_name = data["full_name"]
         if "email" in data and data["email"]:
-            trainer.email = data["email"]
+            employee.email = data["email"]
         if "phone" in data:
-            trainer.phone = data["phone"]
+            employee.phone = data["phone"]
         if "role" in data and data["role"]:
-            trainer.role = data["role"]
+            employee.role = data["role"]
         if "specialization" in data:
-            trainer.specialization = data["specialization"]
+            employee.specialization = data["specialization"]
         if "base_monthly_salary" in data and data["base_monthly_salary"] is not None:
-            trainer.base_monthly_salary = float(data["base_monthly_salary"])
+            employee.base_monthly_salary = float(data["base_monthly_salary"])
         if "pt_session_rate" in data and data["pt_session_rate"] is not None:
-            trainer.pt_session_rate = float(data["pt_session_rate"])
+            employee.pt_session_rate = float(data["pt_session_rate"])
         if "bank_account_no" in data:
-            trainer.bank_account_no = data["bank_account_no"]
+            employee.bank_account_no = data["bank_account_no"]
         if "bank_ifsc" in data:
-            trainer.bank_ifsc = data["bank_ifsc"]
+            employee.bank_ifsc = data["bank_ifsc"]
         if "upi_id" in data:
-            trainer.upi_id = data["upi_id"]
+            employee.upi_id = data["upi_id"]
 
         db.commit()
-        db.refresh(trainer)
+        db.refresh(employee)
 
         try:
             from src.services.hrms_service import HrmsService
-            HrmsService.sync_trainers_to_employees(db)
+            HrmsService.sync_employees_to_employees(db)
         except Exception:
             pass
 
-        return trainer
+        return employee
 
     @staticmethod
-    def delete_trainer(db: Session, trainer_id: str) -> bool:
+    def delete_employee(db: Session, employee_id: str) -> bool:
         """
-        Deletes or deactivates a trainer profile from PostgreSQL database.
+        Deletes or deactivates a employee profile from PostgreSQL database.
         """
-        trainer = db.query(TrainerProfile).filter(TrainerProfile.id == trainer_id).first()
-        if not trainer:
-            raise ValueError(f"Trainer '{trainer_id}' not found.")
+        employee = db.query(employeeProfile).filter(employeeProfile.id == employee_id).first()
+        if not employee:
+            raise ValueError(f"employee '{employee_id}' not found.")
         
         # Clean up related payroll invoices
         try:
-            db.query(PayrollInvoice).filter(PayrollInvoice.trainer_id == trainer.id).delete(synchronize_session=False)
+            db.query(PayrollInvoice).filter(PayrollInvoice.employee_id == employee.id).delete(synchronize_session=False)
         except Exception:
             pass
 
-        db.delete(trainer)
+        db.delete(employee)
         db.commit()
 
         try:
             from src.services.hrms_service import HrmsService
-            HrmsService.sync_trainers_to_employees(db)
+            HrmsService.sync_employees_to_employees(db)
         except Exception:
             pass
 
@@ -518,23 +518,23 @@ class PayrollService:
     @staticmethod
     def generate_monthly_payroll(
         db: Session,
-        trainer_id: str,
+        employee_id: str,
         month_year: Optional[str] = None,
         pt_sessions_count: int = 0
     ) -> PayrollInvoice:
         """
-        Generates or updates a monthly salary invoice for a trainer/staff based on eSSL biometric attendance.
+        Generates or updates a monthly salary invoice for a employee/staff based on eSSL biometric attendance.
         """
         if not month_year:
             month_year = now_ist_naive().strftime("%Y-%m")
-        trainer = db.query(TrainerProfile).filter(TrainerProfile.id == trainer_id).first()
-        if not trainer:
-            raise ValueError(f"Trainer/Staff with ID '{trainer_id}' not found.")
+        employee = db.query(employeeProfile).filter(employeeProfile.id == employee_id).first()
+        if not employee:
+            raise ValueError(f"employee/Staff with ID '{employee_id}' not found.")
 
         # Count biometric punch days present
-        logs = db.query(BiometricLog).filter(BiometricLog.meta_data.op('->>')('user_id') == trainer_id).all()
+        logs = db.query(BiometricLog).filter(BiometricLog.meta_data.op('->>')('user_id') == employee_id).all()
         if not logs:
-            logs = db.query(BiometricLog).filter(BiometricLog.customer_id == trainer_id).all()
+            logs = db.query(BiometricLog).filter(BiometricLog.customer_id == employee_id).all()
 
         distinct_days = set()
         for log in logs:
@@ -544,11 +544,11 @@ class PayrollService:
         days_present = len(distinct_days) if distinct_days else 22  # default full month work days
         days_absent = max(0, 30 - days_present)
 
-        base_salary_earned = round((trainer.base_monthly_salary / 30.0) * days_present, 2)
-        commission_earned = round(pt_sessions_count * trainer.pt_session_rate, 2)
+        base_salary_earned = round((employee.base_monthly_salary / 30.0) * days_present, 2)
+        commission_earned = round(pt_sessions_count * employee.pt_session_rate, 2)
         net_salary = round(base_salary_earned + commission_earned, 2)
 
-        invoice_id = f"pay_{trainer_id}_{month_year.replace('-', '')}"
+        invoice_id = f"pay_{employee_id}_{month_year.replace('-', '')}"
         existing = db.query(PayrollInvoice).filter(PayrollInvoice.id == invoice_id).first()
 
         if existing:
@@ -564,7 +564,7 @@ class PayrollService:
 
         invoice = PayrollInvoice(
             id=invoice_id,
-            trainer_id=trainer_id,
+            employee_id=employee_id,
             month_year=month_year,
             days_present=days_present,
             days_absent=days_absent,
@@ -588,7 +588,7 @@ class PayrollService:
         transaction_reference: Optional[str] = None
     ) -> PayrollInvoice:
         """
-        Marks a trainer/staff salary invoice as PAID and records transaction details.
+        Marks a employee/staff salary invoice as PAID and records transaction details.
         """
         invoice = db.query(PayrollInvoice).filter(PayrollInvoice.id == payroll_id).first()
         if not invoice:

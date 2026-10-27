@@ -5,7 +5,7 @@ Runs automatically in both local development and production environments (Postgr
 Safely handles:
 1. Creating all missing tables (`courses`, `student_courses`, `branches`, `settings`, etc.)
 2. Safe column schema additions (`ALTER TABLE ... ADD COLUMN ...`) across all dialects
-3. Table renaming and column harmonization (e.g. gym_branches -> branches, gym_settings -> settings)
+3. Table renaming and column harmonization (e.g. vahd_branches -> branches, vahd_settings -> settings)
 4. Zero data loss / zero hardcoded defaults
 """
 import sys
@@ -111,37 +111,15 @@ SCHEMA_COLUMNS: Dict[str, List[Tuple[str, str]]] = {
         ("branch_id", "VARCHAR"),
         ("member_code", "VARCHAR"),
         ("gender", "VARCHAR"),
-        ("weight", "FLOAT"),
-        ("height", "FLOAT"),
         ("age", "INTEGER"),
-        ("bmi", "FLOAT"),
         ("fitness_score", "INTEGER"),
-        ("fitness_level", "VARCHAR"),
         ("training_preference", "VARCHAR"),
-        ("goal", "VARCHAR"),
-        ("target_calories", "INTEGER"),
-        ("target_weight", "FLOAT"),
-        ("days_per_week", "INTEGER"),
-        ("session_duration_minutes", "INTEGER"),
-        ("target_protein", "INTEGER"),
-        ("target_carbs", "INTEGER"),
-        ("target_fat", "INTEGER"),
-        ("target_water", "FLOAT"),
-        ("target_fiber", "INTEGER"),
-        ("target_sugar", "INTEGER"),
-        ("body_condition", "VARCHAR"),
-        ("meals_per_day", "INTEGER"),
-        ("dietary_preference", "VARCHAR"),
-        ("target_steps", "INTEGER"),
-        ("target_sleep_minutes", "INTEGER"),
-        ("weight_unit", "VARCHAR"),
         ("profile_image", "VARCHAR"),
         ("face_registered", "BOOLEAN"),
         ("face_image", "VARCHAR"),
         ("rfid_tag", "VARCHAR"),
         ("status", "VARCHAR"),
-        ("primary_gym_location", "VARCHAR"),
-        ("enable_workout_videos", "BOOLEAN"),
+        ("primary_vahd_location", "VARCHAR"),
         ("meta_data", "JSON"),
         ("updated_at", "TIMESTAMP"),
     ],
@@ -213,23 +191,23 @@ def sync_database_schema(verbose: bool = True) -> bool:
 
         # Safe table renaming migrations if old legacy tables exist
         with engine.begin() as conn:
-            if "gym_branches" in existing_tables and "branches" not in existing_tables:
+            if "vahd_branches" in existing_tables and "branches" not in existing_tables:
                 try:
-                    conn.execute(text('ALTER TABLE "gym_branches" RENAME TO "branches";'))
-                    existing_tables.remove("gym_branches")
+                    conn.execute(text('ALTER TABLE "vahd_branches" RENAME TO "branches";'))
+                    existing_tables.remove("vahd_branches")
                     existing_tables.add("branches")
-                    if verbose: logger.info("✓ Migrated table gym_branches -> branches")
+                    if verbose: logger.info("✓ Migrated table vahd_branches -> branches")
                 except Exception as ex:
-                    logger.warning(f"Notice during table rename gym_branches: {ex}")
+                    logger.warning(f"Notice during table rename vahd_branches: {ex}")
 
-            if "gym_settings" in existing_tables and "settings" not in existing_tables:
+            if "vahd_settings" in existing_tables and "settings" not in existing_tables:
                 try:
-                    conn.execute(text('ALTER TABLE "gym_settings" RENAME TO "settings";'))
-                    existing_tables.remove("gym_settings")
+                    conn.execute(text('ALTER TABLE "vahd_settings" RENAME TO "settings";'))
+                    existing_tables.remove("vahd_settings")
                     existing_tables.add("settings")
-                    if verbose: logger.info("✓ Migrated table gym_settings -> settings")
+                    if verbose: logger.info("✓ Migrated table vahd_settings -> settings")
                 except Exception as ex:
-                    logger.warning(f"Notice during table rename gym_settings: {ex}")
+                    logger.warning(f"Notice during table rename vahd_settings: {ex}")
 
         # 2. Create all missing tables defined in SQLAlchemy Base.metadata
         Base.metadata.create_all(bind=engine)

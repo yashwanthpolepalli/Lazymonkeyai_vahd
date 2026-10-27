@@ -23,7 +23,7 @@ export function BiometricStatus({ biometric }: { biometric: CustomerBiometricSta
         </div>
         <div>
           <h3 className="text-base font-bold text-navy-900">Biometric Access</h3>
-          <p className="text-xs text-navy-400">Gym turnstile & door access status</p>
+          <p className="text-xs text-navy-400">vahd turnstile & door access status</p>
         </div>
       </div>
 

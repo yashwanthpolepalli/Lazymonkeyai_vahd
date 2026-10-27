@@ -170,7 +170,6 @@ export function DevicesPage() {
               { id: 'all', label: 'All Fleet' },
               { id: 'biometric', label: 'Turnstiles & Biometrics' },
               { id: 'face_recognition', label: 'Face Cam Terminals' },
-              { id: 'body_scanner', label: 'InBody Scanners' },
               { id: 'cctv', label: 'CCTV Feeds' },
               { id: 'pos', label: 'POS Terminals' },
             ].map((tab) => (
@@ -319,7 +318,6 @@ export function DevicesPage() {
                   >
                     <option value="biometric">Biometric Turnstile</option>
                     <option value="face_recognition">Face Recognition Cam</option>
-                    <option value="body_scanner">InBody Composition Scanner</option>
                     <option value="cctv">CCTV Stream Camera</option>
                     <option value="pos">POS Terminal</option>
                   </select>

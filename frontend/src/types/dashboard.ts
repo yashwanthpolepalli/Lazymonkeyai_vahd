@@ -43,7 +43,7 @@ export interface LiveActivityItem {
   location?: string;
 }
 
-export interface TopTrainerItem {
+export interface TopemployeeItem {
   id: string;
   name: string;
   avatar: string;
@@ -63,7 +63,7 @@ export interface QuickActionItem {
 
 export interface DashboardData {
   userName?: string;
-  gym: {
+  vahd: {
     name: string;
     branch: string;
   };
@@ -72,6 +72,6 @@ export interface DashboardData {
   membership_health: MembershipHealthBreakdown;
   revenue: RevenueBreakdownData;
   live_activity: LiveActivityItem[];
-  top_trainers: TopTrainerItem[];
+  top_employees: TopemployeeItem[];
   quick_actions: QuickActionItem[];
 }

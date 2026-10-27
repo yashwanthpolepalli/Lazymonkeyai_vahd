@@ -49,7 +49,7 @@ export function PrivacyPolicyPage() {
           <p className="text-slate-600 leading-relaxed text-sm">
             Welcome to <strong>VAHD</strong>, developed and operated by <strong>LazyMonkey AI</strong> (&quot;LazyMonkey AI&quot;, &quot;Platform&quot;, &quot;We&quot;, &quot;Us&quot;, or &quot;Our&quot;).
             VAHD provides an enterprise-grade, multi-tenant software-as-a-service (SaaS) ecosystem, IoT hardware middleware, biometric attendance management,
-            Human Resource Management Systems (HRMS), Point of Sale (POS) billing, and member mobile companions designed for fitness clubs, gym owners, martial arts academies, and wellness enterprises.
+            Human Resource Management Systems (HRMS), Point of Sale (POS) billing, and member mobile companions designed for fitness clubs, vahd owners, martial arts academies, and wellness enterprises.
           </p>
           <p className="text-slate-600 leading-relaxed text-sm">
             This Privacy and Biometric Data Governance Policy explains in comprehensive detail how personal data, employee records, financial transactions,
@@ -58,9 +58,9 @@ export function PrivacyPolicyPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 pt-2">
             <div className="p-4 rounded-2xl bg-blue-50/60 border border-blue-100">
-              <span className="text-xs font-bold text-blue-900 block mb-1">Facility Operator (Gym Owner) as Data Controller</span>
+              <span className="text-xs font-bold text-blue-900 block mb-1">Facility Operator (vahd Owner) as Data Controller</span>
               <p className="text-xs text-blue-700 leading-relaxed">
-                The gym business entity or enterprise subscribing to VAHD acts as the primary <strong>Data Controller</strong> determining the purposes of collecting member and staff records.
+                The vahd business entity or enterprise subscribing to VAHD acts as the primary <strong>Data Controller</strong> determining the purposes of collecting member and staff records.
               </p>
             </div>
             <div className="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-100">
@@ -82,7 +82,7 @@ export function PrivacyPolicyPage() {
       content: (
         <div className="space-y-4">
           <p className="text-slate-600 leading-relaxed text-sm">
-            Depending on your role (Facility Owner, Staff / Trainer, Member / Student, or SuperAdmin), we collect and process the following specific categories of information:
+            Depending on your role (Facility Owner, Staff / employee, Member / Student, or SuperAdmin), we collect and process the following specific categories of information:
           </p>
 
           <div className="space-y-3">
@@ -102,7 +102,7 @@ export function PrivacyPolicyPage() {
                 Staff &amp; HRMS Employment Records
               </h4>
               <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-                Employee designation, department, work shift timings, base salary, hourly trainer rates, bank payout details (for automated payroll calculation), leave requests, and attendance correction logs.
+                Employee designation, department, work shift timings, base salary, hourly employee rates, bank payout details (for automated payroll calculation), leave requests, and attendance correction logs.
               </p>
             </div>
 
@@ -189,7 +189,7 @@ export function PrivacyPolicyPage() {
             <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs">
               <span className="font-bold text-xs text-slate-900 block mb-1">Geofence Location Verification</span>
               <p className="text-xs text-slate-500 leading-relaxed">
-                Mobile companion clock-ins use device GPS exclusively at the exact instant of clocking in to verify proximity to the gym premises. We do <strong>not</strong> track background location.
+                Mobile companion clock-ins use device GPS exclusively at the exact instant of clocking in to verify proximity to the vahd premises. We do <strong>not</strong> track background location.
               </p>
             </div>
             <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs">
@@ -215,8 +215,8 @@ export function PrivacyPolicyPage() {
           </p>
 
           <ul className="space-y-2 text-xs text-slate-600 list-disc list-inside leading-relaxed">
-            <li><strong>Row-Level &amp; Tenant ID Partitioning:</strong> Every member, staff, invoice, and attendance record is permanently keyed to a unique <code className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-800 font-mono">tenant_id</code> (or gym ID). Cross-tenant queries are blocked at the database engine and API middleware levels.</li>
-            <li><strong>Role-Based Access Control (RBAC):</strong> Four distinct access roles (SuperAdmin, Owner, Employees/Trainers, Students/Members) ensure that users only have visibility into data strictly necessary for their authorized role.</li>
+            <li><strong>Row-Level &amp; Tenant ID Partitioning:</strong> Every member, staff, invoice, and attendance record is permanently keyed to a unique <code className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-800 font-mono">tenant_id</code> (or vahd ID). Cross-tenant queries are blocked at the database engine and API middleware levels.</li>
+            <li><strong>Role-Based Access Control (RBAC):</strong> Four distinct access roles (SuperAdmin, Owner, Employees/employees, Students/Members) ensure that users only have visibility into data strictly necessary for their authorized role.</li>
             <li><strong>Encrypted Database Storage:</strong> PostgreSQL database volumes are encrypted at rest using AES-256 encryption. Automated point-in-time recovery (PITR) backups are stored in geo-redundant encrypted storage.</li>
           </ul>
         </div>
@@ -231,7 +231,7 @@ export function PrivacyPolicyPage() {
       content: (
         <div className="space-y-4">
           <p className="text-slate-600 leading-relaxed text-sm">
-            VAHD connects to local physical gym devices via secure middleware bridges (e.g., eSSL Biometric Middleware, turnstile access controllers, USB thermal POS receipt printers):
+            VAHD connects to local physical vahd devices via secure middleware bridges (e.g., eSSL Biometric Middleware, turnstile access controllers, USB thermal POS receipt printers):
           </p>
 
           <div className="space-y-2.5">
@@ -346,7 +346,7 @@ export function PrivacyPolicyPage() {
             </div>
             <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
               <strong className="text-slate-900 block mb-1">2. Right to Rectification</strong>
-              <p className="text-slate-600">Correct any inaccurate or incomplete personal information directly in your profile or via your gym administrator.</p>
+              <p className="text-slate-600">Correct any inaccurate or incomplete personal information directly in your profile or via your vahd administrator.</p>
             </div>
             <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
               <strong className="text-slate-900 block mb-1">3. Right to Erasure (&quot;Right to be Forgotten&quot;)</strong>
@@ -562,8 +562,8 @@ export function PrivacyPolicyPage() {
                     key={sec.id}
                     onClick={() => scrollToSection(sec.id)}
                     className={`w-full text-left flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition ${isSelected
-                        ? 'bg-blue-50 text-blue-700 border border-blue-200/80 shadow-2xs'
-                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                      ? 'bg-blue-50 text-blue-700 border border-blue-200/80 shadow-2xs'
+                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                       }`}
                   >
                     <div className="flex items-center gap-2 truncate">

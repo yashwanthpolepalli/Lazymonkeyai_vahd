@@ -1,6 +1,6 @@
 from __future__ import annotations
 """
-FIT CLUB AI — Live Gemini AI Coach Chat Endpoint
+vahd — Live Gemini AI Coach Chat Endpoint
 Receives user questions, retrieves active customer metrics, workouts, and nutrition logs from PostgreSQL,
 and invokes Gemini 2.0 Flash to generate real-time intelligent responses.
 """
@@ -46,8 +46,6 @@ def coach_chat(req: CoachChatRequest, db: Session = Depends(get_db)):
     # Fetch Customer Context
     customer = db.query(Customer).filter(Customer.id == customer_id).first()
     customer_name = customer.full_name if customer else "Member"
-    goal = customer.goal if customer else "General Fitness"
-    fitness_level = customer.fitness_level if customer else "Active"
 
     # Always read fresh from .env at request-time
     current_key = get_gemini_key()
@@ -56,7 +54,7 @@ def coach_chat(req: CoachChatRequest, db: Session = Depends(get_db)):
     if not is_valid_gemini_key(current_key):
         return {
             "status": "FALLBACK",
-            "reply": f"Hi {customer_name}! Your fitness profile is active with goal: {goal}. Configure GEMINI_API_KEY in .env for full AI conversation.",
+            "reply": f"Hi {customer_name}! Your profile is active. Configure GEMINI_API_KEY in .env for full AI conversation.",
             "mode": "CONTEXTUAL_RULE_ENGINE"
         }
 
@@ -64,17 +62,16 @@ def coach_chat(req: CoachChatRequest, db: Session = Depends(get_db)):
         genai.configure(api_key=current_key)
         model = genai.GenerativeModel(current_model)
 
-        system_context = f"""You are the elite FIT CLUB AI Coach for member '{customer_name}'.
+        system_context = f"""You are the elite vahd AI Assistant for member '{customer_name}'.
 Customer Live Context:
-- Consumed Calories Today: {int(consumed_cal)} / {target_cal} kcal (Remaining: {rem_cal} kcal)
-- Consumed Protein Today: {int(consumed_protein)} / {target_protein}g (Remaining: {rem_protein}g protein)
-- Consumed Carbs Today: {int(consumed_carbs)}g
-- Today's Assigned Workout: Upper Body Hypertrophy & Core Focus
-- Recovery Status: Optimal (84/100)
+- Full Name: {customer_name}
+- Status: {customer.status if customer else 'ACTIVE'}
+- Qualification / Specialization: {getattr(customer, 'specialization', '') or getattr(customer, 'qualification', '') or 'Enrolled'}
+- Attendance / Activity: Active
 
 Guidelines:
 - Give concise, motivating, actionable advice (2-4 sentences max).
-- Refer directly to their actual numbers when relevant.
+- Refer directly to their actual progress and learning path when relevant.
 - Do not use markdown headers or long bullet points.
 """
 
@@ -114,9 +111,8 @@ Guidelines:
         print(f"[AICoach] Gemini Execution Error: {e}")
         return {
             "reply": (
-                f"I've analyzed your performance data, {customer_name}. "
-                f"You have {rem_cal} kcal and {rem_protein}g protein remaining today. "
-                f"Stay consistent with your training goals!"
+                f"I've analyzed your progress, {customer_name}. "
+                f"Stay consistent with your daily learning and attendance goals!"
             )
         }
 
@@ -130,7 +126,7 @@ class ExtractBrochureRequest(BaseModel):
 def extract_brochure_endpoint(req: ExtractBrochureRequest):
     """
     Dynamic AI Vision brochure parser:
-    Extracts authentic headline, gym name, checklist, quotes, pricing, and contact info
+    Extracts authentic headline, vahd name, checklist, quotes, pricing, and contact info
     directly from the uploaded poster image using Gemini Vision, with graceful fallbacks.
     """
     import json
@@ -155,8 +151,8 @@ def extract_brochure_endpoint(req: ExtractBrochureRequest):
 
     # Clean default structure without hardcoded dummy values
     empty_extracted = {
-        "gymName": "",
-        "gymTagline": "",
+        "vahdName": "",
+        "vahdTagline": "",
         "headline": "",
         "subheadline": "",
         "badgeText": "",
@@ -202,12 +198,12 @@ def extract_brochure_endpoint(req: ExtractBrochureRequest):
 
                 dynamic_prompt = """
 You are an expert OCR & Graphic Design AI Vision system.
-Analyze the provided gym poster / fitness brochure image in detail.
+Analyze the provided vahd poster / fitness brochure image in detail.
 Read and extract ONLY the authentic visual and textual content present in the image into strict JSON format:
 
 {
-  "gymName": "Exact gym/brand name visible in the image or empty string",
-  "gymTagline": "Exact motto or tagline under the gym name or empty string",
+  "vahdName": "Exact vahd/brand name visible in the image or empty string",
+  "vahdTagline": "Exact motto or tagline under the vahd name or empty string",
   "headline": "Main large headline text visible in the poster or empty string",
   "subheadline": "Secondary headline or core motto visible or empty string",
   "badgeText": "Any pill badge, ribbon text, or callout highlight visible or empty string",
@@ -243,7 +239,7 @@ Read and extract ONLY the authentic visual and textual content present in the im
     "email": "Email address if visible",
     "website": "Website URL if visible",
     "instagram": "Instagram handle if visible",
-    "address": "Gym address if visible"
+    "address": "vahd address if visible"
   },
   "customColors": {
     "primary": "Dominant primary accent hex color (e.g. #EAB308, #EF4444, #06B6D4)",
@@ -295,7 +291,7 @@ Output strictly valid JSON with no markdown backticks, no preamble, and no expla
 
 class GenerateBrochureRequest(BaseModel):
     prompt: str
-    gym_name: Optional[str] = None
+    vahd_name: Optional[str] = None
     vibe: Optional[str] = None
     offer: Optional[str] = None
     phone: Optional[str] = None
@@ -306,20 +302,20 @@ def generate_brochure_endpoint(req: GenerateBrochureRequest):
     """
     AI Prompt-to-Poster Designer:
     Takes user natural language requirements / fields and auto-designs the complete
-    high-converting gym poster with copy, 6-step checklist, layout geometry, colors, and zero overlaps.
+    high-converting vahd poster with copy, 6-step checklist, layout geometry, colors, and zero overlaps.
     """
     import json
     import re
 
     user_prompt = req.prompt.strip()
-    gym_name = (req.gym_name or "").strip()
+    vahd_name = (req.vahd_name or "").strip()
     vibe = (req.vibe or "").strip()
     offer = (req.offer or "").strip()
     phone = (req.phone or "").strip()
 
     context_lines = [f"User Design Request: {user_prompt}"]
-    if gym_name:
-        context_lines.append(f"Gym Name: {gym_name}")
+    if vahd_name:
+        context_lines.append(f"vahd Name: {vahd_name}")
     if vibe:
         context_lines.append(f"Visual Theme / Vibe: {vibe}")
     if offer:
@@ -329,21 +325,21 @@ def generate_brochure_endpoint(req: GenerateBrochureRequest):
 
     system_designer_prompt = f"""
 You are an award-winning Graphic Designer & Direct-Response Fitness Copywriter.
-Create a complete, high-converting social media gym poster / flyer strictly based on the user's input:
+Create a complete, high-converting social media vahd poster / flyer strictly based on the user's input:
 
 {chr(10).join(context_lines)}
 
 Design the complete brochure payload in strict JSON format:
 {{
-  "gymName": "Punchy uppercase Gym/Brand name derived from user request",
-  "gymTagline": "Uppercase motivational gym subtitle",
+  "vahdName": "Punchy uppercase vahd/Brand name derived from user request",
+  "vahdTagline": "Uppercase motivational vahd subtitle",
   "headline": "Massive 2-3 word bold uppercase headline",
   "subheadline": "Catchy sub-headline or fitness slogan",
   "badgeText": "High-converting ribbon pill text or offer callout",
   "accentStampText": "Motivational stamp quote",
   "bottomBannerText": "Action call banner text",
   "templateId": "one of: 'powerzone-split', 'chalk-motivation', 'spartan-discipline', 'future-self-anime', 'focus-moodboard', 'bodyhub-diamond', 'neon-kinetic', 'luxury-wellness'",
-  "logoPreset": "one of: 'kettlebell-bolt', 'spartan-crest', 'bicep-barbell', 'flame-bull', 'crown-elite', 'shield-gym'",
+  "logoPreset": "one of: 'kettlebell-bolt', 'spartan-crest', 'bicep-barbell', 'flame-bull', 'crown-elite', 'shield-vahd'",
   "logoSize": 52,
   "checklistItems": [
     {{
@@ -371,10 +367,10 @@ Design the complete brochure payload in strict JSON format:
   }},
   "contact": {{
     "phone": "{phone or ''}",
-    "email": "info@gym.com",
-    "website": "www.gym.com",
-    "instagram": "@gym.official",
-    "address": "Central Gym District"
+    "email": "info@vahd.com",
+    "website": "www.vahd.com",
+    "instagram": "@vahd.official",
+    "address": "Central vahd District"
   }},
   "customColors": {{
     "primary": "Hex color matching vibe",
@@ -420,17 +416,17 @@ Output strictly valid JSON with no markdown formatting.
             print(f"[GenerateBrochure] Notice: {err}")
 
     # Dynamic fallback derived from user request
-    extracted_title = gym_name
+    extracted_title = vahd_name
     if not extracted_title:
         for_match = re.search(r'\bfor\s+([A-Za-z0-9\s&]+?)(?:\s+with|\s+and|\s*$)', user_prompt, re.IGNORECASE)
         if for_match:
             extracted_title = for_match.group(1).strip().upper()
         else:
-            extracted_title = "FIT CLUB"
+            extracted_title = "vahd"
 
     fallback_designed = {
-        "gymName": extracted_title,
-        "gymTagline": "PERFORMANCE & TRANSFORMATION LAB",
+        "vahdName": extracted_title,
+        "vahdTagline": "PERFORMANCE & TRANSFORMATION LAB",
         "headline": "SCULPT YOUR PHYSIQUE",
         "subheadline": "DISCIPLINE TODAY • STRENGTH TOMORROW",
         "badgeText": offer.upper() if offer else "LIMITED TIME SPECIAL",
@@ -441,7 +437,7 @@ Output strictly valid JSON with no markdown formatting.
         "logoSize": 52,
         "checklistItems": [
             {"title": "MODERN EQUIPMENT", "subtitle": "Train with the best biomechanics.", "icon": "dumbbell"},
-            {"title": "EXPERT COACHING", "subtitle": "Certified trainers you can trust.", "icon": "user"},
+            {"title": "EXPERT COACHING", "subtitle": "Certified employees you can trust.", "icon": "user"},
             {"title": "NUTRITION PROTOCOL", "subtitle": "Fuel muscle & shred body fat.", "icon": "apple"},
             {"title": "24/7 VIP ACCESS", "subtitle": "Workout on your schedule.", "icon": "clock"},
         ],
@@ -462,10 +458,10 @@ Output strictly valid JSON with no markdown formatting.
         },
         "contact": {
             "phone": phone or "+91 98765 43210",
-            "email": "info@gym.com",
-            "website": "www.yourgym.com",
-            "instagram": "@gym.official",
-            "address": "Central Gym District"
+            "email": "info@vahd.com",
+            "website": "www.yourvahd.com",
+            "instagram": "@vahd.official",
+            "address": "Central vahd District"
         },
         "customColors": {
             "primary": "#EAB308",

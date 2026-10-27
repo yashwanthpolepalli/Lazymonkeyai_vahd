@@ -63,7 +63,7 @@ UNUSED_TABLES: List[str] = [
     "workout_templates",
     "workouts",
 
-    # ─── 3. Nutrition, Food, InBody & Health Sync Tables ──────────
+    # ─── 3. Obsolete Nutrition, Food & Health Sync Tables ──────────
     "nutrition_food_master",
     "nutrition_log_items",
     "nutrition_logs",
@@ -76,7 +76,7 @@ UNUSED_TABLES: List[str] = [
 
     # ─── 4. Brochures & Slot Bookings ────────────────────────────
     "brochure_templates",
-    "gym_slot_bookings",
+    "vahd_slot_bookings",
 ]
 
 

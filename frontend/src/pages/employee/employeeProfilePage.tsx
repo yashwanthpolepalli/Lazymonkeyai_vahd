@@ -4,14 +4,14 @@ import { Badge } from '@/components/ui/Badge';
 import { Icon } from '@/components/ui/Icon';
 import { BarChart } from '@/components/ui/Charts';
 
-export function TrainerProfilePage() {
+export function EmployeeProfilePage() {
   const { user } = useAuth();
-  const displayName = user?.name || user?.email?.split('@')[0] || 'Trainer';
+  const displayName = user?.name || user?.email?.split('@')[0] || 'employee';
   const initial = displayName.charAt(0).toUpperCase();
 
   return (
     <div className="space-y-6">
-      <PageHeader title="My Profile" breadcrumb={['Trainer', 'Profile']} actions={<button className="btn-primary"><Icon name="edit" size={16} /> Edit Profile</button>} />
+      <PageHeader title="My Profile" breadcrumb={['employee', 'Profile']} actions={<button className="btn-primary"><Icon name="edit" size={16} /> Edit Profile</button>} />
 
       <div className="card p-6">
         <div className="flex flex-col sm:flex-row items-start gap-6">
@@ -49,7 +49,7 @@ export function TrainerProfilePage() {
           <h3 className="text-sm font-bold text-navy-900 mb-4">Certifications</h3>
           <div className="space-y-2">
             {[
-              { name: 'ACE Certified Personal Trainer', year: '2019' },
+              { name: 'ACE Certified Personal employee', year: '2019' },
               { name: 'Precision Nutrition Level 2', year: '2021' },
               { name: 'NASM Corrective Exercise Specialist', year: '2022' },
             ].map((c) => (
@@ -70,3 +70,5 @@ export function TrainerProfilePage() {
     </div>
   );
 }
+
+export const employeeProfilePage = EmployeeProfilePage;

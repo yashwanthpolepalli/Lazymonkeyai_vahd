@@ -65,7 +65,7 @@ export function Customer360Page() {
             <div className="flex flex-wrap gap-4 text-sm">
               <div><span className="stat-label">Membership</span> <span className="font-semibold text-navy-900">{member.membership}</span></div>
               <div><span className="stat-label">Branch</span> <span className="font-semibold text-navy-900">{member.branch}</span></div>
-              <div><span className="stat-label">Trainer</span> <span className="font-semibold text-navy-900">{member.trainer}</span></div>
+              <div><span className="stat-label">employee</span> <span className="font-semibold text-navy-900">{member.employee}</span></div>
               <div><span className="stat-label">Goal</span> <span className="font-semibold text-navy-900">{member.goal}</span></div>
             </div>
           </div>

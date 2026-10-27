@@ -4,32 +4,32 @@ from typing import List, Optional
 from src.database.session import get_db
 from src.services.payroll_service import PayrollService
 from src.services.biometric_service import BiometricService
-from src.schemas.payroll import TrainerCreateRequest, TrainerResponse
+from src.schemas.payroll import employeeCreateRequest, employeeResponse
 from src.schemas.biometrics import BiometricEnrollmentRequest
 from src.api.deps import get_current_user
 from src.models.user import User
 
-router = APIRouter(prefix="/trainers", tags=["Trainers & Staff Management"])
+router = APIRouter(prefix="/employees", tags=["employees & Staff Management"])
 
-@router.get("", response_model=List[TrainerResponse])
-def get_all_trainers(
+@router.get("", response_model=List[employeeResponse])
+def get_all_employees(
     branch_id: Optional[str] = Query(None),
     current_user: Optional[User] = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
-    Returns all registered trainers, managers, staff, and gym owners scoped to user hierarchy.
+    Returns all registered employees, managers, staff, and vahd owners scoped to user hierarchy.
     """
-    return PayrollService.get_all_trainers(db, current_user=current_user, branch_id=branch_id)
+    return PayrollService.get_all_employees(db, current_user=current_user, branch_id=branch_id)
 
-@router.post("", response_model=TrainerResponse)
-def register_trainer(
-    payload: TrainerCreateRequest,
+@router.post("", response_model=employeeResponse)
+def register_employee(
+    payload: employeeCreateRequest,
     current_user: Optional[User] = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
-    Registers a new trainer or staff profile with salary & bank account details.
+    Registers a new employee or staff profile with salary & bank account details.
     """
     data = payload.model_dump()
     if current_user:
@@ -45,50 +45,50 @@ def register_trainer(
                 data["ho_id"] = current_user.ho_id or current_user.id
             if not data.get("branch_id") and current_user.branch_id:
                 data["branch_id"] = current_user.branch_id
-    return PayrollService.register_trainer(db, data)
+    return PayrollService.register_employee(db, data)
 
-@router.put("/{trainer_id}", response_model=TrainerResponse)
-def update_trainer(trainer_id: str, payload: dict, db: Session = Depends(get_db)):
+@router.put("/{employee_id}", response_model=employeeResponse)
+def update_employee(employee_id: str, payload: dict, db: Session = Depends(get_db)):
     """
-    Updates an existing trainer profile in PostgreSQL database.
+    Updates an existing employee profile in PostgreSQL database.
     """
     try:
-        return PayrollService.update_trainer(db, trainer_id, payload)
+        return PayrollService.update_employee(db, employee_id, payload)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
-@router.delete("/{trainer_id}")
-def delete_trainer(trainer_id: str, db: Session = Depends(get_db)):
+@router.delete("/{employee_id}")
+def delete_employee(employee_id: str, db: Session = Depends(get_db)):
     """
-    Deletes a trainer profile from PostgreSQL database.
+    Deletes a employee profile from PostgreSQL database.
     """
     try:
-        PayrollService.delete_trainer(db, trainer_id)
-        return {"status": "SUCCESS", "message": f"Trainer '{trainer_id}' deleted successfully."}
+        PayrollService.delete_employee(db, employee_id)
+        return {"status": "SUCCESS", "message": f"employee '{employee_id}' deleted successfully."}
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
-@router.get("/{trainer_id}/customers")
-def get_trainer_customers(trainer_id: str, db: Session = Depends(get_db)):
+@router.get("/{employee_id}/customers")
+def get_employee_customers(employee_id: str, db: Session = Depends(get_db)):
     """
-    Returns all customers/members assigned to a specific trainer.
+    Returns all customers/members assigned to a specific employee.
     """
-    return PayrollService.get_trainer_customers(db, trainer_id)
+    return PayrollService.get_employee_customers(db, employee_id)
 
-@router.post("/{trainer_id}/assign-customer/{customer_id}")
-def assign_customer_to_trainer(trainer_id: str, customer_id: str, db: Session = Depends(get_db)):
+@router.post("/{employee_id}/assign-customer/{customer_id}")
+def assign_customer_to_employee(employee_id: str, customer_id: str, db: Session = Depends(get_db)):
     """
-    Assigns or reassigns a gym customer to a specific trainer.
+    Assigns or reassigns a vahd customer to a specific employee.
     """
     try:
-        return PayrollService.assign_customer(db, trainer_id, customer_id)
+        return PayrollService.assign_customer(db, employee_id, customer_id)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
 @router.post("/enroll-biometrics")
-def enroll_trainer_biometrics(payload: BiometricEnrollmentRequest, db: Session = Depends(get_db)):
+def enroll_employee_biometrics(payload: BiometricEnrollmentRequest, db: Session = Depends(get_db)):
     """
-    Enrolls trainer/staff face or fingerprint across eSSL biometric turnstiles for gate entry & shift attendance.
+    Enrolls employee/staff face or fingerprint across eSSL biometric turnstiles for gate entry & shift attendance.
     """
     try:
         return BiometricService.enroll_biometrics(

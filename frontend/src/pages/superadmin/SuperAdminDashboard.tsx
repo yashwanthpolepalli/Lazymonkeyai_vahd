@@ -12,10 +12,10 @@ export function SuperAdminDashboard() {
   const [revenue, setRevenue] = useState<RevenueData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Onboard Gym Modal State
+  // Onboard vahd Modal State
   const [onboardOpen, setOnboardOpen] = useState(false);
   const [onboardForm, setOnboardForm] = useState({
-    gym_name: '',
+    vahd_name: '',
     branch_name: '',
     city: '',
     address: '',
@@ -36,14 +36,14 @@ export function SuperAdminDashboard() {
     fetchDashboardData();
   }, []);
 
-  const handleOnboardGymSubmit = async (e: React.FormEvent) => {
+  const handleOnboardvahdSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!onboardForm.gym_name.trim()) return;
+    if (!onboardForm.vahd_name.trim()) return;
     setOnboarding(true);
     try {
-      await api.superAdmin.onboardGym(onboardForm);
+      await api.superAdmin.onboardvahd(onboardForm);
       setOnboardOpen(false);
-      setOnboardForm({ gym_name: '', branch_name: '', city: '', address: '', owner_name: '', owner_email: '', password: '' });
+      setOnboardForm({ vahd_name: '', branch_name: '', city: '', address: '', owner_name: '', owner_email: '', password: '' });
       fetchDashboardData();
     } catch (_err) {
       /* ignore */
@@ -80,13 +80,13 @@ export function SuperAdminDashboard() {
         <div className="card p-5">
           <h3 className="text-base font-bold text-navy-900 mb-4">Revenue by Plan</h3>
           {loading ? <Skeleton className="h-48 w-full" /> : (() => {
-            const totalGyms = kpis.find(k => k.id === 'total_gyms' || k.label === 'Total Gyms' || k.label === 'Total Organizations' || k.label === 'Total Head Offices')?.value || 0;
+            const totalvahds = kpis.find(k => k.id === 'total_vahds' || k.label === 'Total vahds' || k.label === 'Total Organizations' || k.label === 'Total Head Offices')?.value || 0;
             const planDistribution = (revenue as any)?.planDistribution || [];
 
             return (
               <>
                 <div className="flex justify-center mb-4">
-                  <DonutChart segments={planDistribution} size={160} centerLabel={String(totalGyms)} centerSublabel="Head Offices" />
+                  <DonutChart segments={planDistribution} size={160} centerLabel={String(totalvahds)} centerSublabel="Head Offices" />
                 </div>
                 {planDistribution.length > 0 ? (
                   <div className="space-y-2">
@@ -137,15 +137,15 @@ export function SuperAdminDashboard() {
               </button>
             </div>
 
-            <form onSubmit={handleOnboardGymSubmit} className="space-y-3">
+            <form onSubmit={handleOnboardvahdSubmit} className="space-y-3">
               <div>
                 <label className="text-xs font-bold text-slate-700 block mb-1">Organization Name</label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. Acme Enterprise"
-                  value={onboardForm.gym_name}
-                  onChange={(e) => setOnboardForm((p) => ({ ...p, gym_name: e.target.value }))}
+                  value={onboardForm.vahd_name}
+                  onChange={(e) => setOnboardForm((p) => ({ ...p, vahd_name: e.target.value }))}
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-brand-500"
                 />
               </div>

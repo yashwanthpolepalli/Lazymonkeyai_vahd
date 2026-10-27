@@ -44,7 +44,7 @@ export function Topbar() {
     };
   }, [user]);
 
-  // Real-time Lead Notification & Audio Beep Listener for Super Admin / Gym Owners
+  // Real-time Lead Notification & Audio Beep Listener for Super Admin / vahd Owners
   useEffect(() => {
     const handleNewLeadEvent = (e: any) => {
       const lead = e.detail as LiveLeadNotification;
@@ -70,14 +70,17 @@ export function Topbar() {
               setToastAlert((curr) => (curr?.id === parsed.lead.id ? null : curr));
             }, 8000);
           }
-        } catch (err) {}
+        } catch (err) { }
       }
     };
 
-    // Polling from backend API for live notifications
+    // Polling from backend API for live notifications (with single flight guard and 5s timeout)
+    let isPolling = false;
     const pollBackendLive = async () => {
+      if (isPolling) return;
+      isPolling = true;
       try {
-        const live = await apiClient.get<any[]>('/system/notifications/live').catch(() => []);
+        const live = await apiClient.get<any[]>('/system/notifications/live', { timeout: 5000 }).catch(() => []);
         if (Array.isArray(live)) {
           setSystemNotifs(
             live.map((n: any) => ({
@@ -90,7 +93,9 @@ export function Topbar() {
             }))
           );
         }
-      } catch (e) {}
+      } catch (e) { } finally {
+        isPolling = false;
+      }
     };
 
     pollBackendLive();
@@ -118,7 +123,7 @@ export function Topbar() {
                 seen.add(o.id);
                 unique.push({
                   id: o.id,
-                  name: o.gym_name || o.name || 'Organization',
+                  name: o.vahd_name || o.name || 'Organization',
                   branch: o.branch_name || o.branch || '',
                   city: o.city || '',
                 });
@@ -136,7 +141,7 @@ export function Topbar() {
                 seen.add(b.id);
                 unique.push({
                   id: b.id,
-                  name: b.gym_name || b.name || 'Branch',
+                  name: b.vahd_name || b.name || 'Branch',
                   branch: b.branch_name || b.branch || '',
                   city: b.city || '',
                 });
@@ -145,7 +150,7 @@ export function Topbar() {
             setTopbarOrgs(unique);
           }
         }
-      } catch (e) {}
+      } catch (e) { }
     };
     fetchOrgs();
 
@@ -168,7 +173,6 @@ export function Topbar() {
     ho: 'Head Office (HO)',
     owner: 'Owner',
     employee: 'Employee',
-    trainer: 'Employee',
     student: 'Student',
     customer: 'Student',
   };
@@ -201,7 +205,7 @@ export function Topbar() {
               </div>
               <p className="text-sm font-black text-white">{toastAlert.name}</p>
               <p className="text-xs font-semibold text-slate-300">
-                Gym: <strong>{toastAlert.gymName || 'Gym Lead'}</strong> • Plan: <span className="text-orange-400">{toastAlert.plan || 'Free Trial'}</span>
+                vahd: <strong>{toastAlert.vahdName || 'vahd Lead'}</strong> • Plan: <span className="text-orange-400">{toastAlert.plan || 'Free Trial'}</span>
               </p>
               <p className="text-xs text-slate-400 flex items-center gap-2 pt-0.5">
                 <span>📞 {toastAlert.phone}</span>
@@ -220,7 +224,7 @@ export function Topbar() {
 
       {/* Top Header Row */}
       <div className="h-16 flex items-center justify-between px-3 sm:px-4 gap-4 border-b border-slate-100 w-full">
-        {/* Left: Brand Logo & Gym Location Selector */}
+        {/* Left: Brand Logo & vahd Location Selector */}
         <div className="flex items-center gap-4 min-w-0">
           <Logo size="sm" />
 
@@ -234,7 +238,7 @@ export function Topbar() {
               <span className="truncate max-w-[200px]">
                 {(() => {
                   if (selectedTopbarOrg === 'all') {
-                    return user?.role === 'ho' ? 'All Organizations (HQ)' : user?.gymName || 'All Branches';
+                    return user?.role === 'ho' ? 'All Organizations (HQ)' : user?.vahdName || 'All Branches';
                   }
                   const match = topbarOrgs.find((o) => o.id === selectedTopbarOrg);
                   if (match) {
@@ -242,7 +246,7 @@ export function Topbar() {
                       ? `${match.name} - ${match.branch}`
                       : match.name;
                   }
-                  return user?.gymName || 'Selected Organization';
+                  return user?.vahdName || 'Selected Organization';
                 })()}
               </span>
               <Icon name="chevron-down" size={12} className="text-slate-400 shrink-0" />
@@ -261,11 +265,10 @@ export function Topbar() {
                       window.dispatchEvent(new CustomEvent('vahd:org_changed', { detail: { id: 'all' } }));
                       setShowOrgDropdown(false);
                     }}
-                    className={`w-full flex items-center justify-between p-2 rounded-xl text-left ${
-                      selectedTopbarOrg === 'all'
-                        ? 'bg-purple-50 text-purple-900 font-extrabold'
-                        : 'hover:bg-slate-50 text-slate-700 font-medium'
-                    }`}
+                    className={`w-full flex items-center justify-between p-2 rounded-xl text-left ${selectedTopbarOrg === 'all'
+                      ? 'bg-purple-50 text-purple-900 font-extrabold'
+                      : 'hover:bg-slate-50 text-slate-700 font-medium'
+                      }`}
                   >
                     <span>All Organizations</span>
                     {selectedTopbarOrg === 'all' && <Icon name="check" size={13} className="text-purple-600" />}
@@ -279,11 +282,10 @@ export function Topbar() {
                         window.dispatchEvent(new CustomEvent('vahd:org_changed', { detail: { id: o.id } }));
                         setShowOrgDropdown(false);
                       }}
-                      className={`w-full flex items-center justify-between p-2 rounded-xl text-left ${
-                        selectedTopbarOrg === o.id
-                          ? 'bg-purple-50 text-purple-900 font-extrabold'
-                          : 'hover:bg-slate-50 text-slate-700 font-medium'
-                      }`}
+                      className={`w-full flex items-center justify-between p-2 rounded-xl text-left ${selectedTopbarOrg === o.id
+                        ? 'bg-purple-50 text-purple-900 font-extrabold'
+                        : 'hover:bg-slate-50 text-slate-700 font-medium'
+                        }`}
                     >
                       <div className="truncate">
                         <p className="font-bold truncate">{o.name}</p>
@@ -369,7 +371,7 @@ export function Topbar() {
                           <span className="text-[10px] text-orange-700 font-bold">{lead.timestamp}</span>
                         </div>
                         <p className="text-[11px] font-bold text-slate-700">
-                          {lead.gymName || 'Lead'} • <span className="text-orange-600">{lead.plan || 'Inquiry'}</span>
+                          {lead.vahdName || 'Lead'} • <span className="text-orange-600">{lead.plan || 'Inquiry'}</span>
                         </p>
                         <div className="flex items-center justify-between text-[10px] text-slate-500 font-medium">
                           <span>📞 {lead.phone}</span>
@@ -519,7 +521,8 @@ export function Topbar() {
               to={item.path}
               end={
                 item.path === '/owner' ||
-                item.path === '/trainer' ||
+                item.path === '/ho' ||
+                item.path === '/employee' ||
                 item.path === '/app' ||
                 item.path === '/super-admin'
               }

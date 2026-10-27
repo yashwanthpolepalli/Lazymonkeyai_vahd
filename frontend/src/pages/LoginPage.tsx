@@ -15,7 +15,7 @@ export function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
-  const [activeRole, setActiveRole] = useState<'admin' | 'ho' | 'owner' | 'employee' | 'student' | 'trainer' | 'customer'>('ho');
+  const [activeRole, setActiveRole] = useState<'admin' | 'ho' | 'owner' | 'employee' | 'student' | 'customer'>('ho');
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -44,9 +44,9 @@ export function LoginPage() {
     }
   };
 
-  const selectQuickRole = (role: 'admin' | 'ho' | 'owner' | 'employee' | 'student' | 'trainer' | 'customer') => {
-    const normalizedRole = role === 'trainer' ? 'employee' : role === 'customer' ? 'student' : role;
-    setActiveRole(normalizedRole as any);
+  const selectQuickRole = (role: 'admin' | 'ho' | 'owner' | 'employee' | 'student' | 'customer') => {
+    const normalizedRole = role === 'customer' ? 'student' : role;
+    setActiveRole(normalizedRole);
     setError('');
   };
 
@@ -55,7 +55,6 @@ export function LoginPage() {
     ho: 'Head Office (HO) Portal',
     owner: 'Owner Portal',
     employee: 'Employees Portal',
-    trainer: 'Employees Portal',
     student: 'Students Portal',
     customer: 'Students Portal',
   };
@@ -65,7 +64,6 @@ export function LoginPage() {
     ho: 'Sign In as Head Office (HO)',
     owner: 'Sign In as Owner',
     employee: 'Sign In as Employee',
-    trainer: 'Sign In as Employee',
     student: 'Sign In as Student',
     customer: 'Sign In as Student',
   };
@@ -79,7 +77,7 @@ export function LoginPage() {
 
         {/* LEFT COLUMN: Hero & Features Showcase */}
         <div className="lg:col-span-7 flex flex-col justify-between space-y-8 pr-0 lg:pr-6 relative">
-          
+
           {/* Top Brand Header */}
           <div className="flex items-center">
             <Logo size="lg" />
@@ -101,7 +99,7 @@ export function LoginPage() {
 
             {/* Features Badge Grid */}
             <div className="grid grid-cols-2 gap-3.5 mt-8 max-w-xl z-10 relative">
-              
+
               {/* Feature 1 */}
               <div className="bg-white/90 backdrop-blur-sm p-3.5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-3 hover:shadow-md transition-all">
                 <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
@@ -159,7 +157,7 @@ export function LoginPage() {
               ? 'bg-slate-900 border-slate-800 text-slate-100 shadow-slate-950/80'
               : 'bg-white border-slate-200/80 text-slate-900 shadow-slate-200/80'
           )}>
-            
+
             {/* Top Right Theme Toggle Switch & Dynamic Role Badge */}
             <div className="flex justify-between items-center mb-6">
               <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 text-xs font-extrabold capitalize">
@@ -204,12 +202,12 @@ export function LoginPage() {
                   {activeRole === 'ho'
                     ? 'Head Office (HO) Email'
                     : activeRole === 'owner'
-                    ? 'Owner Email'
-                    : activeRole === 'admin'
-                    ? 'Super Admin Email'
-                    : activeRole === 'employee' || activeRole === 'trainer'
-                    ? 'Employee Email'
-                    : 'Student Email'}
+                      ? 'Owner Email'
+                      : activeRole === 'admin'
+                        ? 'Super Admin Email'
+                        : activeRole === 'employee'
+                          ? 'Employee Email'
+                          : 'Student Email'}
                 </label>
                 <div className="relative flex items-center">
                   <Icon name="mail" size={18} className="absolute left-3.5 text-blue-500 pointer-events-none" />
@@ -221,12 +219,12 @@ export function LoginPage() {
                       activeRole === 'ho'
                         ? 'ho@vahd.ai'
                         : activeRole === 'owner'
-                        ? 'owner@vahd.ai'
-                        : activeRole === 'admin'
-                        ? 'admin@vahd.ai'
-                        : activeRole === 'employee' || activeRole === 'trainer'
-                        ? 'employee@vahd.ai'
-                        : 'student@vahd.ai'
+                          ? 'owner@vahd.ai'
+                          : activeRole === 'admin'
+                            ? 'admin@vahd.ai'
+                            : activeRole === 'employee'
+                              ? 'employee@vahd.ai'
+                              : 'student@vahd.ai'
                     }
                     className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-2xl py-2.5 pl-10 pr-10 text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                   />
@@ -338,7 +336,7 @@ export function LoginPage() {
                   onClick={() => selectQuickRole('employee')}
                   className={cn(
                     'py-2 px-1 text-center rounded-xl text-[10px] font-extrabold transition-all truncate',
-                    activeRole === 'employee' || activeRole === 'trainer'
+                    activeRole === 'employee'
                       ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30 scale-[1.02]'
                       : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300'
                   )}

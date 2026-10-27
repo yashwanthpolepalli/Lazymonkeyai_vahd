@@ -27,7 +27,7 @@ export function brochureDataToDesignJson(data: BrochureData): BrochureDesignJson
       content: {
         preset: data.logoPreset || 'kettlebell-bolt',
         src: data.logoUrl,
-        label: data.gymName,
+        label: data.vahdName,
       },
       style: {
         backgroundColor: 'rgba(255,255,255,0.08)',
@@ -35,15 +35,15 @@ export function brochureDataToDesignJson(data: BrochureData): BrochureDesignJson
         border: `1px solid ${data.customColors?.primary || '#EAB308'}40`,
       },
     },
-    // 3. Gym Name
+    // 3. vahd Name
     {
-      id: 'el_gym_name',
+      id: 'el_vahd_name',
       type: 'text',
-      semantic_role: 'gym_name',
+      semantic_role: 'vahd_name',
       editable: true,
       position: { x: 92, y: 28, zIndex: 10 },
       size: { width: 320, height: 30 },
-      content: { text: data.gymName },
+      content: { text: data.vahdName },
       style: {
         fontSize: '22px',
         fontFamily: 'Impact, Anton, sans-serif',
@@ -53,15 +53,15 @@ export function brochureDataToDesignJson(data: BrochureData): BrochureDesignJson
         textTransform: 'uppercase',
       },
     },
-    // 4. Gym Tagline
+    // 4. vahd Tagline
     {
-      id: 'el_gym_tagline',
+      id: 'el_vahd_tagline',
       type: 'text',
       semantic_role: 'tagline',
       editable: true,
       position: { x: 92, y: 56, zIndex: 10 },
       size: { width: 340, height: 18 },
-      content: { text: data.gymTagline },
+      content: { text: data.vahdTagline },
       style: {
         fontSize: '9px',
         fontWeight: '700',

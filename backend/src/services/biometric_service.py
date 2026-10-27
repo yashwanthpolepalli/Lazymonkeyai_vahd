@@ -124,8 +124,8 @@ class BiometricService:
             rf = str(role_filter).strip().upper()
             if rf in ["CUSTOMER", "CUSTOMERS"]:
                 query = query.filter(BiometricLog.user_role == "CUSTOMER")
-            elif rf in ["TRAINER", "STAFF", "TRAINERS", "TRAINER_STAFF", "EMPLOYEE", "STAFF_TRAINER"]:
-                query = query.filter(BiometricLog.user_role.in_(["TRAINER", "STAFF", "OWNER", "MANAGER"]))
+            elif rf in ["employee", "STAFF", "employeeS", "employee_STAFF", "EMPLOYEE", "STAFF_employee"]:
+                query = query.filter(BiometricLog.user_role.in_(["employee", "STAFF", "OWNER", "MANAGER"]))
 
         fetch_limit = limit * 3 if physical_only else limit
         logs = query.order_by(BiometricLog.timestamp.desc()).limit(fetch_limit).all()
@@ -146,10 +146,10 @@ class BiometricService:
         }
 
         from src.models.hrms import Employee
-        from src.models.trainer import TrainerProfile
-        trainers = {
+        from src.models.employee import employeeProfile
+        employees = {
             t.id: t
-            for t in (db.query(TrainerProfile).filter(TrainerProfile.id.in_(customer_ids)).all() if customer_ids else [])
+            for t in (db.query(employeeProfile).filter(employeeProfile.id.in_(customer_ids)).all() if customer_ids else [])
         }
         employees = {
             e.id: e
@@ -166,10 +166,10 @@ class BiometricService:
                 or meta.get("employee_name")
                 or meta.get("user_name")
                 or (customers.get(log.customer_id).full_name if log.customer_id in customers else None)
-                or (trainers.get(log.customer_id).full_name if log.customer_id in trainers else None)
+                or (employees.get(log.customer_id).full_name if log.customer_id in employees else None)
                 or (users.get(log.customer_id).full_name if log.customer_id in users else None)
                 or (f"{employees.get(log.customer_id).first_name} {employees.get(log.customer_id).last_name or ''}".strip() if log.customer_id in employees else None)
-                or (f"Member ({log.customer_id[:6]})" if log.customer_id else "Gym Member")
+                or (f"Member ({log.customer_id[:6]})" if log.customer_id else "vahd Member")
             )
 
             result.append({
@@ -210,8 +210,8 @@ class BiometricService:
             rf = str(role_filter).strip().upper()
             if rf in ["CUSTOMER", "CUSTOMERS"]:
                 query = query.filter(BiometricLog.user_role == "CUSTOMER")
-            elif rf in ["TRAINER", "STAFF", "TRAINERS", "TRAINER_STAFF", "EMPLOYEE", "STAFF_TRAINER"]:
-                query = query.filter(BiometricLog.user_role.in_(["TRAINER", "STAFF", "OWNER", "MANAGER"]))
+            elif rf in ["employee", "STAFF", "employeeS", "employee_STAFF", "EMPLOYEE", "STAFF_employee"]:
+                query = query.filter(BiometricLog.user_role.in_(["employee", "STAFF", "OWNER", "MANAGER"]))
 
         all_today_logs = query.all()
         if physical_only:
@@ -241,8 +241,8 @@ class BiometricService:
             rf = str(role_filter).strip().upper()
             if rf in ["CUSTOMER", "CUSTOMERS"]:
                 week_query = week_query.filter(BiometricLog.user_role == "CUSTOMER")
-            elif rf in ["TRAINER", "STAFF", "TRAINERS", "TRAINER_STAFF", "EMPLOYEE", "STAFF_TRAINER"]:
-                week_query = week_query.filter(BiometricLog.user_role.in_(["TRAINER", "STAFF", "OWNER", "MANAGER"]))
+            elif rf in ["employee", "STAFF", "employeeS", "employee_STAFF", "EMPLOYEE", "STAFF_employee"]:
+                week_query = week_query.filter(BiometricLog.user_role.in_(["employee", "STAFF", "OWNER", "MANAGER"]))
 
         week_all_logs = week_query.all()
         if physical_only:
@@ -276,7 +276,7 @@ class BiometricService:
         success_rate = round((granted_count / total_events * 100), 1) if total_events > 0 else 0.0
 
         customer_count = len([x for x in checkins if (x.user_role or "").upper() == "CUSTOMER"])
-        staff_count = len([x for x in checkins if (x.user_role or "").upper() in ["TRAINER", "STAFF", "OWNER", "MANAGER"]])
+        staff_count = len([x for x in checkins if (x.user_role or "").upper() in ["employee", "STAFF", "OWNER", "MANAGER"]])
 
         return {
             "today_checkins": len(checkins),

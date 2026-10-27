@@ -58,7 +58,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
     const handleSync = () => {
       hrmsApi.getLeaveTypes().then((types) => {
         if (Array.isArray(types)) setLeaveTypes(types);
-      }).catch(() => {});
+      }).catch(() => { });
     };
     window.addEventListener('vahd_master_data_updated', handleSync);
     return () => window.removeEventListener('vahd_master_data_updated', handleSync);
@@ -248,7 +248,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
     try {
       await hrmsApi.updateLeaveStatus(leaveId, {
         status,
-        reviewer: 'Gym Owner / Admin',
+        reviewer: 'vahd Owner / Admin',
         rejection_reason: reasonText,
       });
       onSuccessToast?.(`${status === 'Approved' ? 'Approved' : 'Rejected'} leave application.`);
@@ -273,7 +273,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
     setApplyError('');
 
     if (!formEmployeeId) {
-      setApplyError('Please select a trainer or staff member.');
+      setApplyError('Please select a employee or staff member.');
       return;
     }
     if (!formLeaveTypeId) {
@@ -725,7 +725,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                 <table className="w-full text-left text-xs">
                   <thead className="bg-navy-50/70 text-[11px] font-black uppercase text-navy-500 tracking-wider border-b border-navy-100">
                     <tr>
-                      <th className="py-3.5 px-4">TRAINER / STAFF</th>
+                      <th className="py-3.5 px-4">employee / STAFF</th>
                       <th className="py-3.5 px-4">LEAVE TYPE &amp; PAY</th>
                       <th className="py-3.5 px-4">PERIOD</th>
                       <th className="py-3.5 px-4">DAYS</th>
@@ -1479,7 +1479,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
               <table className="w-full text-left text-xs">
                 <thead className="bg-navy-50/70 text-[11px] font-black uppercase text-navy-500 tracking-wider border-b border-navy-100">
                   <tr>
-                    <th className="py-3 px-4">EMPLOYEE / TRAINER</th>
+                    <th className="py-3 px-4">EMPLOYEE / employee</th>
                     <th className="py-3 px-4">GENDER</th>
                     <th className="py-3 px-4">LEAVE POLICY</th>
                     <th className="py-3 px-4">ALLOCATED</th>
@@ -1583,7 +1583,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
               {/* Employee Selection */}
               <div>
                 <label className="block text-xs font-bold text-navy-700 mb-1.5">
-                  Select Trainer / Employee <span className="text-rose-500">*</span>
+                  Select employee / Employee <span className="text-rose-500">*</span>
                 </label>
                 <select
                   value={formEmployeeId}
@@ -1829,7 +1829,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
       )}
 
       {/* ───────────────────────────────────────────────────────────── */}
-      {/* 6. MODAL: CREATE / EDIT LEAVE POLICY (GYM OWNER)              */}
+      {/* 6. MODAL: CREATE / EDIT LEAVE POLICY (vahd OWNER)              */}
       {/* ───────────────────────────────────────────────────────────── */}
       {showPolicyModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-950/60 backdrop-blur-xs p-4 animate-fade-in overflow-y-auto">
@@ -2274,7 +2274,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
               rows={3}
               value={rejectionReason}
               onChange={(e) => setRejectionReason(e.target.value)}
-              placeholder="e.g. Critical training schedules conflict, please discuss with gym manager..."
+              placeholder="e.g. Critical training schedules conflict, please discuss with vahd manager..."
               className="w-full px-3 py-2 rounded-xl bg-navy-50 border border-navy-200 text-xs font-medium text-navy-900 placeholder-navy-400 focus:bg-white focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 outline-none resize-none"
             />
 

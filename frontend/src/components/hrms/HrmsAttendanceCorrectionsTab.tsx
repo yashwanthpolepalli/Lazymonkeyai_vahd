@@ -255,7 +255,7 @@ export function HrmsAttendanceCorrectionsTab({ onSuccessToast }: HrmsAttendanceC
           person_code: emp.code || '',
           designation: emp.designation || '',
           department: emp.department || '',
-          district: emp.gym_branch || prev.district,
+          district: emp.vahd_branch || prev.district,
         }));
       }
     } else {
@@ -888,8 +888,8 @@ export function HrmsAttendanceCorrectionsTab({ onSuccessToast }: HrmsAttendanceC
                           isApproved
                             ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                             : rec.status === 'Rejected'
-                            ? "bg-rose-50 text-rose-700 border-rose-200"
-                            : "bg-amber-50 text-amber-700 border-amber-200"
+                              ? "bg-rose-50 text-rose-700 border-rose-200"
+                              : "bg-amber-50 text-amber-700 border-amber-200"
                         )}>
                           {rec.status}
                         </span>
@@ -982,7 +982,7 @@ export function HrmsAttendanceCorrectionsTab({ onSuccessToast }: HrmsAttendanceC
                       : "text-slate-600 hover:text-slate-900"
                   )}
                 >
-                  👨‍💼 Employee / Trainer
+                  👨‍💼 Employee / employee
                 </button>
                 <button
                   type="button"
@@ -1021,15 +1021,15 @@ export function HrmsAttendanceCorrectionsTab({ onSuccessToast }: HrmsAttendanceC
                   <option value="">-- Choose or Enter Manually Below --</option>
                   {newForm.person_type === 'EMPLOYEE'
                     ? employees.map((emp) => (
-                        <option key={emp.id} value={emp.id}>
-                          {emp.full_name || `${emp.first_name} ${emp.last_name || ''}`} ({emp.code || 'EMP'}) - {emp.designation || 'Staff'}
-                        </option>
-                      ))
+                      <option key={emp.id} value={emp.id}>
+                        {emp.full_name || `${emp.first_name} ${emp.last_name || ''}`} ({emp.code || 'EMP'}) - {emp.designation || 'Staff'}
+                      </option>
+                    ))
                     : students.map((st) => (
-                        <option key={st.id} value={st.id}>
-                          {st.name} ({st.member_id || 'STU'})
-                        </option>
-                      ))}
+                      <option key={st.id} value={st.id}>
+                        {st.name} ({st.member_id || 'STU'})
+                      </option>
+                    ))}
                 </select>
               </div>
 

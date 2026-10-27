@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, desc, or_
 
 from src.models.customer import Customer
-from src.models.settings import GymBranch
+from src.models.settings import vahdBranch
 from src.models.biometric import BiometricLog
 from src.models.crm import WhatsAppSessionModel
 from src.models.student_report import StudentAttendanceReportLog
@@ -170,9 +170,9 @@ class StudentAttendanceReportService:
             status_text = "🚨 Severe Shortage (Critical Risk of Exam Detention)"
             status_code = "CRITICAL"
 
-        course_name = meta.get("course") or student.goal or "Degree Program"
+        course_name = meta.get("course") or "Degree Program"
         medium_name = meta.get("medium") or ""
-        college_name = meta.get("college_name") or student.primary_gym_location or "VAHD Higher Education Academy"
+        college_name = meta.get("college_name") or student.primary_vahd_location or "VAHD Higher Education Academy"
         roll_number = meta.get("roll_number") or meta.get("admission_number") or student.id
 
         return {
@@ -595,8 +595,8 @@ class StudentAttendanceReportService:
         target_year = year or now.year
         target_month = month or now.month
 
-        # Query branches to provide branch_name and gym_name mapping
-        branches_dict = {b.id: b for b in db.query(GymBranch).all()}
+        # Query branches to provide branch_name and vahd_name mapping
+        branches_dict = {b.id: b for b in db.query(vahdBranch).all()}
 
         query = db.query(Customer).filter(
             or_(
@@ -650,8 +650,8 @@ class StudentAttendanceReportService:
             total_pct_sum += rep.get("attendance_percentage", 0.0)
 
             branch_obj = branches_dict.get(s.branch_id)
-            branch_label = branch_obj.branch_name if branch_obj else (s.primary_gym_location or "Main Campus")
-            gym_label = branch_obj.gym_name if branch_obj else ""
+            branch_label = branch_obj.branch_name if branch_obj else (s.primary_vahd_location or "Main Campus")
+            vahd_label = branch_obj.vahd_name if branch_obj else ""
 
             student_reports.append({
                 "student_id": s.id,
@@ -661,7 +661,7 @@ class StudentAttendanceReportService:
                 "course": rep.get("course"),
                 "branch_id": s.branch_id,
                 "branch_name": branch_label,
-                "gym_name": gym_label,
+                "vahd_name": vahd_label,
                 "parent_phone": rep.get("parent_phone"),
                 "has_parent_phone": rep.get("has_parent_phone"),
                 "total_working_days": rep.get("total_working_days"),

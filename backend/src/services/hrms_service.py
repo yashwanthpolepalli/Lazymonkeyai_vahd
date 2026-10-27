@@ -11,12 +11,12 @@ from src.models.hrms import (
     RecruitmentJob, JobApplicant, EmployeePerformance, ExitRequest,
     GeofenceScheme, LeaveType, EmployeeLeaveBalance, AttendanceCorrection
 )
-from src.models.trainer import TrainerProfile
+from src.models.employee import employeeProfile
 from src.models.payroll import PayrollInvoice
 from src.models.customer import Customer
 from src.models.user import User
 from src.models.biometric import BiometricLog
-from src.models.settings import Branch as GymBranch, Setting as GymSetting
+from src.models.settings import Branch as vahdBranch, Setting as vahdSetting
 
 IST = timezone(timedelta(hours=5, minutes=30))
 
@@ -24,21 +24,21 @@ IST = timezone(timedelta(hours=5, minutes=30))
 
 class HrmsService:
     # -------------------------------------------------------------
-    # 1. EMPLOYEE MANAGEMENT & TRAINERS MAPPING METHODS
+    # 1. EMPLOYEE MANAGEMENT & employeeS MAPPING METHODS
     # -------------------------------------------------------------
     @staticmethod
-    def sync_trainers_to_employees(db: Session) -> None:
+    def sync_employees_to_employees(db: Session) -> None:
         """
-        Synchronizes all trainers and staff from TrainerProfile into HRMS Employee records.
-        Removes any obsolete or mock employee records that do not belong to actual trainers/staff.
+        Synchronizes all employees and staff from employeeProfile into HRMS Employee records.
+        Removes any obsolete or mock employee records that do not belong to actual employees/staff.
         """
-        trainers = db.query(TrainerProfile).all()
-        trainer_emails = {t.email.strip().lower() for t in trainers if t.email}
+        employees = db.query(employeeProfile).all()
+        employee_emails = {t.email.strip().lower() for t in employees if t.email}
 
-        # 1. Purge obsolete/mock employees not present in TrainerProfile
+        # 1. Purge obsolete/mock employees not present in employeeProfile
         all_employees = db.query(Employee).all()
         for emp in all_employees:
-            if not emp.email or emp.email.strip().lower() not in trainer_emails:
+            if not emp.email or emp.email.strip().lower() not in employee_emails:
                 db.query(EmployeeAttendance).filter(EmployeeAttendance.employee_id == emp.id).delete()
                 db.query(LeaveRequest).filter(LeaveRequest.employee_id == emp.id).delete()
                 db.query(PayrollRecord).filter(PayrollRecord.employee_id == emp.id).delete()
@@ -48,11 +48,11 @@ class HrmsService:
                 db.delete(emp)
         db.flush()
 
-        # 2. Upsert each TrainerProfile into Employee
+        # 2. Upsert each employeeProfile into Employee
         existing_codes = {e.code for e in db.query(Employee.code).all() if e.code}
         next_code_num = 1
 
-        for idx, t in enumerate(trainers, start=1):
+        for idx, t in enumerate(employees, start=1):
             full_name = (t.full_name or "").strip()
             parts = full_name.split(" ", 1)
             first_name = parts[0] if parts else ""
@@ -71,9 +71,9 @@ class HrmsService:
                 u = db.query(User).filter(func.lower(User.email) == t.email.strip().lower()).first()
 
             b = None
-            if t.primary_gym_location:
-                b = db.query(GymBranch).filter(
-                    or_(GymBranch.id == t.primary_gym_location, GymBranch.branch_name.ilike(f"%{t.primary_gym_location}%"))
+            if t.primary_vahd_location:
+                b = db.query(vahdBranch).filter(
+                    or_(vahdBranch.id == t.primary_vahd_location, vahdBranch.branch_name.ilike(f"%{t.primary_vahd_location}%"))
                 ).first()
 
             t_branch_id = (u.branch_id if u and u.branch_id else None) or (b.id if b else None)
@@ -94,7 +94,7 @@ class HrmsService:
                 existing_emp.department = dept or existing_emp.department
                 existing_emp.status = status
                 existing_emp.salary = salary
-                existing_emp.gym_branch = t.primary_gym_location or existing_emp.gym_branch or ""
+                existing_emp.vahd_branch = t.primary_vahd_location or existing_emp.vahd_branch or ""
                 if t_branch_id and not existing_emp.branch_id:
                     existing_emp.branch_id = t_branch_id
                 if t_owner_id and not getattr(existing_emp, "owner_id", None):
@@ -129,7 +129,7 @@ class HrmsService:
                     status=status,
                     salary=salary,
                     avatar="",
-                    gym_branch=t.primary_gym_location or "",
+                    vahd_branch=t.primary_vahd_location or "",
                     branch_id=t_branch_id,
                     owner_id=t_owner_id,
                     ho_id=t_ho_id,
@@ -149,9 +149,9 @@ class HrmsService:
         ho_id: Optional[str] = None,
         current_user: Optional[User] = None
     ) -> List[Dict[str, Any]]:
-        # Always sync with trainer profiles first
+        # Always sync with employee profiles first
         try:
-            HrmsService.sync_trainers_to_employees(db)
+            HrmsService.sync_employees_to_employees(db)
         except Exception:
             db.rollback()
 
@@ -162,8 +162,8 @@ class HrmsService:
             user_role = (current_user.role or "").strip().upper()
             if user_role in ["HEAD_OFFICE", "HO"]:
                 ho_target = current_user.ho_id or current_user.id
-                ho_branches = db.query(GymBranch).filter(
-                    or_(GymBranch.ho_id == ho_target, GymBranch.owner_id == current_user.id)
+                ho_branches = db.query(vahdBranch).filter(
+                    or_(vahdBranch.ho_id == ho_target, vahdBranch.owner_id == current_user.id)
                 ).all()
                 ho_branch_names = [b.branch_name for b in ho_branches if b.branch_name]
                 ho_branch_ids = [b.id for b in ho_branches if b.id]
@@ -172,34 +172,34 @@ class HrmsService:
                 if ho_branch_ids:
                     conditions.append(Employee.branch_id.in_(ho_branch_ids))
                 if ho_branch_names:
-                    conditions.append(Employee.gym_branch.in_(ho_branch_names))
+                    conditions.append(Employee.vahd_branch.in_(ho_branch_names))
 
                 query = query.filter(or_(*conditions))
 
                 if branch_id:
-                    query = query.filter(or_(Employee.branch_id == branch_id, Employee.gym_branch.ilike(f"%{branch_id}%")))
+                    query = query.filter(or_(Employee.branch_id == branch_id, Employee.vahd_branch.ilike(f"%{branch_id}%")))
             elif user_role in ["OWNER"]:
-                owner_branches = db.query(GymBranch).filter(
+                owner_branches = db.query(vahdBranch).filter(
                     or_(
-                        GymBranch.owner_id == current_user.id,
-                        GymBranch.id == current_user.branch_id
+                        vahdBranch.owner_id == current_user.id,
+                        vahdBranch.id == current_user.branch_id
                     )
                 ).all()
-                owner_branch_names = [b.branch_name for b in owner_branches if b.branch_name] + [b.gym_name for b in owner_branches if b.gym_name]
+                owner_branch_names = [b.branch_name for b in owner_branches if b.branch_name] + [b.vahd_name for b in owner_branches if b.vahd_name]
                 owner_branch_ids = [b.id for b in owner_branches if b.id]
                 conditions = [Employee.owner_id == current_user.id]
                 if owner_branch_ids:
                     conditions.append(Employee.branch_id.in_(owner_branch_ids))
                 if owner_branch_names:
-                    conditions.append(Employee.gym_branch.in_(owner_branch_names))
+                    conditions.append(Employee.vahd_branch.in_(owner_branch_names))
                 if conditions:
                     query = query.filter(or_(*conditions))
                 if branch_id:
-                    query = query.filter(or_(Employee.branch_id == branch_id, Employee.gym_branch.ilike(f"%{branch_id}%")))
+                    query = query.filter(or_(Employee.branch_id == branch_id, Employee.vahd_branch.ilike(f"%{branch_id}%")))
         elif ho_id:
             query = query.filter(Employee.ho_id == ho_id)
         elif branch_id:
-            query = query.filter(or_(Employee.branch_id == branch_id, Employee.gym_branch.ilike(f"%{branch_id}%")))
+            query = query.filter(or_(Employee.branch_id == branch_id, Employee.vahd_branch.ilike(f"%{branch_id}%")))
 
         if department and department != "All Departments":
             query = query.filter(Employee.department == department)
@@ -241,7 +241,7 @@ class HrmsService:
                 "skills": e.skills or [],
                 "qualification": getattr(e, "qualification", None) or "",
                 "specialization": getattr(e, "specialization", None) or "",
-                "gym_branch": e.gym_branch or "",
+                "vahd_branch": e.vahd_branch or "",
                 "branch_id": e.branch_id or "",
                 "ho_id": e.ho_id or "",
                 "owner_id": getattr(e, "owner_id", None) or "",
@@ -260,17 +260,17 @@ class HrmsService:
         designation = str(payload.get("designation") or "").strip()
         department = str(payload.get("department") or "").strip()
         salary = float(payload.get("salary") or 0.0)
-        gym_branch = str(payload.get("gym_branch") or "").strip()
+        vahd_branch = str(payload.get("vahd_branch") or "").strip()
         branch_id = payload.get("branch_id")
         ho_id = payload.get("ho_id")
         owner_id = payload.get("owner_id")
 
-        from src.models.settings import Branch as GymBranch
+        from src.models.settings import Branch as vahdBranch
         from sqlalchemy import or_
 
-        if gym_branch and not branch_id:
-            matched_b = db.query(GymBranch).filter(
-                or_(GymBranch.id == gym_branch, GymBranch.branch_name.ilike(f"%{gym_branch}%"))
+        if vahd_branch and not branch_id:
+            matched_b = db.query(vahdBranch).filter(
+                or_(vahdBranch.id == vahd_branch, vahdBranch.branch_name.ilike(f"%{vahd_branch}%"))
             ).first()
             if matched_b:
                 branch_id = matched_b.id
@@ -279,7 +279,7 @@ class HrmsService:
                 if not owner_id and matched_b.owner_id:
                     owner_id = matched_b.owner_id
         elif branch_id:
-            matched_b = db.query(GymBranch).filter(GymBranch.id == branch_id).first()
+            matched_b = db.query(vahdBranch).filter(vahdBranch.id == branch_id).first()
             if matched_b:
                 if not ho_id and matched_b.ho_id:
                     ho_id = matched_b.ho_id
@@ -291,9 +291,9 @@ class HrmsService:
             if owner_u and owner_u.ho_id:
                 ho_id = owner_u.ho_id
 
-        # Map department/designation to TrainerProfile role
+        # Map department/designation to employeeProfile role
         role = str(payload.get("role") or "EMPLOYEE").upper()
-        if role == "TRAINER":
+        if role == "employee":
             role = "EMPLOYEE"
         if not payload.get("role"):
             if "Management" in department or "Director" in designation or "Owner" in designation:
@@ -301,22 +301,22 @@ class HrmsService:
             elif "Front Desk" in department or "Support" in department:
                 role = "STAFF"
 
-        # Also register in TrainerProfile so both remain in sync
+        # Also register in employeeProfile so both remain in sync
         from src.services.payroll_service import PayrollService
-        PayrollService.register_trainer(db, {
+        PayrollService.register_employee(db, {
             "full_name": full_name,
             "email": email,
             "phone": phone,
             "role": role,
             "specialization": designation,
             "base_monthly_salary": salary,
-            "primary_gym_location": gym_branch,
+            "primary_vahd_location": vahd_branch,
             "branch_id": branch_id,
             "owner_id": owner_id,
             "ho_id": ho_id
         })
 
-        HrmsService.sync_trainers_to_employees(db)
+        HrmsService.sync_employees_to_employees(db)
         emp = db.query(Employee).filter(Employee.email == email).first()
         if emp:
             if payload.get("status"):
@@ -365,19 +365,19 @@ class HrmsService:
                         val = 0.0
                 setattr(emp, key, val)
 
-        # Sync back to TrainerProfile if exists
-        trainer_id = emp_id.replace("emp_", "")
-        trainer = db.query(TrainerProfile).filter(
-            (TrainerProfile.id == trainer_id) | (TrainerProfile.email == emp.email)
+        # Sync back to employeeProfile if exists
+        employee_id = emp_id.replace("emp_", "")
+        employee = db.query(employeeProfile).filter(
+            (employeeProfile.id == employee_id) | (employeeProfile.email == emp.email)
         ).first()
-        if trainer:
+        if employee:
             full_name = f"{emp.first_name} {emp.last_name or ''}".strip()
-            trainer.full_name = full_name
-            trainer.email = emp.email
-            trainer.phone = emp.phone
-            trainer.specialization = emp.designation
-            trainer.base_monthly_salary = emp.salary
-            trainer.is_active = (emp.status.lower() == "active")
+            employee.full_name = full_name
+            employee.email = emp.email
+            employee.phone = emp.phone
+            employee.specialization = emp.designation
+            employee.base_monthly_salary = emp.salary
+            employee.is_active = (emp.status.lower() == "active")
 
         db.commit()
         return {"message": "Employee updated successfully"}
@@ -388,12 +388,12 @@ class HrmsService:
         if not emp:
             return False
 
-        trainer_id = emp_id.replace("emp_", "")
-        trainer = db.query(TrainerProfile).filter(
-            (TrainerProfile.id == trainer_id) | (TrainerProfile.email == emp.email)
+        employee_id = emp_id.replace("emp_", "")
+        employee = db.query(employeeProfile).filter(
+            (employeeProfile.id == employee_id) | (employeeProfile.email == emp.email)
         ).first()
-        if trainer:
-            db.delete(trainer)
+        if employee:
+            db.delete(employee)
 
         db.delete(emp)
         db.commit()
@@ -407,7 +407,7 @@ class HrmsService:
     def get_departments(db: Session) -> List[Dict[str, Any]]:
         depts = db.query(Department).order_by(Department.name.asc()).all()
         employees = db.query(Employee).all()
-        trainers = db.query(TrainerProfile).all()
+        employees = db.query(employeeProfile).all()
         
         result = []
         for d in depts:
@@ -431,8 +431,8 @@ class HrmsService:
                         "joined_date": e.joined_date.isoformat() if e.joined_date else None,
                     })
             
-            # Map from TrainerProfile records
-            for t in trainers:
+            # Map from employeeProfile records
+            for t in employees:
                 t_dept = (getattr(t, "department", None) or getattr(t, "specialization", None) or "").strip().lower()
                 if t_dept and t_dept == dept_name_lower:
                     # Check if already added
@@ -541,7 +541,7 @@ class HrmsService:
     def get_designations(db: Session) -> List[Dict[str, Any]]:
         desgs = db.query(Designation).order_by(Designation.title.asc()).all()
         employees = db.query(Employee).all()
-        trainers = db.query(TrainerProfile).all()
+        employees = db.query(employeeProfile).all()
         
         result = []
         for d in desgs:
@@ -561,7 +561,7 @@ class HrmsService:
                         "phone": e.phone or ""
                     })
             
-            for t in trainers:
+            for t in employees:
                 t_desg = (getattr(t, "job_designation", None) or getattr(t, "specialization", None) or getattr(t, "role", None) or "").strip().lower()
                 if t_desg and t_desg == title_lower:
                     if not any(emp["email"].lower() == (t.email or "").lower() for emp in mapped):
@@ -721,10 +721,10 @@ class HrmsService:
     def get_geofence_schemes(db: Session) -> List[Dict[str, Any]]:
         schemes = db.query(GeofenceScheme).order_by(GeofenceScheme.created_at.asc()).all()
         if not schemes:
-            # Dynamically initialize from actual GymBranch / GymSetting if existing
-            branches = db.query(GymBranch).filter(GymBranch.is_active == True).all()
-            setting = db.query(GymSetting).first()
-            gym_title = setting.gym_name if setting and setting.gym_name else ""
+            # Dynamically initialize from actual vahdBranch / vahdSetting if existing
+            branches = db.query(vahdBranch).filter(vahdBranch.is_active == True).all()
+            setting = db.query(vahdSetting).first()
+            vahd_title = setting.vahd_name if setting and setting.vahd_name else ""
             all_emps = db.query(Employee).all()
             all_emp_ids = [e.id for e in all_emps]
 
@@ -734,7 +734,7 @@ class HrmsService:
                         id=f"scheme_{uuid.uuid4().hex[:8]}",
                         name=b.branch_name,
                         branch_name=b.branch_name,
-                        gym_name=b.gym_name or gym_title,
+                        vahd_name=b.vahd_name or vahd_title,
                         latitude=None,
                         longitude=None,
                         radius_meters=500,
@@ -758,7 +758,7 @@ class HrmsService:
                 "id": s.id,
                 "name": s.name,
                 "branch_name": s.branch_name or "",
-                "gym_name": s.gym_name or "",
+                "vahd_name": s.vahd_name or "",
                 "latitude": float(s.latitude) if s.latitude is not None else None,
                 "longitude": float(s.longitude) if s.longitude is not None else None,
                 "radius_meters": int(s.radius_meters) if s.radius_meters is not None else None,
@@ -799,8 +799,8 @@ class HrmsService:
         scheme.name = name
         if "branch_name" in payload:
             scheme.branch_name = payload["branch_name"]
-        if "gym_name" in payload:
-            scheme.gym_name = payload["gym_name"]
+        if "vahd_name" in payload:
+            scheme.vahd_name = payload["vahd_name"]
         if "latitude" in payload and payload["latitude"] is not None:
             scheme.latitude = float(payload["latitude"])
         if "longitude" in payload and payload["longitude"] is not None:
@@ -876,13 +876,13 @@ class HrmsService:
             })
             recorded_emp_ids.add(l.employee_id)
 
-        # Also pull staff / trainer attendance from BiometricLog for target date
+        # Also pull staff / employee attendance from BiometricLog for target date
         start_of_day = datetime.combine(target_date, datetime.min.time())
         end_of_day = datetime.combine(target_date, datetime.max.time())
         bio_staff_logs = db.query(BiometricLog).filter(
             BiometricLog.timestamp >= start_of_day,
             BiometricLog.timestamp <= end_of_day,
-            BiometricLog.user_role.in_(["TRAINER", "STAFF", "OWNER", "MANAGER"])
+            BiometricLog.user_role.in_(["employee", "STAFF", "OWNER", "MANAGER"])
         ).order_by(BiometricLog.timestamp.desc()).all()
 
         for blog in bio_staff_logs:
@@ -1027,18 +1027,18 @@ class HrmsService:
                 display_name = "Student Member"
                 customer_id_val = employee_id
         else:
-            # Trainer / Staff / Employee / Owner
+            # employee / Staff / Employee / Owner
             emp = db.query(Employee).filter(
                 (Employee.id == employee_id) | (Employee.code == employee_id) | (Employee.email.ilike(employee_id))
             ).first()
 
-            trainer = None
+            employee = None
             if not emp:
-                trainer = db.query(TrainerProfile).filter(
-                    (TrainerProfile.id == employee_id) | (TrainerProfile.email.ilike(employee_id))
+                employee = db.query(employeeProfile).filter(
+                    (employeeProfile.id == employee_id) | (employeeProfile.email.ilike(employee_id))
                 ).first()
-                if trainer:
-                    emp = db.query(Employee).filter((Employee.id == f"emp_{trainer.id}") | (Employee.id == trainer.id)).first()
+                if employee:
+                    emp = db.query(Employee).filter((Employee.id == f"emp_{employee.id}") | (Employee.id == employee.id)).first()
 
             if not emp and user_role_upper == "OWNER":
                 owner_user = db.query(User).filter(User.role == "OWNER").first()
@@ -1062,21 +1062,21 @@ class HrmsService:
                         db.flush()
 
             if not emp:
-                full_name = (trainer.full_name if trainer else employee_id)
+                full_name = (employee.full_name if employee else employee_id)
                 unique_code = f"EMP-{uuid.uuid4().hex[:4].upper()}"
                 emp = Employee(
-                    id=f"emp_{trainer.id if trainer else uuid.uuid4().hex[:8]}",
+                    id=f"emp_{employee.id if employee else uuid.uuid4().hex[:8]}",
                     code=unique_code,
                     first_name=full_name,
-                    email=trainer.email if trainer else (employee_id if "@" in employee_id else f"{employee_id}@lazymonkey.ai"),
-                    designation=trainer.role if trainer else "",
+                    email=employee.email if employee else (employee_id if "@" in employee_id else f"{employee_id}@lazymonkey.ai"),
+                    designation=employee.role if employee else "",
                     department="",
                     status="Active"
                 )
                 db.add(emp)
                 db.flush()
 
-            display_name = f"{emp.first_name} {emp.last_name or ''}".strip() or (trainer.full_name if trainer else emp.email)
+            display_name = f"{emp.first_name} {emp.last_name or ''}".strip() or (employee.full_name if employee else emp.email)
             customer_id_val = None
 
             # Record in EmployeeAttendance
@@ -1148,10 +1148,10 @@ class HrmsService:
                 meta_data={
                     "user_id": employee_id,
                     "employee_id": (emp.id if 'emp' in locals() and emp else employee_id),
-                    "trainer_id": (trainer.id if 'trainer' in locals() and trainer else None),
+                    "employee_id": (employee.id if 'employee' in locals() and employee else None),
                     "user_name": display_name,
                     "employee_name": display_name,
-                    "email": (emp.email if 'emp' in locals() and emp else (trainer.email if 'trainer' in locals() and trainer else employee_id)),
+                    "email": (emp.email if 'emp' in locals() and emp else (employee.email if 'employee' in locals() and employee else employee_id)),
                     "distance_meters": distance,
                     "within_perimeter": is_within_geofence,
                     "latitude": latitude,
@@ -1467,7 +1467,7 @@ class HrmsService:
 
     @staticmethod
     def update_leave_type(db: Session, leave_type_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """Updates an existing leave policy configured by Gym Owner/Admin."""
+        """Updates an existing leave policy configured by vahd Owner/Admin."""
         lt = db.query(LeaveType).filter(LeaveType.id == leave_type_id).first()
         if not lt:
             raise ValueError("Leave type policy not found.")
@@ -1539,20 +1539,20 @@ class HrmsService:
     @staticmethod
     def get_eligible_leave_types_for_employee(db: Session, employee_id: str) -> Dict[str, Any]:
         """
-        Dynamically calculates and filters leave eligibility for a specific employee/trainer.
+        Dynamically calculates and filters leave eligibility for a specific employee/employee.
         Applies Gender, Employment Type, Minimum Service Days, and Department rules.
         Calculates real-time allocated, used, pending, and remaining balances per eligible leave.
         """
         emp_id = str(employee_id or "").strip()
         emp = db.query(Employee).filter((Employee.id == emp_id) | (Employee.code == emp_id) | (Employee.email.ilike(emp_id))).first()
-        trainer = None
+        employee = None
         if not emp:
             clean_id = emp_id.replace("emp_", "")
-            trainer = db.query(TrainerProfile).filter(
-                (TrainerProfile.id == emp_id) | (TrainerProfile.id == clean_id) | (TrainerProfile.email.ilike(emp_id))
+            employee = db.query(employeeProfile).filter(
+                (employeeProfile.id == emp_id) | (employeeProfile.id == clean_id) | (employeeProfile.email.ilike(emp_id))
             ).first()
-            if trainer:
-                emp = db.query(Employee).filter(Employee.id == f"emp_{trainer.id}").first()
+            if employee:
+                emp = db.query(Employee).filter(Employee.id == f"emp_{employee.id}").first()
 
         emp_gender = "MALE"
         emp_name = "Employee"
@@ -1566,11 +1566,11 @@ class HrmsService:
             emp_dept = emp.department or "General"
             emp_emp_type = (emp.employment_type or "FULL_TIME").strip().upper().replace("-", "_").replace(" ", "_")
             joined_d = emp.joined_date or date.today()
-        elif trainer:
-            emp_gender = (trainer.gender or "MALE").strip().upper()
-            emp_name = trainer.full_name or "Trainer"
-            emp_dept = trainer.primary_gym_location or "Fitness"
-            joined_d = trainer.created_at.date() if trainer.created_at else date.today()
+        elif employee:
+            emp_gender = (employee.gender or "MALE").strip().upper()
+            emp_name = employee.full_name or "employee"
+            emp_dept = employee.primary_vahd_location or "Fitness"
+            joined_d = employee.created_at.date() if employee.created_at else date.today()
 
         service_days = max(0, (date.today() - joined_d).days)
         current_year = date.today().year
@@ -1587,9 +1587,9 @@ class HrmsService:
             f"emp_{employee_id}" if not str(employee_id).startswith("emp_") else None,
             str(employee_id).replace("emp_", "") if str(employee_id).startswith("emp_") else None,
             getattr(emp, "email", None),
-            getattr(trainer, "id", None) if "trainer" in locals() and trainer else None,
-            f"emp_{trainer.id}" if "trainer" in locals() and trainer else None,
-            getattr(trainer, "email", None) if "trainer" in locals() and trainer else None,
+            getattr(employee, "id", None) if "employee" in locals() and employee else None,
+            f"emp_{employee.id}" if "employee" in locals() and employee else None,
+            getattr(employee, "email", None) if "employee" in locals() and employee else None,
         }))
 
         # Query employee approved leaves this year
@@ -1726,20 +1726,20 @@ class HrmsService:
         result = []
         for l in leaves:
             emp = db.query(Employee).filter(Employee.id == l.employee_id).first()
-            trainer = None
+            employee = None
             if not emp:
                 clean_id = l.employee_id.replace("emp_", "")
-                trainer = db.query(TrainerProfile).filter(
-                    (TrainerProfile.id == l.employee_id) | (TrainerProfile.id == clean_id)
+                employee = db.query(employeeProfile).filter(
+                    (employeeProfile.id == l.employee_id) | (employeeProfile.id == clean_id)
                 ).first()
-                if trainer:
-                    emp = db.query(Employee).filter(Employee.id == f"emp_{trainer.id}").first()
+                if employee:
+                    emp = db.query(Employee).filter(Employee.id == f"emp_{employee.id}").first()
 
-            emp_name = f"{emp.first_name} {emp.last_name or ''}".strip() if emp else (trainer.full_name if trainer else "")
-            emp_code = emp.code if emp else (f"TR-{trainer.id.replace('tr_', '').upper()}" if trainer else "")
-            emp_gender = emp.gender if emp else (trainer.gender if trainer and trainer.gender else "Male")
-            dept = emp.department if emp else (trainer.primary_gym_location if trainer and trainer.primary_gym_location else "")
-            designation = emp.designation if emp else (trainer.role if trainer and trainer.role else "")
+            emp_name = f"{emp.first_name} {emp.last_name or ''}".strip() if emp else (employee.full_name if employee else "")
+            emp_code = emp.code if emp else (f"TR-{employee.id.replace('tr_', '').upper()}" if employee else "")
+            emp_gender = emp.gender if emp else (employee.gender if employee and employee.gender else "Male")
+            dept = emp.department if emp else (employee.primary_vahd_location if employee and employee.primary_vahd_location else "")
+            designation = emp.designation if emp else (employee.role if employee and employee.role else "")
 
             # Match leave policy for code / paid status
             lt = None
@@ -1783,28 +1783,28 @@ class HrmsService:
         """Applies for leave with dynamic policy validation & eligibility check."""
         emp_id = str(payload.get("employee_id") or "").strip()
         if not emp_id:
-            raise ValueError("Employee / Trainer ID is required.")
+            raise ValueError("Employee / employee ID is required.")
 
-        # Ensure employee exists or resolve trainer
+        # Ensure employee exists or resolve employee
         emp = db.query(Employee).filter((Employee.id == emp_id) | (Employee.code == emp_id) | (Employee.email.ilike(emp_id))).first()
         if not emp:
             clean_tid = emp_id.replace("emp_", "")
-            trainer = db.query(TrainerProfile).filter((TrainerProfile.id == emp_id) | (TrainerProfile.id == clean_tid) | (TrainerProfile.email.ilike(emp_id))).first()
-            if trainer:
-                emp_id = f"emp_{trainer.id}"
+            employee = db.query(employeeProfile).filter((employeeProfile.id == emp_id) | (employeeProfile.id == clean_tid) | (employeeProfile.email.ilike(emp_id))).first()
+            if employee:
+                emp_id = f"emp_{employee.id}"
                 emp = db.query(Employee).filter(Employee.id == emp_id).first()
                 if not emp:
                     emp = Employee(
                         id=emp_id,
-                        code=f"TR-{trainer.id.replace('tr_', '').upper()}",
-                        first_name=trainer.full_name,
-                        email=trainer.email,
-                        phone=trainer.phone or "",
-                        gender=trainer.gender or "Male",
-                        designation=trainer.role or trainer.specialization or "",
-                        department=trainer.primary_gym_location or "",
+                        code=f"TR-{employee.id.replace('tr_', '').upper()}",
+                        first_name=employee.full_name,
+                        email=employee.email,
+                        phone=employee.phone or "",
+                        gender=employee.gender or "Male",
+                        designation=employee.role or employee.specialization or "",
+                        department=employee.primary_vahd_location or "",
                         status="Active",
-                        salary=float(trainer.base_monthly_salary or 0.0)
+                        salary=float(employee.base_monthly_salary or 0.0)
                     )
                     db.add(emp)
                     db.flush()
@@ -1962,10 +1962,10 @@ class HrmsService:
         return parsed_month, parsed_year, month_name
 
     @staticmethod
-    def generate_batch_payroll(db: Session, trainer_ids: List[str], month: Optional[str] = None, year: Optional[int] = None) -> List[Dict[str, Any]]:
+    def generate_batch_payroll(db: Session, employee_ids: List[str], month: Optional[str] = None, year: Optional[int] = None) -> List[Dict[str, Any]]:
         """
-        Dynamically generates monthly payroll for selected trainers/staff based on:
-        - Base monthly salary from TrainerProfile
+        Dynamically generates monthly payroll for selected employees/staff based on:
+        - Base monthly salary from employeeProfile
         - Biometric punches & attendance records for the month
         - Approved paid leaves (no deduction for approved paid/casual/sick leaves)
         - Assigned active customer enrollments and conducted PT sessions
@@ -1982,56 +1982,56 @@ class HrmsService:
         start_datetime = datetime.combine(start_date, datetime.min.time())
         end_datetime = datetime.combine(end_date, datetime.max.time())
 
-        # If trainer_ids is empty or contains "ALL", fetch all active trainers
-        if not trainer_ids or "ALL" in [t.upper() for t in trainer_ids]:
-            all_trainers = db.query(TrainerProfile).filter(TrainerProfile.is_active == True).all()
-            target_trainer_ids = [t.id for t in all_trainers]
+        # If employee_ids is empty or contains "ALL", fetch all active employees
+        if not employee_ids or "ALL" in [t.upper() for t in employee_ids]:
+            all_employees = db.query(employeeProfile).filter(employeeProfile.is_active == True).all()
+            target_employee_ids = [t.id for t in all_employees]
         else:
-            target_trainer_ids = trainer_ids
+            target_employee_ids = employee_ids
 
         generated_records = []
 
-        for tid in target_trainer_ids:
+        for tid in target_employee_ids:
             clean_tid = tid.replace("emp_", "")
-            trainer = db.query(TrainerProfile).filter(
-                (TrainerProfile.id == clean_tid) | (TrainerProfile.id == tid) | (TrainerProfile.email.ilike(tid))
+            employee = db.query(employeeProfile).filter(
+                (employeeProfile.id == clean_tid) | (employeeProfile.id == tid) | (employeeProfile.email.ilike(tid))
             ).first()
 
             emp = db.query(Employee).filter(
                 (Employee.id == tid) | (Employee.id == f"emp_{clean_tid}") | (Employee.code == tid)
             ).first()
 
-            if not trainer and not emp:
+            if not employee and not emp:
                 continue
 
             # Ensure Employee record exists for HRMS tracking
-            if trainer and not emp:
-                emp_id = f"emp_{trainer.id}"
+            if employee and not emp:
+                emp_id = f"emp_{employee.id}"
                 emp = db.query(Employee).filter(Employee.id == emp_id).first()
                 if not emp:
                     emp = Employee(
                         id=emp_id,
-                        code=f"TR-{trainer.id.replace('tr_', '').upper()}",
-                        first_name=trainer.full_name,
-                        email=trainer.email,
-                        phone=trainer.phone or "",
-                        designation=trainer.role or trainer.specialization or "",
-                        department=trainer.primary_gym_location or "",
+                        code=f"TR-{employee.id.replace('tr_', '').upper()}",
+                        first_name=employee.full_name,
+                        email=employee.email,
+                        phone=employee.phone or "",
+                        designation=employee.role or employee.specialization or "",
+                        department=employee.primary_vahd_location or "",
                         status="Active",
-                        salary=float(trainer.base_monthly_salary or 0.0)
+                        salary=float(employee.base_monthly_salary or 0.0)
                     )
                     db.add(emp)
                     db.flush()
 
-            full_name = trainer.full_name if trainer else f"{emp.first_name} {emp.last_name or ''}".strip()
-            base_salary = float(trainer.base_monthly_salary if trainer else (emp.salary or 0.0))
-            pt_rate = float(trainer.pt_session_rate if trainer else 0.0)
+            full_name = employee.full_name if employee else f"{emp.first_name} {emp.last_name or ''}".strip()
+            base_salary = float(employee.base_monthly_salary if employee else (emp.salary or 0.0))
+            pt_rate = float(employee.pt_session_rate if employee else 0.0)
 
             # 1. Count Assigned PT Customers and Conducted PT sessions
             assigned_cust_count = 0
-            if trainer:
+            if employee:
                 assigned_cust_count = db.query(Customer).filter(
-                    (Customer.trainer_id == trainer.id) | (Customer.trainer_id == trainer.user_id)
+                    (Customer.employee_id == employee.id) | (Customer.employee_id == employee.user_id)
                 ).count()
             pt_sessions_count = assigned_cust_count
 
@@ -2043,15 +2043,15 @@ class HrmsService:
             ).all()
 
             search_ids = {clean_tid, tid}
-            if trainer and trainer.user_id:
-                search_ids.add(trainer.user_id)
+            if employee and employee.user_id:
+                search_ids.add(employee.user_id)
             if emp:
                 search_ids.add(emp.id)
 
             for blog in bio_logs:
                 meta = blog.meta_data or {}
                 uid = str(blog.customer_id or meta.get("user_id") or meta.get("employee_id") or "")
-                if uid in search_ids or (blog.user_role in ["TRAINER", "STAFF", "OWNER"] and meta.get("user_name") == full_name):
+                if uid in search_ids or (blog.user_role in ["employee", "STAFF", "OWNER"] and meta.get("user_name") == full_name):
                     if blog.timestamp:
                         distinct_punch_days.add(blog.timestamp.date())
 
@@ -2111,7 +2111,7 @@ class HrmsService:
                     deductions=deductions,
                     net_salary=net_salary,
                     status="Pending",
-                    payment_method=trainer.upi_id if (trainer and trainer.upi_id) else (trainer.bank_account_no if trainer and trainer.bank_account_no else "UPI")
+                    payment_method=employee.upi_id if (employee and employee.upi_id) else (employee.bank_account_no if employee and employee.bank_account_no else "UPI")
                 )
                 db.add(existing_rec)
             else:
@@ -2122,14 +2122,14 @@ class HrmsService:
                 existing_rec.month = month_name
                 existing_rec.year = year_num
 
-            # Update PayrollInvoice if trainer
-            if trainer:
-                inv_id = f"inv_{trainer.id}_{month_year_key.replace('-', '')}"
+            # Update PayrollInvoice if employee
+            if employee:
+                inv_id = f"inv_{employee.id}_{month_year_key.replace('-', '')}"
                 existing_inv = db.query(PayrollInvoice).filter(PayrollInvoice.id == inv_id).first()
                 if not existing_inv:
                     existing_inv = PayrollInvoice(
                         id=inv_id,
-                        trainer_id=trainer.id,
+                        employee_id=employee.id,
                         month_year=month_year_key,
                         days_present=effective_present_days,
                         days_absent=days_absent,
@@ -2154,12 +2154,12 @@ class HrmsService:
 
             generated_records.append({
                 "id": existing_rec.id,
-                "trainer_id": trainer.id if trainer else clean_tid,
+                "employee_id": employee.id if employee else clean_tid,
                 "employee_id": emp.id if emp else f"emp_{clean_tid}",
                 "employee_code": emp.code if emp else (f"TR-{clean_tid.replace('tr_', '').upper()}" if clean_tid else ""),
                 "employee_name": full_name,
-                "designation": emp.designation if emp else (trainer.role if trainer and trainer.role else ""),
-                "department": emp.department if emp else (trainer.primary_gym_location if trainer and trainer.primary_gym_location else ""),
+                "designation": emp.designation if emp else (employee.role if employee and employee.role else ""),
+                "department": emp.department if emp else (employee.primary_vahd_location if employee and employee.primary_vahd_location else ""),
                 "month": month_name,
                 "year": year_num,
                 "month_year": month_year_key,
@@ -2175,9 +2175,9 @@ class HrmsService:
                 "deductions": deductions,
                 "net_salary": net_salary,
                 "status": existing_rec.status,
-                "bank_account_no": trainer.bank_account_no if trainer else "",
-                "bank_ifsc": trainer.bank_ifsc if trainer else "",
-                "upi_id": trainer.upi_id if trainer else "",
+                "bank_account_no": employee.bank_account_no if employee else "",
+                "bank_ifsc": employee.bank_ifsc if employee else "",
+                "upi_id": employee.upi_id if employee else "",
                 "payment_method": existing_rec.payment_method or "",
                 "payment_date": existing_rec.payment_date.strftime("%d/%m/%Y") if existing_rec.payment_date else ""
             })
@@ -2195,31 +2195,31 @@ class HrmsService:
         result = []
         for p in records:
             emp = db.query(Employee).filter(Employee.id == p.employee_id).first()
-            trainer_id = p.employee_id.replace("emp_", "")
-            trainer = db.query(TrainerProfile).filter(
-                (TrainerProfile.id == trainer_id) | (TrainerProfile.id == p.employee_id)
+            employee_id = p.employee_id.replace("emp_", "")
+            employee = db.query(employeeProfile).filter(
+                (employeeProfile.id == employee_id) | (employeeProfile.id == p.employee_id)
             ).first()
 
-            full_name = f"{emp.first_name} {emp.last_name or ''}".strip() if emp else (trainer.full_name if trainer else "")
+            full_name = f"{emp.first_name} {emp.last_name or ''}".strip() if emp else (employee.full_name if employee else "")
             parts = full_name.split()
             initials = "".join([part[0].upper() for part in parts[:2]]) if parts else ""
 
             # Look for linked PayrollInvoice for detailed breakdown
             inv = None
-            if trainer:
+            if employee:
                 inv = db.query(PayrollInvoice).filter(
-                    (PayrollInvoice.trainer_id == trainer.id) | (PayrollInvoice.id.ilike(f"%{trainer.id}%"))
+                    (PayrollInvoice.employee_id == employee.id) | (PayrollInvoice.id.ilike(f"%{employee.id}%"))
                 ).order_by(PayrollInvoice.created_at.desc()).first()
 
             result.append({
                 "id": p.id,
                 "employee_id": p.employee_id,
-                "trainer_id": trainer.id if trainer else trainer_id,
+                "employee_id": employee.id if employee else employee_id,
                 "employee_code": emp.code if emp else (f"EMP-{p.employee_id[:4].upper()}" if p.employee_id else ""),
                 "employee_name": full_name,
                 "initials": initials,
-                "designation": emp.designation if emp else (trainer.role if trainer and trainer.role else ""),
-                "department": emp.department if emp else (trainer.primary_gym_location if trainer and trainer.primary_gym_location else ""),
+                "designation": emp.designation if emp else (employee.role if employee and employee.role else ""),
+                "department": emp.department if emp else (employee.primary_vahd_location if employee and employee.primary_vahd_location else ""),
                 "month": p.month,
                 "year": p.year,
                 "base_salary": float(p.base_salary or 0.0),
@@ -2227,15 +2227,15 @@ class HrmsService:
                 "days_present": int(inv.days_present if inv else 0),
                 "days_absent": int(inv.days_absent if inv else 0),
                 "pt_sessions_count": int(inv.pt_sessions_count if inv else 0),
-                "pt_session_rate": float(trainer.pt_session_rate if trainer else 0.0),
+                "pt_session_rate": float(employee.pt_session_rate if employee else 0.0),
                 "commission_earned": float(inv.commission_earned if inv else 0.0),
                 "allowances": float(p.allowances or 0.0),
                 "deductions": float(p.deductions or (inv.deductions if inv else 0.0)),
                 "net_salary": float(p.net_salary or 0.0),
                 "status": p.status or "",
-                "bank_account_no": trainer.bank_account_no if trainer else "",
-                "bank_ifsc": trainer.bank_ifsc if trainer else "",
-                "upi_id": trainer.upi_id if trainer else "",
+                "bank_account_no": employee.bank_account_no if employee else "",
+                "bank_ifsc": employee.bank_ifsc if employee else "",
+                "upi_id": employee.upi_id if employee else "",
                 "payment_method": p.payment_method or "",
                 "payment_date": p.payment_date.strftime("%d/%m/%Y") if p.payment_date else "",
                 "transaction_reference": inv.transaction_reference if inv else ""
@@ -2256,9 +2256,9 @@ class HrmsService:
             pay.payment_date = datetime.now(IST).date()
 
         # Also update PayrollInvoice if exists
-        trainer_id = pay.employee_id.replace("emp_", "")
+        employee_id = pay.employee_id.replace("emp_", "")
         inv = db.query(PayrollInvoice).filter(
-            (PayrollInvoice.trainer_id == trainer_id) | (PayrollInvoice.id.ilike(f"%{trainer_id}%"))
+            (PayrollInvoice.employee_id == employee_id) | (PayrollInvoice.id.ilike(f"%{employee_id}%"))
         ).first()
         if inv:
             inv.status = "PAID" if status == "Paid" else "APPROVED"

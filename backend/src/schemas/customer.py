@@ -7,10 +7,7 @@ class CustomerBase(BaseModel):
     email: Optional[str] = None
     phone: Optional[str] = None
     gender: Optional[str] = None
-    weight: Optional[float] = None
-    bmi: Optional[float] = None
     fitness_score: Optional[int] = None
-    goal: Optional[str] = None
     profile_image: Optional[str] = None
     status: Optional[str] = None
     owner_id: Optional[str] = None
@@ -21,12 +18,12 @@ class CustomerBase(BaseModel):
 
 class CustomerCreate(CustomerBase):
     role: Optional[str] = "CUSTOMER"
-    assigned_trainer_name: Optional[str] = None
+    assigned_employee_name: Optional[str] = None
     membership_plan: Optional[str] = None
     plan_price: Optional[float] = None
     plan_duration_days: Optional[int] = None
     payment_method: Optional[str] = None
-    primary_gym_location: Optional[str] = None
+    primary_vahd_location: Optional[str] = None
     branch: Optional[str] = None
     start_date: Optional[str] = None
     expiry_date: Optional[str] = None
@@ -39,7 +36,7 @@ class CustomerCreate(CustomerBase):
 class CustomerResponse(CustomerBase):
     id: str
     user_id: str
-    trainer_id: Optional[str] = None
+    employee_id: Optional[str] = None
     owner_id: Optional[str] = None
     branch_id: Optional[str] = None
     created_at: datetime

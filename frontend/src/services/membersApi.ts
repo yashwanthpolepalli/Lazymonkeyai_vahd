@@ -63,8 +63,7 @@ export const membersApi = {
         weight: Number(item.weight) || 0,
         bodyFat: Number(item.bodyFat) || 0,
         goal: item.goal || '',
-        trainer: item.trainer || '',
-        enable_workout_videos: item.enable_workout_videos !== undefined ? Boolean(item.enable_workout_videos) : true,
+        employee: item.employee || '',
       };
     });
   },
@@ -92,15 +91,11 @@ export const membersApi = {
         weight: Number(item.weight) || 0,
         bodyFat: Number(item.bodyFat) || 0,
         goal: item.goal || '',
-        trainer: item.trainer || '',
-        enable_workout_videos: item.enable_workout_videos !== undefined ? Boolean(item.enable_workout_videos) : true,
+        employee: item.employee || '',
       };
     } catch (_err) {
       return null;
     }
-  },
-  toggleWorkoutVideoAccess: async (id: string, enable: boolean): Promise<any> => {
-    return apiClient.patch(`/customers/${id}/workout-video-access`, { enable_workout_videos: enable });
   },
   update: async (id: string, data: any): Promise<any> => {
     return apiClient.patch(`/customers/${id}`, data);
@@ -116,7 +111,7 @@ export const membersApi = {
     start_date?: string;
     expiry_date?: string;
     branch?: string;
-    primary_gym_location?: string;
+    primary_vahd_location?: string;
   }): Promise<any> => {
     return apiClient.post('/customers/onboard', {
       full_name: data.name,
@@ -126,8 +121,8 @@ export const membersApi = {
       gender: data.gender,
       age: data.age ? Number(data.age) : undefined,
       goal: data.goal,
-      branch: data.branch || data.primary_gym_location,
-      primary_gym_location: data.primary_gym_location || data.branch,
+      branch: data.branch || data.primary_vahd_location,
+      primary_vahd_location: data.primary_vahd_location || data.branch,
       membership_plan: data.membership,
       plan_price: data.plan_price,
       payment_method: data.payment_method || 'Cash',
@@ -137,7 +132,6 @@ export const membersApi = {
       transaction_id: data.transaction_id,
       start_date: data.start_date,
       expiry_date: data.expiry_date,
-      enable_workout_videos: data.enable_workout_videos !== undefined ? data.enable_workout_videos : true,
     });
   },
 };

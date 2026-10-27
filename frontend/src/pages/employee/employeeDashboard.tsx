@@ -6,11 +6,11 @@ import { LineChart } from '@/components/ui/Charts';
 import { SkeletonCard, Skeleton } from '@/components/ui/Skeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { api } from '@/services/api';
-import { TrainerGeofencePunchWidget } from '@/components/trainer/TrainerGeofencePunchWidget';
+import { EmployeeGeofencePunchWidget } from '@/components/employee/employeeGeofencePunchWidget';
 import type { KpiCard as KpiType, Member } from '@/types';
 import { cn } from '@/utils/cn';
 
-export function TrainerDashboard() {
+export function EmployeeDashboard() {
   const [kpis, setKpis] = useState<KpiType[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [aiAlerts, setAiAlerts] = useState<any[]>([]);
@@ -18,7 +18,7 @@ export function TrainerDashboard() {
 
   useEffect(() => {
     Promise.all([
-      api.dashboard.trainerKpis().catch(() => []),
+      api.dashboard.employeeKpis().catch(() => []),
       api.customers.list().catch(() => []),
       api.aiCoach.recommendations().catch(() => []),
     ]).then(([k, m, recs]) => {
@@ -40,10 +40,10 @@ export function TrainerDashboard() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Trainer Dashboard" breadcrumb={['Trainer', 'Dashboard']} />
+      <PageHeader title="employee Dashboard" breadcrumb={['employee', 'Dashboard']} />
 
-      {/* Trainer Shift Geofenced Punch Center */}
-      <TrainerGeofencePunchWidget />
+      {/* employee Shift Geofenced Punch Center */}
+      <EmployeeGeofencePunchWidget />
 
       {loading ? (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">{Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)}</div>
@@ -78,7 +78,7 @@ export function TrainerDashboard() {
           <div className="card p-5">
             <h3 className="text-base font-bold text-navy-900 mb-4">Assigned Customers</h3>
             {loading ? <Skeleton className="h-48 w-full" /> : members.length === 0 ? (
-              <EmptyState title="No Assigned Customers" description="Customers assigned to your trainer profile will appear here." icon="users" />
+              <EmptyState title="No Assigned Customers" description="Customers assigned to your employee profile will appear here." icon="users" />
             ) : (
               <div className="space-y-2">
                 {members.map((m) => (
@@ -86,7 +86,7 @@ export function TrainerDashboard() {
                     <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-white text-xs font-bold shrink-0">{m.name.split(' ').map((n: string) => n[0]).join('')}</div>
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-semibold text-navy-900 truncate">{m.name}</div>
-                      <div className="text-xs text-navy-400">{m.goal || 'General Fitness'} · {m.attendance || 100}% attendance</div>
+                      <div className="text-xs text-navy-400">{m.membership || 'Active Member'} · {m.attendance || 100}% attendance</div>
                     </div>
                   </div>
                 ))}
@@ -114,3 +114,5 @@ export function TrainerDashboard() {
     </div>
   );
 }
+
+export const employeeDashboard = EmployeeDashboard;

@@ -511,7 +511,7 @@ class InventoryService:
                 try:
                     import urllib.request
                     off_url = f"https://world.openfoodfacts.org/api/v2/product/{clean_q}.json"
-                    req = urllib.request.Request(off_url, headers={"User-Agent": "Mozilla/5.0 (GymWeb Enterprise ERP)"})
+                    req = urllib.request.Request(off_url, headers={"User-Agent": "Mozilla/5.0 (vahdWeb Enterprise ERP)"})
                     with urllib.request.urlopen(req, timeout=3.5) as resp:
                         data = json.loads(resp.read().decode())
                         if data.get("status") == 1 and "product" in data:
@@ -684,11 +684,11 @@ Respond ONLY with a JSON array with this exact schema:
                 except Exception:
                     pass
 
-        # Find which SKUs and Barcodes already exist in gym inventory
+        # Find which SKUs and Barcodes already exist in vahd inventory
         existing_skus = set(sku.lower() for (sku,) in db.query(Product.sku).all() if sku)
         existing_barcodes = set(b.strip() for (b,) in db.query(Product.barcode).all() if b and b.strip())
 
-        # Exclude items that are already imported into local gym inventory
+        # Exclude items that are already imported into local vahd inventory
         unimported_items = [
             c for c in items
             if (c.sku or "").lower() not in existing_skus
@@ -799,7 +799,7 @@ Respond ONLY with a JSON array with this exact schema:
             imported_count += 1
 
         db.commit()
-        return {"imported_count": imported_count, "message": f"Successfully imported {imported_count} product(s) into gym inventory"}
+        return {"imported_count": imported_count, "message": f"Successfully imported {imported_count} product(s) into vahd inventory"}
 
     @staticmethod
     def adjust_stock(db: Session, data: Dict[str, Any]) -> Dict[str, Any]:

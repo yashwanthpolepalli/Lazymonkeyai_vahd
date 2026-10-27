@@ -4,7 +4,7 @@ import { useDashboard } from '@/hooks/useDashboard';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { DashboardKPIs } from '@/components/dashboard/DashboardKPIs';
 import { AIAttention } from '@/components/dashboard/AIAttention';
-import { LiveGymActivity } from '@/components/dashboard/LiveGymActivity';
+import { LivevahdActivity } from '@/components/dashboard/LivevahdActivity';
 import { DashboardSkeleton } from '@/components/ui/Skeleton';
 import { ErrorState } from '@/components/ui/ErrorState';
 
@@ -34,15 +34,15 @@ export function OwnerDashboard() {
   }
 
   const userName = data?.userName || user?.name || user?.full_name || '';
-  const gymName = data?.gym?.name || user?.gym_name || '';
-  const branchName = data?.gym?.branch || user?.branch_name || '';
+  const vahdName = data?.vahd?.name || user?.vahd_name || '';
+  const branchName = data?.vahd?.branch || user?.branch_name || '';
 
   return (
     <div className="space-y-6 animate-fade-in pb-8">
       {/* Level 1: Greeting Header */}
       <DashboardHeader
         userName={userName}
-        gymName={gymName}
+        vahdName={vahdName}
         branchName={branchName}
       />
 
@@ -57,7 +57,7 @@ export function OwnerDashboard() {
 
       {/* Level 2: Live Activity (Unified Students & Employees Login / Logout stream) */}
       <div>
-        <LiveGymActivity activity={data?.live_activity || []} />
+        <LivevahdActivity activity={data?.live_activity || []} />
       </div>
     </div>
   );

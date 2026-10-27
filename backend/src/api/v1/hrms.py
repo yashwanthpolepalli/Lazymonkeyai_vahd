@@ -48,17 +48,17 @@ def create_employee(
             if not payload.get("branch_id") and current_user.branch_id:
                 payload["branch_id"] = current_user.branch_id
 
-    # Resolve branch from database to ensure gym_branch and hierarchy match
-    from src.models.settings import Branch as GymBranch
+    # Resolve branch from database to ensure vahd_branch and hierarchy match
+    from src.models.settings import Branch as vahdBranch
     from sqlalchemy import or_
-    b_ref = payload.get("branch_id") or payload.get("gym_branch")
+    b_ref = payload.get("branch_id") or payload.get("vahd_branch")
     if b_ref:
-        b_obj = db.query(GymBranch).filter(
-            or_(GymBranch.id == b_ref, GymBranch.branch_name.ilike(f"%{b_ref}%"))
+        b_obj = db.query(vahdBranch).filter(
+            or_(vahdBranch.id == b_ref, vahdBranch.branch_name.ilike(f"%{b_ref}%"))
         ).first()
         if b_obj:
             payload["branch_id"] = b_obj.id
-            payload["gym_branch"] = b_obj.branch_name or b_obj.gym_name
+            payload["vahd_branch"] = b_obj.branch_name or b_obj.vahd_name
             if not payload.get("owner_id") and b_obj.owner_id:
                 payload["owner_id"] = b_obj.owner_id
             if not payload.get("ho_id") and b_obj.ho_id:
@@ -267,7 +267,7 @@ def get_staff_face_status(
         return {"is_enrolled": False, "face_image": None}
 
     from src.models.hrms import Employee
-    from src.models.trainer import TrainerProfile
+    from src.models.employee import employeeProfile
     from src.models.user import User
     from src.models.biometric import BiometricLog
 
@@ -275,13 +275,13 @@ def get_staff_face_status(
         (Employee.id == employee_id) | (Employee.code == employee_id) | (Employee.email.ilike(employee_id))
     ).first()
 
-    trainer = None
+    employee = None
     if not emp:
-        trainer = db.query(TrainerProfile).filter(
-            (TrainerProfile.id == employee_id) | (TrainerProfile.email.ilike(employee_id)) | (TrainerProfile.user_id == employee_id)
+        employee = db.query(employeeProfile).filter(
+            (employeeProfile.id == employee_id) | (employeeProfile.email.ilike(employee_id)) | (employeeProfile.user_id == employee_id)
         ).first()
-        if trainer:
-            emp = db.query(Employee).filter((Employee.id == f"emp_{trainer.id}") | (Employee.email.ilike(trainer.email))).first()
+        if employee:
+            emp = db.query(Employee).filter((Employee.id == f"emp_{employee.id}") | (Employee.email.ilike(employee.email))).first()
 
     usr = db.query(User).filter((User.id == employee_id) | (User.email.ilike(employee_id))).first()
 
@@ -310,8 +310,8 @@ def get_staff_face_status(
         if not face_img and enroll_log.meta_data and enroll_log.meta_data.get("face_image"):
             face_img = enroll_log.meta_data.get("face_image")
 
-    name = f"{emp.first_name} {emp.last_name or ''}".strip() if emp else (trainer.full_name if trainer else (getattr(usr, 'full_name', None) or getattr(usr, 'name', None) or employee_id))
-    role = (trainer.role if trainer and trainer.role and trainer.role != "TRAINER" else None) or (emp.designation if emp and emp.designation else None) or (usr.role if usr and usr.role and usr.role != "TRAINER" else None) or "EMPLOYEE"
+    name = f"{emp.first_name} {emp.last_name or ''}".strip() if emp else (employee.full_name if employee else (getattr(usr, 'full_name', None) or getattr(usr, 'name', None) or employee_id))
+    role = (employee.role if employee and employee.role and employee.role != "employee" else None) or (emp.designation if emp and emp.designation else None) or (usr.role if usr and usr.role and usr.role != "employee" else None) or "EMPLOYEE"
 
     return {
         "is_enrolled": bool(face_img and len(face_img) > 50),
@@ -334,7 +334,7 @@ def register_staff_face(payload: dict, db: Session = Depends(get_db)):
     import uuid
     from src.utils.timezone import now_ist_naive
     from src.models.hrms import Employee
-    from src.models.trainer import TrainerProfile
+    from src.models.employee import employeeProfile
     from src.models.user import User
     from src.models.customer import Customer
     from src.models.biometric import BiometricLog
@@ -348,8 +348,8 @@ def register_staff_face(payload: dict, db: Session = Depends(get_db)):
         (Employee.id == employee_id) | (Employee.code == employee_id) | (Employee.email.ilike(employee_id))
     ).first()
 
-    trainer = db.query(TrainerProfile).filter(
-        (TrainerProfile.id == employee_id) | (TrainerProfile.email.ilike(employee_id)) | (TrainerProfile.user_id == employee_id)
+    employee = db.query(employeeProfile).filter(
+        (employeeProfile.id == employee_id) | (employeeProfile.email.ilike(employee_id)) | (employeeProfile.user_id == employee_id)
     ).first()
 
     usr = db.query(User).filter((User.id == employee_id) | (User.email.ilike(employee_id))).first()
@@ -361,19 +361,19 @@ def register_staff_face(payload: dict, db: Session = Depends(get_db)):
         if hasattr(usr, 'avatar'):
             usr.avatar = raw_img
 
-    name = payload.get("full_name") or (f"{emp.first_name} {emp.last_name or ''}".strip() if emp else (trainer.full_name if trainer else (getattr(usr, 'full_name', None) or getattr(usr, 'name', None) or employee_id)))
+    name = payload.get("full_name") or (f"{emp.first_name} {emp.last_name or ''}".strip() if emp else (employee.full_name if employee else (getattr(usr, 'full_name', None) or getattr(usr, 'name', None) or employee_id)))
     role = (
         payload.get("user_role")
-        or (trainer.role if trainer and trainer.role else None)
+        or (employee.role if employee and employee.role else None)
         or (emp.designation if emp and emp.designation else None)
-        or (usr.role if usr and usr.role and usr.role != "TRAINER" else None)
+        or (usr.role if usr and usr.role and usr.role != "employee" else None)
         or "EMPLOYEE"
     ).upper()
 
     branch_name = (
         payload.get("branch")
-        or (trainer.primary_gym_location if trainer else None)
-        or (emp.gym_branch if emp else None)
+        or (employee.primary_vahd_location if employee else None)
+        or (emp.vahd_branch if emp else None)
         or "Main Branch"
     )
 
@@ -443,15 +443,15 @@ def verify_staff_face_punch(payload: dict, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Live camera face snapshot is required.")
 
     from src.models.hrms import Employee
-    from src.models.trainer import TrainerProfile
+    from src.models.employee import employeeProfile
     from src.models.user import User
     from src.models.biometric import BiometricLog
 
     emp = db.query(Employee).filter(
         (Employee.id == employee_id) | (Employee.code == employee_id) | (Employee.email.ilike(employee_id))
     ).first()
-    trainer = db.query(TrainerProfile).filter(
-        (TrainerProfile.id == employee_id) | (TrainerProfile.email.ilike(employee_id)) | (TrainerProfile.user_id == employee_id)
+    employee = db.query(employeeProfile).filter(
+        (employeeProfile.id == employee_id) | (employeeProfile.email.ilike(employee_id)) | (employeeProfile.user_id == employee_id)
     ).first()
     usr = db.query(User).filter((User.id == employee_id) | (User.email.ilike(employee_id))).first()
 
@@ -478,19 +478,19 @@ def verify_staff_face_punch(payload: dict, db: Session = Depends(get_db)):
     seed_val = int(combined_hash[:4], 16) % 35
     confidence = round(0.965 + (seed_val / 1000.0), 4)
 
-    name = f"{emp.first_name} {emp.last_name or ''}".strip() if emp else (trainer.full_name if trainer else (getattr(usr, 'full_name', None) or getattr(usr, 'name', None) or employee_id))
+    name = f"{emp.first_name} {emp.last_name or ''}".strip() if emp else (employee.full_name if employee else (getattr(usr, 'full_name', None) or getattr(usr, 'name', None) or employee_id))
     resolved_role = (
         (user_role if user_role else None)
-        or (trainer.role if trainer and trainer.role else None)
+        or (employee.role if employee and employee.role else None)
         or (emp.designation if emp and emp.designation else None)
-        or (usr.role if usr and usr.role and usr.role != "TRAINER" else None)
+        or (usr.role if usr and usr.role and usr.role != "employee" else None)
         or "EMPLOYEE"
     ).upper()
 
     branch_name = (
         branch
-        or (trainer.primary_gym_location if trainer else None)
-        or (emp.gym_branch if emp else None)
+        or (employee.primary_vahd_location if employee else None)
+        or (emp.vahd_branch if emp else None)
         or "Main Branch"
     )
 
@@ -534,7 +534,7 @@ def apply_leave(payload: dict, db: Session = Depends(get_db)):
 @router.put("/leaves/{leave_id}/action")
 def update_leave_status(leave_id: str, payload: dict, db: Session = Depends(get_db)):
     status = payload.get("status", "Approved")
-    reviewer = payload.get("reviewer", "Gym Owner")
+    reviewer = payload.get("reviewer", "vahd Owner")
     rejection_reason = payload.get("rejection_reason")
     try:
         return HrmsService.update_leave_status(db, leave_id, status, reviewer, rejection_reason=rejection_reason)
@@ -549,7 +549,7 @@ def get_leave_types(active_only: bool = False, db: Session = Depends(get_db)):
 
 @router.post("/leave-types")
 def create_leave_type(payload: dict, db: Session = Depends(get_db)):
-    """Gym owner creates a new customizable leave policy with dynamic gender eligibility"""
+    """vahd owner creates a new customizable leave policy with dynamic gender eligibility"""
     try:
         return HrmsService.create_leave_type(db, payload)
     except ValueError as e:
@@ -559,7 +559,7 @@ def create_leave_type(payload: dict, db: Session = Depends(get_db)):
 
 @router.put("/leave-types/{leave_type_id}")
 def update_leave_type(leave_type_id: str, payload: dict, db: Session = Depends(get_db)):
-    """Gym owner updates an existing leave policy (gender, quota, paid type, etc.)"""
+    """vahd owner updates an existing leave policy (gender, quota, paid type, etc.)"""
     try:
         return HrmsService.update_leave_type(db, leave_type_id, payload)
     except ValueError as e:
@@ -569,7 +569,7 @@ def update_leave_type(leave_type_id: str, payload: dict, db: Session = Depends(g
 
 @router.delete("/leave-types/{leave_type_id}")
 def delete_leave_type(leave_type_id: str, db: Session = Depends(get_db)):
-    """Gym owner deactivates or removes a leave policy"""
+    """vahd owner deactivates or removes a leave policy"""
     try:
         return HrmsService.delete_leave_type(db, leave_type_id)
     except ValueError as e:
@@ -590,7 +590,7 @@ def get_leave_balances(year: Optional[int] = None, db: Session = Depends(get_db)
 
 @router.post("/leave-balances/adjust")
 def adjust_leave_balance(payload: dict, db: Session = Depends(get_db)):
-    """Gym owner manually adjusts leave balance (allotted / used days) for an employee"""
+    """vahd owner manually adjusts leave balance (allotted / used days) for an employee"""
     try:
         return HrmsService.adjust_leave_balance(db, payload)
     except ValueError as e:
@@ -608,11 +608,11 @@ def get_payroll(month: Optional[str] = None, year: Optional[int] = None, db: Ses
 
 @router.post("/payroll/generate-batch")
 def generate_batch_payroll(payload: dict, db: Session = Depends(get_db)):
-    trainer_ids = payload.get("trainer_ids") or []
+    employee_ids = payload.get("employee_ids") or []
     month = payload.get("month")
     year = payload.get("year")
     try:
-        return HrmsService.generate_batch_payroll(db, trainer_ids=trainer_ids, month=month, year=year)
+        return HrmsService.generate_batch_payroll(db, employee_ids=employee_ids, month=month, year=year)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 

@@ -9,7 +9,7 @@ export type BrochureTemplateId =
   | 'luxury-wellness'
   | 'bootcamp-challenge'
   | 'womens-sanctuary'
-  | 'trainer-spotlight';
+  | 'employee-spotlight';
 
 export type BrochureElementType =
   | 'text'
@@ -26,7 +26,7 @@ export type BrochureElementType =
 export type SemanticRole =
   | 'headline'
   | 'subheadline'
-  | 'gym_name'
+  | 'vahd_name'
   | 'tagline'
   | 'badge'
   | 'hero_image'
@@ -137,8 +137,8 @@ export interface BrochureChecklistItem {
 export interface BrochureData {
   id: string;
   templateId: BrochureTemplateId;
-  gymName: string;
-  gymTagline: string;
+  vahdName: string;
+  vahdTagline: string;
   headline: string;
   subheadline: string;
   badgeText: string;
@@ -193,7 +193,7 @@ export interface BrochureData {
   secondaryImages?: {
     action1?: string;
     action2?: string;
-    gymFloor?: string;
+    vahdFloor?: string;
   };
 }
 

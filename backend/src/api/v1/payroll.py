@@ -9,12 +9,12 @@ from src.schemas.payroll import (
     PayrollInvoiceResponse
 )
 
-router = APIRouter(prefix="/payroll", tags=["Payroll & Trainer Invoices"])
+router = APIRouter(prefix="/payroll", tags=["Payroll & employee Invoices"])
 
 @router.get("/invoices", response_model=List[PayrollInvoiceResponse])
 def get_all_payroll_invoices(db: Session = Depends(get_db)):
     """
-    Returns all monthly staff & trainer payroll invoices from PostgreSQL.
+    Returns all monthly staff & employee payroll invoices from PostgreSQL.
     """
     return PayrollService.get_all_invoices(db)
 
@@ -26,7 +26,7 @@ def generate_payroll_invoice(payload: PayrollGenerateRequest, db: Session = Depe
     try:
         return PayrollService.generate_monthly_payroll(
             db=db,
-            trainer_id=payload.trainer_id,
+            employee_id=payload.employee_id,
             month_year=payload.month_year,
             pt_sessions_count=payload.pt_sessions_count
         )
@@ -36,7 +36,7 @@ def generate_payroll_invoice(payload: PayrollGenerateRequest, db: Session = Depe
 @router.post("/{payroll_id}/pay", response_model=PayrollInvoiceResponse)
 def process_salary_payment(payroll_id: str, payload: PayrollPayRequest, db: Session = Depends(get_db)):
     """
-    Processes salary payout to trainer/staff via UPI, Bank Transfer, or Cash and issues digital payslip.
+    Processes salary payout to employee/staff via UPI, Bank Transfer, or Cash and issues digital payslip.
     """
     try:
         return PayrollService.process_salary_payment(

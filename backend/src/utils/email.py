@@ -21,17 +21,17 @@ def generate_enrollment_password(full_name: str, phone: str) -> str:
 
 def send_enrollment_email(to_email: str, full_name: str, password: str, role: str = "CUSTOMER", plan_name: str = None) -> bool:
     """
-    Sends automated welcome email with login credentials to a newly enrolled customer or trainer.
+    Sends automated welcome email with login credentials to a newly enrolled customer or employee.
     All branding text is pulled dynamically from settings — zero hardcoded strings.
     """
-    gym_name = settings.GYM_NAME
-    gym_tagline = settings.GYM_PLATFORM_TAGLINE
+    vahd_name = settings.vahd_NAME
+    vahd_tagline = settings.vahd_PLATFORM_TAGLINE
     from_email = settings.SMTP_FROM_EMAIL or settings.SMTP_USER or ""
 
-    if role and role.upper() == "TRAINER":
+    if role and role.upper() == "employee":
         role = "EMPLOYEE"
 
-    subject = f"Welcome to {gym_name} — Your {role.title()} Account Credentials"
+    subject = f"Welcome to {vahd_name} — Your {role.title()} Account Credentials"
 
     plan_html = (
         f'<div class="field-group" style="margin-top:14px;padding-top:14px;border-top:1px dashed #cbd5e1;">'
@@ -166,12 +166,12 @@ def send_enrollment_email(to_email: str, full_name: str, password: str, role: st
   <div class="wrapper">
     <div class="header">
       <div class="logo-badge">👑</div>
-      <h1 class="title">{gym_name.upper()}</h1>
+      <h1 class="title">{vahd_name.upper()}</h1>
       <div class="subtitle">Official Account Registration Confirmation</div>
     </div>
     <div class="greeting">Hello {full_name},</div>
     <div class="intro-text">
-      Your <strong>{role.title()}</strong> account has been successfully enrolled on the <strong>{gym_name}</strong> Platform. Here are your account credentials to log in:
+      Your <strong>{role.title()}</strong> account has been successfully enrolled on the <strong>{vahd_name}</strong> Platform. Here are your account credentials to log in:
     </div>
     <div class="cred-box">
       <div class="field-group">
@@ -190,7 +190,7 @@ def send_enrollment_email(to_email: str, full_name: str, password: str, role: st
       </p>
     </div>
     <div class="footer">
-      <strong>{gym_name}</strong> {gym_tagline}<br />
+      <strong>{vahd_name}</strong> {vahd_tagline}<br />
       Automated System Dispatch &bull; Please keep your credentials secure.
     </div>
   </div>
@@ -198,7 +198,7 @@ def send_enrollment_email(to_email: str, full_name: str, password: str, role: st
 </html>"""
 
     print("\n" + "=" * 68)
-    print(f"📧 [{gym_name}] ENROLLMENT EMAIL DISPATCHED")
+    print(f"📧 [{vahd_name}] ENROLLMENT EMAIL DISPATCHED")
     print("=" * 68)
     print(f"  • Recipient : {to_email}")
     print(f"  • Name      : {full_name}")

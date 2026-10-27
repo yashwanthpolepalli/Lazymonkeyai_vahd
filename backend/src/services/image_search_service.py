@@ -42,8 +42,8 @@ class ImageSearchService:
         except Exception:
             pass
 
-        # 2. Dynamic Pollinations AI Generator for gym fitness catalog
-        clean_prompt = re.sub(r'[^a-zA-Z0-9\s]', '', f"professional product photography of {full_query}, white clean gym nutrition store background, 4k ultra detailed studio lighting")
+        # 2. Dynamic Pollinations AI Generator for vahd fitness catalog
+        clean_prompt = re.sub(r'[^a-zA-Z0-9\s]', '', f"professional product photography of {full_query}, white clean vahd nutrition store background, 4k ultra detailed studio lighting")
         prompt_encoded = urllib.parse.quote_plus(clean_prompt[:200])
         return f"https://image.pollinations.ai/prompt/{prompt_encoded}?width=600&height=600&nologo=true"
 

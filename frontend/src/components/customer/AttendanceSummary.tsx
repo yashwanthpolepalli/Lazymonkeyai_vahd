@@ -16,7 +16,7 @@ export function AttendanceSummary({ attendance }: { attendance?: CustomerAttenda
         </div>
         <div>
           <h3 className="text-base font-bold text-navy-900">Attendance</h3>
-          <p className="text-xs text-navy-400">Gym visits & consistency</p>
+          <p className="text-xs text-navy-400">vahd visits & consistency</p>
         </div>
       </div>
 

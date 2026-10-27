@@ -262,10 +262,10 @@ export function SettingsPage() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // General Settings State
-  const [gymName, setGymName] = useState('');
-  const [gymPhone, setGymPhone] = useState('');
-  const [gymEmail, setGymEmail] = useState('');
-  const [gymAddress, setGymAddress] = useState('');
+  const [vahdName, setvahdName] = useState('');
+  const [vahdPhone, setvahdPhone] = useState('');
+  const [vahdEmail, setvahdEmail] = useState('');
+  const [vahdAddress, setvahdAddress] = useState('');
   const [currency, setCurrency] = useState('INR (₹)');
   const [timeZone, setTimeZone] = useState('Asia/Kolkata (GMT +5:30)');
   const [openingTime, setOpeningTime] = useState('');
@@ -294,20 +294,20 @@ export function SettingsPage() {
     localStorage.removeItem('vahd_enable_pos');
     localStorage.removeItem('vahd_enable_inventory');
     Promise.all([
-      apiClient.get<any>('/gym/settings').catch(() => null),
+      apiClient.get<any>('/vahd/settings').catch(() => null),
       api.auth.me().catch(() => null),
-    ]).then(([gymRes, userRes]) => {
-      if (gymRes) {
-        if (gymRes.gym_name) setGymName(gymRes.gym_name);
-        if (gymRes.phone) setGymPhone(gymRes.phone);
-        if (gymRes.email) setGymEmail(gymRes.email);
-        if (gymRes.address) setGymAddress(gymRes.address);
-        if (gymRes.gstin) setGstNumber(gymRes.gstin);
-        if (gymRes.opening_time) setOpeningTime(gymRes.opening_time);
-        if (gymRes.closing_time) setClosingTime(gymRes.closing_time);
-        if (gymRes.currency) setCurrency(gymRes.currency);
-        if (gymRes.timezone) setTimeZone(gymRes.timezone);
-        if (gymRes.essl_bioserver_url) setEsslUrl(gymRes.essl_bioserver_url);
+    ]).then(([vahdRes, userRes]) => {
+      if (vahdRes) {
+        if (vahdRes.vahd_name) setvahdName(vahdRes.vahd_name);
+        if (vahdRes.phone) setvahdPhone(vahdRes.phone);
+        if (vahdRes.email) setvahdEmail(vahdRes.email);
+        if (vahdRes.address) setvahdAddress(vahdRes.address);
+        if (vahdRes.gstin) setGstNumber(vahdRes.gstin);
+        if (vahdRes.opening_time) setOpeningTime(vahdRes.opening_time);
+        if (vahdRes.closing_time) setClosingTime(vahdRes.closing_time);
+        if (vahdRes.currency) setCurrency(vahdRes.currency);
+        if (vahdRes.timezone) setTimeZone(vahdRes.timezone);
+        if (vahdRes.essl_bioserver_url) setEsslUrl(vahdRes.essl_bioserver_url);
         notifyModuleVisibilityChanged();
       }
       if (userRes) {
@@ -319,8 +319,8 @@ export function SettingsPage() {
           const cleanRole = userRes.role.toLowerCase();
           setOwnerRole(
             cleanRole === 'owner' ? 'Owner' :
-            cleanRole === 'ho' ? 'Head Office Admin' :
-            userRes.role.toUpperCase()
+              cleanRole === 'ho' ? 'Head Office Admin' :
+                userRes.role.toUpperCase()
           );
         }
         const loadedAvatar = (userRes as any).avatar_url || (userRes as any).avatar;
@@ -399,11 +399,11 @@ export function SettingsPage() {
 
   const handleSaveSettings = async () => {
     try {
-      await apiClient.post('/gym/settings', {
-        gym_name: gymName,
-        phone: gymPhone,
-        email: gymEmail,
-        address: gymAddress,
+      await apiClient.post('/vahd/settings', {
+        vahd_name: vahdName,
+        phone: vahdPhone,
+        email: vahdEmail,
+        address: vahdAddress,
         gstin: gstNumber,
         currency: currency,
         timezone: timeZone,
@@ -416,7 +416,7 @@ export function SettingsPage() {
       localStorage.removeItem('vahd_enable_pos');
       localStorage.removeItem('vahd_enable_inventory');
       notifyModuleVisibilityChanged();
-    } catch (_err) {}
+    } catch (_err) { }
 
     setHasUnsavedChanges(false);
     triggerToast(
@@ -551,7 +551,7 @@ export function SettingsPage() {
                   {isHo ? 'Basic contact profile and head office operational parameters' : 'Basic contact profile and branch operational parameters'}
                 </p>
               </div>
-              <Badge variant="brand" dot>{gymName || (isHo ? (user?.ho_name || 'Central Head Office') : 'Primary Branch')}</Badge>
+              <Badge variant="brand" dot>{vahdName || (isHo ? (user?.ho_name || 'Central Head Office') : 'Primary Branch')}</Badge>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -562,8 +562,8 @@ export function SettingsPage() {
                 <input
                   type="text"
                   placeholder={isHo ? 'e.g. Central Head Office' : 'e.g. Main Branch'}
-                  value={gymName}
-                  onChange={(e) => { setGymName(e.target.value); setHasUnsavedChanges(true); }}
+                  value={vahdName}
+                  onChange={(e) => { setvahdName(e.target.value); setHasUnsavedChanges(true); }}
                   className="input-field text-xs font-bold"
                 />
               </div>
@@ -573,8 +573,8 @@ export function SettingsPage() {
                 <input
                   type="text"
                   placeholder="e.g. +91 98765 43210"
-                  value={gymPhone}
-                  onChange={(e) => { setGymPhone(e.target.value); setHasUnsavedChanges(true); }}
+                  value={vahdPhone}
+                  onChange={(e) => { setvahdPhone(e.target.value); setHasUnsavedChanges(true); }}
                   className="input-field text-xs font-bold"
                 />
               </div>
@@ -584,8 +584,8 @@ export function SettingsPage() {
                 <input
                   type="email"
                   placeholder="e.g. contact@vahd.ai"
-                  value={gymEmail}
-                  onChange={(e) => { setGymEmail(e.target.value); setHasUnsavedChanges(true); }}
+                  value={vahdEmail}
+                  onChange={(e) => { setvahdEmail(e.target.value); setHasUnsavedChanges(true); }}
                   className="input-field text-xs font-bold"
                 />
               </div>
@@ -632,8 +632,8 @@ export function SettingsPage() {
                 <input
                   type="text"
                   placeholder="e.g. 123 Main Street, Suite 100, City, State"
-                  value={gymAddress}
-                  onChange={(e) => { setGymAddress(e.target.value); setHasUnsavedChanges(true); }}
+                  value={vahdAddress}
+                  onChange={(e) => { setvahdAddress(e.target.value); setHasUnsavedChanges(true); }}
                   className="input-field text-xs font-bold"
                 />
               </div>

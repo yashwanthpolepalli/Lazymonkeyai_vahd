@@ -6,7 +6,7 @@ import { apiClient } from '@/services/apiClient';
 
 interface HoOrganization {
   id: string;
-  gym_name: string;
+  vahd_name: string;
   branch_name: string;
   city: string;
   address: string;
@@ -229,7 +229,7 @@ export const HoDashboard: React.FC = () => {
           setSubmitting(false);
           return;
         }
-        payload.gym_name = newOrgName.trim();
+        payload.vahd_name = newOrgName.trim();
         payload.branch_name = newBranchName.trim() || newOrgName.trim();
         payload.city = newOrgCity.trim();
         payload.address = newOrgAddress.trim();
@@ -281,7 +281,7 @@ export const HoDashboard: React.FC = () => {
     setEditOwnerPhone(org.owner_phone || '');
     setEditOwnerPassword('');
     setEditShowPassword(false);
-    setEditOrgName(org.gym_name || '');
+    setEditOrgName(org.vahd_name || '');
     setEditBranchName(org.branch_name || '');
     setEditCity(org.city || '');
     setEditAddress(org.address || '');
@@ -310,7 +310,7 @@ export const HoDashboard: React.FC = () => {
         owner_name: editOwnerName.trim(),
         owner_email: editOwnerEmail.trim().toLowerCase(),
         phone: editOwnerPhone.trim(),
-        gym_name: editOrgName.trim(),
+        vahd_name: editOrgName.trim(),
         branch_name: editBranchName.trim(),
         city: editCity.trim(),
         address: editAddress.trim(),
@@ -339,7 +339,7 @@ export const HoDashboard: React.FC = () => {
     if (!orgIds.length) return;
     const names = (data?.organizations || [])
       .filter((o) => orgIds.includes(o.id))
-      .map((o) => o.gym_name || o.branch_name || 'Organization');
+      .map((o) => o.vahd_name || o.branch_name || 'Organization');
     setDeleteConfirmModal({
       open: true,
       orgIds,
@@ -372,7 +372,7 @@ export const HoDashboard: React.FC = () => {
   const selectedOrgName = useMemo(() => {
     if (selectedOrgId === 'all') return 'All Organizations (Global HQ)';
     const found = data?.organizations.find((o) => o.id === selectedOrgId);
-    return found ? `${found.gym_name} - ${found.branch_name}` : 'Selected Organization';
+    return found ? `${found.vahd_name} - ${found.branch_name}` : 'Selected Organization';
   }, [selectedOrgId, data]);
 
   return (
@@ -416,11 +416,10 @@ export const HoDashboard: React.FC = () => {
       <div className="flex items-center gap-2 border-b border-slate-200 pb-3">
         <button
           onClick={() => setHoTab('overview')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer ${
-            hoTab === 'overview'
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer ${hoTab === 'overview'
               ? 'bg-purple-600 text-white shadow-md shadow-purple-600/25'
               : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-          }`}
+            }`}
         >
           <Icon name="layout-dashboard" size={15} />
           <span>Dashboard &amp; Directory</span>
@@ -437,11 +436,10 @@ export const HoDashboard: React.FC = () => {
 
         <button
           onClick={() => setHoTab('attendance_reports')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer ${
-            hoTab === 'attendance_reports'
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer ${hoTab === 'attendance_reports'
               ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-600/25'
               : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-          }`}
+            }`}
         >
           <Icon name="calendar-check" size={15} />
           <span>Branch Attendance Reports &amp; Downloads (Excel &amp; PDF)</span>
@@ -453,288 +451,286 @@ export const HoDashboard: React.FC = () => {
         <>
           {/* ── KPI HIGHLIGHTS CARDS ──────────────────────────────────────────── */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* KPI 1: Organizations Scope */}
-        <div
-          onClick={() => navigate('/ho/organisations')}
-          className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs relative overflow-hidden group hover:border-purple-300 hover:shadow-md transition-all cursor-pointer"
-          title="Click to view full Organisations Attendance Matrix"
-        >
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider group-hover:text-purple-600 transition-colors">Organizations</span>
-            <div className="w-9 h-9 rounded-2xl bg-purple-50 text-purple-600 group-hover:bg-purple-600 group-hover:text-white flex items-center justify-center transition-all">
-              <Icon name="building-2" size={18} />
+            {/* KPI 1: Organizations Scope */}
+            <div
+              onClick={() => navigate('/ho/organisations')}
+              className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs relative overflow-hidden group hover:border-purple-300 hover:shadow-md transition-all cursor-pointer"
+              title="Click to view full Organisations Attendance Matrix"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider group-hover:text-purple-600 transition-colors">Organizations</span>
+                <div className="w-9 h-9 rounded-2xl bg-purple-50 text-purple-600 group-hover:bg-purple-600 group-hover:text-white flex items-center justify-center transition-all">
+                  <Icon name="building-2" size={18} />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <div className="text-2xl sm:text-3xl font-black text-slate-900">
+                  {data?.is_filtered ? '1 Selected' : data?.total_organizations ?? 0}
+                </div>
+                <p className="text-[11px] font-semibold text-slate-500 group-hover:text-purple-600 transition-colors flex items-center gap-1">
+                  <span>{data?.is_filtered ? data.selected_organization_name : 'Active branches under Head Office'}</span>
+                  <Icon name="arrow-up-right" size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                </p>
+              </div>
+            </div>
+
+            {/* KPI 2: Total Employees */}
+            <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs relative overflow-hidden group hover:border-emerald-300 transition-all">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Staff</span>
+                <div className="w-9 h-9 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                  <Icon name="users" size={18} />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <div className="text-2xl sm:text-3xl font-black text-slate-900">
+                  {data?.total_employees ?? 0}
+                </div>
+                <p className="text-[11px] font-semibold text-emerald-600 flex items-center gap-1">
+                  <span>●</span> Active HRMS employees
+                </p>
+              </div>
+            </div>
+
+            {/* KPI 3: Total Students */}
+            <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs relative overflow-hidden group hover:border-blue-300 transition-all">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Students</span>
+                <div className="w-9 h-9 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <Icon name="user-check" size={18} />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <div className="text-2xl sm:text-3xl font-black text-slate-900">
+                  {data?.total_students ?? 0}
+                </div>
+                <p className="text-[11px] font-semibold text-blue-600">
+                  Enrolled students &amp; trainees
+                </p>
+              </div>
+            </div>
+
+            {/* KPI 4: Live Attendance Today */}
+            <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs relative overflow-hidden group hover:border-amber-300 transition-all">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Today's Attendance</span>
+                <div className="w-9 h-9 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                  <Icon name="activity" size={18} />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <div className="text-2xl sm:text-3xl font-black text-slate-900">
+                  {data?.today_punches ?? 0}
+                </div>
+                <p className="text-[11px] font-semibold text-amber-600">
+                  {data?.attendance_rate ?? 0}% overall check-in rate
+                </p>
+              </div>
             </div>
           </div>
-          <div className="space-y-1">
-            <div className="text-2xl sm:text-3xl font-black text-slate-900">
-              {data?.is_filtered ? '1 Selected' : data?.total_organizations ?? 0}
-            </div>
-            <p className="text-[11px] font-semibold text-slate-500 group-hover:text-purple-600 transition-colors flex items-center gap-1">
-              <span>{data?.is_filtered ? data.selected_organization_name : 'Active branches under Head Office'}</span>
-              <Icon name="arrow-up-right" size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
-            </p>
-          </div>
-        </div>
-
-        {/* KPI 2: Total Employees */}
-        <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs relative overflow-hidden group hover:border-emerald-300 transition-all">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Staff</span>
-            <div className="w-9 h-9 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-              <Icon name="users" size={18} />
-            </div>
-          </div>
-          <div className="space-y-1">
-            <div className="text-2xl sm:text-3xl font-black text-slate-900">
-              {data?.total_employees ?? 0}
-            </div>
-            <p className="text-[11px] font-semibold text-emerald-600 flex items-center gap-1">
-              <span>●</span> Active HRMS employees
-            </p>
-          </div>
-        </div>
-
-        {/* KPI 3: Total Students */}
-        <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs relative overflow-hidden group hover:border-blue-300 transition-all">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Students</span>
-            <div className="w-9 h-9 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
-              <Icon name="user-check" size={18} />
-            </div>
-          </div>
-          <div className="space-y-1">
-            <div className="text-2xl sm:text-3xl font-black text-slate-900">
-              {data?.total_students ?? 0}
-            </div>
-            <p className="text-[11px] font-semibold text-blue-600">
-              Enrolled students &amp; trainees
-            </p>
-          </div>
-        </div>
-
-        {/* KPI 4: Live Attendance Today */}
-        <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs relative overflow-hidden group hover:border-amber-300 transition-all">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Today's Attendance</span>
-            <div className="w-9 h-9 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center">
-              <Icon name="activity" size={18} />
-            </div>
-          </div>
-          <div className="space-y-1">
-            <div className="text-2xl sm:text-3xl font-black text-slate-900">
-              {data?.today_punches ?? 0}
-            </div>
-            <p className="text-[11px] font-semibold text-amber-600">
-              {data?.attendance_rate ?? 0}% overall check-in rate
-            </p>
-          </div>
-        </div>
-      </div>
 
 
-      {/* ── ORGANIZATIONS DIRECTORY & ONBOARDED OWNERS TABLE ─────────────── */}
-      <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
-        <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h3 className="text-lg font-black text-slate-900 tracking-tight">Organizations &amp; Branch Directory</h3>
-            <p className="text-xs text-slate-500 font-medium mt-0.5">
-              Live mapping of Head Office organizations, assigned owners, and current personnel.
-            </p>
-          </div>
-          {selectedOrgIds.length > 0 ? (
-            <div className="flex flex-wrap items-center gap-2 bg-purple-50 border border-purple-200/80 rounded-2xl p-1.5 px-3 animate-in fade-in">
-              <span className="text-xs font-black text-purple-900 flex items-center gap-1.5">
-                <span className="w-5 h-5 rounded-full bg-purple-600 text-white flex items-center justify-center text-[10px] font-black">
-                  {selectedOrgIds.length}
-                </span>
-                <span>Selected</span>
-              </span>
+          {/* ── ORGANIZATIONS DIRECTORY & ONBOARDED OWNERS TABLE ─────────────── */}
+          <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
+            <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h3 className="text-lg font-black text-slate-900 tracking-tight">Organizations &amp; Branch Directory</h3>
+                <p className="text-xs text-slate-500 font-medium mt-0.5">
+                  Live mapping of Head Office organizations, assigned owners, and current personnel.
+                </p>
+              </div>
+              {selectedOrgIds.length > 0 ? (
+                <div className="flex flex-wrap items-center gap-2 bg-purple-50 border border-purple-200/80 rounded-2xl p-1.5 px-3 animate-in fade-in">
+                  <span className="text-xs font-black text-purple-900 flex items-center gap-1.5">
+                    <span className="w-5 h-5 rounded-full bg-purple-600 text-white flex items-center justify-center text-[10px] font-black">
+                      {selectedOrgIds.length}
+                    </span>
+                    <span>Selected</span>
+                  </span>
 
-              {selectedOrgIds.length === 1 && (
-                <button
-                  type="button"
-                  onClick={() => handleOpenEditCredentials(selectedOrgIds[0])}
-                  className="px-3 py-1.5 rounded-xl bg-white hover:bg-purple-100 text-purple-700 border border-purple-200 text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
-                >
-                  <Icon name="key" size={13} />
-                  <span>Edit Credentials</span>
-                </button>
-              )}
-
-              <button
-                type="button"
-                onClick={() => handleOpenDeleteModal(selectedOrgIds)}
-                className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
-              >
-                <Icon name="trash-2" size={13} />
-                <span>Delete {selectedOrgIds.length === 1 ? 'Organisation' : `(${selectedOrgIds.length}) Organisations`}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setSelectedOrgIds([])}
-                className="text-xs text-slate-500 hover:text-slate-800 font-bold px-2 py-1 cursor-pointer"
-              >
-                Clear
-              </button>
-            </div>
-          ) : (
-            <div className="text-xs text-slate-400 font-medium hidden sm:block">
-              Select checkboxes to edit credentials or delete
-            </div>
-          )}
-        </div>
-
-        {/* Directory Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50/80 text-slate-500 font-bold uppercase text-[10px] tracking-wider border-b border-slate-100">
-              <tr>
-                <th className="w-10 py-3.5 px-4 text-center">
-                  <input
-                    type="checkbox"
-                    checked={Boolean(
-                      data?.organizations &&
-                        data.organizations.length > 0 &&
-                        selectedOrgIds.length === data.organizations.length
-                    )}
-                    onChange={handleToggleSelectAll}
-                    className="w-4 h-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
-                    title="Select All"
-                  />
-                </th>
-                <th className="py-3.5 px-4">Organization &amp; Branch</th>
-                <th className="py-3.5 px-4">Onboarded Owner</th>
-                <th className="py-3.5 px-4">City / Location</th>
-                <th className="py-3.5 px-4 text-center">Employees</th>
-                <th className="py-3.5 px-4 text-center">Students</th>
-                <th className="py-3.5 px-4 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-slate-700">
-              {data?.organizations && data.organizations.length > 0 ? (
-                data.organizations.map((org) => {
-                  const isCurrentSelected = selectedOrgId === org.id;
-                  const isChecked = selectedOrgIds.includes(org.id);
-                  return (
-                    <tr
-                      key={org.id}
-                      className={`hover:bg-slate-50/80 transition-colors ${
-                        isChecked
-                          ? 'bg-purple-50/60'
-                          : isCurrentSelected
-                          ? 'bg-purple-50/30 font-semibold'
-                          : ''
-                      }`}
+                  {selectedOrgIds.length === 1 && (
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEditCredentials(selectedOrgIds[0])}
+                      className="px-3 py-1.5 rounded-xl bg-white hover:bg-purple-100 text-purple-700 border border-purple-200 text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
                     >
-                      {/* Checkbox */}
-                      <td className="py-4 px-4 text-center" onClick={(e) => e.stopPropagation()}>
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => handleToggleSelectOrg(org.id)}
-                          className="w-4 h-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
-                        />
-                      </td>
+                      <Icon name="key" size={13} />
+                      <span>Edit Credentials</span>
+                    </button>
+                  )}
 
-                      {/* Organization & Branch */}
-                      <td className="py-4 px-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-xs shrink-0">
-                            <Icon name="building-2" size={16} />
-                          </div>
-                          <div>
-                            <p className="font-extrabold text-slate-900 text-sm">{org.gym_name}</p>
-                            <span className="text-[11px] text-slate-400 font-medium">{org.branch_name}</span>
-                          </div>
-                        </div>
-                      </td>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenDeleteModal(selectedOrgIds)}
+                    className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+                  >
+                    <Icon name="trash-2" size={13} />
+                    <span>Delete {selectedOrgIds.length === 1 ? 'Organisation' : `(${selectedOrgIds.length}) Organisations`}</span>
+                  </button>
 
-                      {/* Onboarded Owner */}
-                      <td className="py-4 px-4">
-                        {org.owner_name ? (
-                          <div>
-                            <p className="font-bold text-slate-900">{org.owner_name}</p>
-                            <p className="text-[11px] text-slate-500">{org.owner_email}</p>
-                            {org.owner_phone && (
-                              <p className="text-[10px] text-slate-400">📞 {org.owner_phone}</p>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-1.5 text-amber-600 font-bold text-[11px]">
-                            <Icon name="alert-circle" size={13} />
-                            <span>No Owner Assigned</span>
-                          </div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedOrgIds([])}
+                    className="text-xs text-slate-500 hover:text-slate-800 font-bold px-2 py-1 cursor-pointer"
+                  >
+                    Clear
+                  </button>
+                </div>
+              ) : (
+                <div className="text-xs text-slate-400 font-medium hidden sm:block">
+                  Select checkboxes to edit credentials or delete
+                </div>
+              )}
+            </div>
+
+            {/* Directory Table */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50/80 text-slate-500 font-bold uppercase text-[10px] tracking-wider border-b border-slate-100">
+                  <tr>
+                    <th className="w-10 py-3.5 px-4 text-center">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(
+                          data?.organizations &&
+                          data.organizations.length > 0 &&
+                          selectedOrgIds.length === data.organizations.length
                         )}
-                      </td>
-
-                      {/* City */}
-                      <td className="py-4 px-4">
-                        <div className="flex items-center gap-1 text-slate-600 font-medium">
-                          <Icon name="map-pin" size={13} className="text-slate-400 shrink-0" />
-                          <span>{org.city || '—'}</span>
-                        </div>
-                      </td>
-
-                      {/* Employees Count */}
-                      <td className="py-4 px-4 text-center">
-                        <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 font-extrabold text-xs">
-                          {org.employee_count}
-                        </span>
-                      </td>
-
-                      {/* Students Count */}
-                      <td className="py-4 px-4 text-center">
-                        <span className="px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 font-extrabold text-xs">
-                          {org.student_count}
-                        </span>
-                      </td>
-
-                      {/* Actions */}
-                      <td className="py-4 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            onClick={() => handleSelectOrganization(org.id)}
-                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                              isCurrentSelected
-                                ? 'bg-purple-600 text-white shadow-xs'
-                                : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                        onChange={handleToggleSelectAll}
+                        className="w-4 h-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
+                        title="Select All"
+                      />
+                    </th>
+                    <th className="py-3.5 px-4">Organization &amp; Branch</th>
+                    <th className="py-3.5 px-4">Onboarded Owner</th>
+                    <th className="py-3.5 px-4">City / Location</th>
+                    <th className="py-3.5 px-4 text-center">Employees</th>
+                    <th className="py-3.5 px-4 text-center">Students</th>
+                    <th className="py-3.5 px-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-slate-700">
+                  {data?.organizations && data.organizations.length > 0 ? (
+                    data.organizations.map((org) => {
+                      const isCurrentSelected = selectedOrgId === org.id;
+                      const isChecked = selectedOrgIds.includes(org.id);
+                      return (
+                        <tr
+                          key={org.id}
+                          className={`hover:bg-slate-50/80 transition-colors ${isChecked
+                              ? 'bg-purple-50/60'
+                              : isCurrentSelected
+                                ? 'bg-purple-50/30 font-semibold'
+                                : ''
                             }`}
-                          >
-                            {isCurrentSelected ? 'Viewing' : 'Switch View'}
-                          </button>
-                          <button
-                            onClick={() => handleOpenEditCredentials(org)}
-                            className="p-1.5 rounded-xl bg-purple-50 text-purple-600 hover:bg-purple-100 transition-colors"
-                            title="Edit Owner Credentials"
-                          >
-                            <Icon name="key" size={14} />
-                          </button>
-                          <button
-                            onClick={() => handleOpenDeleteModal([org.id])}
-                            className="p-1.5 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors"
-                            title="Delete Organisation"
-                          >
-                            <Icon name="trash-2" size={14} />
-                          </button>
-                        </div>
+                        >
+                          {/* Checkbox */}
+                          <td className="py-4 px-4 text-center" onClick={(e) => e.stopPropagation()}>
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => handleToggleSelectOrg(org.id)}
+                              className="w-4 h-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
+                            />
+                          </td>
+
+                          {/* Organization & Branch */}
+                          <td className="py-4 px-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-xs shrink-0">
+                                <Icon name="building-2" size={16} />
+                              </div>
+                              <div>
+                                <p className="font-extrabold text-slate-900 text-sm">{org.vahd_name}</p>
+                                <span className="text-[11px] text-slate-400 font-medium">{org.branch_name}</span>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Onboarded Owner */}
+                          <td className="py-4 px-4">
+                            {org.owner_name ? (
+                              <div>
+                                <p className="font-bold text-slate-900">{org.owner_name}</p>
+                                <p className="text-[11px] text-slate-500">{org.owner_email}</p>
+                                {org.owner_phone && (
+                                  <p className="text-[10px] text-slate-400">📞 {org.owner_phone}</p>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1.5 text-amber-600 font-bold text-[11px]">
+                                <Icon name="alert-circle" size={13} />
+                                <span>No Owner Assigned</span>
+                              </div>
+                            )}
+                          </td>
+
+                          {/* City */}
+                          <td className="py-4 px-4">
+                            <div className="flex items-center gap-1 text-slate-600 font-medium">
+                              <Icon name="map-pin" size={13} className="text-slate-400 shrink-0" />
+                              <span>{org.city || '—'}</span>
+                            </div>
+                          </td>
+
+                          {/* Employees Count */}
+                          <td className="py-4 px-4 text-center">
+                            <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 font-extrabold text-xs">
+                              {org.employee_count}
+                            </span>
+                          </td>
+
+                          {/* Students Count */}
+                          <td className="py-4 px-4 text-center">
+                            <span className="px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 font-extrabold text-xs">
+                              {org.student_count}
+                            </span>
+                          </td>
+
+                          {/* Actions */}
+                          <td className="py-4 px-4 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                onClick={() => handleSelectOrganization(org.id)}
+                                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${isCurrentSelected
+                                    ? 'bg-purple-600 text-white shadow-xs'
+                                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                                  }`}
+                              >
+                                {isCurrentSelected ? 'Viewing' : 'Switch View'}
+                              </button>
+                              <button
+                                onClick={() => handleOpenEditCredentials(org)}
+                                className="p-1.5 rounded-xl bg-purple-50 text-purple-600 hover:bg-purple-100 transition-colors"
+                                title="Edit Owner Credentials"
+                              >
+                                <Icon name="key" size={14} />
+                              </button>
+                              <button
+                                onClick={() => handleOpenDeleteModal([org.id])}
+                                className="p-1.5 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors"
+                                title="Delete Organisation"
+                              >
+                                <Icon name="trash-2" size={14} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan={7} className="py-8 text-center text-slate-400 font-semibold">
+                        No organizations found under this Head Office account.
                       </td>
                     </tr>
-                  );
-                })
-              ) : (
-                <tr>
-                  <td colSpan={7} className="py-8 text-center text-slate-400 font-semibold">
-                    No organizations found under this Head Office account.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </>
-  )}
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* ── TAB 2: BRANCH ATTENDANCE REPORTS & EXPORTS (EXCEL & PDF) ──────── */}
       {hoTab === 'attendance_reports' && (
@@ -893,7 +889,7 @@ export const HoDashboard: React.FC = () => {
                           City: <strong className="text-slate-800">{b.city || 'Primary Campus'}</strong>
                         </span>
                       </div>
-                      <h3 className="text-lg font-black text-slate-900">{b.gym_name || b.branch_name}</h3>
+                      <h3 className="text-lg font-black text-slate-900">{b.vahd_name || b.branch_name}</h3>
                       <p className="text-xs text-slate-500 font-medium">
                         Owner: <strong>{b.owner_name || 'No Owner Assigned'}</strong> &bull; Email: {b.owner_email || '--'} &bull; Phone: {b.owner_phone || '--'}
                       </p>
@@ -940,11 +936,10 @@ export const HoDashboard: React.FC = () => {
                     {repCategory !== 'students' && (
                       <button
                         onClick={() => setTab('employees')}
-                        className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                          currentTab === 'employees'
+                        className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${currentTab === 'employees'
                             ? 'bg-purple-600 text-white shadow-xs'
                             : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                        }`}
+                          }`}
                       >
                         👥 Staff Members ({b.employees?.total_count || 0})
                       </button>
@@ -953,11 +948,10 @@ export const HoDashboard: React.FC = () => {
                     {repCategory !== 'employees' && (
                       <button
                         onClick={() => setTab('students')}
-                        className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                          currentTab === 'students'
+                        className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${currentTab === 'students'
                             ? 'bg-purple-600 text-white shadow-xs'
                             : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                        }`}
+                          }`}
                       >
                         🎓 Enrolled Students ({b.students?.total_count || 0})
                       </button>
@@ -1007,13 +1001,12 @@ export const HoDashboard: React.FC = () => {
                                 <td className="py-3 px-3 text-center font-bold text-indigo-600">{emp.days_leave}</td>
                                 <td className="py-3 px-3 text-center">
                                   <span
-                                    className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
-                                      emp.attendance_percentage >= 75
+                                    className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${emp.attendance_percentage >= 75
                                         ? 'bg-emerald-100 text-emerald-800'
                                         : emp.attendance_percentage >= 60
-                                        ? 'bg-amber-100 text-amber-800'
-                                        : 'bg-rose-100 text-rose-800'
-                                    }`}
+                                          ? 'bg-amber-100 text-amber-800'
+                                          : 'bg-rose-100 text-rose-800'
+                                      }`}
                                   >
                                     {emp.attendance_percentage}%
                                   </span>
@@ -1086,13 +1079,12 @@ export const HoDashboard: React.FC = () => {
                                 <td className="py-3 px-3 text-center font-bold text-rose-600 bg-rose-50/30">{s.days_absent}</td>
                                 <td className="py-3 px-3 text-center">
                                   <span
-                                    className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
-                                      s.attendance_percentage >= 75
+                                    className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${s.attendance_percentage >= 75
                                         ? 'bg-emerald-100 text-emerald-800'
                                         : s.attendance_percentage >= 60
-                                        ? 'bg-amber-100 text-amber-800'
-                                        : 'bg-rose-100 text-rose-800'
-                                    }`}
+                                          ? 'bg-amber-100 text-amber-800'
+                                          : 'bg-rose-100 text-rose-800'
+                                      }`}
                                   >
                                     {s.attendance_percentage}%
                                   </span>
@@ -1142,7 +1134,7 @@ export const HoDashboard: React.FC = () => {
                 <span className="text-[10px] font-black uppercase tracking-wider text-purple-600 bg-purple-50 px-2.5 py-0.5 rounded-full">
                   Head Office Admin
                 </span>
-                <h3 className="text-xl font-black text-slate-900 mt-1">Onboard Gym Owner</h3>
+                <h3 className="text-xl font-black text-slate-900 mt-1">Onboard vahd Owner</h3>
                 <p className="text-xs text-slate-500 font-medium">
                   Create owner credentials and assign them to manage an organization under this Head Office.
                 </p>
@@ -1189,7 +1181,7 @@ export const HoDashboard: React.FC = () => {
                     </div>
                     <div>
                       <span className="text-[10px] text-slate-400 block font-bold">Organization:</span>
-                      <strong className="text-slate-900">{onboardSuccess.organization?.gym_name}</strong>
+                      <strong className="text-slate-900">{onboardSuccess.organization?.vahd_name}</strong>
                     </div>
                   </div>
                 </div>
@@ -1215,22 +1207,20 @@ export const HoDashboard: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setIsCreatingNewOrg(false)}
-                      className={`p-2.5 rounded-xl border text-xs font-bold transition-all ${
-                        !isCreatingNewOrg
+                      className={`p-2.5 rounded-xl border text-xs font-bold transition-all ${!isCreatingNewOrg
                           ? 'border-purple-600 bg-purple-50/50 text-purple-900'
                           : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
-                      }`}
+                        }`}
                     >
                       Existing Organization
                     </button>
                     <button
                       type="button"
                       onClick={() => setIsCreatingNewOrg(true)}
-                      className={`p-2.5 rounded-xl border text-xs font-bold transition-all ${
-                        isCreatingNewOrg
+                      className={`p-2.5 rounded-xl border text-xs font-bold transition-all ${isCreatingNewOrg
                           ? 'border-purple-600 bg-purple-50/50 text-purple-900'
                           : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
-                      }`}
+                        }`}
                     >
                       + Create New Organization
                     </button>
@@ -1248,7 +1238,7 @@ export const HoDashboard: React.FC = () => {
                     >
                       {data?.organizations.map((org) => (
                         <option key={org.id} value={org.id}>
-                          {org.gym_name} ({org.branch_name}) • {org.city || 'Campus'}
+                          {org.vahd_name} ({org.branch_name}) • {org.city || 'Campus'}
                         </option>
                       ))}
                     </select>
@@ -1399,7 +1389,7 @@ export const HoDashboard: React.FC = () => {
                 </span>
                 <h3 className="text-xl font-black text-slate-900 mt-1">Edit Owner Credentials</h3>
                 <p className="text-xs text-slate-500 font-medium">
-                  Update login details and organization settings for {editCredsOrg.gym_name}.
+                  Update login details and organization settings for {editCredsOrg.vahd_name}.
                 </p>
               </div>
               <button

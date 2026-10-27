@@ -73,7 +73,7 @@ export interface LiveLeadNotification {
   name: string;
   phone: string;
   email?: string;
-  gymName?: string;
+  vahdName?: string;
   plan?: string;
   notes?: string;
   timestamp: string;

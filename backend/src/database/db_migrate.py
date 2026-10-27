@@ -1,5 +1,5 @@
 """
-FIT CLUB AI — Cross-Dialect Database Schema Migration Service
+vahd — Cross-Dialect Database Schema Migration Service
 Applies dialect-safe schema migrations for missing tables and columns across SQLite and PostgreSQL.
 Zero hardcoded default mock data.
 """
@@ -25,7 +25,7 @@ SCHEMA_COLUMNS: Dict[str, List[Tuple[str, str]]] = {
     "branches": [
         ("owner_id", "VARCHAR"),
         ("ho_id", "VARCHAR"),
-        ("gym_name", "VARCHAR"),
+        ("vahd_name", "VARCHAR"),
         ("name", "VARCHAR"),
         ("branch_name", "VARCHAR"),
         ("city", "VARCHAR"),
@@ -106,57 +106,23 @@ SCHEMA_COLUMNS: Dict[str, List[Tuple[str, str]]] = {
         ("member_code", "VARCHAR"),
         ("parent_phone", "VARCHAR"),
         ("gender", "VARCHAR"),
-        ("weight", "FLOAT"),
-        ("height", "FLOAT"),
         ("age", "INTEGER"),
-        ("bmi", "FLOAT"),
         ("fitness_score", "INTEGER"),
-        ("fitness_level", "VARCHAR"),
         ("training_preference", "VARCHAR"),
-        ("goal", "VARCHAR"),
-        ("target_calories", "INTEGER"),
-        ("target_weight", "FLOAT"),
-        ("days_per_week", "INTEGER"),
-        ("session_duration_minutes", "INTEGER"),
-        ("target_protein", "INTEGER"),
-        ("target_carbs", "INTEGER"),
-        ("target_fat", "INTEGER"),
-        ("target_water", "FLOAT"),
-        ("target_fiber", "INTEGER"),
-        ("target_sugar", "INTEGER"),
-        ("body_condition", "VARCHAR"),
-        ("meals_per_day", "INTEGER"),
-        ("dietary_preference", "VARCHAR"),
-        ("target_steps", "INTEGER"),
-        ("target_sleep_minutes", "INTEGER"),
-        ("weight_unit", "VARCHAR"),
         ("profile_image", "VARCHAR"),
         ("face_registered", "BOOLEAN"),
         ("face_image", "VARCHAR"),
         ("rfid_tag", "VARCHAR"),
         ("status", "VARCHAR"),
-        ("primary_gym_location", "VARCHAR"),
-        ("enable_workout_videos", "BOOLEAN"),
+        ("primary_vahd_location", "VARCHAR"),
         ("qualification", "VARCHAR"),
         ("specialization", "VARCHAR"),
         ("meta_data", "JSON"),
         ("updated_at", "TIMESTAMP"),
     ],
-    "inbody_reports": [
-        ("score", "INTEGER"),
-        ("weight", "FLOAT"),
-        ("skeletal_muscle_mass", "FLOAT"),
-        ("body_fat_percentage", "FLOAT"),
-        ("body_fat_mass", "FLOAT"),
-        ("visceral_fat", "FLOAT"),
-        ("bmi", "FLOAT"),
-        ("basal_metabolic_rate", "FLOAT"),
-        ("body_water", "FLOAT"),
-        ("protein", "FLOAT"),
-        ("segmental_analysis", "JSON"),
-    ],
-    "trainer_profiles": [
-        ("primary_gym_location", "VARCHAR"),
+
+    "employee_profiles": [
+        ("primary_vahd_location", "VARCHAR"),
         ("specialization", "VARCHAR"),
         ("base_monthly_salary", "FLOAT"),
         ("pt_session_rate", "FLOAT"),
@@ -208,7 +174,7 @@ SCHEMA_COLUMNS: Dict[str, List[Tuple[str, str]]] = {
     ],
     "hrms_geofence_schemes": [
         ("branch_name", "VARCHAR"),
-        ("gym_name", "VARCHAR"),
+        ("vahd_name", "VARCHAR"),
         ("latitude", "FLOAT"),
         ("longitude", "FLOAT"),
         ("radius_meters", "INTEGER"),
@@ -224,7 +190,7 @@ SCHEMA_COLUMNS: Dict[str, List[Tuple[str, str]]] = {
         ("created_at", "TIMESTAMP"),
         ("updated_at", "TIMESTAMP"),
     ],
-    "trainer_profiles": [
+    "employee_profiles": [
         ("gender", "VARCHAR"),
     ],
     "hrms_employees": [
@@ -624,6 +590,16 @@ def run_database_migrations():
                         except Exception as col_err:
                             conn.rollback()
                             print(f"[DB Migration Notice] Model column {table_name}.{col_name} skipped: {col_err}")
+
+            # Drop obsolete inbody_reports table if it exists
+            if "inbody_reports" in existing_tables:
+                try:
+                    conn.execute(text("DROP TABLE IF EXISTS inbody_reports CASCADE"))
+                    conn.commit()
+                    print("[DB Migration] Dropped obsolete table inbody_reports")
+                except Exception as drop_tbl_err:
+                    conn.rollback()
+                    print(f"[DB Migration Notice] Could not drop inbody_reports: {drop_tbl_err}")
 
         # 3. Seed canonical leave policies if not present
         from src.database.session import SessionLocal

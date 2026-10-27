@@ -1,6 +1,6 @@
 """
-FIT CLUB AI — Super Admin Router Endpoints
-Serves platform overview, gym management, device monitoring, AI engine telemetry,
+vahd — Super Admin Router Endpoints
+Serves platform overview, vahd management, device monitoring, AI engine telemetry,
 and DB-driven feature control matrix endpoints.
 """
 from typing import Dict, Any
@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Body
 from sqlalchemy.orm import Session
 from src.database.session import get_db
 from src.services.super_admin_service import SuperAdminService
-from src.services.settings_service import SettingsService as GymSettingService
+from src.services.settings_service import SettingsService as vahdSettingService
 
 router = APIRouter(prefix="/superadmin", tags=["Super Admin"])
 
@@ -19,10 +19,10 @@ def get_super_admin_overview(db: Session = Depends(get_db)):
     return SuperAdminService.get_platform_overview(db)
 
 
-@router.get("/gyms")
+@router.get("/vahds")
 @router.get("/organizations")
 def list_organizations(db: Session = Depends(get_db)):
-    """Fetch all Gym branches and owners dynamically from PostgreSQL DB."""
+    """Fetch all vahd branches and owners dynamically from PostgreSQL DB."""
     return SuperAdminService.get_organizations(db)
 
 
@@ -35,17 +35,17 @@ def get_organization_detail(org_id: str, db: Session = Depends(get_db)):
     return detail
 
 
-@router.post("/gyms")
+@router.post("/vahds")
 @router.post("/organizations")
 @router.post("/owners/onboard")
 def onboard_organization(payload: dict = Body(...), db: Session = Depends(get_db)):
-    """Onboard a new Gym branch and owner with full credentials dynamically into PostgreSQL DB."""
-    return SuperAdminService.onboard_gym(db, payload)
+    """Onboard a new vahd branch and owner with full credentials dynamically into PostgreSQL DB."""
+    return SuperAdminService.onboard_vahd(db, payload)
 
 
 @router.post("/owners/{user_id}/reset-credentials")
 def reset_owner_credentials(user_id: str, payload: dict = Body(...), db: Session = Depends(get_db)):
-    """Reset Gym Owner credentials dynamically with bcrypt hashing and audit logging."""
+    """Reset vahd Owner credentials dynamically with bcrypt hashing and audit logging."""
     new_password = (payload.get("new_password") or payload.get("password") or "").strip()
     if not new_password:
         return {"success": False, "message": "New password is required"}
@@ -55,7 +55,7 @@ def reset_owner_credentials(user_id: str, payload: dict = Body(...), db: Session
 
 @router.patch("/owners/{user_id}/status")
 def update_owner_status(user_id: str, payload: dict = Body(...), db: Session = Depends(get_db)):
-    """Activate or suspend Gym Owner account credentials with audit logging."""
+    """Activate or suspend vahd Owner account credentials with audit logging."""
     is_active = payload.get("is_active")
     if is_active is None:
         status_str = payload.get("status", "active").lower()
@@ -63,30 +63,30 @@ def update_owner_status(user_id: str, payload: dict = Body(...), db: Session = D
     return SuperAdminService.update_owner_status(db, user_id, bool(is_active))
 
 
-@router.patch("/gyms/{gym_id}/status")
-@router.patch("/organizations/{gym_id}/status")
-def update_organization_status(gym_id: str, payload: dict = Body(...), db: Session = Depends(get_db)):
+@router.patch("/vahds/{vahd_id}/status")
+@router.patch("/organizations/{vahd_id}/status")
+def update_organization_status(vahd_id: str, payload: dict = Body(...), db: Session = Depends(get_db)):
     """Approve or Suspend an Organization in PostgreSQL DB."""
     status = payload.get("status") or "active"
-    return SuperAdminService.update_gym_status(db, gym_id, status)
+    return SuperAdminService.update_vahd_status(db, vahd_id, status)
 
 
-@router.delete("/gyms/{gym_id}")
-@router.delete("/organizations/{gym_id}")
-def delete_organization(gym_id: str, db: Session = Depends(get_db)):
+@router.delete("/vahds/{vahd_id}")
+@router.delete("/organizations/{vahd_id}")
+def delete_organization(vahd_id: str, db: Session = Depends(get_db)):
     """Delete an organization and its associated branch record dynamically from PostgreSQL DB."""
     try:
-        return SuperAdminService.delete_organization(db, gym_id)
+        return SuperAdminService.delete_organization(db, vahd_id)
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/gyms/bulk-delete")
+@router.post("/vahds/bulk-delete")
 @router.post("/organizations/bulk-delete")
 def bulk_delete_organizations(payload: dict = Body(...), db: Session = Depends(get_db)):
     """Bulk delete selected organizations from PostgreSQL DB."""
-    org_ids = payload.get("org_ids") or payload.get("gym_ids") or payload.get("ids") or []
+    org_ids = payload.get("org_ids") or payload.get("vahd_ids") or payload.get("ids") or []
     try:
         return SuperAdminService.bulk_delete_organizations(db, org_ids)
     except Exception as e:
@@ -154,17 +154,17 @@ def get_billing_overview(db: Session = Depends(get_db)):
 @router.get("/billing/settings")
 def get_superadmin_billing_settings(db: Session = Depends(get_db)):
     """Fetch global GST & Discount Matrix settings dynamically from DB."""
-    setting = GymSettingService.get_settings(db)
-    return GymSettingService.get_billing_dict(setting)
+    setting = vahdSettingService.get_settings(db)
+    return vahdSettingService.get_billing_dict(setting)
 
 
 @router.post("/billing/settings")
 def update_superadmin_billing_settings(payload: dict = Body(...), db: Session = Depends(get_db)):
     """Update global GST & Discount Matrix settings dynamically in DB."""
-    setting = GymSettingService.update_settings(db, payload)
+    setting = vahdSettingService.update_settings(db, payload)
     return {
         "message": "GST and discount billing settings saved successfully",
-        "billing": GymSettingService.get_billing_dict(setting)
+        "billing": vahdSettingService.get_billing_dict(setting)
     }
 
 

@@ -21,8 +21,8 @@ def generate_ai_reviews(
     db: Session = Depends(get_db)
 ):
     customer_id = payload.get("customer_id") if isinstance(payload, dict) else None
-    gym_name = payload.get("gym_name") if isinstance(payload, dict) else None
-    suggestions = ReviewService.generate_ai_reviews(db, customer_id=customer_id, gym_name=gym_name)
+    vahd_name = payload.get("vahd_name") if isinstance(payload, dict) else None
+    suggestions = ReviewService.generate_ai_reviews(db, customer_id=customer_id, vahd_name=vahd_name)
     return {
         "suggestions": suggestions,
         "customer_id": customer_id

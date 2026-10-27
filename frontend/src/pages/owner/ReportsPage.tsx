@@ -304,7 +304,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
   const [selectedBranch, setSelectedBranch] = useState<string>(() => {
     return localStorage.getItem('vahd_selected_org_id') || 'all';
   });
-  const [allBranchesList, setAllBranchesList] = useState<Array<{ id: string; branch_name: string; gym_name?: string }>>([]);
+  const [allBranchesList, setAllBranchesList] = useState<Array<{ id: string; branch_name: string; vahd_name?: string }>>([]);
 
   // Synchronize with Topbar organization / branch switcher
   useEffect(() => {
@@ -327,12 +327,12 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
             res.branches.map((br: any) => ({
               id: br.branch_id,
               branch_name: br.branch_name,
-              gym_name: br.gym_name,
+              vahd_name: br.vahd_name,
             }))
           );
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, [targetYear, targetMonth]);
 
   const fetchMonthlyOverviews = async (y = targetYear, m = targetMonth, b = selectedBranch) => {
@@ -353,7 +353,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
           hoRes.branches.map((br: any) => ({
             id: br.branch_id,
             branch_name: br.branch_name,
-            gym_name: br.gym_name,
+            vahd_name: br.vahd_name,
           }))
         );
       }
@@ -418,7 +418,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
     });
 
     employees.forEach((emp) => {
-      const dName = emp.address || emp.gym_branch || 'Hyderabad';
+      const dName = emp.address || emp.vahd_branch || 'Hyderabad';
       if (!distGroups.has(dName)) {
         distGroups.set(dName, {
           total: 0,
@@ -497,11 +497,11 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
         status = emp.status;
       }
 
-      const branchOrDept = emp.gym_branch || emp.department || 'Main Facility';
-      const dist = emp.address || emp.gym_branch || 'Hyderabad';
+      const branchOrDept = emp.vahd_branch || emp.department || 'Main Facility';
+      const dist = emp.address || emp.vahd_branch || 'Hyderabad';
       const loc = att?.notes?.includes('Punch via')
         ? att.notes.replace('Punch via', '').trim()
-        : (emp.gym_branch ? `${emp.gym_branch} Campus` : 'Main Campus');
+        : (emp.vahd_branch ? `${emp.vahd_branch} Campus` : 'Main Campus');
 
       return {
         name: fullName,
@@ -688,7 +688,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                   <option value="all">🌟 All Branches (Consolidated)</option>
                   {allBranchesList.map((b) => (
                     <option key={b.id} value={b.id}>
-                      🏫 {b.gym_name ? `${b.gym_name} — ` : ''}{b.branch_name}
+                      🏫 {b.vahd_name ? `${b.vahd_name} — ` : ''}{b.branch_name}
                     </option>
                   ))}
                 </select>
@@ -888,13 +888,12 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                         <td className="py-3 px-3 text-center font-bold text-rose-600 bg-rose-50/30">{s.days_absent}</td>
                         <td className="py-3 px-3 text-center">
                           <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
-                              pct >= 75
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${pct >= 75
                                 ? 'bg-emerald-100 text-emerald-800'
                                 : pct >= 60
-                                ? 'bg-amber-100 text-amber-800'
-                                : 'bg-rose-100 text-rose-800'
-                            }`}
+                                  ? 'bg-amber-100 text-amber-800'
+                                  : 'bg-rose-100 text-rose-800'
+                              }`}
                           >
                             {pct}%
                           </span>
@@ -1027,7 +1026,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                   <option value="all">🌟 All Branches (Consolidated)</option>
                   {allBranchesList.map((b) => (
                     <option key={b.id} value={b.id}>
-                      🏫 {b.gym_name ? `${b.gym_name} — ` : ''}{b.branch_name}
+                      🏫 {b.vahd_name ? `${b.vahd_name} — ` : ''}{b.branch_name}
                     </option>
                   ))}
                 </select>
@@ -1217,7 +1216,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                           <div>{emp.employee_name}</div>
                           <div className="text-[10px] text-slate-500 font-medium flex items-center gap-1 mt-0.5">
                             <span className="px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 border border-slate-200">
-                              🏫 {emp.branch_name || emp.gym_branch || 'Main Branch'}
+                              🏫 {emp.branch_name || emp.vahd_branch || 'Main Branch'}
                             </span>
                           </div>
                         </td>
@@ -1234,13 +1233,12 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                         <td className="py-3 px-3 text-center font-bold text-purple-600">{emp.days_leave}</td>
                         <td className="py-3 px-3 text-center">
                           <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
-                              pct >= 75
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${pct >= 75
                                 ? 'bg-emerald-100 text-emerald-800'
                                 : pct >= 60
-                                ? 'bg-amber-100 text-amber-800'
-                                : 'bg-rose-100 text-rose-800'
-                            }`}
+                                  ? 'bg-amber-100 text-amber-800'
+                                  : 'bg-rose-100 text-rose-800'
+                              }`}
                           >
                             {pct}%
                           </span>
@@ -1403,7 +1401,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
               <div key={b.branch_id} className="bg-white p-5 rounded-2xl border border-navy-100 shadow-2xs space-y-3">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-navy-50">
                   <div>
-                    <h3 className="text-base font-extrabold text-navy-900">{b.gym_name || b.branch_name}</h3>
+                    <h3 className="text-base font-extrabold text-navy-900">{b.vahd_name || b.branch_name}</h3>
                     <p className="text-xs text-navy-500">
                       City: <strong>{b.city || 'Primary Campus'}</strong> &bull; Owner: <strong>{b.owner_name || 'Assigned'}</strong>
                     </p>
@@ -1706,10 +1704,10 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                             row.status === 'Present'
                               ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                               : row.status === 'Late'
-                              ? 'bg-amber-50 text-amber-700 border-amber-200'
-                              : row.status === 'Leave'
-                              ? 'bg-purple-50 text-purple-700 border-purple-200'
-                              : 'bg-rose-50 text-rose-700 border-rose-200'
+                                ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                : row.status === 'Leave'
+                                  ? 'bg-purple-50 text-purple-700 border-purple-200'
+                                  : 'bg-rose-50 text-rose-700 border-rose-200'
                           )}
                         >
                           {row.status}
@@ -2506,10 +2504,10 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
               {hubCategory === 'students'
                 ? 'Student Attendance Statements & Exports'
                 : hubCategory === 'employees'
-                ? 'Employee Attendance Statements & Exports'
-                : hubCategory === 'branches'
-                ? 'Multi-Branch Headquarters Reports'
-                : 'Combined Attendance Reports'}
+                  ? 'Employee Attendance Statements & Exports'
+                  : hubCategory === 'branches'
+                    ? 'Multi-Branch Headquarters Reports'
+                    : 'Combined Attendance Reports'}
             </span>
           </div>
 

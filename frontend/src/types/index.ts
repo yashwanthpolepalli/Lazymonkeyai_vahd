@@ -1,4 +1,4 @@
-export type Role = 'super_admin' | 'ho' | 'owner' | 'employee' | 'student' | 'trainer' | 'customer';
+export type Role = 'super_admin' | 'ho' | 'owner' | 'employee' | 'student' | 'employee' | 'customer';
 
 export interface User {
   id: string;
@@ -11,9 +11,9 @@ export interface User {
   ho_id?: string;
   hoId?: string;
   ho_name?: string;
-  gymId?: string;
-  gymName?: string;
-  gym_name?: string;
+  vahdId?: string;
+  vahdName?: string;
+  vahd_name?: string;
   branchName?: string;
   branch_name?: string;
   branchId?: string;
@@ -89,8 +89,7 @@ export interface Member {
   weight: number;
   bodyFat: number;
   goal: string;
-  trainer: string;
-  enable_workout_videos?: boolean;
+  employee: string;
 }
 
 export interface Exercise {
@@ -195,7 +194,7 @@ export interface Lead {
   phone: string;
   source: string;
   interest: string;
-  assignedTrainer: string;
+  assignedemployee: string;
   lastFollowUp: string;
   probability: number;
   status: 'lead' | 'enquiry' | 'trial' | 'follow_up' | 'negotiation' | 'enrollment' | 'active';
@@ -213,13 +212,13 @@ export interface Product {
   lowStockThreshold: number;
 }
 
-export interface Gym {
+export interface vahd {
   id: string;
   name: string;
   owner: string;
   locations: number;
   members: number;
-  trainers: number;
+  employees: number;
   revenue: string;
   subscription: string;
   status: 'active' | 'suspended' | 'pending';

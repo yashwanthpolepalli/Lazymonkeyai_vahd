@@ -68,7 +68,7 @@ export function PaymentTerminalSelector({
   useEffect(() => {
     setPaidAmount(totalAmount);
     setSplitCash(Math.floor(totalAmount / 2));
-    
+
     let finalPaid = totalAmount;
     let finalDue = 0;
     if (selectedMethod === 'Pay Later') {
@@ -121,10 +121,10 @@ export function PaymentTerminalSelector({
       splitDetails:
         method === 'Split Payment'
           ? {
-              cashAmount: splitCash,
-              onlineAmount: splitOnline,
-              onlineMode: splitOnlineMode,
-            }
+            cashAmount: splitCash,
+            onlineAmount: splitOnline,
+            onlineMode: splitOnlineMode,
+          }
           : undefined,
     });
   };
@@ -167,72 +167,72 @@ export function PaymentTerminalSelector({
     activeBg: string;
     badge?: string;
   }[] = [
-    {
-      id: 'Cash',
-      label: 'CASH',
-      sub: 'Counter Cash Tender',
-      icon: Banknote,
-      color: 'text-emerald-600',
-      activeBorder: 'border-emerald-500 ring-2 ring-emerald-500/20 bg-emerald-50/50',
-      activeBg: 'bg-emerald-500 text-white',
-    },
-    {
-      id: 'Card / PineLabs',
-      label: 'CARD / PINELABS',
-      sub: 'EDC Terminal & Tap NFC',
-      icon: CreditCard,
-      color: 'text-blue-600',
-      activeBorder: 'border-blue-500 ring-2 ring-blue-500/20 bg-blue-50/50',
-      activeBg: 'bg-blue-600 text-white',
-      badge: 'POS Hardware',
-    },
-    {
-      id: 'Razorpay UPI',
-      label: 'RAZORPAY UPI',
-      sub: 'Dynamic QR & SMS Link',
-      icon: QrCode,
-      color: 'text-purple-600',
-      activeBorder: 'border-purple-500 ring-2 ring-purple-500/20 bg-purple-50/50',
-      activeBg: 'bg-purple-600 text-white',
-      badge: 'Auto Poll',
-    },
-    {
-      id: 'Wallet',
-      label: 'WALLET',
-      sub: 'Gym Member Credits',
-      icon: Wallet,
-      color: 'text-amber-600',
-      activeBorder: 'border-amber-500 ring-2 ring-amber-500/20 bg-amber-50/50',
-      activeBg: 'bg-amber-600 text-white',
-    },
-    {
-      id: 'Partial Pay',
-      label: 'PARTIAL PAY',
-      sub: 'Advance + Pending Due',
-      icon: Percent,
-      color: 'text-rose-600',
-      activeBorder: 'border-rose-500 ring-2 ring-rose-500/20 bg-rose-50/50',
-      activeBg: 'bg-rose-600 text-white',
-    },
-    {
-      id: 'Pay Later',
-      label: 'PAY LATER',
-      sub: 'Register Due Balance',
-      icon: Clock,
-      color: 'text-indigo-600',
-      activeBorder: 'border-indigo-500 ring-2 ring-indigo-500/20 bg-indigo-50/50',
-      activeBg: 'bg-indigo-600 text-white',
-    },
-    {
-      id: 'Split Payment',
-      label: 'SPLIT PAYMENT',
-      sub: 'Cash + UPI / Card',
-      icon: Sliders,
-      color: 'text-cyan-600',
-      activeBorder: 'border-cyan-500 ring-2 ring-cyan-500/20 bg-cyan-50/50',
-      activeBg: 'bg-cyan-600 text-white',
-    },
-  ];
+      {
+        id: 'Cash',
+        label: 'CASH',
+        sub: 'Counter Cash Tender',
+        icon: Banknote,
+        color: 'text-emerald-600',
+        activeBorder: 'border-emerald-500 ring-2 ring-emerald-500/20 bg-emerald-50/50',
+        activeBg: 'bg-emerald-500 text-white',
+      },
+      {
+        id: 'Card / PineLabs',
+        label: 'CARD / PINELABS',
+        sub: 'EDC Terminal & Tap NFC',
+        icon: CreditCard,
+        color: 'text-blue-600',
+        activeBorder: 'border-blue-500 ring-2 ring-blue-500/20 bg-blue-50/50',
+        activeBg: 'bg-blue-600 text-white',
+        badge: 'POS Hardware',
+      },
+      {
+        id: 'Razorpay UPI',
+        label: 'RAZORPAY UPI',
+        sub: 'Dynamic QR & SMS Link',
+        icon: QrCode,
+        color: 'text-purple-600',
+        activeBorder: 'border-purple-500 ring-2 ring-purple-500/20 bg-purple-50/50',
+        activeBg: 'bg-purple-600 text-white',
+        badge: 'Auto Poll',
+      },
+      {
+        id: 'Wallet',
+        label: 'WALLET',
+        sub: 'vahd Member Credits',
+        icon: Wallet,
+        color: 'text-amber-600',
+        activeBorder: 'border-amber-500 ring-2 ring-amber-500/20 bg-amber-50/50',
+        activeBg: 'bg-amber-600 text-white',
+      },
+      {
+        id: 'Partial Pay',
+        label: 'PARTIAL PAY',
+        sub: 'Advance + Pending Due',
+        icon: Percent,
+        color: 'text-rose-600',
+        activeBorder: 'border-rose-500 ring-2 ring-rose-500/20 bg-rose-50/50',
+        activeBg: 'bg-rose-600 text-white',
+      },
+      {
+        id: 'Pay Later',
+        label: 'PAY LATER',
+        sub: 'Register Due Balance',
+        icon: Clock,
+        color: 'text-indigo-600',
+        activeBorder: 'border-indigo-500 ring-2 ring-indigo-500/20 bg-indigo-50/50',
+        activeBg: 'bg-indigo-600 text-white',
+      },
+      {
+        id: 'Split Payment',
+        label: 'SPLIT PAYMENT',
+        sub: 'Cash + UPI / Card',
+        icon: Sliders,
+        color: 'text-cyan-600',
+        activeBorder: 'border-cyan-500 ring-2 ring-cyan-500/20 bg-cyan-50/50',
+        activeBg: 'bg-cyan-600 text-white',
+      },
+    ];
 
   return (
     <div className={`space-y-4 ${className}`}>
@@ -255,11 +255,10 @@ export function PaymentTerminalSelector({
               key={opt.id}
               type="button"
               onClick={() => handleSelect(opt.id)}
-              className={`p-3 rounded-2xl border text-left transition-all relative flex flex-col justify-between cursor-pointer ${
-                isSelected
+              className={`p-3 rounded-2xl border text-left transition-all relative flex flex-col justify-between cursor-pointer ${isSelected
                   ? opt.activeBorder
                   : 'border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50/60'
-              }`}
+                }`}
             >
               <div>
                 <div className="flex items-center justify-between mb-2">

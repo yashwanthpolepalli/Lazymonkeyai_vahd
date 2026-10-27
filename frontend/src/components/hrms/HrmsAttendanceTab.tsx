@@ -7,7 +7,7 @@ import type { AttendanceRecord } from '@/services/hrmsApi';
 import { cn } from '@/utils/cn';
 import { EmployeeAttendanceReportsModal } from './EmployeeAttendanceReportsModal';
 
-export type AttendanceRoleFilter = 'ALL' | 'CUSTOMER' | 'TRAINER_STAFF';
+export type AttendanceRoleFilter = 'ALL' | 'CUSTOMER' | 'employee_STAFF';
 
 interface RecentCheckin {
   id: string;
@@ -63,7 +63,7 @@ function getRoleBadge(role?: string) {
   if (r.includes('OWNER')) {
     return { label: 'Owner', color: 'bg-emerald-100 text-emerald-700 border-emerald-200' };
   }
-  if (r.includes('EMPLOYEE') || r.includes('TRAINER') || r.includes('STAFF') || r.includes('MANAGER')) {
+  if (r.includes('EMPLOYEE') || r.includes('employee') || r.includes('STAFF') || r.includes('MANAGER')) {
     return { label: 'Employee', color: 'bg-purple-100 text-purple-700 border-purple-200' };
   }
   return { label: 'Student', color: 'bg-orange-100 text-orange-700 border-orange-200' };
@@ -189,7 +189,7 @@ export function HrmsAttendanceTab({ attendanceLogs }: HrmsAttendanceTabProps) {
             >
               <option value="ALL">👥 All Attendance (Customer + Staff)</option>
               <option value="CUSTOMER">👤 Customer Attendance Only</option>
-              <option value="TRAINER_STAFF">🏋️ Trainer / Staff Attendance Only</option>
+              <option value="employee_STAFF">🏋️ employee / Staff Attendance Only</option>
             </select>
           </div>
 
@@ -326,7 +326,7 @@ export function HrmsAttendanceTab({ attendanceLogs }: HrmsAttendanceTabProps) {
                   <span>Live Attendance &amp; Biometric Check-Ins Feed</span>
                 </h3>
                 <p className="text-xs text-navy-500 font-medium">
-                  Dynamic records from database filtered by: <span className="font-bold text-purple-700">{roleFilter === 'ALL' ? 'All Roles (Customer + Staff)' : roleFilter === 'CUSTOMER' ? 'Customers' : 'Trainers & Staff'}</span>
+                  Dynamic records from database filtered by: <span className="font-bold text-purple-700">{roleFilter === 'ALL' ? 'All Roles (Customer + Staff)' : roleFilter === 'CUSTOMER' ? 'Customers' : 'employees & Staff'}</span>
                 </p>
               </div>
 
@@ -348,14 +348,14 @@ export function HrmsAttendanceTab({ attendanceLogs }: HrmsAttendanceTabProps) {
             ) : filteredCheckins.length === 0 ? (
               <div className="py-12 text-center text-navy-400 text-xs font-bold space-y-1">
                 <Icon name="calendar-x" size={28} className="mx-auto text-navy-300 mb-2" />
-                <div>No attendance check-ins found for {roleFilter === 'ALL' ? 'selected criteria' : roleFilter === 'CUSTOMER' ? 'customers' : 'trainers/staff'} today.</div>
+                <div>No attendance check-ins found for {roleFilter === 'ALL' ? 'selected criteria' : roleFilter === 'CUSTOMER' ? 'customers' : 'employees/staff'} today.</div>
               </div>
             ) : (
               <div className="flex flex-col gap-2.5">
                 {filteredCheckins.map((r, i) => {
                   const roleBadge = getRoleBadge(r.user_role);
                   const methodBadge = getMethodBadge(r.event_type);
-                  const displayName = r.person_name || r.customer_name || 'Gym Member';
+                  const displayName = r.person_name || r.customer_name || 'vahd Member';
                   const initials = displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
                   const isCheckOut = (r.direction || '').toLowerCase().includes('out');
 
@@ -367,13 +367,13 @@ export function HrmsAttendanceTab({ attendanceLogs }: HrmsAttendanceTabProps) {
                       <div className="flex items-center gap-3.5 min-w-0">
                         <div className={cn(
                           'w-10 h-10 rounded-xl flex items-center justify-center text-white text-xs font-black shrink-0 shadow-xs',
-                          (r.user_role || '').toUpperCase().includes('TRAINER')
+                          (r.user_role || '').toUpperCase().includes('employee')
                             ? 'bg-gradient-to-br from-purple-500 to-indigo-600'
                             : (r.user_role || '').toUpperCase().includes('OWNER')
-                            ? 'bg-gradient-to-br from-emerald-500 to-teal-600'
-                            : (r.user_role || '').toUpperCase().includes('STAFF')
-                            ? 'bg-gradient-to-br from-amber-500 to-orange-600'
-                            : 'bg-gradient-to-br from-blue-500 to-cyan-600'
+                              ? 'bg-gradient-to-br from-emerald-500 to-teal-600'
+                              : (r.user_role || '').toUpperCase().includes('STAFF')
+                                ? 'bg-gradient-to-br from-amber-500 to-orange-600'
+                                : 'bg-gradient-to-br from-blue-500 to-cyan-600'
                         )}>
                           {initials}
                         </div>
@@ -492,7 +492,7 @@ export function HrmsAttendanceTab({ attendanceLogs }: HrmsAttendanceTabProps) {
                     filteredCheckins.map((r, idx) => {
                       const roleBadge = getRoleBadge(r.user_role);
                       const methodBadge = getMethodBadge(r.event_type);
-                      const displayName = r.person_name || r.customer_name || 'Gym Member';
+                      const displayName = r.person_name || r.customer_name || 'vahd Member';
                       const isCheckOut = (r.direction || '').toLowerCase().includes('out');
 
                       return (
@@ -601,11 +601,10 @@ export function HrmsAttendanceTab({ attendanceLogs }: HrmsAttendanceTabProps) {
                       <td className="py-3.5 px-4 font-bold">{att.work_hours} hrs</td>
                       <td className="py-3.5 px-4">
                         <span
-                          className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                            att.status === 'Present'
-                              ? 'bg-emerald-50 text-emerald-700'
-                              : 'bg-rose-50 text-rose-700'
-                          }`}
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold ${att.status === 'Present'
+                            ? 'bg-emerald-50 text-emerald-700'
+                            : 'bg-rose-50 text-rose-700'
+                            }`}
                         >
                           {att.status}
                         </span>

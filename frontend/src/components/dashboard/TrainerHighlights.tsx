@@ -1,16 +1,16 @@
 import { Icon } from '@/components/ui/Icon';
-import type { TopTrainerItem } from '@/types/dashboard';
+import type { TopemployeeItem } from '@/types/dashboard';
 
-interface TrainerHighlightsProps {
-  trainers: TopTrainerItem[];
+interface employeeHighlightsProps {
+  employees: TopemployeeItem[];
   onViewAll?: () => void;
 }
 
-export function TrainerHighlights({ trainers, onViewAll }: TrainerHighlightsProps) {
+export function employeeHighlights({ employees, onViewAll }: employeeHighlightsProps) {
   const formatINR = (val: number) =>
     new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(val);
 
-  const items = trainers || [];
+  const items = employees || [];
 
   const rankBadges = [
     { bg: 'bg-amber-100 text-amber-700 border-amber-300', text: '1' },
@@ -23,7 +23,7 @@ export function TrainerHighlights({ trainers, onViewAll }: TrainerHighlightsProp
     <div className="card p-5 bg-white border border-navy-100/80 rounded-2xl shadow-xs space-y-4 flex flex-col justify-between">
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xs font-extrabold text-navy-900 tracking-wider uppercase">TOP PERFORMING TRAINERS</h3>
+          <h3 className="text-xs font-extrabold text-navy-900 tracking-wider uppercase">TOP PERFORMING employeeS</h3>
           <select className="input-field !py-1 !px-2.5 text-xs font-semibold sm:w-auto bg-navy-50 border-navy-200">
             <option>This Month</option>
             <option>Today</option>
@@ -33,7 +33,7 @@ export function TrainerHighlights({ trainers, onViewAll }: TrainerHighlightsProp
 
         {items.length === 0 ? (
           <div className="py-8 text-center text-xs font-semibold text-navy-400">
-            No trainer metrics recorded yet.
+            No employee metrics recorded yet.
           </div>
         ) : (
           <div className="space-y-3">
@@ -82,7 +82,7 @@ export function TrainerHighlights({ trainers, onViewAll }: TrainerHighlightsProp
 
       <div className="pt-3 border-t border-navy-100 text-center">
         <button onClick={onViewAll} className="text-xs font-bold text-brand-600 hover:text-brand-700 transition-colors inline-flex items-center gap-1">
-          View All Trainers <Icon name="arrow-right" size={14} />
+          View All employees <Icon name="arrow-right" size={14} />
         </button>
       </div>
     </div>

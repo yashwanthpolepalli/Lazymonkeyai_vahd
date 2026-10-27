@@ -4,15 +4,15 @@ import { useAuth } from '@/context/AuthContext';
 import { Icon } from '@/components/ui/Icon';
 import { Badge } from '@/components/ui/Badge';
 import { SkeletonCard, Skeleton } from '@/components/ui/Skeleton';
-import { TrainerGeofencePunchWidget } from '@/components/trainer/TrainerGeofencePunchWidget';
+import { EmployeeGeofencePunchWidget } from '@/components/employee/employeeGeofencePunchWidget';
 import { hrmsApi, formatLeaveOptionLabel, type LeaveItem, type PayrollItem, type EligibleLeaveType } from '@/services/hrmsApi';
 import { apiClient } from '@/services/apiClient';
 import { api } from '@/services/api';
 import { cn } from '@/utils/cn';
 
-type TrainerHrmsTab = 'attendance' | 'leave' | 'payroll';
+type employeeHrmsTab = 'attendance' | 'leave' | 'payroll';
 
-interface TrainerProfileData {
+interface employeeProfileData {
   id: string;
   user_id?: string;
   full_name: string;
@@ -29,20 +29,20 @@ interface TrainerProfileData {
   assigned_customers_count?: number;
 }
 
-export function TrainerHrmsPage() {
+export function EmployeeHrmsPage() {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const rawTab = searchParams.get('tab');
-  const activeTab: TrainerHrmsTab =
+  const activeTab: employeeHrmsTab =
     rawTab === 'leave' || rawTab === 'payroll' || rawTab === 'attendance'
       ? rawTab
       : 'attendance';
 
-  const setTab = (t: TrainerHrmsTab) => {
+  const setTab = (t: employeeHrmsTab) => {
     setSearchParams({ tab: t });
   };
 
-  const [trainerProfile, setTrainerProfile] = useState<TrainerProfileData | null>(null);
+  const [employeeProfile, setemployeeProfile] = useState<employeeProfileData | null>(null);
   const [leaves, setLeaves] = useState<LeaveItem[]>([]);
   const [eligibleLeaveTypes, setEligibleLeaveTypes] = useState<EligibleLeaveType[]>([]);
   const [payrollRecords, setPayrollRecords] = useState<PayrollItem[]>([]);
@@ -75,7 +75,7 @@ export function TrainerHrmsPage() {
               }))
           );
         }
-      }).catch(() => {});
+      }).catch(() => { });
     };
 
     fetchReasons();
@@ -127,31 +127,31 @@ export function TrainerHrmsPage() {
     setTimeout(() => setToastMessage(null), 4000);
   };
 
-  const fetchTrainerData = async () => {
+  const fetchemployeeData = async () => {
     setLoading(true);
     try {
-      const [trainersRes, leavesRes, payrollRes, biometricsRes, customersRes] = await Promise.all([
-        apiClient.get<TrainerProfileData[]>('/payroll/trainers').catch(() => []),
+      const [employeesRes, leavesRes, payrollRes, biometricsRes, customersRes] = await Promise.all([
+        apiClient.get<employeeProfileData[]>('/payroll/employees').catch(() => []),
         hrmsApi.getLeaves().catch(() => []),
         hrmsApi.getPayroll().catch(() => []),
         api.biometrics.recent(50).catch(() => []),
         api.customers.list().catch(() => []),
       ]);
 
-      // Match current logged in trainer
-      let matchedTrainer = trainersRes.find(
+      // Match current logged in employee
+      let matchedemployee = employeesRes.find(
         (t) =>
           (user?.id && (t.id === user.id || t.user_id === user.id)) ||
           (user?.email && t.email?.toLowerCase() === user.email.toLowerCase()) ||
           (user?.name && t.full_name?.toLowerCase() === user.name.toLowerCase())
-      ) || trainersRes[0] || null;
+      ) || employeesRes[0] || null;
 
-      setTrainerProfile(matchedTrainer);
+      setemployeeProfile(matchedemployee);
 
-      const tid = matchedTrainer?.id || user?.id || '';
-      const tname = matchedTrainer?.full_name || user?.name || '';
+      const tid = matchedemployee?.id || user?.id || '';
+      const tname = matchedemployee?.full_name || user?.name || '';
 
-      // Fetch eligible leave types for this trainer (respects gender, service days, owner config)
+      // Fetch eligible leave types for this employee (respects gender, service days, owner config)
       if (tid) {
         try {
           const [eligRes, allPolicies] = await Promise.all([
@@ -194,13 +194,13 @@ export function TrainerHrmsPage() {
             setFormLeaveType(types[0].name);
           }
         } catch (err) {
-          console.error('Failed to fetch eligible leave types for trainer:', err);
+          console.error('Failed to fetch eligible leave types for employee:', err);
         }
       }
 
-      // Filter leaves for this trainer
+      // Filter leaves for this employee
       const myLeaves = leavesRes.filter((l) => {
-        if (!matchedTrainer && !user) return true;
+        if (!matchedemployee && !user) return true;
         return (
           l.employee_id === tid ||
           l.employee_id === `emp_${tid}` ||
@@ -209,11 +209,11 @@ export function TrainerHrmsPage() {
       });
       setLeaves(myLeaves.length > 0 ? myLeaves : leavesRes);
 
-      // Filter payroll for this trainer
+      // Filter payroll for this employee
       const myPayroll = payrollRes.filter((p) => {
-        if (!matchedTrainer && !user) return true;
+        if (!matchedemployee && !user) return true;
         return (
-          p.trainer_id === tid ||
+          p.employee_id === tid ||
           p.employee_id === tid ||
           p.employee_id === `emp_${tid}` ||
           (p.employee_name && tname && p.employee_name.toLowerCase() === tname.toLowerCase())
@@ -221,10 +221,10 @@ export function TrainerHrmsPage() {
       });
       setPayrollRecords(myPayroll.length > 0 ? myPayroll : payrollRes);
 
-      // Filter biometric punches for this specific trainer
+      // Filter biometric punches for this specific employee
       if (Array.isArray(biometricsRes)) {
         const myAttendance = biometricsRes.filter((log: any) => {
-          if (!matchedTrainer && !user) return true;
+          if (!matchedemployee && !user) return true;
           return (
             log.customer_id === tid ||
             log.customer_id === `emp_${tid}` ||
@@ -235,14 +235,14 @@ export function TrainerHrmsPage() {
         setAttendanceLogs(myAttendance);
       }
 
-      // Customers assigned to this trainer
+      // Customers assigned to this employee
       if (customersRes && Array.isArray(customersRes)) {
         const myCustomers = customersRes.filter((c: any) => {
-          if (!matchedTrainer && !user) return false;
+          if (!matchedemployee && !user) return false;
           return (
-            c.assigned_trainer_id === tid ||
-            c.trainer_id === tid ||
-            (c.assigned_trainer && tname && c.assigned_trainer.toLowerCase() === tname.toLowerCase())
+            c.assigned_employee_id === tid ||
+            c.employee_id === tid ||
+            (c.assigned_employee && tname && c.assigned_employee.toLowerCase() === tname.toLowerCase())
           );
         });
         const assignedCustIds = new Set(myCustomers.map((c: any) => c.id));
@@ -255,14 +255,14 @@ export function TrainerHrmsPage() {
         setCustomerCheckins(custLogs);
       }
     } catch (err) {
-      console.error('Error loading trainer HRMS data:', err);
+      console.error('Error loading employee HRMS data:', err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchTrainerData();
+    fetchemployeeData();
   }, [user]);
 
   const handleApplyLeave = async (e: React.FormEvent) => {
@@ -280,7 +280,7 @@ export function TrainerHrmsPage() {
 
     setSubmittingLeave(true);
     try {
-      const empId = trainerProfile?.id || user?.id || 'trainer_001';
+      const empId = employeeProfile?.id || user?.id || 'employee_001';
       await hrmsApi.applyLeave({
         employee_id: empId,
         leave_type_id: formLeaveTypeId || undefined,
@@ -338,7 +338,7 @@ export function TrainerHrmsPage() {
           return (
             <button
               key={tab.id}
-              onClick={() => setTab(tab.id as TrainerHrmsTab)}
+              onClick={() => setTab(tab.id as employeeHrmsTab)}
               className={cn(
                 'px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer',
                 isSelected
@@ -358,8 +358,8 @@ export function TrainerHrmsPage() {
       {/* ───────────────────────────────────────────────────────────── */}
       {activeTab === 'attendance' && (
         <div className="space-y-6 animate-fade-in">
-          {/* Trainer Geofenced Punch Center */}
-          <TrainerGeofencePunchWidget onPunchSuccess={fetchTrainerData} />
+          {/* employee Geofenced Punch Center */}
+          <EmployeeGeofencePunchWidget onPunchSuccess={fetchemployeeData} />
 
 
           {/* KPI Row */}
@@ -398,7 +398,7 @@ export function TrainerHrmsPage() {
                 </div>
               </div>
               <div className="text-2xl font-black text-navy-900">
-                {trainerProfile?.assigned_customers_count || 4} Members
+                {employeeProfile?.assigned_customers_count || 4} Members
               </div>
               <div className="text-[11px] text-blue-600 font-bold mt-1">Assigned for training</div>
             </div>
@@ -583,8 +583,8 @@ export function TrainerHrmsPage() {
                               l.leave_type?.toLowerCase().includes('sick')
                                 ? 'bg-rose-50 text-rose-700 border-rose-200'
                                 : l.leave_type?.toLowerCase().includes('paid')
-                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                : 'bg-purple-50 text-purple-700 border-purple-200'
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                  : 'bg-purple-50 text-purple-700 border-purple-200'
                             )}
                           >
                             {l.leave_type}
@@ -604,8 +604,8 @@ export function TrainerHrmsPage() {
                               l.status === 'Approved'
                                 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                                 : l.status === 'Pending'
-                                ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                                : 'bg-rose-50 text-rose-700 border border-rose-200'
+                                  ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                                  : 'bg-rose-50 text-rose-700 border border-rose-200'
                             )}
                           >
                             <span
@@ -614,8 +614,8 @@ export function TrainerHrmsPage() {
                                 l.status === 'Approved'
                                   ? 'bg-emerald-500'
                                   : l.status === 'Pending'
-                                  ? 'bg-amber-500'
-                                  : 'bg-rose-500'
+                                    ? 'bg-amber-500'
+                                    : 'bg-rose-500'
                               )}
                             />
                             {l.status}
@@ -646,25 +646,25 @@ export function TrainerHrmsPage() {
                   Registered Salary Structure
                 </span>
                 <h2 className="text-xl sm:text-2xl font-black text-white mt-0.5">
-                  ₹{(trainerProfile?.base_monthly_salary || 0).toLocaleString()} <span className="text-sm font-normal text-blue-200">/ month Base</span>
+                  ₹{(employeeProfile?.base_monthly_salary || 0).toLocaleString()} <span className="text-sm font-normal text-blue-200">/ month Base</span>
                 </h2>
               </div>
               <div className="flex items-center gap-3">
                 <div className="bg-white/10 px-3.5 py-2 rounded-xl text-xs backdrop-blur-xs border border-white/10">
                   <span className="text-blue-200 block text-[10px] uppercase font-bold">PT Commission</span>
-                  <span className="font-bold text-white">₹{trainerProfile?.pt_session_rate || 500} / Session</span>
+                  <span className="font-bold text-white">₹{employeeProfile?.pt_session_rate || 500} / Session</span>
                 </div>
                 <div className="bg-white/10 px-3.5 py-2 rounded-xl text-xs backdrop-blur-xs border border-white/10">
                   <span className="text-blue-200 block text-[10px] uppercase font-bold">Payout Account</span>
                   <span className="font-bold text-white font-mono">
-                    {trainerProfile?.upi_id || trainerProfile?.bank_account_no || 'UPI Auto-Disburse'}
+                    {employeeProfile?.upi_id || employeeProfile?.bank_account_no || 'UPI Auto-Disburse'}
                   </span>
                 </div>
               </div>
             </div>
 
             <p className="text-xs text-blue-100/80 leading-relaxed max-w-2xl">
-              Monthly payroll is generated automatically by gym management based on biometric attendance days, approved paid leaves, and total personal training sessions conducted.
+              Monthly payroll is generated automatically by vahd management based on biometric attendance days, approved paid leaves, and total personal training sessions conducted.
             </p>
           </div>
 
@@ -676,14 +676,14 @@ export function TrainerHrmsPage() {
                   <Icon name="file-text" size={16} className="text-purple-600" />
                   <span>Monthly Payroll Invoices &amp; Payslips</span>
                 </h3>
-                <p className="text-xs text-navy-500">Statements generated by Gym Owner with downloadable payslips.</p>
+                <p className="text-xs text-navy-500">Statements generated by vahd Owner with downloadable payslips.</p>
               </div>
             </div>
 
             {payrollRecords.length === 0 ? (
               <div className="py-12 text-center text-navy-400 text-xs font-bold space-y-2">
                 <Icon name="credit-card" size={28} className="mx-auto text-navy-300" />
-                <div>No payroll records generated yet by gym owner.</div>
+                <div>No payroll records generated yet by vahd owner.</div>
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -835,8 +835,8 @@ export function TrainerHrmsPage() {
                           {sel.paid_type === 'PAID' || sel.is_paid
                             ? '💰 Fully Paid Leave'
                             : sel.paid_type === 'HALF_PAY'
-                            ? '½ Half Pay Leave'
-                            : '⚠️ Unpaid / Loss of Pay'}
+                              ? '½ Half Pay Leave'
+                              : '⚠️ Unpaid / Loss of Pay'}
                         </span>
                         <span>
                           Remaining: <strong>{sel.remaining_days ?? sel.balance?.remaining_days ?? Math.max(0, (sel.annual_quota || 0) - (sel.used_days || 0))} Days</strong>
@@ -1037,12 +1037,12 @@ export function TrainerHrmsPage() {
             {/* Coach & Period Meta */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-navy-50/70 p-4 rounded-2xl border border-navy-100 text-xs">
               <div>
-                <div className="text-navy-400 text-[10px] uppercase font-bold">Trainer Name</div>
+                <div className="text-navy-400 text-[10px] uppercase font-bold">employee Name</div>
                 <div className="font-bold text-navy-900 mt-0.5">{selectedPayslip.employee_name || user?.name}</div>
               </div>
               <div>
                 <div className="text-navy-400 text-[10px] uppercase font-bold">Designation</div>
-                <div className="font-bold text-navy-900 mt-0.5">{selectedPayslip.designation || 'Fitness Trainer'}</div>
+                <div className="font-bold text-navy-900 mt-0.5">{selectedPayslip.designation || 'Fitness employee'}</div>
               </div>
               <div>
                 <div className="text-navy-400 text-[10px] uppercase font-bold">Salary Period</div>
@@ -1147,3 +1147,5 @@ export function TrainerHrmsPage() {
     </div>
   );
 }
+
+export const employeeHrmsPage = EmployeeHrmsPage;

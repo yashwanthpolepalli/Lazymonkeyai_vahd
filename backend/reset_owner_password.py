@@ -1,5 +1,5 @@
 """
-FIT CLUB — Reset Owner Password Utility
+vahd — Reset Owner Password Utility
 Run: python3 reset_owner_password.py <email> <new_password>
 """
 import sys

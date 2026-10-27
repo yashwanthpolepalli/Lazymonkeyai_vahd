@@ -25,7 +25,7 @@ export function MultiBranchPage() {
   const fetchBranchesData = () => {
     setLoading(true);
     Promise.all([
-      apiClient.get<any[]>('/gym/branches').catch(() => []),
+      apiClient.get<any[]>('/vahd/branches').catch(() => []),
       api.customers.list().catch(() => []),
     ]).then(([bList, mList]) => {
       if (Array.isArray(bList) && bList.length > 0) {
@@ -36,7 +36,7 @@ export function MultiBranchPage() {
           members: Number(b.active_members ?? b.total_members ?? b.members) || 0,
           revenue: b.revenue ? `₹${(Number(b.revenue) / 100000).toFixed(1)}L` : '₹0.0L',
           revenueVal: Number(b.revenue) || 0,
-          trainers: Number(b.total_trainers ?? b.trainers) || 0,
+          employees: Number(b.total_employees ?? b.employees) || 0,
           status: b.is_active !== undefined ? (b.is_active ? 'active' : 'inactive') : (String(b.status || 'active').toLowerCase().includes('inactive') ? 'inactive' : 'active'),
         })));
       } else {
@@ -62,7 +62,7 @@ export function MultiBranchPage() {
     setError('');
 
     try {
-      await apiClient.post('/gym/branches', {
+      await apiClient.post('/vahd/branches', {
         branch_name: branchName.trim(),
         city: city.trim() || undefined,
         address: address.trim() || undefined,
@@ -85,7 +85,7 @@ export function MultiBranchPage() {
 
   const totalMembers = branches.reduce((s, b) => s + (b.members || 0), 0);
   const totalRevenueVal = branches.reduce((s, b) => s + (b.revenueVal || 0), 0);
-  const totalTrainers = branches.reduce((s, b) => s + (b.trainers || 0), 0);
+  const totalemployees = branches.reduce((s, b) => s + (b.employees || 0), 0);
 
   const { user } = useAuth();
   const isHo = user?.role === 'ho';
@@ -146,7 +146,7 @@ export function MultiBranchPage() {
               <Icon name="user-cog" size={16} className="text-ai-600" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-navy-900">{totalTrainers}</div>
+          <div className="text-2xl font-bold text-navy-900">{totalemployees}</div>
           <div className="text-xs text-navy-400 mt-1">across all branches</div>
         </div>
       </div>
@@ -174,7 +174,7 @@ export function MultiBranchPage() {
                 <div className="text-xs text-navy-400">Revenue</div>
               </div>
               <div className="p-3 rounded-xl bg-navy-50">
-                <div className="text-lg font-bold text-navy-900">{b.trainers || 0}</div>
+                <div className="text-lg font-bold text-navy-900">{b.employees || 0}</div>
                 <div className="text-xs text-navy-400">Employees</div>
               </div>
               <div className="p-3 rounded-xl bg-navy-50">

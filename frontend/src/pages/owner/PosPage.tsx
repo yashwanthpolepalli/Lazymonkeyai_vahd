@@ -138,12 +138,12 @@ export function PosPage() {
     setActiveTab(tabName);
     const paramKey =
       tabName === 'Invoices History' ? 'sales_history' :
-      tabName === 'Sales Invoice' ? 'sales' :
-      tabName === 'Inventory' ? 'inventory' :
-      tabName === 'Purchase' ? 'purchase' :
-      tabName === 'Recent Sales' ? 'recent-sales' :
-      tabName === 'Daily Summary' ? 'daily-summary' : 'quicksale';
-    
+        tabName === 'Sales Invoice' ? 'sales' :
+          tabName === 'Inventory' ? 'inventory' :
+            tabName === 'Purchase' ? 'purchase' :
+              tabName === 'Recent Sales' ? 'recent-sales' :
+                tabName === 'Daily Summary' ? 'daily-summary' : 'quicksale';
+
     const newParams: Record<string, string> = { tab: paramKey };
     if (extraParams) {
       Object.entries(extraParams).forEach(([k, v]) => {
@@ -243,7 +243,7 @@ export function PosPage() {
       apiClient.get<RecentSale[]>('/pos/recent-sales'),
       apiClient.get<DailySummary>('/pos/daily-summary'),
       apiClient.get<any[]>('/customers'),
-      apiClient.get<any>('/gym/billing').catch(() => null)
+      apiClient.get<any>('/vahd/billing').catch(() => null)
     ])
       .then(([prodsRes, salesRes, summaryRes, custRes, billingRes]) => {
         if (Array.isArray(prodsRes)) setProducts(prodsRes);
@@ -271,7 +271,7 @@ export function PosPage() {
           );
         }
       })
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setLoading(false));
   };
 
@@ -353,9 +353,9 @@ export function PosPage() {
   const isGstActive = Boolean(
     billingSettings?.enable_gst_engine &&
     (Number(billingSettings?.total_gst_rate ?? 0) > 0 ||
-     Number(billingSettings?.cgst_rate ?? 0) > 0 ||
-     Number(billingSettings?.sgst_rate ?? 0) > 0 ||
-     Number(billingSettings?.igst_rate ?? 0) > 0)
+      Number(billingSettings?.cgst_rate ?? 0) > 0 ||
+      Number(billingSettings?.sgst_rate ?? 0) > 0 ||
+      Number(billingSettings?.igst_rate ?? 0) > 0)
   );
 
   const taxableAmount = useMemo(() => {
@@ -702,8 +702,8 @@ export function PosPage() {
                               isOutOfStock
                                 ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
                                 : inCartQty > 0
-                                ? 'bg-blue-600 text-white hover:bg-blue-700'
-                                : 'bg-slate-100 hover:bg-blue-600 hover:text-white text-slate-700'
+                                  ? 'bg-blue-600 text-white hover:bg-blue-700'
+                                  : 'bg-slate-100 hover:bg-blue-600 hover:text-white text-slate-700'
                             )}
                           >
                             <Plus size={15} className="stroke-[3]" />
@@ -1506,9 +1506,9 @@ export function PosPage() {
           <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl p-6 space-y-4 animate-scale-up border border-slate-200">
             <div className="text-center space-y-1 border-b border-slate-100 pb-3">
               <div className="w-10 h-10 mx-auto rounded-2xl bg-blue-600 text-white flex items-center justify-center font-black">
-                {billingSettings?.gym_name?.slice(0, 2).toUpperCase() || 'VA'}
+                {billingSettings?.vahd_name?.slice(0, 2).toUpperCase() || 'VA'}
               </div>
-              <h3 className="text-base font-black text-slate-900">{billingSettings?.gym_name || 'VAHD POS'}</h3>
+              <h3 className="text-base font-black text-slate-900">{billingSettings?.vahd_name || 'VAHD POS'}</h3>
               {billingSettings?.gstin && (
                 <div className="text-[10px] text-slate-500 font-bold">GSTIN: {billingSettings.gstin}</div>
               )}

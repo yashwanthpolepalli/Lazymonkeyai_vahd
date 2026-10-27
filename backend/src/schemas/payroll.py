@@ -2,7 +2,7 @@ from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, List
 from datetime import datetime
 
-class TrainerCreateRequest(BaseModel):
+class employeeCreateRequest(BaseModel):
     full_name: str
     email: EmailStr
     phone: Optional[str] = None
@@ -13,7 +13,7 @@ class TrainerCreateRequest(BaseModel):
     bank_account_no: Optional[str] = None
     bank_ifsc: Optional[str] = None
     upi_id: Optional[str] = None
-    primary_gym_location: Optional[str] = None
+    primary_vahd_location: Optional[str] = None
     branch: Optional[str] = None
     branch_id: Optional[str] = None
     owner_id: Optional[str] = None
@@ -21,7 +21,7 @@ class TrainerCreateRequest(BaseModel):
     join_date: Optional[str] = None
     created_at: Optional[str] = None
 
-class TrainerResponse(BaseModel):
+class employeeResponse(BaseModel):
     id: str
     full_name: str
     email: EmailStr
@@ -45,8 +45,8 @@ class TrainerResponse(BaseModel):
     is_early_logout: Optional[bool] = False
     today_punch: Optional[dict] = None
     branch_id: Optional[str] = None
-    gym_branch: Optional[str] = None
-    primary_gym_location: Optional[str] = None
+    vahd_branch: Optional[str] = None
+    primary_vahd_location: Optional[str] = None
     employee_code: Optional[str] = None
     owner_id: Optional[str] = None
     ho_id: Optional[str] = None
@@ -55,7 +55,7 @@ class TrainerResponse(BaseModel):
         from_attributes = True
 
 class PayrollGenerateRequest(BaseModel):
-    trainer_id: str
+    employee_id: str
     month_year: Optional[str] = None
     pt_sessions_count: int = 0
 
@@ -65,7 +65,7 @@ class PayrollPayRequest(BaseModel):
 
 class PayrollInvoiceResponse(BaseModel):
     id: str
-    trainer_id: str
+    employee_id: str
     month_year: str
     days_present: int
     days_absent: int

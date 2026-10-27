@@ -4,8 +4,8 @@ from sqlalchemy import Column, String, Float, Boolean, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from src.database.base import Base
 
-class TrainerProfile(Base):
-    __tablename__ = "trainer_profiles"
+class employeeProfile(Base):
+    __tablename__ = "employee_profiles"
 
     id = Column(String, primary_key=True, index=True)
     user_id = Column(String, ForeignKey("users.id"), unique=True, nullable=True)
@@ -13,9 +13,9 @@ class TrainerProfile(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     phone = Column(String, nullable=True)
     gender = Column(String, nullable=True)  # Male, Female, Other
-    role = Column(String, nullable=False)  # OWNER, MANAGER, TRAINER, STAFF
+    role = Column(String, nullable=False)  # OWNER, MANAGER, employee, STAFF
     specialization = Column(String, nullable=True)
-    primary_gym_location = Column(String, nullable=True)
+    primary_vahd_location = Column(String, nullable=True)
     base_monthly_salary = Column(Float, nullable=False)
     pt_session_rate = Column(Float, nullable=False)
     bank_account_no = Column(String, nullable=True)
@@ -26,4 +26,9 @@ class TrainerProfile(Base):
 
     # Relationships
     user = relationship("User", foreign_keys=[user_id])
-    payroll_invoices = relationship("PayrollInvoice", back_populates="trainer")
+    payroll_invoices = relationship("PayrollInvoice", back_populates="employee")
+
+
+# Aliases
+EmployeeProfile = employeeProfile
+

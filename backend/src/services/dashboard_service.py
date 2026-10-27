@@ -1,5 +1,5 @@
 """
-FIT CLUB AI — Enterprise Production Dashboard & Analytics Service
+vahd — Enterprise Production Dashboard & Analytics Service
 Strict data requirement enforcement, zero hardcoded fallbacks, zero synthetic estimates.
 """
 from src.utils.timezone import now_ist_naive, today_ist_start, today_ist_end, to_ist_str
@@ -12,10 +12,10 @@ from src.models.customer import Customer
 from src.models.membership import Membership
 from src.models.biometric import BiometricLog
 from src.models.biometric_device import BiometricDevice
-from src.models.settings import Branch as GymBranch
+from src.models.settings import Branch as vahdBranch
 from src.models.hrms import Employee
-from src.models.trainer import TrainerProfile
-from src.services.auth_service import _fetch_gym_context
+from src.models.employee import employeeProfile
+from src.services.auth_service import _fetch_vahd_context
 
 
 import os
@@ -149,13 +149,12 @@ class DashboardService:
                 "attendance": {"ratePercent": 0, "daysAttended": 0, "totalDays": 0},
                 "workout": None,
                 "nutrition": {"dailyCalories": 0, "consumedCalories": 0, "proteinGrams": 0.0, "targetProteinGrams": 0.0},
-                "inbody": None,
                 "ai_insights": []
             }
 
         cust_query = db.query(Customer).filter(Customer.id == customer_id)
         if branch_id:
-            cust_query = cust_query.filter(Customer.primary_gym_location.ilike(f"%{branch_id}%"))
+            cust_query = cust_query.filter(Customer.primary_vahd_location.ilike(f"%{branch_id}%"))
         cust = cust_query.first()
 
         if not cust:
@@ -166,7 +165,6 @@ class DashboardService:
                 "attendance": {"ratePercent": 0, "daysAttended": 0, "totalDays": 0},
                 "workout": None,
                 "nutrition": {"dailyCalories": 0, "consumedCalories": 0, "proteinGrams": 0.0, "targetProteinGrams": 0.0},
-                "inbody": None,
                 "ai_insights": []
             }
 
@@ -197,13 +195,8 @@ class DashboardService:
 
         # Dynamic Physiological Macro Target Calculation
         macro_targets = DashboardService.calculate_dynamic_macros(
-            weight_kg=cust.weight,
-            height_cm=cust.height,
             age=cust.age,
-            bmi=cust.bmi,
-            goal=cust.goal,
-            gender=cust.gender,
-            days_per_week=cust.days_per_week
+            gender=cust.gender
         )
 
         days_remaining = (mem.expiry_date - now).days if (mem and mem.expiry_date) else 0
@@ -213,12 +206,10 @@ class DashboardService:
         ai_insights = []
         if macro_targets['dailyCalories'] > 0:
             ai_insights.append(
-                f"Mifflin-St Jeor target: {macro_targets['dailyCalories']} kcal & {macro_targets['targetProteinGrams']}g protein based on weight ({macro_targets['calculatedWeightKg']} kg) & goal ('{cust.goal}')."
+                f"Mifflin-St Jeor target: {macro_targets['dailyCalories']} kcal & {macro_targets['targetProteinGrams']}g protein."
             )
         if cust.fitness_score and cust.fitness_score >= 80:
             ai_insights.append(f"Fitness score is optimal ({cust.fitness_score}/100) — Ready for peak training intensity.")
-        if report and report.body_fat_percentage:
-            ai_insights.append(f"InBody body fat percentage is tracked at {report.body_fat_percentage}%.")
         if mem and days_remaining <= 30 and days_remaining > 0:
             ai_insights.append(f"Membership '{mem.plan_name}' expires in {days_remaining} days.")
 
@@ -230,23 +221,8 @@ class DashboardService:
                 "phone": cust.phone,
                 "avatarUrl": cust.profile_image,
                 "gender": cust.gender,
-                "weight": cust.weight,
-                "height": cust.height,
-                "height_cm": cust.height,
-                "bmi": cust.bmi,
-                "goal": cust.goal,
-                "fitness_level": cust.fitness_level,
-                "fitnessLevel": cust.fitness_level,
                 "training_preference": cust.training_preference,
                 "trainingPreference": cust.training_preference,
-                "target_calories": cust.target_calories if cust.target_calories is not None else (macro_targets.get("dailyCalories") if macro_targets.get("dailyCalories") > 0 else None),
-                "targetCalories": cust.target_calories if cust.target_calories is not None else (macro_targets.get("dailyCalories") if macro_targets.get("dailyCalories") > 0 else None),
-                "target_weight": cust.target_weight,
-                "targetWeightKg": cust.target_weight,
-                "days_per_week": cust.days_per_week,
-                "daysPerWeek": cust.days_per_week,
-                "session_duration_minutes": cust.session_duration_minutes,
-                "sessionDurationMinutes": cust.session_duration_minutes,
             },
             "membership": {
                 "planName": mem.plan_name if mem else None,
@@ -275,12 +251,6 @@ class DashboardService:
                 "targetCarbsGrams": macro_targets["targetCarbsGrams"],
                 "targetFatsGrams": macro_targets["targetFatsGrams"],
             },
-            "inbody": {
-                "score": report.score if report else 0,
-                "smmKg": report.skeletal_muscle_mass if report else 0.0,
-                "bodyFatMassKg": report.body_fat_mass if report else 0.0,
-                "pbfPercent": report.body_fat_percentage if report else 0.0,
-            } if report else None,
             "ai_insights": ai_insights
         }
 
@@ -308,7 +278,7 @@ class DashboardService:
                         Customer.branch_id == current_user.branch_id
                     )
                 )
-            elif role in ["TRAINER", "STAFF"]:
+            elif role in ["employee", "STAFF"]:
                 if current_user.branch_id:
                     cust_query = cust_query.filter(Customer.branch_id == current_user.branch_id)
 
@@ -316,7 +286,7 @@ class DashboardService:
             cust_query = cust_query.filter(
                 or_(
                     Customer.branch_id == branch_id,
-                    Customer.primary_gym_location.ilike(f"%{branch_id}%")
+                    Customer.primary_vahd_location.ilike(f"%{branch_id}%")
                 )
             )
             log_query = log_query.filter(BiometricLog.location.ilike(f"%{branch_id}%"))
@@ -422,8 +392,8 @@ class DashboardService:
             is_explicit_employee = (
                 (log.customer_id is None)
                 and (
-                    str(log.user_role or "").upper() in ["TRAINER", "STAFF", "EMPLOYEE", "OWNER", "ADMIN", "COACH", "MANAGER"]
-                    or str(meta.get("user_role", "")).upper() in ["TRAINER", "STAFF", "EMPLOYEE", "OWNER", "ADMIN", "COACH", "MANAGER"]
+                    str(log.user_role or "").upper() in ["employee", "STAFF", "EMPLOYEE", "OWNER", "ADMIN", "COACH", "MANAGER"]
+                    or str(meta.get("user_role", "")).upper() in ["employee", "STAFF", "EMPLOYEE", "OWNER", "ADMIN", "COACH", "MANAGER"]
                     or (uid and (str(uid).startswith("emp_") or str(uid).startswith("tr_")))
                     or log.device_type == "GEOFENCE_ESS"
                 )
@@ -475,7 +445,7 @@ class DashboardService:
                     window_d = max(1, min(30, (now - (cust.created_at or thirty_days_ago)).days or 1))
                     attendance_rate = int((days_attended / float(window_d)) * 100)
 
-            # 2. Resolve Employee / Staff / Trainer
+            # 2. Resolve Employee / Staff / employee
             else:
                 user_obj = None
                 if uid:
@@ -493,21 +463,21 @@ class DashboardService:
 
                 emp_obj = db.query(Employee).filter(or_(*emp_filters)).first() if emp_filters else None
 
-                trainer_filters = []
+                employee_filters = []
                 if user_obj:
-                    trainer_filters.append(TrainerProfile.user_id == user_obj.id)
+                    employee_filters.append(employeeProfile.user_id == user_obj.id)
                     if user_obj.email:
-                        trainer_filters.append(TrainerProfile.email.ilike(user_obj.email.strip()))
+                        employee_filters.append(employeeProfile.email.ilike(user_obj.email.strip()))
                 if uid:
-                    trainer_filters.append(TrainerProfile.id == uid)
-                    trainer_filters.append(TrainerProfile.user_id == uid)
+                    employee_filters.append(employeeProfile.id == uid)
+                    employee_filters.append(employeeProfile.user_id == uid)
 
-                trainer_obj = db.query(TrainerProfile).filter(or_(*trainer_filters)).first() if trainer_filters else None
+                employee_obj = db.query(employeeProfile).filter(or_(*employee_filters)).first() if employee_filters else None
 
                 if emp_obj and (emp_obj.first_name or emp_obj.last_name):
                     cust_name = f"{emp_obj.first_name} {emp_obj.last_name or ''}".strip()
-                elif trainer_obj and trainer_obj.full_name:
-                    cust_name = trainer_obj.full_name
+                elif employee_obj and employee_obj.full_name:
+                    cust_name = employee_obj.full_name
                 elif user_obj and (getattr(user_obj, "full_name", None) or getattr(user_obj, "name", None)):
                     cust_name = getattr(user_obj, "full_name", None) or getattr(user_obj, "name", None)
                 elif meta.get("user_name") and meta.get("user_name") != "Staff Member":
@@ -518,7 +488,7 @@ class DashboardService:
                 display_id = (
                     emp_obj.code if (emp_obj and emp_obj.code)
                     else (emp_obj.id if emp_obj
-                    else (trainer_obj.id if trainer_obj
+                    else (employee_obj.id if employee_obj
                     else (user_obj.id if user_obj
                     else (uid or "EMP"))))
                 )
@@ -581,7 +551,7 @@ class DashboardService:
             weekly_attendance_chart.append(int(att_by_day.get(d_key, 0) or 0))
 
         peak_daily_revenue = max(weekly_revenue_chart) if (weekly_revenue_chart and max(weekly_revenue_chart) > 0) else today_revenue
-        gym_ctx = _fetch_gym_context(db, current_user)
+        vahd_ctx = _fetch_vahd_context(db, current_user)
         user_name = (
             (current_user.full_name if current_user and getattr(current_user, "full_name", None) else None)
             or (current_user.name if current_user and getattr(current_user, "name", None) else None)
@@ -591,8 +561,8 @@ class DashboardService:
         today_ren_sales = float(sum(m.paid_amount for m in today_mems if m.paid_amount and getattr(m, "plan_type", None) == "RENEWAL"))
 
         return {
-            "gymName": gym_ctx.get("gym_name", None),
-            "branchName": gym_ctx.get("branch_name", None),
+            "vahdName": vahd_ctx.get("vahd_name", None),
+            "branchName": vahd_ctx.get("branch_name", None),
             "userName": user_name,
             "currentlyInside": currently_inside,
             "todayAttendance": today_attendance,
@@ -624,26 +594,26 @@ class DashboardService:
         }
 
     @staticmethod
-    def get_trainer_dashboard(
+    def get_employee_dashboard(
         db: Session,
-        trainer_id: Optional[str] = None,
+        employee_id: Optional[str] = None,
         branch_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Dynamically aggregates Trainer Copilot Dashboard KPIs scoped to authenticated trainer_id.
+        Dynamically aggregates employee Copilot Dashboard KPIs scoped to authenticated employee_id.
         No synthetic time slot loops, hardcoded fallback strings, or fabricated data.
         """
-        trainer_user = None
-        if trainer_id:
-            trainer_user = db.query(User).filter(User.id == trainer_id).first()
+        employee_user = None
+        if employee_id:
+            employee_user = db.query(User).filter(User.id == employee_id).first()
         
-        trainer_name = trainer_user.full_name if trainer_user else None
+        employee_name = employee_user.full_name if employee_user else None
 
         cust_query = db.query(Customer)
-        if trainer_id:
-            cust_query = cust_query.filter(Customer.trainer_id == trainer_id)
+        if employee_id:
+            cust_query = cust_query.filter(Customer.employee_id == employee_id)
         if branch_id:
-            cust_query = cust_query.filter(Customer.primary_gym_location.ilike(f"%{branch_id}%"))
+            cust_query = cust_query.filter(Customer.primary_vahd_location.ilike(f"%{branch_id}%"))
             
         assigned_customers = cust_query.all()
         total_clients = len(assigned_customers)
@@ -696,7 +666,7 @@ class DashboardService:
                 "avatarUrl": c.profile_image,
                 "fitnessScore": c.fitness_score if c.fitness_score is not None else None,
                 "attendanceRatePercent": rate_percent,
-                "primaryGoal": c.goal or None,
+                "primaryGoal": None,
                 "riskCategory": "Attention" if rate_percent < 50 else ("Declining" if rate_percent < 75 else "Healthy"),
                 "aiInsight": f"Monthly attendance rate is {rate_percent}%."
             })
@@ -717,7 +687,7 @@ class DashboardService:
             })
 
         return {
-            "trainerName": trainer_name,
+            "employeeName": employee_name,
             "todaySessionsCount": today_sessions,
             "totalClientsCount": total_clients,
             "totalTestsLogged": total_tests,
@@ -831,16 +801,16 @@ class DashboardService:
         rev_formatted = f"₹{total_rev/100000:.1f}L" if total_rev >= 100000 else f"₹{total_rev:,.0f}"
 
         return [
-            {"id": "total_gyms", "title": "Total Head Offices", "label": "Total Head Offices", "value": total_hos, "trend": "Active HOs", "icon": "building", "change": 0, "status": "up", "accent": "brand", "sparkline": [1, 2, 3, 4, 5]},
+            {"id": "total_vahds", "title": "Total Head Offices", "label": "Total Head Offices", "value": total_hos, "trend": "Active HOs", "icon": "building", "change": 0, "status": "up", "accent": "brand", "sparkline": [1, 2, 3, 4, 5]},
             {"id": "total_members", "title": "Total Members", "label": "Total Members", "value": total_members, "trend": "Registered", "icon": "users", "change": 0, "status": "up", "accent": "success", "sparkline": [10, 15, 20, 25]},
             {"id": "platform_revenue", "title": "Platform Revenue", "label": "Platform Revenue", "value": rev_formatted, "trend": "Total Collected", "icon": "trending-up", "change": 0, "status": "up", "accent": "ai", "sparkline": [5, 10, 15, 20]},
             {"id": "active_devices", "title": "Active Devices", "label": "Active Devices", "value": devices_cnt, "trend": "Online", "icon": "cpu", "change": 0, "status": "neutral", "accent": "warning", "sparkline": [1, 1, 1, 1]}
         ]
 
     @staticmethod
-    def get_trainer_kpis(db: Session) -> List[Dict[str, Any]]:
-        """Retrieve dynamic trainer KPIs from database user and session metrics."""
-        assigned_cnt = db.query(func.count(Customer.id)).filter(Customer.trainer_id.isnot(None)).scalar() or db.query(func.count(Customer.id)).scalar() or 0
+    def get_employee_kpis(db: Session) -> List[Dict[str, Any]]:
+        """Retrieve dynamic employee KPIs from database user and session metrics."""
+        assigned_cnt = db.query(func.count(Customer.id)).filter(Customer.employee_id.isnot(None)).scalar() or db.query(func.count(Customer.id)).scalar() or 0
         today_start = today_ist_start()
         today_sessions = db.query(func.count(BiometricLog.id)).filter(BiometricLog.timestamp >= today_start).scalar() or 0
         avg_score = db.query(func.avg(Customer.fitness_score)).scalar()
@@ -1002,7 +972,7 @@ class DashboardService:
             recent_txs.append({
                 "id": m.id,
                 "date": m.created_at.strftime("%d %b %Y") if m.created_at else now.strftime("%d %b %Y"),
-                "customer": c.full_name if c else "Gym Member",
+                "customer": c.full_name if c else "vahd Member",
                 "type": m.plan_name or "Membership",
                 "amount": float(m.paid_amount or m.price or 0.0),
                 "status": "Paid" if (m.due_amount or 0) <= 0 else "Pending"

@@ -9,7 +9,7 @@ export interface NavItem {
 export const navConfig: Record<Role, NavItem[]> = {
   super_admin: [
     { label: 'Dashboard', path: '/super-admin', icon: 'layout-dashboard' },
-    { label: 'Head Office', path: '/super-admin/gyms', icon: 'building-2' },
+    { label: 'Head Office', path: '/super-admin/vahds', icon: 'building-2' },
     { label: 'Audit Logs', path: '/super-admin/audit-logs', icon: 'shield-check' },
     { label: 'Support Desk', path: '/super-admin/support', icon: 'message-square' },
     { label: 'Settings', path: '/super-admin/settings', icon: 'settings' },
@@ -26,24 +26,17 @@ export const navConfig: Record<Role, NavItem[]> = {
     { label: 'Settings', path: '/owner/settings', icon: 'settings' },
   ],
   employee: [
-    { label: 'Dashboard', path: '/trainer', icon: 'layout-dashboard' },
-    { label: 'Students', path: '/trainer/customers', icon: 'users' },
-    { label: 'HRMS', path: '/trainer/hrms', icon: 'users' },
-    { label: 'AI Coach', path: '/trainer/ai-coach', icon: 'sparkles' },
-    { label: 'Profile', path: '/trainer/profile', icon: 'user' },
+    { label: 'Dashboard', path: '/employee', icon: 'layout-dashboard' },
+    { label: 'Students', path: '/employee/customers', icon: 'users' },
+    { label: 'HRMS', path: '/employee/hrms', icon: 'users' },
+    { label: 'AI Coach', path: '/employee/ai-coach', icon: 'sparkles' },
+    { label: 'Profile', path: '/employee/profile', icon: 'user' },
   ],
   student: [
     { label: 'Home', path: '/app', icon: 'home' },
     { label: 'Attendance', path: '/app/attendance', icon: 'calendar-check' },
     { label: 'AI Coach', path: '/app/ai-coach', icon: 'sparkles' },
     { label: 'Profile', path: '/app/profile', icon: 'user' },
-  ],
-  trainer: [
-    { label: 'Dashboard', path: '/trainer', icon: 'layout-dashboard' },
-    { label: 'Students', path: '/trainer/customers', icon: 'users' },
-    { label: 'HRMS', path: '/trainer/hrms', icon: 'users' },
-    { label: 'AI Coach', path: '/trainer/ai-coach', icon: 'sparkles' },
-    { label: 'Profile', path: '/trainer/profile', icon: 'user' },
   ],
   customer: [
     { label: 'Home', path: '/app', icon: 'home' },
@@ -57,9 +50,8 @@ export const roleHomePath: Record<Role, string> = {
   super_admin: '/super-admin',
   ho: '/ho',
   owner: '/owner',
-  employee: '/trainer',
+  employee: '/employee',
   student: '/app',
-  trainer: '/trainer',
   customer: '/app',
 };
 

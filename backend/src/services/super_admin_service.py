@@ -1,5 +1,5 @@
 """
-FIT CLUB AI — Super Admin Enterprise Platform Management Service
+vahd — Super Admin Enterprise Platform Management Service
 Direct PostgreSQL database queries for platform organizations, users, SaaS plans, billing,
 AI jobs telemetry, hardware devices, system health, audit logs, feature flags, and settings.
 Zero hardcoded default values — all metrics and lists are dynamically computed from the database.
@@ -13,7 +13,7 @@ from sqlalchemy import func, desc, or_
 from src.models.user import User
 from src.models.customer import Customer
 from src.models.membership import Membership
-from src.models.settings import Branch as GymBranch, FeatureControl
+from src.models.settings import Branch as vahdBranch, FeatureControl
 from src.models.biometric_device import BiometricDevice
 from src.models.super_admin import SaaSPlan, PlatformAuditLog, AiJobLog, PlatformSetting, SupportTicket, PlatformAlert, AiModelRouting
 from src.models.payroll import PayrollInvoice
@@ -37,10 +37,10 @@ class SuperAdminService:
         ).all()
         ho_user_ids = {u.id for u in ho_users}
         total_orgs = len(ho_user_ids)
-        active_orgs = db.query(GymBranch).filter(GymBranch.owner_id.in_(ho_user_ids), GymBranch.is_active == True).count()
+        active_orgs = db.query(vahdBranch).filter(vahdBranch.owner_id.in_(ho_user_ids), vahdBranch.is_active == True).count()
         total_members = db.query(Customer).count()
         total_users = db.query(User).count()
-        total_trainers = db.query(User).filter(User.role == "TRAINER").count()
+        total_employees = db.query(User).filter(User.role == "employee").count()
         total_owners = len(ho_user_ids)
 
         # Dynamic MRR sum from active memberships
@@ -113,7 +113,7 @@ class SuperAdminService:
             "activeOrganizations": active_orgs,
             "totalMembers": total_members,
             "totalUsers": total_users,
-            "totalTrainers": total_trainers,
+            "totalemployees": total_employees,
             "totalOwners": total_owners,
             "mrr": mrr,
             "totalRevenue": total_revenue,
@@ -126,15 +126,15 @@ class SuperAdminService:
         }
 
     # =========================================================================
-    # 2. ORGANIZATIONS / GYMS DIRECTORY & INSPECTOR
+    # 2. ORGANIZATIONS / vahdS DIRECTORY & INSPECTOR
     # =========================================================================
     @staticmethod
     def ensure_default_feature_controls(db: Session):
         """Auto-seed default feature matrix if empty in PostgreSQL."""
         if db.query(FeatureControl).count() == 0:
             default_features = [
-                FeatureControl(id=str(uuid.uuid4()), feature_name="AI Coach & Diet / Workout Builder", starter=False, pro=True, business=True, enterprise=True),
-                FeatureControl(id=str(uuid.uuid4()), feature_name="InBody Scan Sheet Vision OCR", starter=False, pro=True, business=True, enterprise=True),
+                FeatureControl(id=str(uuid.uuid4()), feature_name="AI Coach & Curriculum Builder", starter=False, pro=True, business=True, enterprise=True),
+                FeatureControl(id=str(uuid.uuid4()), feature_name="Student Document & Certificate OCR", starter=False, pro=True, business=True, enterprise=True),
                 FeatureControl(id=str(uuid.uuid4()), feature_name="POS & PineLabs Payment Terminals", starter=False, pro=False, business=True, enterprise=True),
                 FeatureControl(id=str(uuid.uuid4()), feature_name="Turnstile / Biometric IoT Gates", starter=False, pro=False, business=True, enterprise=True),
                 FeatureControl(id=str(uuid.uuid4()), feature_name="Inventory & Supplement Stock Tracking", starter=False, pro=True, business=True, enterprise=True),
@@ -154,17 +154,17 @@ class SuperAdminService:
         search: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         SuperAdminService.ensure_default_feature_controls(db)
-        query = db.query(GymBranch)
+        query = db.query(vahdBranch)
         if search:
             query = query.filter(or_(
-                GymBranch.gym_name.ilike(f"%{search}%"),
-                GymBranch.city.ilike(f"%{search}%")
+                vahdBranch.vahd_name.ilike(f"%{search}%"),
+                vahdBranch.city.ilike(f"%{search}%")
             ))
         if status_filter and status_filter != "all":
             if status_filter == "active":
-                query = query.filter(GymBranch.is_active == True)
+                query = query.filter(vahdBranch.is_active == True)
             elif status_filter == "suspended":
-                query = query.filter(GymBranch.is_active == False)
+                query = query.filter(vahdBranch.is_active == False)
 
         # Super Admin Head Office Directory must ONLY return Head Offices (HOs),
         # not organizations/branches created by HOs for their branch owners.
@@ -176,8 +176,8 @@ class SuperAdminService:
         ).all()
         ho_user_ids = {u.id for u in ho_users}
 
-        query = query.filter(GymBranch.owner_id.in_(ho_user_ids))
-        branches = query.order_by(desc(GymBranch.created_at)).all()
+        query = query.filter(vahdBranch.owner_id.in_(ho_user_ids))
+        branches = query.order_by(desc(vahdBranch.created_at)).all()
 
         res = []
         for b in branches:
@@ -191,13 +191,13 @@ class SuperAdminService:
                     Customer.ho_id == b.ho_id,
                     Customer.branch_id == b.id,
                     Customer.owner_id == b.owner_id,
-                    Customer.primary_gym_location.ilike(f"%{b.branch_name}%")
+                    Customer.primary_vahd_location.ilike(f"%{b.branch_name}%")
                 )
             ).count()
 
-            # Dynamic trainer count for this Head Office
-            trainer_count = db.query(User).filter(
-                User.role == "TRAINER",
+            # Dynamic employee count for this Head Office
+            employee_count = db.query(User).filter(
+                User.role == "employee",
                 or_(
                     User.ho_id == b.ho_id,
                     User.branch_id == b.id,
@@ -212,7 +212,7 @@ class SuperAdminService:
                         Customer.ho_id == b.ho_id,
                         Customer.branch_id == b.id,
                         Customer.owner_id == b.owner_id,
-                        Customer.primary_gym_location.ilike(f"%{b.branch_name}%")
+                        Customer.primary_vahd_location.ilike(f"%{b.branch_name}%")
                     )
                 ).all()
             ]
@@ -224,13 +224,13 @@ class SuperAdminService:
                 ).scalar() or 0.0
 
             ai_credits = db.query(func.sum(AiJobLog.credits_consumed)).filter(
-                or_(AiJobLog.organization_id == b.id, AiJobLog.organization_name == b.gym_name)
+                or_(AiJobLog.organization_id == b.id, AiJobLog.organization_name == b.vahd_name)
             ).scalar() or 0
             devices_cnt = db.query(BiometricDevice).count()
 
             res.append({
                 "id": b.id,
-                "name": b.gym_name,
+                "name": b.vahd_name,
                 "branch_name": b.branch_name or "",
                 "city": b.city or "",
                 "address": b.address or "",
@@ -239,7 +239,7 @@ class SuperAdminService:
                 "owner_email": owner.email if owner else "",
                 "phone": owner.phone if owner else "",
                 "members": member_count,
-                "trainers": trainer_count,
+                "employees": employee_count,
                 "revenue": float(rev_sum),
                 "plan_id": getattr(b, "plan_id", None),
                 "plan": getattr(b, "plan_name", None) or "",
@@ -260,7 +260,7 @@ class SuperAdminService:
 
     @staticmethod
     def get_organization_detail(db: Session, org_id: str) -> Optional[Dict[str, Any]]:
-        branch = db.query(GymBranch).filter(GymBranch.id == org_id).first()
+        branch = db.query(vahdBranch).filter(vahdBranch.id == org_id).first()
         if not branch:
             return None
 
@@ -275,7 +275,7 @@ class SuperAdminService:
                 or_(
                     Customer.branch_id == branch.id,
                     Customer.owner_id == branch.owner_id,
-                    Customer.primary_gym_location.ilike(f"%{branch.branch_name}%")
+                    Customer.primary_vahd_location.ilike(f"%{branch.branch_name}%")
                 )
             ).all()
         ]
@@ -289,8 +289,8 @@ class SuperAdminService:
             if branch_cust_ids else 0
         )
 
-        trainer_count = db.query(User).filter(
-            User.role == "TRAINER",
+        employee_count = db.query(User).filter(
+            User.role == "employee",
             or_(
                 User.branch_id == branch.id,
                 User.owner_id == branch.owner_id
@@ -309,21 +309,21 @@ class SuperAdminService:
             ).scalar() or 0.0
 
         ai_credits = db.query(func.sum(AiJobLog.credits_consumed)).filter(
-            or_(AiJobLog.organization_id == org_id, AiJobLog.organization_name == branch.gym_name)
+            or_(AiJobLog.organization_id == org_id, AiJobLog.organization_name == branch.vahd_name)
         ).scalar() or 0
         ai_jobs_cnt = db.query(AiJobLog).filter(
-            or_(AiJobLog.organization_id == org_id, AiJobLog.organization_name == branch.gym_name)
+            or_(AiJobLog.organization_id == org_id, AiJobLog.organization_name == branch.vahd_name)
         ).count()
 
         devices = db.query(BiometricDevice).all()
 
         recent_audits = db.query(PlatformAuditLog).filter(
-            or_(PlatformAuditLog.organization_id == org_id, PlatformAuditLog.organization_name == branch.gym_name)
+            or_(PlatformAuditLog.organization_id == org_id, PlatformAuditLog.organization_name == branch.vahd_name)
         ).order_by(desc(PlatformAuditLog.timestamp)).limit(10).all()
 
         return {
             "id": branch.id,
-            "name": branch.gym_name,
+            "name": branch.vahd_name,
             "branch_name": branch.branch_name or "",
             "city": branch.city or "",
             "address": branch.address or "",
@@ -340,7 +340,7 @@ class SuperAdminService:
             "stats": {
                 "total_members": member_count,
                 "active_members": active_members,
-                "total_trainers": trainer_count,
+                "total_employees": employee_count,
                 "branches_count": 1,
                 "monthly_revenue": float(rev_sum),
                 "ai_credits_used": int(ai_credits),
@@ -384,9 +384,9 @@ class SuperAdminService:
         return ("Platform Administrator", os.getenv("MAIL_FROM") or os.getenv("MAIL_USERNAME") or "")
 
     @staticmethod
-    def onboard_gym(db: Session, payload: dict, actor_info: Optional[dict] = None) -> Dict[str, Any]:
-        gym_name = payload.get("gym_name", "").strip()
-        branch_name = payload.get("branch_name", "").strip() or gym_name
+    def onboard_vahd(db: Session, payload: dict, actor_info: Optional[dict] = None) -> Dict[str, Any]:
+        vahd_name = payload.get("vahd_name", "").strip()
+        branch_name = payload.get("branch_name", "").strip() or vahd_name
         city = payload.get("city", "").strip()
         address = payload.get("address", "").strip()
         owner_name = payload.get("owner_name", "").strip()
@@ -403,14 +403,14 @@ class SuperAdminService:
         paid_amount = float(payload.get("paid_amount", payload.get("grand_total", 0.0)) or 0.0)
         custom_features = payload.get("custom_features", [])
 
-        if not gym_name:
-            return {"success": False, "message": "Gym name is required"}
+        if not vahd_name:
+            return {"success": False, "message": "vahd name is required"}
         if not owner_email:
             return {"success": False, "message": "Owner email is required"}
         if not password:
             return {"success": False, "message": "Owner password is required"}
         if not owner_name:
-            owner_name = "Gym Owner"
+            owner_name = "vahd Owner"
 
         # Check existing user
         existing_user = db.query(User).filter(func.lower(User.email) == owner_email).first()
@@ -421,10 +421,10 @@ class SuperAdminService:
         ho_id = payload.get("ho_id") or f"ho_{uuid.uuid4().hex[:10]}"
 
         branch_id = f"vahd_{uuid.uuid4().hex[:10]}"
-        branch = GymBranch(
+        branch = vahdBranch(
             id=branch_id,
-            gym_name=gym_name,
-            name=gym_name,
+            vahd_name=vahd_name,
+            name=vahd_name,
             branch_name=branch_name,
             city=city,
             address=address,
@@ -479,13 +479,13 @@ class SuperAdminService:
             actor_name=actor_name,
             actor_email=actor_email,
             organization_id=branch.id,
-            organization_name=gym_name,
+            organization_name=vahd_name,
             action="ONBOARD_OWNER_CREDENTIALS",
             resource_type="owner_credentials",
             resource_id=owner_user.id,
             new_value={
-                "gym_id": branch.id,
-                "gym_name": gym_name,
+                "vahd_id": branch.id,
+                "vahd_name": vahd_name,
                 "branch_name": branch_name,
                 "city": city,
                 "owner_id": owner_user.id,
@@ -515,10 +515,10 @@ class SuperAdminService:
 
         return {
             "success": True,
-            "gym_id": branch.id,
+            "vahd_id": branch.id,
             "ho_id": branch.ho_id,
             "role": owner_user.role,
-            "gym_name": gym_name,
+            "vahd_name": vahd_name,
             "branch_name": branch_name,
             "city": city,
             "owner_id": owner_user.id,
@@ -533,7 +533,7 @@ class SuperAdminService:
             "paid_amount": paid_amount,
             "custom_features": custom_features,
             "temporary_password": password,
-            "message": f"Successfully onboarded {owner_name} ({gym_name})!"
+            "message": f"Successfully onboarded {owner_name} ({vahd_name})!"
         }
 
 
@@ -542,13 +542,13 @@ class SuperAdminService:
         clean_target = (user_id or "").strip()
         user = db.query(User).filter(or_(User.id == clean_target, func.lower(User.email) == clean_target.lower())).first()
         
-        # If user not found directly, check if target was a GymBranch ID
+        # If user not found directly, check if target was a vahdBranch ID
         if not user:
-            branch = db.query(GymBranch).filter(GymBranch.id == clean_target).first()
+            branch = db.query(vahdBranch).filter(vahdBranch.id == clean_target).first()
             if branch and branch.owner_id:
                 user = db.query(User).filter(User.id == branch.owner_id).first()
 
-        # If still not found, check Customer or Trainer profile
+        # If still not found, check Customer or employee profile
         if not user:
             cust = db.query(Customer).filter(or_(Customer.id == clean_target, func.lower(Customer.email) == clean_target.lower())).first()
             if cust and cust.user_id:
@@ -598,7 +598,7 @@ class SuperAdminService:
         }
 
     @staticmethod
-    def _cascade_delete_branch_data(db: Session, branch: GymBranch):
+    def _cascade_delete_branch_data(db: Session, branch: vahdBranch):
         """
         Deep-cascades deletion of all foreign-key linked entities for a branch / organization
         including Customers, Memberships, Attendance, Biometrics, HRMS Employees, Courses,
@@ -608,11 +608,11 @@ class SuperAdminService:
         owner_id = branch.owner_id
         ho_id = branch.ho_id
         branch_name = branch.branch_name
-        gym_name = branch.gym_name
+        vahd_name = branch.vahd_name
 
         from src.models import (
             Customer, User, Membership, BiometricLog, BiometricDevice,
-            Employee, TrainerProfile, Course, StudentCourse, StudentAttendanceReportLog,
+            Employee, employeeProfile, Course, StudentCourse, StudentAttendanceReportLog,
             EmployeeAttendance, LeaveRequest, EmployeeLeaveBalance, AttendanceCorrection,
             PayrollRecord, EmployeeDocument, EmployeePerformance, ExitRequest, PayrollInvoice
         )
@@ -622,8 +622,8 @@ class SuperAdminService:
         custs = db.query(Customer).filter(
             or_(
                 Customer.branch_id == clean_id,
-                Customer.primary_gym_location == branch_name,
-                Customer.primary_gym_location == gym_name
+                Customer.primary_vahd_location == branch_name,
+                Customer.primary_vahd_location == vahd_name
             )
         ).all()
         cust_ids = [c.id for c in custs if c.id]
@@ -646,8 +646,8 @@ class SuperAdminService:
         emps = db.query(Employee).filter(
             or_(
                 Employee.branch_id == clean_id,
-                Employee.gym_branch == branch_name,
-                Employee.gym_branch == gym_name
+                Employee.vahd_branch == branch_name,
+                Employee.vahd_branch == vahd_name
             )
         ).all()
         emp_ids = [e.id for e in emps if e.id]
@@ -665,21 +665,21 @@ class SuperAdminService:
             db.query(Employee).filter(Employee.id.in_(emp_ids)).delete(synchronize_session=False)
 
         if emp_emails:
-            trainers = db.query(TrainerProfile).filter(TrainerProfile.email.in_(emp_emails)).all()
-            t_ids = [t.id for t in trainers if t.id]
+            employees = db.query(employeeProfile).filter(employeeProfile.email.in_(emp_emails)).all()
+            t_ids = [t.id for t in employees if t.id]
             if t_ids:
-                db.query(PayrollInvoice).filter(PayrollInvoice.trainer_id.in_(t_ids)).delete(synchronize_session=False)
-                db.query(TrainerProfile).filter(TrainerProfile.id.in_(t_ids)).delete(synchronize_session=False)
+                db.query(PayrollInvoice).filter(PayrollInvoice.employee_id.in_(t_ids)).delete(synchronize_session=False)
+                db.query(employeeProfile).filter(employeeProfile.id.in_(t_ids)).delete(synchronize_session=False)
             db.query(User).filter(
                 User.email.in_(emp_emails),
-                User.role.in_(["EMPLOYEE", "TRAINER", "STAFF"])
+                User.role.in_(["EMPLOYEE", "employee", "STAFF"])
             ).delete(synchronize_session=False)
 
-        # Direct trainer profiles by location
-        db.query(TrainerProfile).filter(
+        # Direct employee profiles by location
+        db.query(employeeProfile).filter(
             or_(
-                TrainerProfile.primary_gym_location == branch_name,
-                TrainerProfile.primary_gym_location == gym_name
+                employeeProfile.primary_vahd_location == branch_name,
+                employeeProfile.primary_vahd_location == vahd_name
             )
         ).delete(synchronize_session=False)
 
@@ -690,7 +690,7 @@ class SuperAdminService:
         db.query(BiometricDevice).filter(
             or_(
                 BiometricDevice.location == branch_name,
-                BiometricDevice.location == gym_name
+                BiometricDevice.location == vahd_name
             )
         ).delete(synchronize_session=False)
 
@@ -701,9 +701,9 @@ class SuperAdminService:
         if owner_id and owner_id != ho_id:
             owner_user = db.query(User).filter(User.id == owner_id).first()
             if not (owner_user and (owner_user.role or "").upper() in ["HEAD_OFFICE", "HO"]):
-                remaining_branches = db.query(GymBranch).filter(
-                    GymBranch.owner_id == owner_id,
-                    GymBranch.id != clean_id
+                remaining_branches = db.query(vahdBranch).filter(
+                    vahdBranch.owner_id == owner_id,
+                    vahdBranch.id != clean_id
                 ).count()
                 if remaining_branches == 0:
                     rem_custs = db.query(Customer).filter(Customer.owner_id == owner_id).all()
@@ -723,21 +723,21 @@ class SuperAdminService:
                     ).delete(synchronize_session=False)
 
     @staticmethod
-    def delete_organization(db: Session, gym_id: str, actor_info: Optional[dict] = None) -> Dict[str, Any]:
-        clean_id = (gym_id or "").strip()
-        branch = db.query(GymBranch).filter(GymBranch.id == clean_id).first()
+    def delete_organization(db: Session, vahd_id: str, actor_info: Optional[dict] = None) -> Dict[str, Any]:
+        clean_id = (vahd_id or "").strip()
+        branch = db.query(vahdBranch).filter(vahdBranch.id == clean_id).first()
         if not branch:
             return {"success": False, "message": "Organization not found"}
 
-        gym_name = branch.gym_name or "Organization"
+        vahd_name = branch.vahd_name or "Organization"
         branch_name = branch.branch_name or ""
         ho_id = branch.ho_id
 
         # Cascade delete child branches if this branch is an HO
         if ho_id:
-            child_branches = db.query(GymBranch).filter(
-                GymBranch.ho_id == ho_id,
-                GymBranch.id != clean_id
+            child_branches = db.query(vahdBranch).filter(
+                vahdBranch.ho_id == ho_id,
+                vahdBranch.id != clean_id
             ).all()
             for cb in child_branches:
                 SuperAdminService._cascade_delete_branch_data(db, cb)
@@ -751,18 +751,18 @@ class SuperAdminService:
             actor_name=actor_name,
             actor_email=actor_email,
             organization_id=clean_id,
-            organization_name=gym_name,
+            organization_name=vahd_name,
             action="DELETE_ORGANIZATION",
             resource_type="organization",
             resource_id=clean_id,
-            new_value={"gym_id": clean_id, "gym_name": gym_name, "branch_name": branch_name}
+            new_value={"vahd_id": clean_id, "vahd_name": vahd_name, "branch_name": branch_name}
         )
         db.add(log)
         db.commit()
 
         return {
             "success": True,
-            "message": f"Organization '{gym_name}' ({branch_name or 'Main Branch'}) deleted successfully."
+            "message": f"Organization '{vahd_name}' ({branch_name or 'Main Branch'}) deleted successfully."
         }
 
     @staticmethod
@@ -777,10 +777,10 @@ class SuperAdminService:
             clean_id = (gid or "").strip()
             if not clean_id:
                 continue
-            branch = db.query(GymBranch).filter(GymBranch.id == clean_id).first()
+            branch = db.query(vahdBranch).filter(vahdBranch.id == clean_id).first()
             if branch:
-                gym_name = branch.gym_name or clean_id
-                deleted_names.append(f"{gym_name} ({clean_id})")
+                vahd_name = branch.vahd_name or clean_id
+                deleted_names.append(f"{vahd_name} ({clean_id})")
                 SuperAdminService._cascade_delete_branch_data(db, branch)
                 deleted_count += 1
 
@@ -842,10 +842,10 @@ class SuperAdminService:
         }
 
     @staticmethod
-    def update_gym_status(db: Session, gym_id: str, status: str, actor_info: Optional[dict] = None) -> Dict[str, Any]:
-        branch = db.query(GymBranch).filter(GymBranch.id == gym_id).first()
+    def update_vahd_status(db: Session, vahd_id: str, status: str, actor_info: Optional[dict] = None) -> Dict[str, Any]:
+        branch = db.query(vahdBranch).filter(vahdBranch.id == vahd_id).first()
         if not branch:
-            return {"success": False, "message": "Gym branch not found"}
+            return {"success": False, "message": "vahd branch not found"}
 
         old_status = "Active" if branch.is_active else "Suspended"
         is_active = (status.lower() == "active")
@@ -857,7 +857,7 @@ class SuperAdminService:
             actor_name=actor_name,
             actor_email=actor_email,
             organization_id=branch.id,
-            organization_name=branch.gym_name,
+            organization_name=branch.vahd_name,
             action="CHANGE_ORGANIZATION_STATUS",
             resource_type="organization",
             resource_id=branch.id,
@@ -893,8 +893,8 @@ class SuperAdminService:
                 query = query.filter(User.is_active == False)
 
         users = query.order_by(desc(User.created_at)).all()
-        branches = db.query(GymBranch).all()
-        default_org = branches[0].gym_name if branches else "Global Platform"
+        branches = db.query(vahdBranch).all()
+        default_org = branches[0].vahd_name if branches else "Global Platform"
 
         res = []
         for u in users:
@@ -926,7 +926,7 @@ class SuperAdminService:
                 "price_annual": p.price_annual,
                 "max_branches": p.max_branches,
                 "max_members": p.max_members,
-                "max_trainers": p.max_trainers,
+                "max_employees": p.max_employees,
                 "ai_credits_monthly": p.ai_credits_monthly,
                 "storage_gb": p.storage_gb,
                 "features": p.features or [],
@@ -1143,7 +1143,6 @@ class SuperAdminService:
             "facial": "face_recognition",
             "cctv": "cctv",
             "body_scanner": "body_scanner",
-            "inbody": "body_scanner",
             "pos": "pos"
         }
 
@@ -1322,7 +1321,7 @@ class SuperAdminService:
 
     # Aliases and helpers for router compatibility
     @classmethod
-    def get_gyms(cls, db: Session):
+    def get_vahds(cls, db: Session):
         return cls.get_organizations(db)
 
     @classmethod
@@ -1429,7 +1428,7 @@ class SuperAdminService:
             price_annual=float(payload["price_annual"]) if payload.get("price_annual") is not None and str(payload["price_annual"]).strip() != "" else None,
             max_branches=int(payload["max_branches"]) if payload.get("max_branches") is not None and str(payload["max_branches"]).strip() != "" else None,
             max_members=int(payload["max_members"]) if payload.get("max_members") is not None and str(payload["max_members"]).strip() != "" else None,
-            max_trainers=int(payload["max_trainers"]) if payload.get("max_trainers") is not None and str(payload["max_trainers"]).strip() != "" else None,
+            max_employees=int(payload["max_employees"]) if payload.get("max_employees") is not None and str(payload["max_employees"]).strip() != "" else None,
             ai_credits_monthly=int(payload["ai_credits_monthly"]) if payload.get("ai_credits_monthly") is not None and str(payload["ai_credits_monthly"]).strip() != "" else None,
             storage_gb=float(payload["storage_gb"]) if payload.get("storage_gb") is not None and str(payload["storage_gb"]).strip() != "" else None,
             features=payload.get("features") if payload.get("features") is not None else None,
@@ -1461,8 +1460,8 @@ class SuperAdminService:
             plan.max_branches = int(payload["max_branches"]) if payload["max_branches"] is not None and str(payload["max_branches"]).strip() != "" else None
         if "max_members" in payload:
             plan.max_members = int(payload["max_members"]) if payload["max_members"] is not None and str(payload["max_members"]).strip() != "" else None
-        if "max_trainers" in payload:
-            plan.max_trainers = int(payload["max_trainers"]) if payload["max_trainers"] is not None and str(payload["max_trainers"]).strip() != "" else None
+        if "max_employees" in payload:
+            plan.max_employees = int(payload["max_employees"]) if payload["max_employees"] is not None and str(payload["max_employees"]).strip() != "" else None
         if "ai_credits_monthly" in payload:
             plan.ai_credits_monthly = int(payload["ai_credits_monthly"]) if payload["ai_credits_monthly"] is not None and str(payload["ai_credits_monthly"]).strip() != "" else None
         if "storage_gb" in payload:

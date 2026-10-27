@@ -62,7 +62,7 @@ export function Sidebar({ collapsed, mobileOpen, onClose }: SidebarProps) {
             <NavLink
               key={item.path}
               to={item.path}
-              end={item.path === '/owner' || item.path === '/trainer' || item.path === '/app' || item.path === '/super-admin'}
+              end={item.path === '/owner' || item.path === '/employee' || item.path === '/app' || item.path === '/super-admin'}
               onClick={onClose}
               className={({ isActive }) =>
                 cn('nav-item', isActive && 'nav-item-active', collapsed && 'lg:justify-center lg:px-0')

@@ -1,5 +1,5 @@
 """
-Centralized timezone utility for FIT CLUB Backend.
+Centralized timezone utility for vahd Backend.
 All timestamps are generated in IST (India Standard Time, Asia/Kolkata, UTC+5:30).
 """
 import datetime

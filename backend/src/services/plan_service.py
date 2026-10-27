@@ -9,7 +9,7 @@ class PlanService:
     def get_all_plans(db: Session) -> List[dict]:
         """
         Fetches all active membership plans directly from PostgreSQL database.
-        Returns 100% live dynamic data created/edited by the Gym Owner.
+        Returns 100% live dynamic data created/edited by the vahd Owner.
         """
         plans = db.query(MembershipPlan).filter(MembershipPlan.is_active == True).all()
 

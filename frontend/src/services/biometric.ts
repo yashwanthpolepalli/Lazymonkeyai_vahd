@@ -24,7 +24,7 @@ export interface EnrollmentDevice {
 export interface BiometricEnrollment {
   id: string;
   person_id: string;
-  person_type: 'member' | 'trainer';
+  person_type: 'member' | 'employee';
   biometric_type: BiometricType;
   device_id: string | null;
   provider_reference: string | null;
@@ -105,7 +105,7 @@ export const biometricService = {
    */
   async createEnrollment(input: {
     person_id: string;
-    person_type: 'member' | 'trainer';
+    person_type: 'member' | 'employee';
     biometric_type: BiometricType;
     device_id: string;
   }): Promise<BiometricEnrollment | null> {
@@ -134,7 +134,7 @@ export const biometricService = {
   async completeEnrollment(
     enrollmentId: string,
     providerReference: string,
-    input: { person_id: string; person_type: 'member' | 'trainer'; biometric_type: BiometricType; device_id: string }
+    input: { person_id: string; person_type: 'member' | 'employee'; biometric_type: BiometricType; device_id: string }
   ): Promise<BiometricEnrollment | null> {
     if (!input.person_id || !input.person_type || !input.biometric_type || !input.device_id) {
       console.error('[biometricService.completeEnrollment] Missing required fields:', input);

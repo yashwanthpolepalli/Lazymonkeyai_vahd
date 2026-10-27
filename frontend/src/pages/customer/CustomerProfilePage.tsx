@@ -31,10 +31,6 @@ export function CustomerProfilePage() {
     phone: '',
     gender: '',
     age: '',
-    height: '',
-    weight: '',
-    target_weight: '',
-    goal: '',
   });
 
   const fetchData = () => {
@@ -59,10 +55,6 @@ export function CustomerProfilePage() {
             phone: p.phone || '',
             gender: p.gender || '',
             age: p.age ? String(p.age) : '',
-            height: p.height ? String(p.height) : '',
-            weight: p.weight ? String(p.weight) : '',
-            target_weight: p.target_weight ? String(p.target_weight) : '',
-            goal: p.goal || '',
           });
         }
       })
@@ -92,10 +84,6 @@ export function CustomerProfilePage() {
         phone: form.phone,
         gender: form.gender,
         age: Number(form.age) || undefined,
-        height: Number(form.height) || undefined,
-        weight: Number(form.weight) || undefined,
-        target_weight: Number(form.target_weight) || undefined,
-        goal: form.goal,
       });
       showToast('Personal profile updated successfully!');
       setEditing(false);
@@ -142,7 +130,7 @@ export function CustomerProfilePage() {
     <div className="space-y-6">
       <PageHeader
         title="My Profile"
-        subtitle="Your fitness identity & member account"
+        subtitle="Your member profile & account"
         breadcrumb={['Customer', 'Profile']}
         actions={
           <button onClick={() => setEditing(!editing)} className="btn-primary flex items-center gap-2">
@@ -173,8 +161,8 @@ export function CustomerProfilePage() {
       <div className="card p-6 border border-navy-200 space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-navy-100">
           <div>
-            <h3 className="text-base font-bold text-navy-900">Personal Information & Fitness Profile</h3>
-            <p className="text-xs text-navy-400">Manage your profile information and fitness goals</p>
+            <h3 className="text-base font-bold text-navy-900">Personal Information</h3>
+            <p className="text-xs text-navy-400">Manage your member profile information</p>
           </div>
         </div>
 
@@ -236,60 +224,6 @@ export function CustomerProfilePage() {
                 onChange={(e) => setForm({ ...form, age: e.target.value })}
                 className="input-field disabled:bg-navy-50 disabled:text-navy-700"
               />
-            </div>
-
-            <div>
-              <label className="text-xs font-semibold text-navy-700 mb-1 block">Height (cm)</label>
-              <input
-                type="number"
-                disabled={!editing}
-                placeholder="e.g. 175"
-                value={form.height}
-                onChange={(e) => setForm({ ...form, height: e.target.value })}
-                className="input-field disabled:bg-navy-50 disabled:text-navy-700"
-              />
-            </div>
-
-            <div>
-              <label className="text-xs font-semibold text-navy-700 mb-1 block">Current Weight (kg)</label>
-              <input
-                type="number"
-                step="0.1"
-                disabled={!editing}
-                placeholder="e.g. 75"
-                value={form.weight}
-                onChange={(e) => setForm({ ...form, weight: e.target.value })}
-                className="input-field disabled:bg-navy-50 disabled:text-navy-700"
-              />
-            </div>
-
-            <div>
-              <label className="text-xs font-semibold text-navy-700 mb-1 block">Target Weight (kg)</label>
-              <input
-                type="number"
-                step="0.1"
-                disabled={!editing}
-                placeholder="e.g. 70"
-                value={form.target_weight}
-                onChange={(e) => setForm({ ...form, target_weight: e.target.value })}
-                className="input-field disabled:bg-navy-50 disabled:text-navy-700"
-              />
-            </div>
-
-            <div>
-              <label className="text-xs font-semibold text-navy-700 mb-1 block">Primary Fitness Goal</label>
-              <select
-                disabled={!editing}
-                value={form.goal}
-                onChange={(e) => setForm({ ...form, goal: e.target.value })}
-                className="input-field disabled:bg-navy-50 disabled:text-navy-700"
-              >
-                <option value="">Select Goal</option>
-                <option value="Muscle Gain">Muscle Gain</option>
-                <option value="Fat Loss & Toning">Fat Loss & Toning</option>
-                <option value="General Fitness & Endurance">General Fitness & Endurance</option>
-                <option value="Strength & Powerlifting">Strength & Powerlifting</option>
-              </select>
             </div>
           </div>
 

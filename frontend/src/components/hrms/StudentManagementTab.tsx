@@ -127,7 +127,7 @@ interface StudentItem {
 export function StudentManagementTab() {
   const [students, setStudents] = useState<StudentItem[]>([]);
   const [availableCourses, setAvailableCourses] = useState<string[]>([]);
-  const [branchesList, setBranchesList] = useState<Array<{ id: string; branch_name: string; name?: string; gym_name?: string }>>([]);
+  const [branchesList, setBranchesList] = useState<Array<{ id: string; branch_name: string; name?: string; vahd_name?: string }>>([]);
   const [selectedBranch, setSelectedBranch] = useState<string>(() => {
     return localStorage.getItem('vahd_selected_org_id') || 'all';
   });
@@ -140,14 +140,14 @@ export function StudentManagementTab() {
       return [];
     }
     const targetBranch = branchesList.find(
-      (b) => b.id === selectedBranch || b.branch_name === selectedBranch || (b as any).gym_name === selectedBranch
+      (b) => b.id === selectedBranch || b.branch_name === selectedBranch || (b as any).vahd_name === selectedBranch
     );
     if (!targetBranch) return [];
-    const orgGymName = ((targetBranch as any).gym_name || targetBranch.branch_name || '').toLowerCase();
+    const orgvahdName = ((targetBranch as any).vahd_name || targetBranch.branch_name || '').toLowerCase();
     const orgOwnerId = (targetBranch as any).owner_id;
     return branchesList.filter(
       (b) =>
-        (orgGymName && (b as any).gym_name?.toLowerCase() === orgGymName) ||
+        (orgvahdName && (b as any).vahd_name?.toLowerCase() === orgvahdName) ||
         (orgOwnerId && (b as any).owner_id === orgOwnerId)
     );
   }, [branchesList, selectedBranch]);
@@ -174,7 +174,7 @@ export function StudentManagementTab() {
     setViewMode(mode);
     try {
       localStorage.setItem('hrms_students_view_mode', mode);
-    } catch {}
+    } catch { }
   };
   const [enrollModalOpen, setEnrollModalOpen] = useState(false);
   const [studentToEdit, setStudentToEdit] = useState<StudentItem | null>(null);
@@ -310,7 +310,7 @@ export function StudentManagementTab() {
       const [res, coursesRes, branchesRes] = await Promise.all([
         apiClient.get<any[]>('/customers').catch(() => []),
         apiClient.get<any[]>('/courses').catch(() => []),
-        apiClient.get<any[]>('/gym/branches').catch(() => []),
+        apiClient.get<any[]>('/vahd/branches').catch(() => []),
       ]);
       if (Array.isArray(res)) {
         setStudents(res);
@@ -421,7 +421,7 @@ export function StudentManagementTab() {
     let matchesBranch = true;
     if (!isAll) {
       const targetBranch = branchesList.find(
-        (b) => b.id === selectedBranch || b.branch_name === selectedBranch || (b as any).gym_name === selectedBranch
+        (b) => b.id === selectedBranch || b.branch_name === selectedBranch || (b as any).vahd_name === selectedBranch
       );
 
       const sBranchId = s.branch_id || meta.branch_id;
@@ -432,15 +432,15 @@ export function StudentManagementTab() {
       const targetNames = [
         selectedBranch.toLowerCase(),
         targetBranch?.branch_name?.toLowerCase(),
-        (targetBranch as any)?.gym_name?.toLowerCase(),
+        (targetBranch as any)?.vahd_name?.toLowerCase(),
         targetBranch?.name?.toLowerCase(),
       ].filter(Boolean) as string[];
 
       const sNames = [
         s.branch?.toLowerCase(),
-        (s as any).primary_gym_location?.toLowerCase(),
+        (s as any).primary_vahd_location?.toLowerCase(),
         meta.branch?.toLowerCase(),
-        meta.gym_branch?.toLowerCase(),
+        meta.vahd_branch?.toLowerCase(),
         (s as any).organisation?.toLowerCase(),
       ].filter(Boolean) as string[];
 
@@ -569,7 +569,7 @@ export function StudentManagementTab() {
 
   return (
     <div className="space-y-4 animate-fade-in text-slate-800 dark:text-slate-200">
-      
+
       {/* Toast Notification */}
       {toast && (
         <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white text-xs font-semibold px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-2 border border-blue-500/30 animate-fade-in">
@@ -1504,7 +1504,7 @@ export function StudentManagementTab() {
       {selectedStudentForView && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/70 backdrop-blur-sm overflow-y-auto animate-fade-in">
           <div className="bg-white dark:bg-slate-900 border-2 border-slate-300 dark:border-slate-700 rounded-3xl w-full max-w-3xl shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col">
-            
+
             {/* Header */}
             <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-800 text-white p-4 flex items-center justify-between shadow-md">
               <div className="flex items-center gap-3">

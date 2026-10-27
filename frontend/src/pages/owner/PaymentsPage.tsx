@@ -36,7 +36,7 @@ import {
 interface TransactionItem {
   id: string;
   source_id?: string;
-  category: 'MEMBERSHIP' | 'POS_STORE' | 'SALARY_PAYOUT' | 'SALARY_ADVANCE' | 'EMPLOYEE_BONUS' | 'TRAINER_COMMISSION' | string;
+  category: 'MEMBERSHIP' | 'POS_STORE' | 'SALARY_PAYOUT' | 'SALARY_ADVANCE' | 'EMPLOYEE_BONUS' | 'employee_COMMISSION' | string;
   category_label: string;
   type: 'INFLOW' | 'OUTFLOW';
   invoice_number: string;
@@ -125,7 +125,7 @@ export function PaymentsPage() {
       // 1. Tab category filter
       if (activeTab === 'MEMBERSHIP' && tx.category !== 'MEMBERSHIP') return false;
       if (activeTab === 'POS' && tx.category !== 'POS_STORE') return false;
-      if (activeTab === 'SALARY' && !['SALARY_PAYOUT', 'TRAINER_COMMISSION'].includes(tx.category)) return false;
+      if (activeTab === 'SALARY' && !['SALARY_PAYOUT', 'employee_COMMISSION'].includes(tx.category)) return false;
       if (activeTab === 'ADVANCES' && !['SALARY_ADVANCE', 'EMPLOYEE_BONUS'].includes(tx.category)) return false;
 
       // 2. Flow type filter
@@ -219,7 +219,7 @@ export function PaymentsPage() {
         return <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200">Advance</span>;
       case 'EMPLOYEE_BONUS':
         return <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-teal-50 text-teal-700 border border-teal-200">Bonus</span>;
-      case 'TRAINER_COMMISSION':
+      case 'employee_COMMISSION':
         return <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-cyan-50 text-cyan-700 border border-cyan-200">PT Payout</span>;
       default:
         return <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-slate-100 text-slate-700">{label || category}</span>;
@@ -366,7 +366,7 @@ export function PaymentsPage() {
             { id: 'ALL', label: 'All Transactions', icon: Receipt, count: transactions.length },
             { id: 'MEMBERSHIP', label: 'Memberships & Plans', icon: UserCheck, count: transactions.filter((t) => t.category === 'MEMBERSHIP').length },
             { id: 'POS', label: 'POS & Store Sales', icon: ShoppingBag, count: transactions.filter((t) => t.category === 'POS_STORE').length },
-            { id: 'SALARY', label: 'Staff Salaries & Payouts', icon: Building2, count: transactions.filter((t) => ['SALARY_PAYOUT', 'TRAINER_COMMISSION'].includes(t.category)).length },
+            { id: 'SALARY', label: 'Staff Salaries & Payouts', icon: Building2, count: transactions.filter((t) => ['SALARY_PAYOUT', 'employee_COMMISSION'].includes(t.category)).length },
             { id: 'ADVANCES', label: 'Advances & Bonuses', icon: Award, count: transactions.filter((t) => ['SALARY_ADVANCE', 'EMPLOYEE_BONUS'].includes(t.category)).length },
           ].map((tab) => {
             const IconComp = tab.icon;
@@ -375,11 +375,10 @@ export function PaymentsPage() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as TabCategory)}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition-all ${
-                  active
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition-all ${active
                     ? 'bg-blue-600 text-white shadow-md shadow-blue-600/25'
                     : 'text-navy-600 hover:text-navy-900 hover:bg-navy-50'
-                }`}
+                  }`}
               >
                 <IconComp size={14} />
                 <span>{tab.label}</span>
@@ -539,9 +538,8 @@ export function PaymentsPage() {
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-2.5">
                           <div
-                            className={`w-7 h-7 rounded-xl flex items-center justify-center font-black text-[11px] ${
-                              isInflow ? 'bg-brand-50 text-brand-700' : 'bg-purple-50 text-purple-700'
-                            }`}
+                            className={`w-7 h-7 rounded-xl flex items-center justify-center font-black text-[11px] ${isInflow ? 'bg-brand-50 text-brand-700' : 'bg-purple-50 text-purple-700'
+                              }`}
                           >
                             {(tx.entity_name || 'U').charAt(0).toUpperCase()}
                           </div>

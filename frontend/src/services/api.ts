@@ -1,14 +1,14 @@
 import { apiClient } from './apiClient';
 import { dashboardApi } from './dashboardApi';
 import { membersApi } from './membersApi';
-import { trainersApi } from './trainersApi';
+import { employeesApi } from './employeesApi';
 import { biometricService } from './biometric';
 import type { User } from '@/types/auth';
 
 export { apiClient } from './apiClient';
 export { dashboardApi } from './dashboardApi';
 export { membersApi } from './membersApi';
-export { trainersApi } from './trainersApi';
+export { employeesApi } from './employeesApi';
 export { biometricService } from './biometric';
 
 export { customerApi } from './customerApi';
@@ -33,12 +33,12 @@ export const api = {
           userRole.includes('admin')
             ? 'super_admin'
             : userRole.includes('ho') || userRole.includes('head_office')
-            ? 'ho'
-            : userRole.includes('owner')
-            ? 'owner'
-            : userRole.includes('employee') || userRole.includes('trainer') || userRole.includes('staff')
-            ? 'employee'
-            : 'student'
+              ? 'ho'
+              : userRole.includes('owner')
+                ? 'owner'
+                : userRole.includes('employee') || userRole.includes('employee') || userRole.includes('staff')
+                  ? 'employee'
+                  : 'student'
         ) as User['role'];
 
         return {
@@ -50,15 +50,15 @@ export const api = {
           avatar: res.avatar_url || '',
           ho_id: res.ho_id || '',
           hoId: res.ho_id || '',
-          gymId: res.gym_id || '',
-          gymName: res.gym_name || '',
+          vahdId: res.vahd_id || '',
+          vahdName: res.vahd_name || '',
           branchName: res.branch_name || '',
         };
       } catch (err) {
         throw err;
       }
     },
-    signup: async (data: { full_name: string; email: string; password: string; phone?: string; gym_name?: string }): Promise<User> => {
+    signup: async (data: { full_name: string; email: string; password: string; phone?: string; vahd_name?: string }): Promise<User> => {
       try {
         const res = await apiClient.post<any>('/auth/signup', {
           ...data,
@@ -74,10 +74,10 @@ export const api = {
           userRole.includes('admin')
             ? 'super_admin'
             : userRole.includes('owner')
-            ? 'owner'
-            : userRole.includes('employee') || userRole.includes('trainer') || userRole.includes('staff')
-            ? 'employee'
-            : 'student'
+              ? 'owner'
+              : userRole.includes('employee') || userRole.includes('employee') || userRole.includes('staff')
+                ? 'employee'
+                : 'student'
         ) as User['role'];
 
         return {
@@ -87,8 +87,8 @@ export const api = {
           phone: res.phone || data.phone || '',
           role: role,
           avatar: res.avatar_url || '',
-          gymId: res.gym_id || '',
-          gymName: res.gym_name || data.gym_name || '',
+          vahdId: res.vahd_id || '',
+          vahdName: res.vahd_name || data.vahd_name || '',
           branchName: res.branch_name || '',
         };
       } catch (err) {
@@ -104,12 +104,12 @@ export const api = {
           userRole.includes('admin')
             ? 'super_admin'
             : userRole.includes('ho') || userRole.includes('head_office')
-            ? 'ho'
-            : userRole.includes('owner')
-            ? 'owner'
-            : userRole.includes('employee') || userRole.includes('trainer') || userRole.includes('staff')
-            ? 'employee'
-            : 'student'
+              ? 'ho'
+              : userRole.includes('owner')
+                ? 'owner'
+                : userRole.includes('employee') || userRole.includes('employee') || userRole.includes('staff')
+                  ? 'employee'
+                  : 'student'
         ) as User['role'];
 
         return {
@@ -121,8 +121,8 @@ export const api = {
           avatar: res.avatar_url || '',
           ho_id: res.ho_id || '',
           hoId: res.ho_id || '',
-          gymId: res.gym_id || '',
-          gymName: res.gym_name || '',
+          vahdId: res.vahd_id || '',
+          vahdName: res.vahd_name || '',
           branchName: res.branch_name || '',
         };
       } catch (_err) {
@@ -134,7 +134,7 @@ export const api = {
     ...dashboardApi,
     ownerKpis: (): Promise<any[]> => apiClient.get('/dashboard/owner-kpis'),
     superAdminKpis: (): Promise<any[]> => apiClient.get('/dashboard/super-admin-kpis'),
-    trainerKpis: (): Promise<any[]> => apiClient.get('/dashboard/trainer-kpis'),
+    employeeKpis: (): Promise<any[]> => apiClient.get('/dashboard/employee-kpis'),
     customerKpis: (): Promise<any[]> => apiClient.get('/dashboard/customer-kpis'),
     activity: (): Promise<any[]> => apiClient.get('/dashboard/activity'),
     attention: (): Promise<any[]> => apiClient.get('/dashboard/attention'),
@@ -143,7 +143,7 @@ export const api = {
   },
   customers: membersApi,
   members: membersApi,
-  trainers: trainersApi,
+  employees: employeesApi,
   biometrics: {
     ...biometricService,
     analytics: (role?: string, physical_only = false): Promise<any> => {
@@ -182,20 +182,20 @@ export const api = {
     products: (): Promise<any[]> => apiClient.get('/pos/products'),
   },
   settings: {
-    get: (): Promise<any> => apiClient.get('/gym/settings'),
-    update: (payload: any): Promise<any> => apiClient.post('/gym/settings', payload),
-    billing: (): Promise<any> => apiClient.get('/gym/billing'),
-    saveBilling: (payload: any): Promise<any> => apiClient.post('/gym/billing', payload),
+    get: (): Promise<any> => apiClient.get('/vahd/settings'),
+    update: (payload: any): Promise<any> => apiClient.post('/vahd/settings', payload),
+    billing: (): Promise<any> => apiClient.get('/vahd/billing'),
+    saveBilling: (payload: any): Promise<any> => apiClient.post('/vahd/billing', payload),
   },
   inventory: {
     products: (): Promise<any[]> => apiClient.get('/inventory/products'),
   },
   superAdmin: {
-    gyms: (): Promise<any[]> => apiClient.get('/superadmin/gyms'),
-    onboardGym: (payload: any): Promise<any> => apiClient.post('/superadmin/gyms', payload),
-    deleteOrganization: (gymId: string): Promise<any> => apiClient.delete(`/superadmin/organizations/${gymId}`),
-    bulkDeleteOrganizations: (gymIds: string[]): Promise<any> => apiClient.post('/superadmin/organizations/bulk-delete', { gym_ids: gymIds }),
-    updateGymStatus: (gymId: string, status: string): Promise<any> => apiClient.patch(`/superadmin/gyms/${gymId}/status`, { status }),
+    vahds: (): Promise<any[]> => apiClient.get('/superadmin/vahds'),
+    onboardvahd: (payload: any): Promise<any> => apiClient.post('/superadmin/vahds', payload),
+    deleteOrganization: (vahdId: string): Promise<any> => apiClient.delete(`/superadmin/organizations/${vahdId}`),
+    bulkDeleteOrganizations: (vahdIds: string[]): Promise<any> => apiClient.post('/superadmin/organizations/bulk-delete', { vahd_ids: vahdIds }),
+    updatevahdStatus: (vahdId: string, status: string): Promise<any> => apiClient.patch(`/superadmin/vahds/${vahdId}/status`, { status }),
     resetOwnerCredentials: (userId: string, newPassword?: string): Promise<any> => apiClient.post(`/superadmin/owners/${userId}/reset-credentials`, { password: newPassword, new_password: newPassword }),
     updateOwnerStatus: (userId: string, isActive: boolean): Promise<any> => apiClient.patch(`/superadmin/owners/${userId}/status`, { is_active: isActive }),
     users: (): Promise<any[]> => apiClient.get('/superadmin/users'),

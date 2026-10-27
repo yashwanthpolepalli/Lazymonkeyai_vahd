@@ -6,7 +6,7 @@ import { SkeletonTable } from '@/components/ui/Skeleton';
 import { api } from '@/services/api';
 import { PineLabsEDCModal } from '@/components/pos/PineLabsEDCModal';
 import { RazorpayPOSModal } from '@/components/pos/RazorpayPOSModal';
-import type { Gym } from '@/types';
+import type { vahd } from '@/types';
 import { cn } from '@/utils/cn';
 
 interface SaaSPlanItem {
@@ -18,7 +18,7 @@ interface SaaSPlanItem {
   price_annual: number;
   max_branches: number;
   max_members: number;
-  max_trainers: number;
+  max_employees: number;
   ai_credits_monthly: number;
   storage_gb: number;
   features: string[];
@@ -35,8 +35,8 @@ function generateSecurePassword(): string {
   return `${word}@${num}${sym}`;
 }
 
-export function GymsPage() {
-  const [gyms, setGyms] = useState<any[]>([]);
+export function VahdsPage() {
+  const [vahds, setvahds] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<any | null>(null);
   const [search, setSearch] = useState('');
@@ -46,7 +46,7 @@ export function GymsPage() {
 
   // Billing Settings from Database
   const [billingSettings, setBillingSettings] = useState<{
-    gym_name?: string;
+    vahd_name?: string;
     gstin?: string;
     sac_code?: string;
     enable_gst_engine: boolean;
@@ -85,7 +85,7 @@ export function GymsPage() {
 
   // Step 1: Profile Form
   const [onboardForm, setOnboardForm] = useState({
-    gym_name: '',
+    vahd_name: '',
     branch_name: '',
     city: '',
     address: '',
@@ -119,7 +119,7 @@ export function GymsPage() {
 
   // Post-Onboarding Credential & Receipt Modal
   const [credentialCardData, setCredentialCardData] = useState<{
-    gym_name: string;
+    vahd_name: string;
     branch_name: string;
     owner_name: string;
     owner_email: string;
@@ -142,18 +142,18 @@ export function GymsPage() {
   // Checkbox Selection & Deletion State
   const [selectedOrgIds, setSelectedOrgIds] = useState<string[]>([]);
   const [deleting, setDeleting] = useState(false);
-  const [deleteConfirmModal, setDeleteConfirmModal] = useState<{ open: boolean; orgIds: string[]; gymNames: string[] }>({
+  const [deleteConfirmModal, setDeleteConfirmModal] = useState<{ open: boolean; orgIds: string[]; vahdNames: string[] }>({
     open: false,
     orgIds: [],
-    gymNames: [],
+    vahdNames: [],
   });
 
-  // Fetch Gyms from DB
-  const fetchGyms = () => {
+  // Fetch vahds from DB
+  const fetchvahds = () => {
     setLoading(true);
-    api.superAdmin.gyms()
+    api.superAdmin.vahds()
       .then((data) => {
-        setGyms(data || []);
+        setvahds(data || []);
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -171,7 +171,7 @@ export function GymsPage() {
           }
         }
       })
-      .catch(() => {});
+      .catch(() => { });
 
     api.superAdmin.billingSettings()
       .then((bData) => {
@@ -182,7 +182,7 @@ export function GymsPage() {
           );
 
           setBillingSettings({
-            gym_name: bData.gym_name || '',
+            vahd_name: bData.vahd_name || '',
             gstin: bData.gstin || '',
             sac_code: bData.sac_code || '',
             enable_gst_engine: isEnabled,
@@ -213,11 +213,11 @@ export function GymsPage() {
           }
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   };
 
   useEffect(() => {
-    fetchGyms();
+    fetchvahds();
     loadSaaSMetadata();
   }, []);
 
@@ -235,7 +235,7 @@ export function GymsPage() {
   }, [selectedPlan, billingCycle]);
 
   const activeDiscountRate = customDiscountPercent !== '' ? Number(customDiscountPercent) || 0 : discountPercent;
-  
+
   const discountAmount = useMemo(() => {
     if (activeDiscountRate <= 0 || basePlanPrice <= 0) return 0;
     return Math.round((basePlanPrice * activeDiscountRate) / 100);
@@ -279,7 +279,7 @@ export function GymsPage() {
   const handleOpenOnboard = () => {
     loadSaaSMetadata();
     setOnboardForm({
-      gym_name: '',
+      vahd_name: '',
       branch_name: '',
       city: '',
       address: '',
@@ -300,13 +300,13 @@ export function GymsPage() {
     setOnboardOpen(true);
   };
 
-  const handleStatusChange = async (gymId: string, newStatus: string) => {
+  const handleStatusChange = async (vahdId: string, newStatus: string) => {
     try {
-      await api.superAdmin.updateGymStatus(gymId, newStatus);
-      if (selected && selected.id === gymId) {
+      await api.superAdmin.updatevahdStatus(vahdId, newStatus);
+      if (selected && selected.id === vahdId) {
         setSelected((prev: any) => prev ? { ...prev, status: newStatus, is_active: newStatus === 'active' } : null);
       }
-      fetchGyms();
+      fetchvahds();
     } catch (_err) {
       /* ignore */
     }
@@ -333,7 +333,7 @@ export function GymsPage() {
         email: resetModalUser.email,
         password: newPasswordVal.trim(),
       });
-      fetchGyms();
+      fetchvahds();
     } catch (_err) {
       /* ignore */
     } finally {
@@ -342,10 +342,10 @@ export function GymsPage() {
   };
 
   const handleToggleSelectAll = () => {
-    if (filteredGyms.length > 0 && selectedOrgIds.length === filteredGyms.length) {
+    if (filteredvahds.length > 0 && selectedOrgIds.length === filteredvahds.length) {
       setSelectedOrgIds([]);
     } else {
-      setSelectedOrgIds(filteredGyms.map((g) => g.id));
+      setSelectedOrgIds(filteredvahds.map((g) => g.id));
     }
   };
 
@@ -359,7 +359,7 @@ export function GymsPage() {
     setDeleteConfirmModal({
       open: true,
       orgIds: [g.id],
-      gymNames: [g.name || g.branch_name || 'Selected Organization'],
+      vahdNames: [g.name || g.branch_name || 'Selected Organization'],
     });
   };
 
@@ -376,8 +376,8 @@ export function GymsPage() {
       if (selected && deleteConfirmModal.orgIds.includes(selected.id)) {
         setSelected(null);
       }
-      setDeleteConfirmModal({ open: false, orgIds: [], gymNames: [] });
-      await fetchGyms();
+      setDeleteConfirmModal({ open: false, orgIds: [], vahdNames: [] });
+      await fetchvahds();
     } catch (err: any) {
       console.error('Failed to delete organization:', err);
       alert(err?.message || 'Failed to delete organization from database.');
@@ -394,7 +394,7 @@ export function GymsPage() {
       const methodToUse = effectiveMethod || paymentMethod;
       const payload = {
         ...onboardForm,
-        branch_name: onboardForm.branch_name.trim() || onboardForm.gym_name.trim(),
+        branch_name: onboardForm.branch_name.trim() || onboardForm.vahd_name.trim(),
         plan_id: selectedPlan?.id || '',
         plan_name: selectedPlan?.name || '',
         plan_tier: selectedPlan?.code || '',
@@ -408,12 +408,12 @@ export function GymsPage() {
         additional_charges: Number(additionalCharge || 0),
       };
 
-      const res = await api.superAdmin.onboardGym(payload);
+      const res = await api.superAdmin.onboardvahd(payload);
       if (res && res.success) {
         setOnboardOpen(false);
         setCredentialCardData({
-          gym_name: onboardForm.gym_name,
-          branch_name: onboardForm.branch_name.trim() || onboardForm.gym_name.trim(),
+          vahd_name: onboardForm.vahd_name,
+          branch_name: onboardForm.branch_name.trim() || onboardForm.vahd_name.trim(),
           owner_name: onboardForm.owner_name.trim() || '—',
           owner_email: onboardForm.owner_email,
           phone: onboardForm.phone,
@@ -423,7 +423,7 @@ export function GymsPage() {
           payment_method: methodToUse,
           paid_amount: grandTotal,
         });
-        fetchGyms();
+        fetchvahds();
       } else {
         setOnboardError(res?.message || 'Failed to onboard organization. Please try again.');
       }
@@ -436,7 +436,7 @@ export function GymsPage() {
   };
 
   const handleCompleteOnboard = async () => {
-    if (!onboardForm.gym_name.trim() || !onboardForm.owner_email.trim()) {
+    if (!onboardForm.vahd_name.trim() || !onboardForm.owner_email.trim()) {
       setOnboardError('Please fill in both Organization Name and Owner Email.');
       setWizardStep(1);
       return;
@@ -455,7 +455,7 @@ export function GymsPage() {
     await executeActualOnboarding();
   };
 
-  const filteredGyms = gyms.filter((g) => {
+  const filteredvahds = vahds.filter((g) => {
     const q = search.toLowerCase();
     return (
       (g.name && g.name.toLowerCase().includes(q)) ||
@@ -497,9 +497,9 @@ export function GymsPage() {
 
         <div className="flex items-center gap-2">
           <div className="text-xs text-slate-500 font-semibold bg-white border border-slate-200 px-3 py-1.5 rounded-xl shadow-xs">
-            Total Head Offices: <span className="text-blue-600 font-bold">{gyms.length}</span>
+            Total Head Offices: <span className="text-blue-600 font-bold">{vahds.length}</span>
           </div>
-          <button onClick={fetchGyms} className="btn-secondary flex items-center gap-1.5 text-xs font-bold py-2 px-3">
+          <button onClick={fetchvahds} className="btn-secondary flex items-center gap-1.5 text-xs font-bold py-2 px-3">
             <Icon name="refresh-cw" size={14} /> Refresh
           </button>
         </div>
@@ -532,10 +532,10 @@ export function GymsPage() {
             <button
               type="button"
               onClick={() => {
-                const selectedNames = gyms
+                const selectedNames = vahds
                   .filter((g) => selectedOrgIds.includes(g.id))
                   .map((g) => g.name || g.branch_name || g.id);
-                setDeleteConfirmModal({ open: true, orgIds: selectedOrgIds, gymNames: selectedNames });
+                setDeleteConfirmModal({ open: true, orgIds: selectedOrgIds, vahdNames: selectedNames });
               }}
               className="px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-rose-600/20 transition-all cursor-pointer"
             >
@@ -550,7 +550,7 @@ export function GymsPage() {
       <div className="card p-4">
         {loading ? (
           <SkeletonTable rows={6} cols={9} />
-        ) : filteredGyms.length > 0 ? (
+        ) : filteredvahds.length > 0 ? (
           <div className="overflow-x-auto -mx-4 px-4">
             <table className="w-full min-w-[1000px] text-xs">
               <thead>
@@ -558,7 +558,7 @@ export function GymsPage() {
                   <th className="px-3 py-3 w-10 text-center">
                     <input
                       type="checkbox"
-                      checked={filteredGyms.length > 0 && selectedOrgIds.length === filteredGyms.length}
+                      checked={filteredvahds.length > 0 && selectedOrgIds.length === filteredvahds.length}
                       onChange={handleToggleSelectAll}
                       className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer accent-blue-600"
                       title="Select / Deselect All"
@@ -575,7 +575,7 @@ export function GymsPage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredGyms.map((g) => (
+                {filteredvahds.map((g) => (
                   <tr
                     key={g.id}
                     className={cn(
@@ -709,7 +709,7 @@ export function GymsPage() {
       {onboardOpen && (
         <div className="fixed inset-0 bg-slate-950/75 backdrop-blur-md z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-[32px] p-6 sm:p-7 w-full max-w-2xl space-y-5 shadow-2xl border border-slate-100 animate-scale-in max-h-[94vh] overflow-y-auto">
-            
+
             {/* Modal Top Header & Stepper */}
             <div className="flex items-center justify-between border-b border-slate-100 pb-4">
               <div>
@@ -742,7 +742,7 @@ export function GymsPage() {
                   key={s.step}
                   type="button"
                   onClick={() => {
-                    if (s.step === 1 || (onboardForm.gym_name && onboardForm.owner_email)) {
+                    if (s.step === 1 || (onboardForm.vahd_name && onboardForm.owner_email)) {
                       setWizardStep(s.step as any);
                     }
                   }}
@@ -751,8 +751,8 @@ export function GymsPage() {
                     wizardStep === s.step
                       ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
                       : wizardStep > s.step
-                      ? 'bg-emerald-100 text-emerald-800'
-                      : 'text-slate-400 hover:text-slate-600'
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : 'text-slate-400 hover:text-slate-600'
                   )}
                 >
                   <Icon name={s.icon as any} size={14} />
@@ -783,8 +783,8 @@ export function GymsPage() {
                         type="text"
                         required
                         placeholder="e.g. Acme Corporation"
-                        value={onboardForm.gym_name}
-                        onChange={(e) => setOnboardForm((p) => ({ ...p, gym_name: e.target.value }))}
+                        value={onboardForm.vahd_name}
+                        onChange={(e) => setOnboardForm((p) => ({ ...p, vahd_name: e.target.value }))}
                         className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-blue-500 outline-none"
                       />
                     </div>
@@ -904,7 +904,7 @@ export function GymsPage() {
                   <button
                     type="button"
                     onClick={() => {
-                      if (!onboardForm.gym_name.trim() || !onboardForm.owner_email.trim()) {
+                      if (!onboardForm.vahd_name.trim() || !onboardForm.owner_email.trim()) {
                         setOnboardError('Please fill in Organisation Name and Head Office Email before continuing.');
                         return;
                       }
@@ -1054,7 +1054,7 @@ export function GymsPage() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
-                  
+
                   {/* Left: Summary Box */}
                   <div className="md:col-span-5 bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3">
                     <div className="flex items-center gap-2.5 pb-3 border-b border-slate-200">
@@ -1062,7 +1062,7 @@ export function GymsPage() {
                         <Icon name="building-2" size={20} />
                       </div>
                       <div>
-                        <div className="text-xs font-black text-slate-900">{onboardForm.gym_name}</div>
+                        <div className="text-xs font-black text-slate-900">{onboardForm.vahd_name}</div>
                         <div className="text-[10px] text-slate-400 font-semibold">{onboardForm.owner_name} • {onboardForm.city || 'HQ'}</div>
                       </div>
                     </div>
@@ -1102,7 +1102,7 @@ export function GymsPage() {
 
                   {/* Right: Dynamic Calculation Box matching Screenshot 3 POS */}
                   <div className="md:col-span-7 bg-white border border-slate-200 rounded-2xl p-4 space-y-3 shadow-xs">
-                    
+
                     {/* Subtotal */}
                     <div className="flex justify-between items-center text-xs text-slate-600 pb-2 border-b border-slate-100">
                       <span className="font-bold">Plan Base Subtotal</span>
@@ -1402,7 +1402,7 @@ export function GymsPage() {
       {credentialCardData && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-[28px] p-6 sm:p-8 w-full max-w-md space-y-5 shadow-2xl border border-slate-100 animate-scale-in text-center">
-            
+
             <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto shadow-sm">
               <Icon name="check-circle" size={28} />
             </div>
@@ -1418,7 +1418,7 @@ export function GymsPage() {
             <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-left space-y-2.5 text-xs font-semibold">
               <div className="flex justify-between items-center pb-2 border-b border-slate-200">
                 <span className="text-slate-400 font-bold uppercase text-[10px]">Head Office / Org</span>
-                <span className="text-slate-900 font-bold">{credentialCardData.gym_name}{credentialCardData.branch_name ? ` (${credentialCardData.branch_name})` : ''}</span>
+                <span className="text-slate-900 font-bold">{credentialCardData.vahd_name}{credentialCardData.branch_name ? ` (${credentialCardData.branch_name})` : ''}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-slate-400">Assigned Plan:</span>
@@ -1454,7 +1454,7 @@ export function GymsPage() {
                 type="button"
                 onClick={() => {
                   const loginUrl = typeof window !== 'undefined' ? `${window.location.origin}/login` : '/login';
-                  const payload = `HEAD OFFICE (HO) ONBOARDING CREDENTIALS:\n\nHead Office / Org: ${credentialCardData.gym_name}\nPlan: ${credentialCardData.plan_name} (${credentialCardData.billing_cycle})\nPayment: ${credentialCardData.payment_method} - ₹${(credentialCardData.paid_amount || 0).toLocaleString()}\nLogin URL: ${loginUrl}\nPortal: Head Office (HO) Tab\nRole: Head Office (HO)\nEmail: ${credentialCardData.owner_email}\nPassword: ${credentialCardData.temporary_password}\n\nPlease login and change your password upon first sign-in.`;
+                  const payload = `HEAD OFFICE (HO) ONBOARDING CREDENTIALS:\n\nHead Office / Org: ${credentialCardData.vahd_name}\nPlan: ${credentialCardData.plan_name} (${credentialCardData.billing_cycle})\nPayment: ${credentialCardData.payment_method} - ₹${(credentialCardData.paid_amount || 0).toLocaleString()}\nLogin URL: ${loginUrl}\nPortal: Head Office (HO) Tab\nRole: Head Office (HO)\nEmail: ${credentialCardData.owner_email}\nPassword: ${credentialCardData.temporary_password}\n\nPlease login and change your password upon first sign-in.`;
                   copyToClipboard(payload, 'credentials_sheet');
                 }}
                 className="w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition-all"
@@ -1508,7 +1508,7 @@ export function GymsPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    const text = `FIT CLUB OWNER PASSWORD RESET:\nAccount: ${resetResult.email}\nNew Password: ${resetResult.password}\nLogin at: http://localhost:8080/login`;
+                    const text = `vahd OWNER PASSWORD RESET:\nAccount: ${resetResult.email}\nNew Password: ${resetResult.password}\nLogin at: http://localhost:8080/login`;
                     copyToClipboard(text, 'reset_copy');
                   }}
                   className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-1.5"
@@ -1583,7 +1583,7 @@ export function GymsPage() {
       )}
 
       {/* ───────────────────────────────────────────────────────────── */}
-      {/* GYM 360 DETAIL DRAWER                                         */}
+      {/* vahd 360 DETAIL DRAWER                                         */}
       {/* ───────────────────────────────────────────────────────────── */}
       {selected && (
         <>
@@ -1630,7 +1630,7 @@ export function GymsPage() {
               <div className="grid grid-cols-2 gap-3">
                 {[
                   { label: 'Members', value: selected.members || 0, icon: 'users' },
-                  { label: 'Trainers', value: selected.trainers || 0, icon: 'user-cog' },
+                  { label: 'employees', value: selected.employees || 0, icon: 'user-cog' },
                   { label: 'Revenue', value: `₹${(selected.revenue || 0).toLocaleString()}`, icon: 'indian-rupee' },
                   { label: 'Status', value: selected.is_active ? 'Active' : 'Suspended', icon: 'shield' },
                 ].map((s) => (
@@ -1685,7 +1685,7 @@ export function GymsPage() {
         amount={grandTotal}
         billNumber={`ONB-${Date.now().toString().slice(-6)}`}
         customerMobile={onboardForm.phone}
-        customerName={onboardForm.owner_name || onboardForm.gym_name}
+        customerName={onboardForm.owner_name || onboardForm.vahd_name}
         onClose={() => setRazorpayModalOpen(false)}
         onSuccess={(paymentData) => {
           setRazorpayModalOpen(false);
@@ -1714,12 +1714,12 @@ export function GymsPage() {
               </p>
             </div>
 
-            {deleteConfirmModal.gymNames.length > 0 && (
+            {deleteConfirmModal.vahdNames.length > 0 && (
               <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-left max-h-36 overflow-y-auto space-y-1">
                 <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
                   Selected to be removed:
                 </div>
-                {deleteConfirmModal.gymNames.map((name, idx) => (
+                {deleteConfirmModal.vahdNames.map((name, idx) => (
                   <div key={idx} className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
                     <span className="truncate">{name}</span>
@@ -1732,7 +1732,7 @@ export function GymsPage() {
               <button
                 type="button"
                 disabled={deleting}
-                onClick={() => setDeleteConfirmModal({ open: false, orgIds: [], gymNames: [] })}
+                onClick={() => setDeleteConfirmModal({ open: false, orgIds: [], vahdNames: [] })}
                 className="btn-secondary py-2.5 text-xs font-bold"
               >
                 Cancel
@@ -1763,3 +1763,5 @@ export function GymsPage() {
   );
 }
 
+export const vahdsPage = VahdsPage;
+export default VahdsPage;

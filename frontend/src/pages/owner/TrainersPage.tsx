@@ -3,14 +3,14 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { Icon } from '@/components/ui/Icon';
 import { Badge } from '@/components/ui/Badge';
 import { api, apiClient } from '@/services/api';
-import { trainersApi } from '@/services/trainersApi';
+import { employeesApi } from '@/services/employeesApi';
 import { payrollApi, type PayrollInvoice } from '@/services/payrollApi';
 import type { Member } from '@/types';
-import type { Trainer } from '@/types/trainer';
+import type { employee } from '@/types/employee';
 import { cn } from '@/utils/cn';
 import { EmployeeEnrollmentModal } from '@/components/hrms/EmployeeEnrollmentModal';
 
-interface TrainerRowData {
+interface employeeRowData {
   id: string;
   name: string;
   email: string;
@@ -32,14 +32,14 @@ interface TrainerRowData {
   upi_id?: string;
 }
 
-export function TrainersPage() {
+export function employeesPage() {
   const [members, setMembers] = useState<Member[]>([]);
-  const [trainers, setTrainers] = useState<Array<Partial<Trainer> & { email?: string; full_name?: string; specialty?: string; base_monthly_salary?: number; pt_session_rate?: number; is_active?: boolean; created_at?: string; assigned_customers_count?: number }>>([]);
+  const [employees, setemployees] = useState<Array<Partial<employee> & { email?: string; full_name?: string; specialty?: string; base_monthly_salary?: number; pt_session_rate?: number; is_active?: boolean; created_at?: string; assigned_customers_count?: number }>>([]);
   const [loading, setLoading] = useState(true);
   const [enrollOpen, setEnrollOpen] = useState(false);
-  const [editingTrainer, setEditingTrainer] = useState<any>(null);
+  const [editingemployee, setEditingemployee] = useState<any>(null);
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
-  const [selectedTrainerIds, setSelectedTrainerIds] = useState<string[]>([]);
+  const [selectedemployeeIds, setSelectedemployeeIds] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 6;
 
@@ -67,9 +67,9 @@ export function TrainersPage() {
   const [renewalPaymentMethod, setRenewalPaymentMethod] = useState('UPI');
   const [renewing, setRenewing] = useState(false);
 
-  const [trainerPlans, setTrainerPlans] = useState<Array<{ name: string; price: number; duration_days: number; badge?: string }>>([]);
+  const [employeePlans, setemployeePlans] = useState<Array<{ name: string; price: number; duration_days: number; badge?: string }>>([]);
 
-  const fetchDynamicTrainerPlans = () => {
+  const fetchDynamicemployeePlans = () => {
     apiClient.get<any[]>('/courses/plans')
       .then((res) => {
         if (Array.isArray(res)) {
@@ -79,16 +79,16 @@ export function TrainersPage() {
             duration_days: p.duration_days || 30,
             badge: p.badge || `${p.duration_days || 30} Days`,
           }));
-          setTrainerPlans(dynamic);
+          setemployeePlans(dynamic);
         }
       })
       .catch(() => {
-        setTrainerPlans([]);
+        setemployeePlans([]);
       });
   };
 
   useEffect(() => {
-    fetchDynamicTrainerPlans();
+    fetchDynamicemployeePlans();
   }, []);
 
   // Payroll & Salary Payout state
@@ -119,17 +119,17 @@ export function TrainersPage() {
     setPayrollModalOpen(true);
   };
 
-  const handleGenerateSalary = async (trainerId: string) => {
-    setGeneratingSalaryId(trainerId);
+  const handleGenerateSalary = async (employeeId: string) => {
+    setGeneratingSalaryId(employeeId);
     try {
-      const targetTrainer = displayTrainers.find((t) => t.id === trainerId);
+      const targetemployee = displayemployees.find((t) => t.id === employeeId);
       const inv = await payrollApi.generateInvoice({
-        trainer_id: trainerId,
+        employee_id: employeeId,
         month_year: selectedMonthYear,
-        pt_sessions_count: targetTrainer ? targetTrainer.clients * 4 : 0,
+        pt_sessions_count: targetemployee ? targetemployee.clients * 4 : 0,
       });
       setPayrollInvoices((prev) => {
-        const idx = prev.findIndex((i) => i.id === inv.id || (i.trainer_id === inv.trainer_id && i.month_year === inv.month_year));
+        const idx = prev.findIndex((i) => i.id === inv.id || (i.employee_id === inv.employee_id && i.month_year === inv.month_year));
         if (idx >= 0) {
           const updated = [...prev];
           updated[idx] = inv;
@@ -147,10 +147,10 @@ export function TrainersPage() {
   const handleGenerateAllSalaries = async () => {
     setLoadingPayroll(true);
     try {
-      for (const tr of displayTrainers) {
+      for (const tr of displayemployees) {
         try {
           await payrollApi.generateInvoice({
-            trainer_id: tr.id,
+            employee_id: tr.id,
             month_year: selectedMonthYear,
             pt_sessions_count: tr.clients * 4,
           });
@@ -183,15 +183,15 @@ export function TrainersPage() {
     }
   };
 
-  const fetchTrainersData = () => {
+  const fetchemployeesData = () => {
     setLoading(true);
     Promise.all([
       api.customers.list().catch(() => []),
-      trainersApi.list().catch(() => []),
+      employeesApi.list().catch(() => []),
     ])
       .then(([mList, tList]) => {
         setMembers(mList || []);
-        setTrainers(Array.isArray(tList) ? tList : []);
+        setemployees(Array.isArray(tList) ? tList : []);
       })
       .finally(() => {
         setLoading(false);
@@ -199,35 +199,35 @@ export function TrainersPage() {
   };
 
   useEffect(() => {
-    fetchTrainersData();
+    fetchemployeesData();
   }, []);
 
-  const handleDeleteTrainer = async (trainerId: string, trainerName: string) => {
-    if (!window.confirm(`Are you sure you want to delete trainer "${trainerName}"?`)) {
+  const handleDeleteemployee = async (employeeId: string, employeeName: string) => {
+    if (!window.confirm(`Are you sure you want to delete employee "${employeeName}"?`)) {
       return;
     }
     try {
-      await trainersApi.delete(trainerId);
-      fetchTrainersData();
+      await employeesApi.delete(employeeId);
+      fetchemployeesData();
     } catch (err) {
-      console.error('Failed to delete trainer:', err);
-      alert('Failed to delete trainer. Please try again.');
+      console.error('Failed to delete employee:', err);
+      alert('Failed to delete employee. Please try again.');
     }
   };
 
-  const handleBulkDeleteTrainers = async () => {
-    if (selectedTrainerIds.length === 0) return;
-    const count = selectedTrainerIds.length;
-    if (!window.confirm(`Are you sure you want to delete ${count} selected trainer(s)?`)) {
+  const handleBulkDeleteemployees = async () => {
+    if (selectedemployeeIds.length === 0) return;
+    const count = selectedemployeeIds.length;
+    if (!window.confirm(`Are you sure you want to delete ${count} selected employee(s)?`)) {
       return;
     }
     try {
-      await Promise.all(selectedTrainerIds.map((id) => trainersApi.delete(id)));
-      setSelectedTrainerIds([]);
-      fetchTrainersData();
+      await Promise.all(selectedemployeeIds.map((id) => employeesApi.delete(id)));
+      setSelectedemployeeIds([]);
+      fetchemployeesData();
     } catch (err) {
-      console.error('Failed to delete selected trainers:', err);
-      alert('Failed to delete selected trainer(s). Please try again.');
+      console.error('Failed to delete selected employees:', err);
+      alert('Failed to delete selected employee(s). Please try again.');
     }
   };
 
@@ -240,16 +240,16 @@ export function TrainersPage() {
     { bg: 'bg-cyan-50', text: 'text-cyan-700', bar: 'bg-cyan-500', avatar: 'from-cyan-500 to-blue-600' },
   ];
 
-  const displayTrainers: TrainerRowData[] = trainers.map((t, idx) => {
-    const name = t.name || t.full_name || `Trainer ${idx + 1}`;
+  const displayemployees: employeeRowData[] = employees.map((t, idx) => {
+    const name = t.name || t.full_name || `employee ${idx + 1}`;
     const email = t.email || `${name.toLowerCase().replace(/\s+/g, '')}@vahd.ai`;
     const specialization = t.specialization || t.specialty || 'Personal Training';
 
     const assignedMembers = members.filter(
       (m) =>
-        (m.trainer || '').toLowerCase().includes(name.toLowerCase()) ||
-        m.trainer === name ||
-        (m as any).trainer_id === t.id
+        (m.employee || '').toLowerCase().includes(name.toLowerCase()) ||
+        m.employee === name ||
+        (m as any).employee_id === t.id
     );
 
     const clientsCount = typeof t.assigned_customers_count === 'number'
@@ -300,54 +300,54 @@ export function TrainersPage() {
   });
 
   // Calculate live summary stats directly from database items
-  const totalTrainersCount = displayTrainers.length;
-  const activeTrainersCount = displayTrainers.filter((t) => t.status === 'Active').length;
-  const totalClientsCount = members.length || displayTrainers.reduce((acc, t) => acc + t.clients, 0);
+  const totalemployeesCount = displayemployees.length;
+  const activeemployeesCount = displayemployees.filter((t) => t.status === 'Active').length;
+  const totalClientsCount = members.length || displayemployees.reduce((acc, t) => acc + t.clients, 0);
 
-  const ratedTrainers = displayTrainers.filter((t) => t.rating > 0);
-  const avgRating = ratedTrainers.length > 0
-    ? (ratedTrainers.reduce((acc, t) => acc + t.rating, 0) / ratedTrainers.length).toFixed(1)
+  const ratedemployees = displayemployees.filter((t) => t.rating > 0);
+  const avgRating = ratedemployees.length > 0
+    ? (ratedemployees.reduce((acc, t) => acc + t.rating, 0) / ratedemployees.length).toFixed(1)
     : '0.0';
 
-  const totalPayoutVal = displayTrainers.reduce((acc, t) => acc + (t.base_monthly_salary || 0), 0);
+  const totalPayoutVal = displayemployees.reduce((acc, t) => acc + (t.base_monthly_salary || 0), 0);
   const formattedPayout = totalPayoutVal > 0
     ? `₹${totalPayoutVal.toLocaleString('en-IN')}`
     : '₹0';
 
-  const selectedTrainers = displayTrainers.filter((t) => selectedTrainerIds.includes(t.id));
+  const selectedemployees = displayemployees.filter((t) => selectedemployeeIds.includes(t.id));
 
   // Table Pagination logic
-  const totalPages = Math.max(1, Math.ceil(displayTrainers.length / ITEMS_PER_PAGE));
+  const totalPages = Math.max(1, Math.ceil(displayemployees.length / ITEMS_PER_PAGE));
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const paginatedTrainers = displayTrainers.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-  const emptyRowsCount = ITEMS_PER_PAGE - paginatedTrainers.length;
+  const paginatedemployees = displayemployees.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  const emptyRowsCount = ITEMS_PER_PAGE - paginatedemployees.length;
 
-  const handleOpenRenewalModal = (trainerId?: string) => {
-    fetchDynamicTrainerPlans();
-    if (trainerId) {
-      setSelectedTrainerIds([trainerId]);
+  const handleOpenRenewalModal = (employeeId?: string) => {
+    fetchDynamicemployeePlans();
+    if (employeeId) {
+      setSelectedemployeeIds([employeeId]);
     }
     setRenewalStartDate(getTodayISO());
-    const dur = trainerPlans[selectedPlanIdx]?.duration_days || 30;
+    const dur = employeePlans[selectedPlanIdx]?.duration_days || 30;
     setRenewalExpiryDate(addDaysISO(getTodayISO(), dur));
     setRenewalOpen(true);
   };
 
   const handlePlanSelect = (idx: number) => {
     setSelectedPlanIdx(idx);
-    setRenewalExpiryDate(addDaysISO(renewalStartDate, trainerPlans[idx].duration_days));
+    setRenewalExpiryDate(addDaysISO(renewalStartDate, employeePlans[idx].duration_days));
   };
 
   const handleExecuteRenewal = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (selectedTrainerIds.length === 0) return;
+    if (selectedemployeeIds.length === 0) return;
     setRenewing(true);
     try {
-      const plan = trainerPlans[selectedPlanIdx];
-      for (const tId of selectedTrainerIds) {
+      const plan = employeePlans[selectedPlanIdx];
+      for (const tId of selectedemployeeIds) {
         await apiClient.post('/courses/assign', {
           customer_id: tId,
-          plan_name: plan?.name || 'Trainer Subscription',
+          plan_name: plan?.name || 'employee Subscription',
           amount: plan?.price || 0,
           payment_method: renewalPaymentMethod,
           start_date: renewalStartDate,
@@ -355,8 +355,8 @@ export function TrainersPage() {
         }).catch(() => null);
       }
       setRenewalOpen(false);
-      setSelectedTrainerIds([]);
-      fetchTrainersData();
+      setSelectedemployeeIds([]);
+      fetchemployeesData();
     } catch (err) {
       console.error('Renewal failed', err);
     } finally {
@@ -365,32 +365,32 @@ export function TrainersPage() {
   };
 
   const toggleSelectAll = () => {
-    if (selectedTrainerIds.length === displayTrainers.length) {
-      setSelectedTrainerIds([]);
+    if (selectedemployeeIds.length === displayemployees.length) {
+      setSelectedemployeeIds([]);
     } else {
-      setSelectedTrainerIds(displayTrainers.map((t) => t.id));
+      setSelectedemployeeIds(displayemployees.map((t) => t.id));
     }
   };
 
-  const toggleSelectTrainer = (id: string) => {
-    setSelectedTrainerIds((prev) =>
+  const toggleSelectemployee = (id: string) => {
+    setSelectedemployeeIds((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
     );
   };
 
   return (
     <div className="space-y-6 animate-fade-in pb-12 font-sans text-slate-800">
-      
+
       {/* 1. Header Row */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="text-xs font-semibold text-slate-400 mb-1 flex items-center gap-1.5">
             <span>Owner</span>
             <span>/</span>
-            <span className="text-slate-700 font-bold">Trainers</span>
+            <span className="text-slate-700 font-bold">employees</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Trainers</h1>
-          <p className="text-xs sm:text-sm text-slate-500 font-medium">Manage your trainers, track performance &amp; assignments</p>
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">employees</h1>
+          <p className="text-xs sm:text-sm text-slate-500 font-medium">Manage your employees, track performance &amp; assignments</p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -404,37 +404,37 @@ export function TrainersPage() {
 
           <button
             onClick={() => handleOpenRenewalModal()}
-            disabled={selectedTrainerIds.length === 0}
+            disabled={selectedemployeeIds.length === 0}
             className={cn(
               'border text-xs font-bold py-2.5 px-4 rounded-xl flex items-center gap-2 transition-all shadow-xs',
-              selectedTrainerIds.length > 0
+              selectedemployeeIds.length > 0
                 ? 'border-blue-500 text-blue-600 bg-blue-50 ring-2 ring-blue-500/20 shadow-sm cursor-pointer'
                 : 'opacity-50 cursor-not-allowed border-slate-200 text-slate-400 bg-white'
             )}
-            title={selectedTrainerIds.length === 0 ? "Select trainer checkboxes to renew" : "Renew selected trainers"}
+            title={selectedemployeeIds.length === 0 ? "Select employee checkboxes to renew" : "Renew selected employees"}
           >
-            <Icon name="refresh-cw" size={16} className={selectedTrainerIds.length > 0 ? "text-blue-600" : "text-slate-400"} />
-            <span>Renewal {selectedTrainerIds.length > 0 && `(${selectedTrainerIds.length})`}</span>
+            <Icon name="refresh-cw" size={16} className={selectedemployeeIds.length > 0 ? "text-blue-600" : "text-slate-400"} />
+            <span>Renewal {selectedemployeeIds.length > 0 && `(${selectedemployeeIds.length})`}</span>
           </button>
 
           <button
-            onClick={handleBulkDeleteTrainers}
-            disabled={selectedTrainerIds.length === 0}
+            onClick={handleBulkDeleteemployees}
+            disabled={selectedemployeeIds.length === 0}
             className={cn(
               'border text-xs font-bold py-2.5 px-4 rounded-xl flex items-center gap-2 transition-all shadow-xs',
-              selectedTrainerIds.length > 0
+              selectedemployeeIds.length > 0
                 ? 'border-rose-300 text-rose-700 bg-rose-50 hover:bg-rose-100 ring-2 ring-rose-500/20 shadow-sm cursor-pointer'
                 : 'opacity-50 cursor-not-allowed border-slate-200 text-slate-400 bg-white'
             )}
-            title={selectedTrainerIds.length === 0 ? "Select trainer checkboxes to delete" : "Delete selected trainers"}
+            title={selectedemployeeIds.length === 0 ? "Select employee checkboxes to delete" : "Delete selected employees"}
           >
-            <Icon name="trash-2" size={16} className={selectedTrainerIds.length > 0 ? "text-rose-600" : "text-slate-400"} />
-            <span>Delete {selectedTrainerIds.length > 0 && `(${selectedTrainerIds.length})`}</span>
+            <Icon name="trash-2" size={16} className={selectedemployeeIds.length > 0 ? "text-rose-600" : "text-slate-400"} />
+            <span>Delete {selectedemployeeIds.length > 0 && `(${selectedemployeeIds.length})`}</span>
           </button>
 
           <button
             onClick={() => {
-              setEditingTrainer(null);
+              setEditingemployee(null);
               setEnrollOpen(true);
             }}
             className="btn-primary bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-2.5 px-4 rounded-xl flex items-center gap-2 shadow-sm shadow-blue-500/20 active:scale-[0.98] transition-all cursor-pointer"
@@ -442,7 +442,7 @@ export function TrainersPage() {
             <Icon name="plus" size={16} />
             <span>Add Employee</span>
           </button>
-          
+
           <button className="btn-secondary border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold py-2.5 px-3.5 rounded-xl flex items-center gap-2 shadow-xs">
             <Icon name="sliders-horizontal" size={16} />
             <span>Filters</span>
@@ -457,33 +457,33 @@ export function TrainersPage() {
 
       {/* 2. Top Dynamic KPI Cards Row */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3.5">
-        
-        {/* Metric 1: Total Trainers */}
+
+        {/* Metric 1: Total employees */}
         <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs relative overflow-hidden flex flex-col justify-between">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-slate-500">Total Trainers</span>
+            <span className="text-xs font-bold text-slate-500">Total employees</span>
             <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
               <Icon name="user" size={16} />
             </div>
           </div>
           <div className="space-y-1">
-            <div className="text-2xl font-black text-slate-900">{totalTrainersCount}</div>
+            <div className="text-2xl font-black text-slate-900">{totalemployeesCount}</div>
             <div className="text-[11px] font-bold text-slate-400">Live DB count</div>
           </div>
         </div>
 
-        {/* Metric 2: Active Trainers */}
+        {/* Metric 2: Active employees */}
         <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs relative overflow-hidden flex flex-col justify-between">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-slate-500">Active Trainers</span>
+            <span className="text-xs font-bold text-slate-500">Active employees</span>
             <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
               <Icon name="user-check" size={16} />
             </div>
           </div>
           <div className="space-y-1">
-            <div className="text-2xl font-black text-slate-900">{activeTrainersCount}</div>
+            <div className="text-2xl font-black text-slate-900">{activeemployeesCount}</div>
             <div className="text-[11px] font-bold text-emerald-600 flex items-center gap-1">
-              <span>{activeTrainersCount} active staff</span>
+              <span>{activeemployeesCount} active staff</span>
             </div>
           </div>
         </div>
@@ -541,10 +541,10 @@ export function TrainersPage() {
 
       {/* 3. Bottom Data Table Section */}
       <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
-        
+
         {/* Table Header Bar */}
         <div className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100">
-          <h3 className="text-base font-extrabold text-slate-900">All Trainers</h3>
+          <h3 className="text-base font-extrabold text-slate-900">All employees</h3>
 
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
@@ -576,16 +576,16 @@ export function TrainersPage() {
         {/* Main Table */}
         <div className="overflow-x-auto">
           {loading ? (
-            <div className="p-12 text-center text-xs font-semibold text-slate-400">Loading trainers from database...</div>
-          ) : displayTrainers.length === 0 ? (
+            <div className="p-12 text-center text-xs font-semibold text-slate-400">Loading employees from database...</div>
+          ) : displayemployees.length === 0 ? (
             <div className="p-12 text-center space-y-3">
               <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
                 <Icon name="users" size={24} />
               </div>
-              <div className="text-sm font-bold text-slate-900">No Trainers Found in Database</div>
-              <p className="text-xs text-slate-400 max-w-sm mx-auto">Click 'Add Trainer' above to register personal trainers into PostgreSQL database.</p>
+              <div className="text-sm font-bold text-slate-900">No employees Found in Database</div>
+              <p className="text-xs text-slate-400 max-w-sm mx-auto">Click 'Add employee' above to register personal employees into PostgreSQL database.</p>
               <button onClick={() => setEnrollOpen(true)} className="btn-primary inline-flex items-center gap-2 py-2 px-4 text-xs font-bold">
-                <Icon name="plus" size={16} /> Add First Trainer
+                <Icon name="plus" size={16} /> Add First employee
               </button>
             </div>
           ) : (
@@ -595,12 +595,12 @@ export function TrainersPage() {
                   <th className="py-3.5 px-4 w-10">
                     <input
                       type="checkbox"
-                      checked={selectedTrainerIds.length === displayTrainers.length && displayTrainers.length > 0}
+                      checked={selectedemployeeIds.length === displayemployees.length && displayemployees.length > 0}
                       onChange={toggleSelectAll}
                       className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                     />
                   </th>
-                  <th className="py-3.5 px-4">Trainer</th>
+                  <th className="py-3.5 px-4">employee</th>
                   <th className="py-3.5 px-4">Specialization</th>
                   <th className="py-3.5 px-4">Clients</th>
                   <th className="py-3.5 px-4">Rating</th>
@@ -611,15 +611,15 @@ export function TrainersPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-700">
-                {paginatedTrainers.map((t) => {
-                  const isSelected = selectedTrainerIds.includes(t.id);
+                {paginatedemployees.map((t) => {
+                  const isSelected = selectedemployeeIds.includes(t.id);
                   return (
                     <tr key={t.id} className={cn('hover:bg-slate-50/80 transition-colors', isSelected && 'bg-blue-50/40')}>
                       <td className="py-3.5 px-4">
                         <input
                           type="checkbox"
                           checked={isSelected}
-                          onChange={() => toggleSelectTrainer(t.id)}
+                          onChange={() => toggleSelectemployee(t.id)}
                           className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                         />
                       </td>
@@ -692,18 +692,18 @@ export function TrainersPage() {
                           <button
                             onClick={() => handleOpenRenewalModal(t.id)}
                             className="p-1.5 text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200/80 rounded-xl transition-all shadow-xs"
-                            title="Renew Trainer Contract"
+                            title="Renew employee Contract"
                           >
                             <Icon name="refresh-cw" size={15} />
                           </button>
                           <button
-                            onClick={() => handleDeleteTrainer(t.id, t.name)}
+                            onClick={() => handleDeleteemployee(t.id, t.name)}
                             className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"
-                            title="Delete Trainer"
+                            title="Delete employee"
                           >
                             <Icon name="trash-2" size={15} />
                           </button>
-                          <button className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors" title="Edit Trainer">
+                          <button className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors" title="Edit employee">
                             <Icon name="edit-2" size={15} />
                           </button>
                           <button className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors" title="More Options">
@@ -730,7 +730,7 @@ export function TrainersPage() {
         {/* Table Footer Pagination */}
         <div className="p-4 bg-slate-50/50 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-semibold text-slate-500">
           <div>
-            Showing {displayTrainers.length > 0 ? startIndex + 1 : 0} to {Math.min(startIndex + ITEMS_PER_PAGE, displayTrainers.length)} of {displayTrainers.length} trainers
+            Showing {displayemployees.length > 0 ? startIndex + 1 : 0} to {Math.min(startIndex + ITEMS_PER_PAGE, displayemployees.length)} of {displayemployees.length} employees
           </div>
           <div className="flex items-center gap-1">
             <button
@@ -770,16 +770,16 @@ export function TrainersPage() {
       {/* Enrollment / Add Employee Modal */}
       <EmployeeEnrollmentModal
         open={enrollOpen}
-        employeeToEdit={editingTrainer}
+        employeeToEdit={editingemployee}
         onClose={() => {
           setEnrollOpen(false);
-          setEditingTrainer(null);
-          fetchTrainersData();
+          setEditingemployee(null);
+          fetchemployeesData();
         }}
         onSuccess={() => {
           setEnrollOpen(false);
-          setEditingTrainer(null);
-          fetchTrainersData();
+          setEditingemployee(null);
+          fetchemployeesData();
         }}
       />
 
@@ -793,8 +793,8 @@ export function TrainersPage() {
                   <Icon name="refresh-cw" size={18} className="text-blue-600" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-900">Renew Trainer Contract</h3>
-                  <p className="text-xs text-slate-400">Selected {selectedTrainers.length} trainer(s) for renewal</p>
+                  <h3 className="text-base font-bold text-slate-900">Renew employee Contract</h3>
+                  <p className="text-xs text-slate-400">Selected {selectedemployees.length} employee(s) for renewal</p>
                 </div>
               </div>
               <button onClick={() => setRenewalOpen(false)} className="text-slate-400 hover:text-slate-600">
@@ -802,10 +802,10 @@ export function TrainersPage() {
               </button>
             </div>
 
-            {/* Selected Trainers Summary */}
+            {/* Selected employees Summary */}
             <div className="bg-slate-50 p-3 rounded-2xl max-h-32 overflow-y-auto space-y-1.5 border border-slate-200/80">
-              <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Target Trainers</div>
-              {selectedTrainers.map((st) => (
+              <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Target employees</div>
+              {selectedemployees.map((st) => (
                 <div key={st.id} className="flex items-center justify-between text-xs bg-white p-2 rounded-xl border border-slate-100 shadow-xs">
                   <div className="font-semibold text-slate-900">{st.name} ({st.email})</div>
                   <Badge variant="brand">{st.specialization}</Badge>
@@ -817,13 +817,13 @@ export function TrainersPage() {
               {/* Select Plan */}
               <div>
                 <label className="text-xs font-semibold text-slate-700 mb-2 block">Select Renewal Contract Plan</label>
-                {trainerPlans.length === 0 ? (
+                {employeePlans.length === 0 ? (
                   <div className="p-3 text-center text-xs text-slate-400 font-medium bg-slate-50 rounded-xl border border-slate-200">
                     No active membership plans created by owner yet. Please create plans on the Memberships page.
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 gap-2">
-                    {trainerPlans.map((p, idx) => (
+                    {employeePlans.map((p, idx) => (
                       <button
                         key={p.name + idx}
                         type="button"
@@ -914,7 +914,7 @@ export function TrainersPage() {
         </div>
       )}
 
-      {/* Trainer Payroll & Salary Generation Modal */}
+      {/* employee Payroll & Salary Generation Modal */}
       {payrollModalOpen && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
           <div className="bg-white rounded-3xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto space-y-5 shadow-2xl animate-scale-in border border-slate-100">
@@ -924,7 +924,7 @@ export function TrainersPage() {
                   <Icon name="credit-card" size={20} />
                 </div>
                 <div>
-                  <h2 className="text-lg font-black text-slate-900">Trainer Payroll &amp; Salary Generation</h2>
+                  <h2 className="text-lg font-black text-slate-900">employee Payroll &amp; Salary Generation</h2>
                   <p className="text-xs text-slate-400 font-medium">Calculate base salary, eSSL biometrics attendance &amp; PT commission payouts</p>
                 </div>
               </div>
@@ -958,17 +958,17 @@ export function TrainersPage() {
 
             {/* Invoices List / Table */}
             <div className="space-y-3">
-              <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-400">Trainer Monthly Payout Statements</h3>
+              <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-400">employee Monthly Payout Statements</h3>
 
               {loadingPayroll ? (
                 <div className="py-12 text-center text-xs font-bold text-slate-400">Loading payroll invoices from PostgreSQL database...</div>
-              ) : displayTrainers.length === 0 ? (
-                <div className="py-8 text-center text-xs text-slate-400 font-medium">No trainers registered yet.</div>
+              ) : displayemployees.length === 0 ? (
+                <div className="py-8 text-center text-xs text-slate-400 font-medium">No employees registered yet.</div>
               ) : (
                 <div className="space-y-3">
-                  {displayTrainers.map((tr) => {
+                  {displayemployees.map((tr) => {
                     const inv = payrollInvoices.find(
-                      (i) => (i.trainer_id === tr.id || i.trainer_name === tr.name) && i.month_year === selectedMonthYear
+                      (i) => (i.employee_id === tr.id || i.employee_name === tr.name) && i.month_year === selectedMonthYear
                     );
                     const isGenerating = generatingSalaryId === tr.id;
                     const baseSal = tr.base_monthly_salary || 0;
@@ -1049,8 +1049,8 @@ export function TrainersPage() {
                                       handleGenerateSalary(tr.id).then(() => {
                                         const newlyCreated: PayrollInvoice = {
                                           id: `py_${tr.id}_${selectedMonthYear}`,
-                                          trainer_id: tr.id,
-                                          trainer_name: tr.name,
+                                          employee_id: tr.id,
+                                          employee_name: tr.name,
                                           month_year: selectedMonthYear,
                                           days_present: daysPresent,
                                           total_days_in_month: totalDays,
@@ -1110,8 +1110,8 @@ export function TrainersPage() {
 
             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-2">
               <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-500 font-semibold">Trainer:</span>
-                <span className="font-extrabold text-slate-900">{payingInvoice.trainer_name || 'Personal Trainer'}</span>
+                <span className="text-slate-500 font-semibold">employee:</span>
+                <span className="font-extrabold text-slate-900">{payingInvoice.employee_name || 'Personal employee'}</span>
               </div>
               <div className="flex justify-between items-center text-xs">
                 <span className="text-slate-500 font-semibold">Period:</span>

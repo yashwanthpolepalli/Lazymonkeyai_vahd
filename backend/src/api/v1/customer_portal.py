@@ -92,13 +92,6 @@ def get_customer_profile(
         "phone": cust.phone,
         "gender": cust.gender or "unspecified",
         "age": cust.age or 25,
-        "weight": cust.weight or 70.0,
-        "height": cust.height or 175.0,
-        "bmi": cust.bmi or 22.9,
-        "fitness_level": cust.fitness_level or "Beginner",
-        "goal": cust.goal or "General Fitness",
-        "target_weight": cust.target_weight,
-        "body_condition": cust.body_condition or "athletic",
         "profile_image": cust.profile_image or "",
         "status": cust.status or "ACTIVE",
         "membership": mem_data,
@@ -113,19 +106,13 @@ def update_customer_profile(
 ):
     """Updates customer's editable profile fields directly in PostgreSQL database."""
     allowed_fields = [
-        "full_name", "phone", "gender", "age", "weight", "height", "bmi",
-        "fitness_level", "goal", "target_weight", "body_condition",
+        "full_name", "phone", "gender", "age",
         "profile_image",
     ]
 
     for key, value in payload.items():
         if key in allowed_fields and hasattr(cust, key):
             setattr(cust, key, value)
-
-    if "weight" in payload or "height" in payload:
-        if cust.weight and cust.height and cust.height > 0:
-            h_m = cust.height / 100.0
-            cust.bmi = round(cust.weight / (h_m ** 2), 1)
 
     cust.updated_at = now_ist_naive()
     db.commit()
@@ -356,7 +343,7 @@ def verify_face(
     verification_type = payload.get("verification_type") or payload.get("method") or "FACE"
     event_type = payload.get("event_type") or ("FACE_SCAN" if "FACE" in str(verification_type).upper() else str(verification_type).upper())
     device_id = payload.get("device_id") or f"PORTAL_{cust.id}"
-    device_name = payload.get("device_name") or cust.primary_gym_location or "Live Portal Scanner"
+    device_name = payload.get("device_name") or cust.primary_vahd_location or "Live Portal Scanner"
     device_type = payload.get("device_type") or ("FACE_RECOGNITION" if "FACE" in str(verification_type).upper() else "BIOMETRIC")
     user_role = (getattr(cust.user, "role", None) or payload.get("user_role") or "CUSTOMER").upper() if getattr(cust, "user", None) else "CUSTOMER"
     punch_status = payload.get("status") or "SUCCESS"
@@ -369,7 +356,7 @@ def verify_face(
         "action": action,
         "customer_name": cust.full_name,
         "customer_code": getattr(cust, "member_code", None),
-        "branch": cust.primary_gym_location,
+        "branch": cust.primary_vahd_location,
         "confidence": confidence_score,
         "confidence_percentage": f"{confidence_score}%",
         "timestamp_iso": now.isoformat(),
@@ -430,6 +417,6 @@ def get_ai_coach_recommendation(
     return {
         "score": 92 if visits > 5 else 75,
         "title": "Membership Active",
-        "insight": f"Welcome to VAHD! You have {visits} verified gym check-in sessions.",
+        "insight": f"Welcome to VAHD! You have {visits} verified vahd check-in sessions.",
         "suggested_action": "View Attendance",
     }

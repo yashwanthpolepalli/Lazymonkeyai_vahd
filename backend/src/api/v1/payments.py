@@ -20,7 +20,7 @@ from src.models.hrms import (
     SalesCommission,
 )
 from src.models.payroll import PayrollInvoice
-from src.models.trainer import TrainerProfile
+from src.models.employee import employeeProfile
 from src.services.pinelabs_service import PineLabsService
 from src.services.razorpay_service import RazorpayService
 
@@ -267,7 +267,7 @@ def get_payments_audit_ledger(
     3. Staff Salary & HRMS Disbursements (Outflow)
     4. Employee Salary Advances (Outflow)
     5. Employee Performance & Festival Bonuses (Outflow)
-    6. Trainer PT Commissions & Invoices (Outflow)
+    6. employee PT Commissions & Invoices (Outflow)
     """
     plans = db.query(MembershipPlan).all()
     plans_map = {p.name.strip().lower(): float(p.price) for p in plans if p.name and p.price}
@@ -500,11 +500,11 @@ def get_payments_audit_ledger(
     except Exception as exc:
         logger.error("Error loading bonuses: %s", exc)
 
-    # 6. Trainer Payroll Invoices
+    # 6. employee Payroll Invoices
     try:
         trn_rows = (
-            db.query(PayrollInvoice, TrainerProfile)
-            .join(TrainerProfile, TrainerProfile.id == PayrollInvoice.trainer_id)
+            db.query(PayrollInvoice, employeeProfile)
+            .join(employeeProfile, employeeProfile.id == PayrollInvoice.employee_id)
             .order_by(desc(PayrollInvoice.created_at))
             .all()
         )
@@ -515,12 +515,12 @@ def get_payments_audit_ledger(
             all_txs.append({
                 "id": f"tx_trn_{inv.id}",
                 "source_id": inv.id,
-                "category": "TRAINER_COMMISSION",
-                "category_label": "Trainer PT Commission & Payout",
+                "category": "employee_COMMISSION",
+                "category_label": "employee PT Commission & Payout",
                 "type": "OUTFLOW",
                 "invoice_number": f"TRN-{(inv.id or '')[-6:].upper()}",
                 "entity_name": trn.full_name or "",
-                "entity_type": "Trainer",
+                "entity_type": "employee",
                 "entity_id": trn.id,
                 "entity_phone": trn.phone or "",
                 "entity_email": trn.email or "",
@@ -533,7 +533,7 @@ def get_payments_audit_ledger(
                 "raw_date": dt,
             })
     except Exception as exc:
-        logger.error("Error loading trainer invoices: %s", exc)
+        logger.error("Error loading employee invoices: %s", exc)
 
     # Sort all transactions chronologically descending
     all_txs.sort(key=lambda x: x["raw_date"], reverse=True)

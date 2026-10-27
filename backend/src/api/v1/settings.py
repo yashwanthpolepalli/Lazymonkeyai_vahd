@@ -6,39 +6,39 @@ from src.services.settings_service import SettingsService
 from src.api.deps import get_current_user
 from src.models.user import User
 
-from src.models.settings import GymBranch
+from src.models.settings import vahdBranch
 
-# Support both /settings and /gym router prefixes seamlessly
+# Support both /settings and /vahd router prefixes seamlessly
 router = APIRouter(tags=["Branches & Settings"])
 
 @router.get("/settings/branches/{branch_id}/geofence-status")
-@router.get("/gym/branches/{branch_id}/geofence-status")
+@router.get("/vahd/branches/{branch_id}/geofence-status")
 def get_branch_geofence_status(
     branch_id: str,
     db: Session = Depends(get_db)
 ):
-    branch = db.query(GymBranch).filter(GymBranch.id == branch_id).first()
+    branch = db.query(vahdBranch).filter(vahdBranch.id == branch_id).first()
     if not branch:
-        branch = db.query(GymBranch).filter(GymBranch.branch_name.ilike(branch_id)).first()
+        branch = db.query(vahdBranch).filter(vahdBranch.branch_name.ilike(branch_id)).first()
     if not branch:
         return {"branch_id": branch_id, "geofence_portal_enabled": False}
     return {
         "branch_id": branch.id,
         "branch_name": branch.branch_name,
-        "gym_name": branch.gym_name,
+        "vahd_name": branch.vahd_name,
         "geofence_portal_enabled": bool(branch.geofence_portal_enabled)
     }
 
 
 @router.get("/settings")
-@router.get("/gym/settings")
+@router.get("/vahd/settings")
 def get_settings(db: Session = Depends(get_db)):
     setting = SettingsService.get_settings(db)
     return {
-        "name": setting.name or setting.gym_name,
-        "org_name": setting.name or setting.gym_name,
-        "institution_name": setting.name or setting.gym_name,
-        "gym_name": setting.gym_name,
+        "name": setting.name or setting.vahd_name,
+        "org_name": setting.name or setting.vahd_name,
+        "institution_name": setting.name or setting.vahd_name,
+        "vahd_name": setting.vahd_name,
         "phone": setting.phone,
         "gstin": setting.gstin,
         "essl_bioserver_url": setting.essl_bioserver_url,
@@ -49,16 +49,16 @@ def get_settings(db: Session = Depends(get_db)):
     }
 
 @router.post("/settings")
-@router.post("/gym/settings")
+@router.post("/vahd/settings")
 def post_settings(payload: dict = Body(...), db: Session = Depends(get_db)):
     setting = SettingsService.update_settings(db, payload)
     return {
         "message": "Settings updated successfully",
         "settings": {
-            "name": setting.name or setting.gym_name,
-            "org_name": setting.name or setting.gym_name,
-            "institution_name": setting.name or setting.gym_name,
-            "gym_name": setting.gym_name,
+            "name": setting.name or setting.vahd_name,
+            "org_name": setting.name or setting.vahd_name,
+            "institution_name": setting.name or setting.vahd_name,
+            "vahd_name": setting.vahd_name,
             "phone": setting.phone,
             "gstin": setting.gstin,
             "essl_bioserver_url": setting.essl_bioserver_url,
@@ -66,7 +66,7 @@ def post_settings(payload: dict = Body(...), db: Session = Depends(get_db)):
     }
 
 @router.get("/settings/branches")
-@router.get("/gym/branches")
+@router.get("/vahd/branches")
 def get_branches(
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_current_user),
@@ -75,7 +75,7 @@ def get_branches(
     return SettingsService.get_all_branches(db, current_user=current_user, owner_id=owner_id)
 
 @router.post("/settings/branches")
-@router.post("/gym/branches")
+@router.post("/vahd/branches")
 def create_branch(
     payload: dict = Body(...),
     db: Session = Depends(get_db),
@@ -86,7 +86,7 @@ def create_branch(
     branch = SettingsService.create_branch(db, payload, current_user=current_user)
     return {"message": "Branch created successfully", "branch": {
         "id": branch.id,
-        "gym_name": branch.gym_name,
+        "vahd_name": branch.vahd_name,
         "branch_name": branch.branch_name,
         "city": branch.city,
         "owner_id": branch.owner_id,
@@ -94,15 +94,15 @@ def create_branch(
     }}
 
 @router.get("/settings/billing")
-@router.get("/gym/billing")
+@router.get("/vahd/billing")
 def get_billing_settings(db: Session = Depends(get_db)):
     setting = SettingsService.get_settings(db)
     return SettingsService.get_billing_dict(setting)
 
 @router.post("/settings/billing")
-@router.post("/gym/billing")
+@router.post("/vahd/billing")
 @router.put("/settings/billing")
-@router.put("/gym/billing")
+@router.put("/vahd/billing")
 def update_billing_settings(payload: dict = Body(...), db: Session = Depends(get_db)):
     setting = SettingsService.update_settings(db, payload)
     return {
@@ -115,7 +115,7 @@ def update_billing_settings(payload: dict = Body(...), db: Session = Depends(get
 # DYNAMIC MASTER DATA ENDPOINTS (Database-driven for all categories)
 # -----------------------------------------------------------------
 @router.get("/settings/master-data")
-@router.get("/gym/settings/master-data")
+@router.get("/vahd/settings/master-data")
 def get_all_master_data(
     category: Optional[str] = Query(None),
     db: Session = Depends(get_db)
@@ -124,7 +124,7 @@ def get_all_master_data(
 
 
 @router.get("/settings/master-data/{category}")
-@router.get("/gym/settings/master-data/{category}")
+@router.get("/vahd/settings/master-data/{category}")
 def get_master_data_by_category(
     category: str,
     db: Session = Depends(get_db)
@@ -133,7 +133,7 @@ def get_master_data_by_category(
 
 
 @router.post("/settings/master-data/{category}")
-@router.post("/gym/settings/master-data/{category}")
+@router.post("/vahd/settings/master-data/{category}")
 def create_master_data(
     category: str,
     payload: dict = Body(...),
@@ -148,7 +148,7 @@ def create_master_data(
 
 
 @router.put("/settings/master-data/{category}/{item_id}")
-@router.put("/gym/settings/master-data/{category}/{item_id}")
+@router.put("/vahd/settings/master-data/{category}/{item_id}")
 def update_master_data(
     category: str,
     item_id: str,
@@ -162,7 +162,7 @@ def update_master_data(
 
 
 @router.delete("/settings/master-data/{category}/{item_id}")
-@router.delete("/gym/settings/master-data/{category}/{item_id}")
+@router.delete("/vahd/settings/master-data/{category}/{item_id}")
 def delete_master_data(
     category: str,
     item_id: str,

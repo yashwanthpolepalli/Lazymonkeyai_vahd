@@ -7,8 +7,9 @@ import { cn } from '@/utils/cn';
 
 const mobileNavItems: Record<string, string[]> = {
   super_admin: ['Overview', 'Organizations', 'SaaS Plans', 'AI Platform', 'Settings'],
+  ho: ['Dashboard', 'HRMS & Students', 'Organisations', 'Settings'],
   owner: ['Dashboard', 'Customers', 'Sales & CRM', 'POS', 'Settings'],
-  trainer: ['Dashboard', 'My Customers', 'HRMS', 'AI Coach', 'Profile'],
+  employee: ['Dashboard', 'My Customers', 'HRMS', 'AI Coach', 'Profile'],
   customer: ['Home', 'Attendance', 'Workouts', 'Food Scanner', 'Profile'],
 };
 
@@ -40,7 +41,7 @@ export function BottomNav() {
           <NavLink
             key={item.path}
             to={item.path}
-            end={item.path === '/owner' || item.path === '/trainer' || item.path === '/app' || item.path === '/super-admin'}
+            end={item.path === '/owner' || item.path === '/ho' || item.path === '/employee' || item.path === '/app' || item.path === '/super-admin'}
             className={({ isActive }) =>
               cn(
                 'flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl transition-all',

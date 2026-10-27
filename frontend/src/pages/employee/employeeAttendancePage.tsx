@@ -3,11 +3,11 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { Badge } from '@/components/ui/Badge';
 import { Icon } from '@/components/ui/Icon';
 import { BarChart } from '@/components/ui/Charts';
-import { TrainerGeofencePunchWidget } from '@/components/trainer/TrainerGeofencePunchWidget';
+import { EmployeeGeofencePunchWidget } from '@/components/employee/employeeGeofencePunchWidget';
 import { api } from '@/services/api';
 import type { Member } from '@/types';
 
-export function TrainerAttendancePage() {
+export function EmployeeAttendancePage() {
   const [checkins, setCheckins] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -20,7 +20,7 @@ export function TrainerAttendancePage() {
         if (Array.isArray(recentLogs) && recentLogs.length > 0) {
           const formatted = recentLogs.map((l: any) => ({
             id: l.id || l.log_id,
-            name: l.customer_name || l.name || l.user_name || 'Gym Member',
+            name: l.customer_name || l.name || l.user_name || 'vahd Member',
             time: l.time || (l.logged_at ? new Date(l.logged_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Today'),
             method: l.event_type || l.method || 'Face Recognition',
             status: (l.status || 'present').toLowerCase().includes('denied') ? 'absent' : 'present',
@@ -29,7 +29,7 @@ export function TrainerAttendancePage() {
         } else if (Array.isArray(customersList) && customersList.length > 0) {
           const formatted = customersList.map((m: Member, idx: number) => ({
             id: m.id,
-            name: m.name || (m as any).full_name || 'Gym Member',
+            name: m.name || (m as any).full_name || 'vahd Member',
             time: idx % 2 === 0 ? '09:30 AM' : '—',
             method: idx % 2 === 0 ? 'Face Recognition' : '—',
             status: idx % 2 === 0 ? 'present' : 'absent',
@@ -37,7 +37,7 @@ export function TrainerAttendancePage() {
           setCheckins(formatted);
         }
       })
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setLoading(false));
   }, []);
 
@@ -46,10 +46,10 @@ export function TrainerAttendancePage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Attendance" breadcrumb={['Trainer', 'Attendance']} />
+      <PageHeader title="Attendance" breadcrumb={['employee', 'Attendance']} />
 
-      {/* Trainer Geofenced Punch Center */}
-      <TrainerGeofencePunchWidget />
+      {/* employee Geofenced Punch Center */}
+      <EmployeeGeofencePunchWidget />
 
       <div className="grid grid-cols-3 gap-4">
 
@@ -85,3 +85,5 @@ export function TrainerAttendancePage() {
     </div>
   );
 }
+
+export const employeeAttendancePage = EmployeeAttendancePage;

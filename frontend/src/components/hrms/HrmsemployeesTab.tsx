@@ -2,10 +2,10 @@ import { useState, useEffect, useMemo } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import { Badge } from '@/components/ui/Badge';
 import { api, apiClient } from '@/services/api';
-import { trainersApi } from '@/services/trainersApi';
+import { employeesApi } from '@/services/employeesApi';
 import { payrollApi, type PayrollInvoice } from '@/services/payrollApi';
 import type { Member } from '@/types';
-import type { Trainer } from '@/types/trainer';
+import type { employee } from '@/types/employee';
 import { cn } from '@/utils/cn';
 import { EmployeeEnrollmentModal } from './EmployeeEnrollmentModal';
 import { EmployeeAttendanceReportsModal } from './EmployeeAttendanceReportsModal';
@@ -95,7 +95,7 @@ const DEFAULT_EMPLOYEE_COLUMNS: Record<string, boolean> = {
   temporaryAddress: false,
 };
 
-interface TrainerRowData {
+interface employeeRowData {
   id: string;
   empNo: string;
   name: string;
@@ -147,16 +147,16 @@ interface TrainerRowData {
   permanentAddress?: string;
   temporaryAddress?: string;
   branch_id?: string;
-  gym_branch?: string;
+  vahd_branch?: string;
   branch?: string;
   owner_id?: string;
   ho_id?: string;
 }
 
-export function HrmsTrainersTab() {
+export function HrmsemployeesTab() {
   const [members, setMembers] = useState<Member[]>([]);
-  const [trainers, setTrainers] = useState<Array<Partial<Trainer> & { email?: string; full_name?: string; specialty?: string; base_monthly_salary?: number; pt_session_rate?: number; is_active?: boolean; created_at?: string; assigned_customers_count?: number }>>([]);
-  const [branchesList, setBranchesList] = useState<Array<{ id: string; branch_name: string; name?: string; gym_name?: string }>>([]);
+  const [employees, setemployees] = useState<Array<Partial<employee> & { email?: string; full_name?: string; specialty?: string; base_monthly_salary?: number; pt_session_rate?: number; is_active?: boolean; created_at?: string; assigned_customers_count?: number }>>([]);
+  const [branchesList, setBranchesList] = useState<Array<{ id: string; branch_name: string; name?: string; vahd_name?: string }>>([]);
   const [selectedBranch, setSelectedBranch] = useState<string>(() => {
     return localStorage.getItem('vahd_selected_org_id') || 'all';
   });
@@ -164,7 +164,7 @@ export function HrmsTrainersTab() {
   const [loading, setLoading] = useState(true);
   const [enrollOpen, setEnrollOpen] = useState(false);
   const [emailReportsOpen, setEmailReportsOpen] = useState(false);
-  const [editingTrainer, setEditingTrainer] = useState<any>(null);
+  const [editingemployee, setEditingemployee] = useState<any>(null);
 
   // Sub-branches belonging specifically to the selected organisation
   const subBranches = useMemo(() => {
@@ -172,14 +172,14 @@ export function HrmsTrainersTab() {
       return [];
     }
     const targetBranch = branchesList.find(
-      (b) => b.id === selectedBranch || b.branch_name === selectedBranch || (b as any).gym_name === selectedBranch
+      (b) => b.id === selectedBranch || b.branch_name === selectedBranch || (b as any).vahd_name === selectedBranch
     );
     if (!targetBranch) return [];
-    const orgGymName = ((targetBranch as any).gym_name || targetBranch.branch_name || '').toLowerCase();
+    const orgvahdName = ((targetBranch as any).vahd_name || targetBranch.branch_name || '').toLowerCase();
     const orgOwnerId = (targetBranch as any).owner_id;
     return branchesList.filter(
       (b) =>
-        (orgGymName && (b as any).gym_name?.toLowerCase() === orgGymName) ||
+        (orgvahdName && (b as any).vahd_name?.toLowerCase() === orgvahdName) ||
         (orgOwnerId && (b as any).owner_id === orgOwnerId)
     );
   }, [branchesList, selectedBranch]);
@@ -198,16 +198,16 @@ export function HrmsTrainersTab() {
     };
   }, []);
   const [viewMode, setViewMode] = useState<'table' | 'grid'>(() => {
-    return (localStorage.getItem('hrms_trainers_view_mode') as 'table' | 'grid') || 'table';
+    return (localStorage.getItem('hrms_employees_view_mode') as 'table' | 'grid') || 'table';
   });
 
   const handleSetViewMode = (mode: 'table' | 'grid') => {
     setViewMode(mode);
     try {
-      localStorage.setItem('hrms_trainers_view_mode', mode);
-    } catch {}
+      localStorage.setItem('hrms_employees_view_mode', mode);
+    } catch { }
   };
-  const [selectedTrainerIds, setSelectedTrainerIds] = useState<string[]>([]);
+  const [selectedemployeeIds, setSelectedemployeeIds] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const ITEMS_PER_PAGE = 15;
@@ -217,7 +217,7 @@ export function HrmsTrainersTab() {
     try {
       const saved = localStorage.getItem('vahd_emp_columns');
       if (saved) return JSON.parse(saved);
-    } catch {}
+    } catch { }
     return DEFAULT_EMPLOYEE_COLUMNS;
   });
 
@@ -226,7 +226,7 @@ export function HrmsTrainersTab() {
       const updated = { ...prev, [key]: !prev[key] };
       try {
         localStorage.setItem('vahd_emp_columns', JSON.stringify(updated));
-      } catch {}
+      } catch { }
       return updated;
     });
   };
@@ -241,14 +241,14 @@ export function HrmsTrainersTab() {
     setVisibleColumns(all);
     try {
       localStorage.setItem('vahd_emp_columns', JSON.stringify(all));
-    } catch {}
+    } catch { }
   };
 
   const handleResetColumns = () => {
     setVisibleColumns(DEFAULT_EMPLOYEE_COLUMNS);
     try {
       localStorage.setItem('vahd_emp_columns', JSON.stringify(DEFAULT_EMPLOYEE_COLUMNS));
-    } catch {}
+    } catch { }
   };
 
   // Helper dates for Renewal
@@ -275,9 +275,9 @@ export function HrmsTrainersTab() {
   const [renewalPaymentMethod, setRenewalPaymentMethod] = useState('UPI');
   const [renewing, setRenewing] = useState(false);
 
-  const [trainerPlans, setTrainerPlans] = useState<Array<{ name: string; price: number; duration_days: number; badge?: string }>>([]);
+  const [employeePlans, setemployeePlans] = useState<Array<{ name: string; price: number; duration_days: number; badge?: string }>>([]);
 
-  const fetchDynamicTrainerPlans = () => {
+  const fetchDynamicemployeePlans = () => {
     apiClient.get<any[]>('/courses/plans')
       .then((res) => {
         if (Array.isArray(res)) {
@@ -287,16 +287,16 @@ export function HrmsTrainersTab() {
             duration_days: p.duration_days || 30,
             badge: p.badge || `${p.duration_days || 30} Days`,
           }));
-          setTrainerPlans(dynamic);
+          setemployeePlans(dynamic);
         }
       })
       .catch(() => {
-        setTrainerPlans([]);
+        setemployeePlans([]);
       });
   };
 
   useEffect(() => {
-    fetchDynamicTrainerPlans();
+    fetchDynamicemployeePlans();
   }, []);
 
   // Payroll & Salary Payout state
@@ -330,17 +330,17 @@ export function HrmsTrainersTab() {
     setPayrollModalOpen(true);
   };
 
-  const handleGenerateSalary = async (trainerId: string) => {
-    setGeneratingSalaryId(trainerId);
+  const handleGenerateSalary = async (employeeId: string) => {
+    setGeneratingSalaryId(employeeId);
     try {
-      const targetTrainer = displayTrainers.find((t) => t.id === trainerId);
+      const targetemployee = displayemployees.find((t) => t.id === employeeId);
       const inv = await payrollApi.generateInvoice({
-        trainer_id: trainerId,
+        employee_id: employeeId,
         month_year: selectedMonthYear,
-        pt_sessions_count: targetTrainer ? targetTrainer.clients * 4 : 0,
+        pt_sessions_count: targetemployee ? targetemployee.clients * 4 : 0,
       });
       setPayrollInvoices((prev) => {
-        const idx = prev.findIndex((i) => i.id === inv.id || (i.trainer_id === inv.trainer_id && i.month_year === inv.month_year));
+        const idx = prev.findIndex((i) => i.id === inv.id || (i.employee_id === inv.employee_id && i.month_year === inv.month_year));
         if (idx >= 0) {
           const updated = [...prev];
           updated[idx] = inv;
@@ -358,10 +358,10 @@ export function HrmsTrainersTab() {
   const handleGenerateAllSalaries = async () => {
     setLoadingPayroll(true);
     try {
-      for (const tr of displayTrainers) {
+      for (const tr of displayemployees) {
         try {
           await payrollApi.generateInvoice({
-            trainer_id: tr.id,
+            employee_id: tr.id,
             month_year: selectedMonthYear,
             pt_sessions_count: tr.clients * 4,
           });
@@ -394,16 +394,16 @@ export function HrmsTrainersTab() {
     }
   };
 
-  const fetchTrainersData = () => {
+  const fetchemployeesData = () => {
     setLoading(true);
     Promise.all([
       api.customers.list().catch(() => []),
-      trainersApi.list().catch(() => []),
-      apiClient.get<any[]>('/gym/branches').catch(() => []),
+      employeesApi.list().catch(() => []),
+      apiClient.get<any[]>('/vahd/branches').catch(() => []),
     ])
       .then(([mList, tList, bList]) => {
         setMembers(mList || []);
-        setTrainers(Array.isArray(tList) ? tList : []);
+        setemployees(Array.isArray(tList) ? tList : []);
         if (Array.isArray(bList)) setBranchesList(bList);
       })
       .finally(() => {
@@ -412,35 +412,35 @@ export function HrmsTrainersTab() {
   };
 
   useEffect(() => {
-    fetchTrainersData();
+    fetchemployeesData();
   }, []);
 
-  const handleDeleteTrainer = async (trainerId: string, trainerName: string) => {
-    if (!window.confirm(`Are you sure you want to delete trainer "${trainerName}"?`)) {
+  const handleDeleteemployee = async (employeeId: string, employeeName: string) => {
+    if (!window.confirm(`Are you sure you want to delete employee "${employeeName}"?`)) {
       return;
     }
     try {
-      await trainersApi.delete(trainerId);
-      fetchTrainersData();
+      await employeesApi.delete(employeeId);
+      fetchemployeesData();
     } catch (err) {
-      console.error('Failed to delete trainer:', err);
-      alert('Failed to delete trainer. Please try again.');
+      console.error('Failed to delete employee:', err);
+      alert('Failed to delete employee. Please try again.');
     }
   };
 
-  const handleBulkDeleteTrainers = async () => {
-    if (selectedTrainerIds.length === 0) return;
-    const count = selectedTrainerIds.length;
-    if (!window.confirm(`Are you sure you want to delete ${count} selected trainer(s)?`)) {
+  const handleBulkDeleteemployees = async () => {
+    if (selectedemployeeIds.length === 0) return;
+    const count = selectedemployeeIds.length;
+    if (!window.confirm(`Are you sure you want to delete ${count} selected employee(s)?`)) {
       return;
     }
     try {
-      await Promise.all(selectedTrainerIds.map((id) => trainersApi.delete(id)));
-      setSelectedTrainerIds([]);
-      fetchTrainersData();
+      await Promise.all(selectedemployeeIds.map((id) => employeesApi.delete(id)));
+      setSelectedemployeeIds([]);
+      fetchemployeesData();
     } catch (err) {
-      console.error('Failed to delete selected trainers:', err);
-      alert('Failed to delete selected trainer(s). Please try again.');
+      console.error('Failed to delete selected employees:', err);
+      alert('Failed to delete selected employee(s). Please try again.');
     }
   };
 
@@ -452,7 +452,7 @@ export function HrmsTrainersTab() {
     { bg: 'bg-emerald-50', text: 'text-emerald-700', bar: 'bg-emerald-500', avatar: 'from-emerald-500 to-teal-600' },
   ];
 
-  const allDisplayTrainers: TrainerRowData[] = trainers.map((t, idx) => {
+  const allDisplayemployees: employeeRowData[] = employees.map((t, idx) => {
     const name = t.name || t.full_name || '';
     const email = t.email || (t as any).personal_email || '';
     const phone = (t as any).phone || (t as any).contact_no || '';
@@ -462,21 +462,21 @@ export function HrmsTrainersTab() {
     const role = (t as any).role || (t as any).department || '';
     const matchedBranch = branchesList.find(b =>
       b.id === (t as any).branch_id ||
-      (b.branch_name && (t as any).gym_branch && b.branch_name.toLowerCase() === String((t as any).gym_branch).toLowerCase()) ||
-      ((b as any).gym_name && (t as any).gym_branch && String((b as any).gym_name).toLowerCase() === String((t as any).gym_branch).toLowerCase())
+      (b.branch_name && (t as any).vahd_branch && b.branch_name.toLowerCase() === String((t as any).vahd_branch).toLowerCase()) ||
+      ((b as any).vahd_name && (t as any).vahd_branch && String((b as any).vahd_name).toLowerCase() === String((t as any).vahd_branch).toLowerCase())
     );
     const branchId = (t as any).branch_id || matchedBranch?.id || '';
-    const gymBranch = (t as any).gym_branch || (t as any).primary_gym_location || matchedBranch?.branch_name || '';
+    const vahdBranch = (t as any).vahd_branch || (t as any).primary_vahd_location || matchedBranch?.branch_name || '';
     const ownerId = (t as any).owner_id || (matchedBranch as any)?.owner_id || '';
     const hoId = (t as any).ho_id || (matchedBranch as any)?.ho_id || '';
     const district = (t as any).district || (t as any).location || (t as any).city || (matchedBranch as any)?.city || '';
-    const placeOfWork = gymBranch || (t as any).branch_name || (t as any).organisation || (t as any).organisation_name || (t as any).place_of_work || (t as any).work_location || (t as any).branch || matchedBranch?.branch_name || (matchedBranch as any)?.gym_name || matchedBranch?.name || (branchesList.length === 1 ? branchesList[0].branch_name : '—');
+    const placeOfWork = vahdBranch || (t as any).branch_name || (t as any).organisation || (t as any).organisation_name || (t as any).place_of_work || (t as any).work_location || (t as any).branch || matchedBranch?.branch_name || (matchedBranch as any)?.vahd_name || matchedBranch?.name || (branchesList.length === 1 ? branchesList[0].branch_name : '—');
 
     const assignedMembers = members.filter(
       (m) =>
-        (name && (m.trainer || '').toLowerCase().includes(name.toLowerCase())) ||
-        (name && m.trainer === name) ||
-        (m as any).trainer_id === t.id
+        (name && (m.employee || '').toLowerCase().includes(name.toLowerCase())) ||
+        (name && m.employee === name) ||
+        (m as any).employee_id === t.id
     );
 
     const clientsCount = typeof t.assigned_customers_count === 'number'
@@ -486,12 +486,12 @@ export function HrmsTrainersTab() {
     const theme = colorPalettes[idx % colorPalettes.length];
     const initials = name
       ? name
-          .split(' ')
-          .filter(Boolean)
-          .map((n) => n[0])
-          .join('')
-          .substring(0, 2)
-          .toUpperCase()
+        .split(' ')
+        .filter(Boolean)
+        .map((n) => n[0])
+        .join('')
+        .substring(0, 2)
+        .toUpperCase()
       : 'EM';
 
     const rawDate = t.created_at || (t as any).join_date || (t as any).joining_date;
@@ -568,8 +568,8 @@ export function HrmsTrainersTab() {
     return {
       id: t.id || `tr_${idx}`,
       branch_id: branchId,
-      gym_branch: gymBranch,
-      branch: gymBranch,
+      vahd_branch: vahdBranch,
+      branch: vahdBranch,
       owner_id: ownerId,
       ho_id: hoId,
       empNo,
@@ -623,11 +623,11 @@ export function HrmsTrainersTab() {
     };
   });
 
-  const displayTrainers = allDisplayTrainers.filter((t) => {
+  const displayemployees = allDisplayemployees.filter((t) => {
     const isAll = !selectedBranch || selectedBranch.toLowerCase() === 'all';
     if (!isAll) {
       const targetBranch = branchesList.find(
-        (b) => b.id === selectedBranch || b.branch_name === selectedBranch || (b as any).gym_name === selectedBranch
+        (b) => b.id === selectedBranch || b.branch_name === selectedBranch || (b as any).vahd_name === selectedBranch
       );
 
       const matchesBranchId = Boolean(
@@ -637,15 +637,15 @@ export function HrmsTrainersTab() {
       const targetNames = [
         selectedBranch.toLowerCase(),
         targetBranch?.branch_name?.toLowerCase(),
-        (targetBranch as any)?.gym_name?.toLowerCase(),
+        (targetBranch as any)?.vahd_name?.toLowerCase(),
         targetBranch?.name?.toLowerCase(),
       ].filter(Boolean) as string[];
 
       const tNames = [
-        t.gym_branch?.toLowerCase(),
+        t.vahd_branch?.toLowerCase(),
         t.branch?.toLowerCase(),
         t.placeOfWork?.toLowerCase(),
-        (t as any).primary_gym_location?.toLowerCase(),
+        (t as any).primary_vahd_location?.toLowerCase(),
       ].filter(Boolean) as string[];
 
       const matchesName = targetNames.some((tn) =>
@@ -665,7 +665,7 @@ export function HrmsTrainersTab() {
       const matchesSub =
         t.branch_id === selectedSubBranch ||
         t.placeOfWork === selectedSubBranch ||
-        t.gym_branch === selectedSubBranch;
+        t.vahd_branch === selectedSubBranch;
       if (!matchesSub) return false;
     }
 
@@ -678,55 +678,55 @@ export function HrmsTrainersTab() {
     );
   });
 
-  const totalTrainersCount = displayTrainers.length;
-  const activeTrainersCount = displayTrainers.filter((t) => t.status === 'Active').length;
-  const presentEmployeesCount = displayTrainers.filter(
+  const totalemployeesCount = displayemployees.length;
+  const activeemployeesCount = displayemployees.filter((t) => t.status === 'Active').length;
+  const presentEmployeesCount = displayemployees.filter(
     (t) => t.todayPunch.status === 'Present' || t.todayPunch.status === 'Early Logout'
   ).length;
 
-  const ratedTrainers = displayTrainers.filter((t) => t.rating > 0);
-  const avgRating = ratedTrainers.length > 0
-    ? (ratedTrainers.reduce((acc, t) => acc + t.rating, 0) / ratedTrainers.length).toFixed(1)
+  const ratedemployees = displayemployees.filter((t) => t.rating > 0);
+  const avgRating = ratedemployees.length > 0
+    ? (ratedemployees.reduce((acc, t) => acc + t.rating, 0) / ratedemployees.length).toFixed(1)
     : '0.0';
 
-  const totalPayoutVal = displayTrainers.reduce((acc, t) => acc + (t.base_monthly_salary || 0), 0);
+  const totalPayoutVal = displayemployees.reduce((acc, t) => acc + (t.base_monthly_salary || 0), 0);
   const formattedPayout = totalPayoutVal > 0
     ? `₹${totalPayoutVal.toLocaleString('en-IN')}`
     : '₹0';
 
-  const selectedTrainers = allDisplayTrainers.filter((t) => selectedTrainerIds.includes(t.id));
+  const selectedemployees = allDisplayemployees.filter((t) => selectedemployeeIds.includes(t.id));
 
   // Table Pagination logic
-  const totalPages = Math.max(1, Math.ceil(displayTrainers.length / ITEMS_PER_PAGE));
+  const totalPages = Math.max(1, Math.ceil(displayemployees.length / ITEMS_PER_PAGE));
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const paginatedTrainers = displayTrainers.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  const paginatedemployees = displayemployees.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
-  const handleOpenRenewalModal = (trainerId?: string) => {
-    fetchDynamicTrainerPlans();
-    if (trainerId) {
-      setSelectedTrainerIds([trainerId]);
+  const handleOpenRenewalModal = (employeeId?: string) => {
+    fetchDynamicemployeePlans();
+    if (employeeId) {
+      setSelectedemployeeIds([employeeId]);
     }
     setRenewalStartDate(getTodayISO());
-    const dur = trainerPlans[selectedPlanIdx]?.duration_days || 30;
+    const dur = employeePlans[selectedPlanIdx]?.duration_days || 30;
     setRenewalExpiryDate(addDaysISO(getTodayISO(), dur));
     setRenewalOpen(true);
   };
 
   const handlePlanSelect = (idx: number) => {
     setSelectedPlanIdx(idx);
-    setRenewalExpiryDate(addDaysISO(renewalStartDate, trainerPlans[idx].duration_days));
+    setRenewalExpiryDate(addDaysISO(renewalStartDate, employeePlans[idx].duration_days));
   };
 
   const handleExecuteRenewal = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (selectedTrainerIds.length === 0) return;
+    if (selectedemployeeIds.length === 0) return;
     setRenewing(true);
     try {
-      const plan = trainerPlans[selectedPlanIdx];
-      for (const tId of selectedTrainerIds) {
+      const plan = employeePlans[selectedPlanIdx];
+      for (const tId of selectedemployeeIds) {
         await apiClient.post('/courses/assign', {
           customer_id: tId,
-          plan_name: plan?.name || 'Trainer Subscription',
+          plan_name: plan?.name || 'employee Subscription',
           amount: plan?.price || 0,
           payment_method: renewalPaymentMethod,
           start_date: renewalStartDate,
@@ -734,8 +734,8 @@ export function HrmsTrainersTab() {
         }).catch(() => null);
       }
       setRenewalOpen(false);
-      setSelectedTrainerIds([]);
-      fetchTrainersData();
+      setSelectedemployeeIds([]);
+      fetchemployeesData();
     } catch (err) {
       console.error('Renewal failed', err);
     } finally {
@@ -744,15 +744,15 @@ export function HrmsTrainersTab() {
   };
 
   const toggleSelectAll = () => {
-    if (selectedTrainerIds.length === displayTrainers.length) {
-      setSelectedTrainerIds([]);
+    if (selectedemployeeIds.length === displayemployees.length) {
+      setSelectedemployeeIds([]);
     } else {
-      setSelectedTrainerIds(displayTrainers.map((t) => t.id));
+      setSelectedemployeeIds(displayemployees.map((t) => t.id));
     }
   };
 
-  const toggleSelectTrainer = (id: string) => {
-    setSelectedTrainerIds((prev) =>
+  const toggleSelectemployee = (id: string) => {
+    setSelectedemployeeIds((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
     );
   };
@@ -760,19 +760,19 @@ export function HrmsTrainersTab() {
   const handleUpdateEmployeeStatus = async (empId: string, newStatus: string) => {
     const isAct = newStatus === 'Active';
     // Optimistic UI update
-    setTrainers((prev) =>
+    setemployees((prev) =>
       prev.map((tr) => (tr.id === empId ? { ...tr, status: newStatus, is_active: isAct } : tr))
     );
     try {
       try {
         await apiClient.put(`/hrms/employees/${empId}`, { status: newStatus, is_active: isAct });
       } catch {
-        await apiClient.put(`/trainers/${empId.replace('emp_', '')}`, { status: newStatus, is_active: isAct });
+        await apiClient.put(`/employees/${empId.replace('emp_', '')}`, { status: newStatus, is_active: isAct });
       }
-      fetchTrainersData();
+      fetchemployeesData();
     } catch (e) {
       console.error('Failed to update employee status', e);
-      fetchTrainersData();
+      fetchemployeesData();
     }
   };
 
@@ -792,9 +792,9 @@ export function HrmsTrainersTab() {
         <div className="flex items-center gap-2.5 flex-wrap">
           <HrmsImportExportControls
             type="employees"
-            dataToExport={allDisplayTrainers}
+            dataToExport={allDisplayemployees}
             onImportSuccess={() => {
-              fetchTrainersData();
+              fetchemployeesData();
             }}
           />
 
@@ -807,19 +807,19 @@ export function HrmsTrainersTab() {
             <span>Monthly Email Reports</span>
           </button>
 
-          {selectedTrainerIds.length > 0 && (
+          {selectedemployeeIds.length > 0 && (
             <button
-              onClick={handleBulkDeleteTrainers}
+              onClick={handleBulkDeleteemployees}
               className="px-3.5 py-2 rounded-xl text-xs font-bold border border-rose-300 text-rose-700 bg-rose-50 hover:bg-rose-100 flex items-center gap-1.5 shadow-sm transition-all"
             >
               <Icon name="trash-2" size={15} className="text-rose-600" />
-              <span>Delete ({selectedTrainerIds.length})</span>
+              <span>Delete ({selectedemployeeIds.length})</span>
             </button>
           )}
 
           <button
             onClick={() => {
-              setEditingTrainer(null);
+              setEditingemployee(null);
               setEnrollOpen(true);
             }}
             className="px-4 py-2 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white flex items-center gap-1.5 shadow-md shadow-purple-600/20 active:scale-[0.98] transition-all cursor-pointer"
@@ -840,7 +840,7 @@ export function HrmsTrainersTab() {
             </div>
           </div>
           <div className="space-y-0.5">
-            <div className="text-2xl font-black text-navy-900">{totalTrainersCount}</div>
+            <div className="text-2xl font-black text-navy-900">{totalemployeesCount}</div>
             <div className="text-[11px] font-medium text-navy-400">Registered staff &amp; employees</div>
           </div>
         </div>
@@ -853,9 +853,9 @@ export function HrmsTrainersTab() {
             </div>
           </div>
           <div className="space-y-0.5">
-            <div className="text-2xl font-black text-navy-900">{activeTrainersCount}</div>
+            <div className="text-2xl font-black text-navy-900">{activeemployeesCount}</div>
             <div className="text-[11px] font-bold text-emerald-600 flex items-center gap-1">
-              <span>{activeTrainersCount} on duty</span>
+              <span>{activeemployeesCount} on duty</span>
             </div>
           </div>
         </div>
@@ -870,7 +870,7 @@ export function HrmsTrainersTab() {
           <div className="space-y-0.5">
             <div className="text-2xl font-black text-navy-900">{presentEmployeesCount}</div>
             <div className="text-[11px] font-bold text-blue-600 flex items-center gap-1">
-              <span>{presentEmployeesCount} of {totalTrainersCount} logged in</span>
+              <span>{presentEmployeesCount} of {totalemployeesCount} logged in</span>
             </div>
           </div>
         </div>
@@ -965,23 +965,23 @@ export function HrmsTrainersTab() {
         </div>
       </div>
 
-      {/* 4. Main Trainers Content (Table or Grid) */}
+      {/* 4. Main employees Content (Table or Grid) */}
       {viewMode === 'grid' ? (
         /* Grid Cards View */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {loading ? (
-            <div className="col-span-full py-12 text-center text-xs font-semibold text-navy-400">Loading trainers...</div>
-          ) : displayTrainers.length === 0 ? (
+            <div className="col-span-full py-12 text-center text-xs font-semibold text-navy-400">Loading employees...</div>
+          ) : displayemployees.length === 0 ? (
             <div className="col-span-full py-12 text-center bg-white rounded-2xl border border-navy-100 p-8 space-y-3">
               <div className="w-12 h-12 rounded-full bg-navy-50 text-navy-400 flex items-center justify-center mx-auto">
                 <Icon name="users" size={24} />
               </div>
-              <div className="text-sm font-bold text-navy-900">No Trainers Found</div>
-              <p className="text-xs text-navy-400 max-w-sm mx-auto">Click 'Add Trainer' to register personal fitness trainers into the directory.</p>
+              <div className="text-sm font-bold text-navy-900">No employees Found</div>
+              <p className="text-xs text-navy-400 max-w-sm mx-auto">Click 'Add employee' to register personal fitness employees into the directory.</p>
             </div>
           ) : (
-            displayTrainers.map((t) => {
-              const isSelected = selectedTrainerIds.includes(t.id);
+            displayemployees.map((t) => {
+              const isSelected = selectedemployeeIds.includes(t.id);
               return (
                 <div
                   key={t.id}
@@ -1006,7 +1006,7 @@ export function HrmsTrainersTab() {
                     <input
                       type="checkbox"
                       checked={isSelected}
-                      onChange={() => toggleSelectTrainer(t.id)}
+                      onChange={() => toggleSelectemployee(t.id)}
                       className="w-4 h-4 rounded border-navy-300 text-purple-600 focus:ring-purple-500 cursor-pointer mt-1"
                     />
                   </div>
@@ -1056,7 +1056,7 @@ export function HrmsTrainersTab() {
                     <div className="flex items-center gap-1.5">
                       <button
                         onClick={() => {
-                          setEditingTrainer(t);
+                          setEditingemployee(t);
                           setEnrollOpen(true);
                         }}
                         className="px-3 py-1.5 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200/60 rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
@@ -1077,8 +1077,8 @@ export function HrmsTrainersTab() {
         <div className="bg-white rounded-2xl border border-navy-100 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             {loading ? (
-              <div className="p-12 text-center text-xs font-semibold text-navy-400">Loading trainers from database...</div>
-            ) : displayTrainers.length === 0 ? (
+              <div className="p-12 text-center text-xs font-semibold text-navy-400">Loading employees from database...</div>
+            ) : displayemployees.length === 0 ? (
               <div className="p-12 text-center space-y-3">
                 <div className="w-12 h-12 rounded-full bg-navy-50 text-navy-400 flex items-center justify-center mx-auto">
                   <Icon name="users" size={24} />
@@ -1096,7 +1096,7 @@ export function HrmsTrainersTab() {
                     <th className="py-3.5 px-4 w-10">
                       <input
                         type="checkbox"
-                        checked={selectedTrainerIds.length === displayTrainers.length && displayTrainers.length > 0}
+                        checked={selectedemployeeIds.length === displayemployees.length && displayemployees.length > 0}
                         onChange={toggleSelectAll}
                         className="w-4 h-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
                       />
@@ -1136,15 +1136,15 @@ export function HrmsTrainersTab() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-medium text-navy-800">
-                  {paginatedTrainers.map((t) => {
-                    const isSelected = selectedTrainerIds.includes(t.id);
+                  {paginatedemployees.map((t) => {
+                    const isSelected = selectedemployeeIds.includes(t.id);
                     return (
                       <tr key={t.id} className={cn('hover:bg-slate-50/60 transition-colors', isSelected && 'bg-purple-50/30')}>
                         <td className="py-3.5 px-4">
                           <input
                             type="checkbox"
                             checked={isSelected}
-                            onChange={() => toggleSelectTrainer(t.id)}
+                            onChange={() => toggleSelectemployee(t.id)}
                             className="w-4 h-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
                           />
                         </td>
@@ -1456,7 +1456,7 @@ export function HrmsTrainersTab() {
                             <button
                               type="button"
                               onClick={() => {
-                                setEditingTrainer(t);
+                                setEditingemployee(t);
                                 setEnrollOpen(true);
                               }}
                               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800 border border-blue-200/80 shadow-2xs transition-all active:scale-[0.98] cursor-pointer"
@@ -1467,7 +1467,7 @@ export function HrmsTrainersTab() {
                             </button>
                             <button
                               type="button"
-                              onClick={() => handleDeleteTrainer(t.id, t.name)}
+                              onClick={() => handleDeleteemployee(t.id, t.name)}
                               className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-all cursor-pointer"
                               title="Delete Employee Record"
                             >
@@ -1486,7 +1486,7 @@ export function HrmsTrainersTab() {
           {/* Table Footer Pagination */}
           <div className="p-4 bg-navy-50/50 border-t border-navy-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-semibold text-navy-500">
             <div>
-              Showing {displayTrainers.length > 0 ? startIndex + 1 : 0} to {Math.min(startIndex + ITEMS_PER_PAGE, displayTrainers.length)} of {displayTrainers.length} employees
+              Showing {displayemployees.length > 0 ? startIndex + 1 : 0} to {Math.min(startIndex + ITEMS_PER_PAGE, displayemployees.length)} of {displayemployees.length} employees
             </div>
             <div className="flex items-center gap-1">
               <button
@@ -1525,16 +1525,16 @@ export function HrmsTrainersTab() {
       {/* 5. Enrollment / Add Employee Modal */}
       <EmployeeEnrollmentModal
         open={enrollOpen}
-        employeeToEdit={editingTrainer}
+        employeeToEdit={editingemployee}
         onClose={() => {
           setEnrollOpen(false);
-          setEditingTrainer(null);
-          fetchTrainersData();
+          setEditingemployee(null);
+          fetchemployeesData();
         }}
         onSuccess={() => {
           setEnrollOpen(false);
-          setEditingTrainer(null);
-          fetchTrainersData();
+          setEditingemployee(null);
+          fetchemployeesData();
         }}
       />
 
@@ -1555,8 +1555,8 @@ export function HrmsTrainersTab() {
                   <Icon name="refresh-cw" size={18} className="text-purple-600" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-navy-900">Renew Trainer Contract</h3>
-                  <p className="text-xs text-navy-400">Selected {selectedTrainers.length} trainer(s) for renewal</p>
+                  <h3 className="text-base font-bold text-navy-900">Renew employee Contract</h3>
+                  <p className="text-xs text-navy-400">Selected {selectedemployees.length} employee(s) for renewal</p>
                 </div>
               </div>
               <button onClick={() => setRenewalOpen(false)} className="text-navy-400 hover:text-navy-600">
@@ -1564,10 +1564,10 @@ export function HrmsTrainersTab() {
               </button>
             </div>
 
-            {/* Selected Trainers Summary */}
+            {/* Selected employees Summary */}
             <div className="bg-navy-50/60 p-3 rounded-2xl max-h-32 overflow-y-auto space-y-1.5 border border-navy-100">
-              <div className="text-[11px] font-bold text-navy-500 uppercase tracking-wider mb-1">Target Trainers</div>
-              {selectedTrainers.map((st) => (
+              <div className="text-[11px] font-bold text-navy-500 uppercase tracking-wider mb-1">Target employees</div>
+              {selectedemployees.map((st) => (
                 <div key={st.id} className="flex items-center justify-between text-xs bg-white p-2 rounded-xl border border-navy-100 shadow-xs">
                   <div className="font-semibold text-navy-900">{st.name} ({st.email})</div>
                   <Badge variant="brand">{st.specialization}</Badge>
@@ -1579,13 +1579,13 @@ export function HrmsTrainersTab() {
               {/* Select Plan */}
               <div>
                 <label className="text-xs font-semibold text-navy-700 mb-2 block">Select Renewal Contract Plan</label>
-                {trainerPlans.length === 0 ? (
+                {employeePlans.length === 0 ? (
                   <div className="p-3 text-center text-xs text-navy-400 font-medium bg-navy-50 rounded-xl border border-navy-200">
                     No active membership plans created by owner yet. Please create plans on the Memberships page.
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 gap-2">
-                    {trainerPlans.map((p, idx) => (
+                    {employeePlans.map((p, idx) => (
                       <button
                         key={p.name + idx}
                         type="button"
@@ -1676,7 +1676,7 @@ export function HrmsTrainersTab() {
         </div>
       )}
 
-      {/* 7. Trainer Payroll & Salary Generation Modal */}
+      {/* 7. employee Payroll & Salary Generation Modal */}
       {payrollModalOpen && (
         <div className="fixed inset-0 bg-navy-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
           <div className="bg-white rounded-3xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto space-y-5 shadow-2xl animate-scale-in border border-navy-100">
@@ -1686,7 +1686,7 @@ export function HrmsTrainersTab() {
                   <Icon name="credit-card" size={20} />
                 </div>
                 <div>
-                  <h2 className="text-lg font-black text-navy-900">Trainer Payroll &amp; Salary Generation</h2>
+                  <h2 className="text-lg font-black text-navy-900">employee Payroll &amp; Salary Generation</h2>
                   <p className="text-xs text-navy-400 font-medium">Calculate base salary, eSSL biometrics attendance &amp; PT commission payouts</p>
                 </div>
               </div>
@@ -1720,17 +1720,17 @@ export function HrmsTrainersTab() {
 
             {/* Invoices List / Table */}
             <div className="space-y-3">
-              <h3 className="text-xs font-black uppercase tracking-wider text-navy-400">Trainer Monthly Payout Statements</h3>
+              <h3 className="text-xs font-black uppercase tracking-wider text-navy-400">employee Monthly Payout Statements</h3>
 
               {loadingPayroll ? (
                 <div className="py-12 text-center text-xs font-bold text-navy-400">Loading payroll invoices from PostgreSQL database...</div>
-              ) : displayTrainers.length === 0 ? (
-                <div className="py-8 text-center text-xs text-navy-400 font-medium">No trainers registered yet.</div>
+              ) : displayemployees.length === 0 ? (
+                <div className="py-8 text-center text-xs text-navy-400 font-medium">No employees registered yet.</div>
               ) : (
                 <div className="space-y-3">
-                  {displayTrainers.map((tr) => {
+                  {displayemployees.map((tr) => {
                     const inv = payrollInvoices.find(
-                      (i) => (i.trainer_id === tr.id || i.trainer_name === tr.name) && i.month_year === selectedMonthYear
+                      (i) => (i.employee_id === tr.id || i.employee_name === tr.name) && i.month_year === selectedMonthYear
                     );
                     const isGenerating = generatingSalaryId === tr.id;
                     const baseSal = tr.base_monthly_salary || 0;
@@ -1811,8 +1811,8 @@ export function HrmsTrainersTab() {
                                       handleGenerateSalary(tr.id).then(() => {
                                         const newlyCreated: PayrollInvoice = {
                                           id: `py_${tr.id}_${selectedMonthYear}`,
-                                          trainer_id: tr.id,
-                                          trainer_name: tr.name,
+                                          employee_id: tr.id,
+                                          employee_name: tr.name,
                                           month_year: selectedMonthYear,
                                           days_present: daysPresent,
                                           total_days_in_month: totalDays,
@@ -1872,8 +1872,8 @@ export function HrmsTrainersTab() {
 
             <div className="bg-navy-50 p-4 rounded-2xl border border-navy-100 space-y-2">
               <div className="flex justify-between items-center text-xs">
-                <span className="text-navy-500 font-semibold">Trainer:</span>
-                <span className="font-extrabold text-navy-900">{payingInvoice.trainer_name || 'Personal Trainer'}</span>
+                <span className="text-navy-500 font-semibold">employee:</span>
+                <span className="font-extrabold text-navy-900">{payingInvoice.employee_name || 'Personal employee'}</span>
               </div>
               <div className="flex justify-between items-center text-xs">
                 <span className="text-navy-500 font-semibold">Period:</span>

@@ -18,7 +18,7 @@ export interface EmployeeItem {
   salary: number;
   avatar: string;
   skills: string[];
-  gym_branch: string;
+  vahd_branch: string;
   emergency_contact: string;
   address?: string;
   district?: string;
@@ -213,8 +213,8 @@ export function formatLeaveOptionLabel(leave: {
     paidType === 'PAID' || leave.is_paid
       ? 'Paid'
       : paidType === 'HALF_PAY'
-      ? 'Half Pay'
-      : 'Unpaid';
+        ? 'Half Pay'
+        : 'Unpaid';
 
   // Balance days formatting (dynamically accounts for remaining_days from API)
   const remaining = (leave as any).remaining_days ?? leave.balance?.remaining_days ?? leave.annual_quota ?? 0;
@@ -258,7 +258,6 @@ export interface LeaveItem {
 export interface PayrollItem {
   id: string;
   employee_id: string;
-  trainer_id?: string;
   employee_code: string;
   employee_name: string;
   initials?: string;
@@ -362,7 +361,7 @@ export interface GeofenceScheme {
   id: string;
   name: string;
   branch_name: string;
-  gym_name: string;
+  vahd_name: string;
   latitude: number;
   longitude: number;
   radius_meters: number;
@@ -539,7 +538,7 @@ export const hrmsApi = {
   // Legacy Payroll
   getPayroll: (month?: string, year?: number) =>
     apiClient.get<PayrollItem[]>('/hrms/payroll', { params: { month, year } }),
-  generateBatchPayroll: (payload: { trainer_ids: string[]; month?: string; year?: number }) =>
+  generateBatchPayroll: (payload: { employee_ids: string[]; month?: string; year?: number }) =>
     apiClient.post<PayrollItem[]>('/hrms/payroll/generate-batch', payload),
   disbursePayroll: (payrollId: string, payload: { payment_method: string; transaction_reference?: string }) =>
     apiClient.post<{ message: string; id: string }>(`/hrms/payroll/${payrollId}/disburse`, payload),

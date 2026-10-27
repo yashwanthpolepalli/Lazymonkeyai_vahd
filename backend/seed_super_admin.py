@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-Seed Super Admin Script for FIT CLUB Gym Management
+Seed Super Admin Script for vahd vahd Management
 ---------------------------------------------------
 Dynamic CLI & environment-driven Super Admin seeder.
 
 Usage:
-  python3 backend/seed_super_admin.py --email admin@gym.com --password YourSecretPassword --name "Platform Super Admin"
+  python3 backend/seed_super_admin.py --email admin@vahd.com --password YourSecretPassword --name "Platform Super Admin"
 """
 import argparse
 import sys
@@ -31,7 +31,7 @@ def ensure_database_exists():
         password = urllib.parse.unquote(parsed.password) if parsed.password else ""
         hostname = parsed.hostname or "localhost"
         port = parsed.port or 5432
-        target_dbname = parsed.path.lstrip("/") or "gym"
+        target_dbname = parsed.path.lstrip("/") or "vahd"
 
         conn = psycopg2.connect(
             user=username,
@@ -102,7 +102,7 @@ def seed_super_admin(email: str, password: str, full_name: str, phone: str = Non
         db.commit()
 
         print("\n" + "=" * 68)
-        print("👑  GOD MODE GYM PLATFORM SUPER ADMIN READY!")
+        print("👑  GOD MODE vahd PLATFORM SUPER ADMIN READY!")
         print("=" * 68)
         print(f"  • Email:           {user.email}")
         print(f"  • Name:            {user.full_name}")
@@ -120,7 +120,7 @@ def seed_super_admin(email: str, password: str, full_name: str, phone: str = Non
         db.close()
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Dynamic Super Admin seeder for FIT CLUB Gym Platform.")
+    parser = argparse.ArgumentParser(description="Dynamic Super Admin seeder for vahd vahd Platform.")
     parser.add_argument("--email", "-e", help="Super Admin login email", default=os.getenv("SUPER_ADMIN_EMAIL"))
     parser.add_argument("--password", "-p", help="Super Admin login password", default=os.getenv("SUPER_ADMIN_PASSWORD"))
     parser.add_argument("--name", "-n", help="Full Name", default=os.getenv("SUPER_ADMIN_NAME"))
@@ -140,7 +140,7 @@ def main():
         if sys.stdin.isatty():
             email = input("Enter Super Admin Email: ").strip()
         else:
-            email = "admin@gym.com"
+            email = "admin@vahd.com"
 
     if not password:
         if sys.stdin.isatty():

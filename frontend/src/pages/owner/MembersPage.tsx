@@ -92,7 +92,7 @@ export function MembersPage() {
         ? Boolean(cp.is_combo || cp.isCombo)
         : Boolean((cp.category || '').includes('_') || cp.name.includes('+'));
       const isClass = (cp.category || '').includes('dance') || (cp.category || '').includes('yoga') || (cp.category || '').includes('zumba');
-      const isPt = (cp.category || '').includes('pt') || (cp.category || '').includes('trainer');
+      const isPt = (cp.category || '').includes('pt') || (cp.category || '').includes('employee');
       const programType: 'combos' | 'training' | 'classes' | 'pt' = isCombo ? 'combos' : isClass ? 'classes' : isPt ? 'pt' : 'training';
 
       const key = cp.id || cp.name.trim();
@@ -108,7 +108,7 @@ export function MembersPage() {
           isCombo,
           badge: cp.badge || (isCombo ? 'Combo' : ''),
           color: cp.color || (isCombo ? 'from-rose-500 to-pink-600' : isPt ? 'from-amber-500 to-yellow-600' : isClass ? 'from-purple-500 to-indigo-600' : 'from-brand-500 to-brand-700'),
-          features: cp.features?.length ? cp.features : ['Full Access', 'Gym Floor & Facilities', 'Locker & Assessment'],
+          features: cp.features?.length ? cp.features : ['Full Access', 'vahd Floor & Facilities', 'Locker & Assessment'],
           plans: [cp],
         });
       } else {
@@ -210,7 +210,7 @@ export function MembersPage() {
           setRenewalIncludeGst(isEngineActive);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   // Auto calculate renewal expiry date when duration or start date changes
@@ -310,7 +310,7 @@ export function MembersPage() {
           setPlans(res);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
 
     setRenewalOpen(true);
   };

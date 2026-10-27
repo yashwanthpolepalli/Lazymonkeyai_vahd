@@ -143,21 +143,21 @@ export function HrmsPayrollTab({ onSuccessToast }: HrmsPayrollTabProps) {
   // Load Subtab Specific Data
   useEffect(() => {
     if (activeTab === 'pf') {
-      hrmsApi.getStatutoryPfReport(selectedMonthIndex, selectedYear).then(setPfData).catch(() => {});
+      hrmsApi.getStatutoryPfReport(selectedMonthIndex, selectedYear).then(setPfData).catch(() => { });
     } else if (activeTab === 'esi') {
-      hrmsApi.getStatutoryEsiReport(selectedMonthIndex, selectedYear).then(setEsiData).catch(() => {});
+      hrmsApi.getStatutoryEsiReport(selectedMonthIndex, selectedYear).then(setEsiData).catch(() => { });
     } else if (activeTab === 'tds') {
-      hrmsApi.getStatutoryTdsReport(selectedYear).then(setTdsData).catch(() => {});
+      hrmsApi.getStatutoryTdsReport(selectedYear).then(setTdsData).catch(() => { });
     } else if (activeTab === 'payslips') {
-      hrmsApi.getPayslipsArchive(payslipFilterMonth, selectedYear, payslipSearch).then(setPayslipsArchive).catch(() => {});
+      hrmsApi.getPayslipsArchive(payslipFilterMonth, selectedYear, payslipSearch).then(setPayslipsArchive).catch(() => { });
     } else if (activeTab === 'loans') {
-      hrmsApi.getLoans().then(setLoans).catch(() => {});
+      hrmsApi.getLoans().then(setLoans).catch(() => { });
     } else if (activeTab === 'advances') {
-      hrmsApi.getAdvances().then(setAdvances).catch(() => {});
+      hrmsApi.getAdvances().then(setAdvances).catch(() => { });
     } else if (activeTab === 'bonuses') {
-      hrmsApi.getBonuses().then(setBonuses).catch(() => {});
+      hrmsApi.getBonuses().then(setBonuses).catch(() => { });
     } else if (activeTab === 'commissions') {
-      hrmsApi.getCommissions().then(setCommissions).catch(() => {});
+      hrmsApi.getCommissions().then(setCommissions).catch(() => { });
     }
   }, [activeTab, selectedMonthIndex, selectedYear, payslipFilterMonth, payslipSearch]);
 
@@ -1236,7 +1236,7 @@ export function HrmsPayrollTab({ onSuccessToast }: HrmsPayrollTabProps) {
                   <div><span className="text-slate-400">Employee:</span> <span className="font-bold">Rahul Sharma</span></div>
                   <div><span className="text-slate-400">EMP Code:</span> <span className="font-mono font-bold">EMP-0001</span></div>
                   <div><span className="text-slate-400">Department:</span> <span className="font-semibold">Fitness & Training</span></div>
-                  <div><span className="text-slate-400">Designation:</span> <span className="font-semibold">Senior Trainer</span></div>
+                  <div><span className="text-slate-400">Designation:</span> <span className="font-semibold">Senior employee</span></div>
                 </div>
 
                 {/* Earnings & Deductions Tables */}

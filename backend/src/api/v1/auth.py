@@ -30,7 +30,7 @@ def signup_owner(req: SignupRequest, db: Session = Depends(get_db)):
         email=req.email,
         password=req.password,
         phone=req.phone,
-        gym_name=req.gym_name
+        vahd_name=req.vahd_name
     )
 
 from fastapi import Header

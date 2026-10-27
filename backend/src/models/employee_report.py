@@ -19,7 +19,7 @@ class EmployeeAttendanceReportLog(Base):
     employee_code = Column(String, index=True, nullable=True)
     email = Column(String, index=True, nullable=False)
     branch_id = Column(String, index=True, nullable=True)
-    gym_branch = Column(String, nullable=True)
+    vahd_branch = Column(String, nullable=True)
     owner_id = Column(String, index=True, nullable=True)
     ho_id = Column(String, index=True, nullable=True)
 

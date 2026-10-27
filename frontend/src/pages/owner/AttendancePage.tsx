@@ -47,10 +47,10 @@ function eventBadgeVariant(event_type: string): 'brand' | 'success' | 'ai' | 'wa
 function eventBadgeLabel(event_type: string, direction: string): string {
   const t = (event_type || '').toLowerCase();
   const dir = (direction || '').toLowerCase();
-  if (t.includes('face'))        return 'Face Recognition';
-  if (t.includes('finger'))      return 'Fingerprint';
+  if (t.includes('face')) return 'Face Recognition';
+  if (t.includes('finger')) return 'Fingerprint';
   if (t.includes('rfid') || t.includes('card')) return 'RFID Card';
-  if (dir === 'check_out')       return 'Check-Out';
+  if (dir === 'check_out') return 'Check-Out';
   return 'Check-In';
 }
 
@@ -75,18 +75,18 @@ export function AttendancePage() {
     return () => { isMounted = false; };
   }, []);
 
-  // Hourly chart — all 24 hours from DB (supports 24/7 gyms)
-  const hourlyData   = analytics?.hourly_data   ?? [];
+  // Hourly chart — all 24 hours from DB (supports 24/7 vahds)
+  const hourlyData = analytics?.hourly_data ?? [];
   const hourlyLabels = analytics?.hourly_labels ?? [];
 
   // Weekly trend — 7-day daily count from DB
-  const weeklyData   = analytics?.weekly_data   ?? [];
+  const weeklyData = analytics?.weekly_data ?? [];
   const weeklyLabels = analytics?.weekly_labels ?? [];
 
   // KPIs from DB
   const todayCheckins = analytics?.today_checkins ?? 0;
-  const peakHour      = analytics?.peak_hour      ?? '—';
-  const avgDuration   = analytics?.avg_duration   ?? '—';
+  const peakHour = analytics?.peak_hour ?? '—';
+  const avgDuration = analytics?.avg_duration ?? '—';
 
   // Recent check-in events from DB
   const recentCheckins = analytics?.recent_checkins ?? [];

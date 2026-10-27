@@ -6,7 +6,7 @@ interface AuthContextValue {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string, role?: string) => Promise<User>;
-  signup: (data: { full_name: string; email: string; password: string; phone?: string; gym_name?: string }) => Promise<User>;
+  signup: (data: { full_name: string; email: string; password: string; phone?: string; vahd_name?: string }) => Promise<User>;
   updateUser: (data: Partial<User>) => void;
   logout: () => void;
 }
@@ -17,10 +17,10 @@ const defaultAuthContext: AuthContextValue = {
   login: async (email: string, password: string, role?: string) => {
     return api.auth.login(email, password, role);
   },
-  signup: async (data: { full_name: string; email: string; password: string; phone?: string; gym_name?: string }) => {
+  signup: async (data: { full_name: string; email: string; password: string; phone?: string; vahd_name?: string }) => {
     return api.auth.signup(data);
   },
-  updateUser: () => {},
+  updateUser: () => { },
   logout: () => {
     localStorage.removeItem('vahd_user');
     localStorage.removeItem('vahd_token');
@@ -80,7 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return u;
   };
 
-  const signup = async (data: { full_name: string; email: string; password: string; phone?: string; gym_name?: string }) => {
+  const signup = async (data: { full_name: string; email: string; password: string; phone?: string; vahd_name?: string }) => {
     const u = await api.auth.signup(data);
     setUser(u);
     localStorage.setItem('vahd_user', JSON.stringify(u));

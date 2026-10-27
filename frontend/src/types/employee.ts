@@ -1,4 +1,4 @@
-export interface Trainer {
+export interface employee {
   id: string;
   name: string;
   email?: string;

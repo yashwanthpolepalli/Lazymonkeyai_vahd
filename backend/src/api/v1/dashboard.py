@@ -21,9 +21,9 @@ def get_owner_dashboard(
 ):
     return DashboardService.get_owner_dashboard(db, branch_id=branch_id, current_user=current_user)
 
-@router.get("/trainer")
-def get_trainer_dashboard(db: Session = Depends(get_db)):
-    return DashboardService.get_trainer_dashboard(db)
+@router.get("/employee")
+def get_employee_dashboard(db: Session = Depends(get_db)):
+    return DashboardService.get_employee_dashboard(db)
 
 @router.get("/revenue")
 def get_revenue_data(db: Session = Depends(get_db)):
@@ -37,9 +37,9 @@ def get_owner_kpis(db: Session = Depends(get_db)):
 def get_super_admin_kpis(db: Session = Depends(get_db)):
     return DashboardService.get_super_admin_kpis(db)
 
-@router.get("/trainer-kpis")
-def get_trainer_kpis(db: Session = Depends(get_db)):
-    return DashboardService.get_trainer_kpis(db)
+@router.get("/employee-kpis")
+def get_employee_kpis(db: Session = Depends(get_db)):
+    return DashboardService.get_employee_kpis(db)
 
 @router.get("/customer-kpis")
 def get_customer_kpis(db: Session = Depends(get_db)):

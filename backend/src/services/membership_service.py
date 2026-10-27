@@ -11,7 +11,7 @@ class MembershipService:
     @staticmethod
     def get_all_plans(db: Session, owner_id: Optional[str] = None, branch_id: Optional[str] = None) -> List[dict]:
         """
-        Returns dynamic active membership plans filtered by gym owner and branch without hardcoded fallbacks.
+        Returns dynamic active membership plans filtered by vahd owner and branch without hardcoded fallbacks.
         """
         from sqlalchemy import text, or_
         try:

@@ -4,21 +4,21 @@ import { cn } from '@/utils/cn';
 import { useAuth } from '@/context/AuthContext';
 import { hrmsApi, type GeofenceScheme, type PunchResponse } from '@/services/hrmsApi';
 
-interface TrainerGeofencePunchWidgetProps {
+interface employeeGeofencePunchWidgetProps {
   onPunchSuccess?: (res: PunchResponse) => void;
 }
 
-export type TrainerVerificationMethod = 'FACE_ID' | 'MANUAL' | 'BIOMETRIC';
+export type employeeVerificationMethod = 'FACE_ID' | 'MANUAL' | 'BIOMETRIC';
 
-export function TrainerGeofencePunchWidget({ onPunchSuccess }: TrainerGeofencePunchWidgetProps) {
+export function EmployeeGeofencePunchWidget({ onPunchSuccess }: employeeGeofencePunchWidgetProps) {
   const { user } = useAuth();
   const [activeScheme, setActiveScheme] = useState<GeofenceScheme | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const [selectedMethod, setSelectedMethod] = useState<TrainerVerificationMethod>('FACE_ID');
+  const [selectedMethod, setSelectedMethod] = useState<employeeVerificationMethod>('FACE_ID');
 
   const [deviceCoords, setDeviceCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [distanceToGym, setDistanceToGym] = useState<number | null>(null);
+  const [distanceTovahd, setDistanceTovahd] = useState<number | null>(null);
   const [isWithinGeofence, setIsWithinGeofence] = useState<boolean>(true);
 
   const [punchStatus, setPunchStatus] = useState<{
@@ -85,7 +85,7 @@ export function TrainerGeofencePunchWidget({ onPunchSuccess }: TrainerGeofencePu
     refreshFaceStatus();
     hrmsApi.getGeofenceSchemes()
       .then((schemes) => { if (schemes?.length > 0) setActiveScheme(schemes[0]); })
-      .catch(() => {});
+      .catch(() => { });
 
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -101,7 +101,7 @@ export function TrainerGeofencePunchWidget({ onPunchSuccess }: TrainerGeofencePu
   useEffect(() => {
     if (deviceCoords && activeScheme?.latitude != null && activeScheme?.longitude != null) {
       const dist = calculateDistance(deviceCoords.lat, deviceCoords.lng, activeScheme.latitude, activeScheme.longitude);
-      setDistanceToGym(dist);
+      setDistanceTovahd(dist);
       setIsWithinGeofence(dist <= (activeScheme.radius_meters || 500));
     }
   }, [activeScheme, deviceCoords]);
@@ -164,7 +164,7 @@ export function TrainerGeofencePunchWidget({ onPunchSuccess }: TrainerGeofencePu
       const res = await hrmsApi.registerFace({ employee_id: user?.id || '', face_image_base64: snapshot });
       setRegisterSuccess(true);
       setFaceStatus({ is_enrolled: true, face_image: res.face_image || snapshot, full_name: user?.name });
-      showFeedback('✓ Trainer Face ID registered! You can now clock in with Face ID.', 'success');
+      showFeedback('✓ employee Face ID registered! You can now clock in with Face ID.', 'success');
       setTimeout(() => handleCloseRegisterModal(), 1500);
     } catch (err: any) {
       setRegisterError(err?.response?.data?.detail || err?.message || 'Failed to enroll face profile.');
@@ -217,7 +217,7 @@ export function TrainerGeofencePunchWidget({ onPunchSuccess }: TrainerGeofencePu
             employee_id: user?.id || '',
             live_image_base64: snapshot,
             action,
-            user_role: user?.role || 'TRAINER',
+            user_role: user?.role || 'employee',
             branch: activeScheme?.branch_name || user?.branchName || '',
             verification_type: 'FACE_BIOMETRIC',
             method: 'LIVE_CAMERA_SCAN',
@@ -282,9 +282,9 @@ export function TrainerGeofencePunchWidget({ onPunchSuccess }: TrainerGeofencePu
         method,
         latitude: deviceCoords?.lat ?? activeScheme?.latitude ?? null,
         longitude: deviceCoords?.lng ?? activeScheme?.longitude ?? null,
-        user_role: 'TRAINER',
+        user_role: 'employee',
         branch: activeScheme?.branch_name || user?.branchName || '',
-        note: `Trainer shift punch via ${method}`,
+        note: `employee shift punch via ${method}`,
       });
       if (action === 'CHECK_IN') {
         setPunchStatus({ isClockedIn: true, clockInTime: res.time, status: res.status });
@@ -308,26 +308,26 @@ export function TrainerGeofencePunchWidget({ onPunchSuccess }: TrainerGeofencePu
 
   const methodsList = [
     {
-      id: 'FACE_ID' as TrainerVerificationMethod,
+      id: 'FACE_ID' as employeeVerificationMethod,
       label: 'Face ID',
       icon: 'camera',
       badge: checkingFaceStatus ? 'Checking...' : faceStatus.is_enrolled ? 'Enrolled ✓' : 'Tap to Enroll',
       disabled: false,
     },
     {
-      id: 'MANUAL' as TrainerVerificationMethod,
+      id: 'MANUAL' as employeeVerificationMethod,
       label: 'Manual / GPS',
       icon: 'map-pin',
       badge: isWithinGeofence ? 'In Zone ✓' : 'Remote',
       disabled: false,
     },
     {
-      id: 'BIOMETRIC' as TrainerVerificationMethod,
+      id: 'BIOMETRIC' as employeeVerificationMethod,
       label: 'Biometrics',
       icon: 'fingerprint',
       badge: 'Turnstile Only',
       disabled: true,
-      hint: 'Physical turnstile hardware sensor at gym entrance',
+      hint: 'Physical turnstile hardware sensor at vahd entrance',
     },
   ];
 
@@ -345,8 +345,8 @@ export function TrainerGeofencePunchWidget({ onPunchSuccess }: TrainerGeofencePu
             toast.type === 'success'
               ? 'bg-emerald-950/95 text-emerald-200 border-emerald-500/50'
               : toast.type === 'error'
-              ? 'bg-rose-950/95 text-rose-200 border-rose-500/50'
-              : 'bg-purple-950/95 text-purple-200 border-purple-500/50'
+                ? 'bg-rose-950/95 text-rose-200 border-rose-500/50'
+                : 'bg-purple-950/95 text-purple-200 border-purple-500/50'
           )}
         >
           <Icon
@@ -354,8 +354,8 @@ export function TrainerGeofencePunchWidget({ onPunchSuccess }: TrainerGeofencePu
             size={15}
             className={
               toast.type === 'success' ? 'text-emerald-400 shrink-0'
-              : toast.type === 'error' ? 'text-rose-400 shrink-0'
-              : 'text-purple-400 shrink-0'
+                : toast.type === 'error' ? 'text-rose-400 shrink-0'
+                  : 'text-purple-400 shrink-0'
             }
           />
           <span>{toast.msg}</span>
@@ -370,11 +370,11 @@ export function TrainerGeofencePunchWidget({ onPunchSuccess }: TrainerGeofencePu
           </div>
           <div>
             <h3 className="text-sm font-black text-white flex items-center gap-1.5">
-              <span>Trainer Shift Punch</span>
+              <span>employee Shift Punch</span>
             </h3>
             <p className="text-[11px] text-slate-300 font-medium">
               {activeScheme?.branch_name || user?.branchName || 'Main Branch'} •{' '}
-              {distanceToGym !== null ? `${distanceToGym}m from gym` : 'GPS Active'}
+              {distanceTovahd !== null ? `${distanceTovahd}m from vahd` : 'GPS Active'}
             </p>
           </div>
         </div>
@@ -466,8 +466,8 @@ export function TrainerGeofencePunchWidget({ onPunchSuccess }: TrainerGeofencePu
                     m.id === 'FACE_ID' && !faceStatus.is_enrolled
                       ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 animate-pulse'
                       : isSelected
-                      ? 'bg-purple-500/30 text-purple-200 border-purple-400/50'
-                      : 'bg-slate-800 text-slate-400 border-slate-700'
+                        ? 'bg-purple-500/30 text-purple-200 border-purple-400/50'
+                        : 'bg-slate-800 text-slate-400 border-slate-700'
                   )}
                 >
                   {m.badge}
@@ -532,7 +532,7 @@ export function TrainerGeofencePunchWidget({ onPunchSuccess }: TrainerGeofencePu
                 <Icon name="camera" size={24} />
               </div>
               <h3 className="text-base font-black text-white">
-                {faceStatus.is_enrolled ? 'Update Trainer Face ID' : 'Enroll Trainer Face ID'}
+                {faceStatus.is_enrolled ? 'Update employee Face ID' : 'Enroll employee Face ID'}
               </h3>
               <p className="text-xs text-slate-400 mt-1">
                 Position your face within the frame and capture your baseline photo for instant touchless shift punch.
@@ -636,8 +636,8 @@ export function TrainerGeofencePunchWidget({ onPunchSuccess }: TrainerGeofencePu
                     verifyState === 'SUCCESS'
                       ? 'border-emerald-400 bg-emerald-500/15 scale-105'
                       : verifyState === 'ERROR'
-                      ? 'border-rose-400 bg-rose-500/15'
-                      : 'border-purple-400'
+                        ? 'border-rose-400 bg-rose-500/15'
+                        : 'border-purple-400'
                   )}
                 >
                   {/* Scanning laser line */}
@@ -696,3 +696,4 @@ export function TrainerGeofencePunchWidget({ onPunchSuccess }: TrainerGeofencePu
     </div>
   );
 }
+export const employeeGeofencePunchWidget = EmployeeGeofencePunchWidget;

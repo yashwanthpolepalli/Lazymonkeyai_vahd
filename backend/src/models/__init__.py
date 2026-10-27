@@ -3,11 +3,11 @@ from .customer import Customer
 from .membership import Membership
 from .biometric import BiometricLog
 from .biometric_device import BiometricDevice
-from .trainer import TrainerProfile
+from .employee import employeeProfile, EmployeeProfile
 from .payroll import PayrollInvoice
 from .plan import MembershipPlan
 from .course import Course, StudentCourse
-from .settings import Branch, Setting, PaymentMethod, FeatureControl, GymBranch, GymSetting, MasterData
+from .settings import Branch, Setting, PaymentMethod, FeatureControl, vahdBranch, vahdSetting, MasterData
 from .crm import (
     PushNotificationTemplate, NotificationBroadcast, LiveNotification, UserDeviceToken,
     WhatsAppSessionModel, WhatsAppMessageModel
@@ -36,8 +36,8 @@ __all__ = [
     "EmployeeAttendanceReportLog",
     "User", "Customer", "Membership",
     "BiometricLog", "BiometricDevice",
-    "TrainerProfile", "PayrollInvoice", "MembershipPlan",
-    "Branch", "Setting", "GymBranch", "GymSetting", "PaymentMethod", "FeatureControl", "MasterData",
+    "employeeProfile", "EmployeeProfile", "PayrollInvoice", "MembershipPlan",
+    "Branch", "Setting", "vahdBranch", "vahdSetting", "PaymentMethod", "FeatureControl", "MasterData",
     "PushNotificationTemplate", "NotificationBroadcast", "LiveNotification", "UserDeviceToken",
     "WhatsAppSessionModel", "WhatsAppMessageModel",
     "Employee", "Department", "Designation", "Team", "EmployeeDocument",

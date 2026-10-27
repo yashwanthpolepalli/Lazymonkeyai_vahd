@@ -16,7 +16,7 @@ export function ProgressPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Customer Progress" breadcrumb={['Trainer', 'Progress']} />
+      <PageHeader title="Customer Progress" breadcrumb={['employee', 'Progress']} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="card p-5">

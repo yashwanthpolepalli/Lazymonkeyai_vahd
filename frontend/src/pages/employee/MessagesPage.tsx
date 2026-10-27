@@ -24,7 +24,7 @@ export function MessagesPage() {
           ];
           const convs = data.slice(0, 8).map((m, i) => ({
             id: m.id,
-            name: m.name || (m as any).full_name || 'Gym Member',
+            name: m.name || (m as any).full_name || 'vahd Member',
             lastMessage: samplePrompts[i % samplePrompts.length],
             time: '10:42 AM',
             unread: i % 3 === 0 ? 1 : 0,
@@ -43,7 +43,7 @@ export function MessagesPage() {
           setChatMessages(initialMap);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   const currentConv = conversations[activeChat] || {
@@ -68,7 +68,7 @@ export function MessagesPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Messages" breadcrumb={['Trainer', 'Messages']} />
+      <PageHeader title="Messages" breadcrumb={['employee', 'Messages']} />
 
       <div className="card p-0 overflow-hidden grid grid-cols-1 lg:grid-cols-3 h-[600px]">
         <div className="border-r border-navy-100 overflow-y-auto">

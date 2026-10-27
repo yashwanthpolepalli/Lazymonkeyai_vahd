@@ -9,7 +9,7 @@ class BiometricLog(Base):
 
     id = Column(String, primary_key=True, index=True)
     customer_id = Column(String, ForeignKey("customers.id"), index=True, nullable=True)
-    user_role = Column(String, default="CUSTOMER")  # CUSTOMER, TRAINER, OWNER, MANAGER, STAFF
+    user_role = Column(String, default="CUSTOMER")  # CUSTOMER, employee, OWNER, MANAGER, STAFF
     timestamp = Column(DateTime, default=now_ist_naive)
     event_type = Column(String, nullable=False)  # FACE_SCAN, FINGERPRINT, RFID_CARD, PASSWORD
     device_type = Column(String, nullable=True)

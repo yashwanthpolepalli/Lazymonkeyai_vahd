@@ -76,7 +76,7 @@ export function CustomerGeofenceCheckinWidget({ onCheckinSuccess }: CustomerGeof
           });
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   };
 
   const refreshFaceStatus = async () => {
@@ -101,7 +101,7 @@ export function CustomerGeofenceCheckinWidget({ onCheckinSuccess }: CustomerGeof
           setActiveScheme(schemes[0]);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   // ── 1. FACE REGISTRATION / ENROLLMENT ─────────────────────────────────────
@@ -334,7 +334,7 @@ export function CustomerGeofenceCheckinWidget({ onCheckinSuccess }: CustomerGeof
       }
 
       showFeedback(
-        `✓ Gym Check-${action === 'CHECK_IN' ? 'In' : 'Out'} verified via Manual Punch at ${res.time}`,
+        `✓ vahd Check-${action === 'CHECK_IN' ? 'In' : 'Out'} verified via Manual Punch at ${res.time}`,
         'success'
       );
 
@@ -363,27 +363,27 @@ export function CustomerGeofenceCheckinWidget({ onCheckinSuccess }: CustomerGeof
     badge?: string;
     hint?: string;
   }> = [
-    {
-      id: 'FACE_ID',
-      label: 'Face ID',
-      icon: 'camera',
-      badge: checkingFaceStatus ? 'Checking...' : faceStatus.is_enrolled ? 'Enrolled ✓' : 'Tap to Enroll',
-    },
-    {
-      id: 'MANUAL',
-      label: 'Manual Punch',
-      icon: 'user-check',
-      badge: 'Active',
-    },
-    {
-      id: 'BIOMETRIC',
-      label: 'Biometrics',
-      icon: 'fingerprint',
-      disabled: true,
-      badge: 'Turnstile Only',
-      hint: 'Physical turnstile hardware sensor at gym entrance',
-    },
-  ];
+      {
+        id: 'FACE_ID',
+        label: 'Face ID',
+        icon: 'camera',
+        badge: checkingFaceStatus ? 'Checking...' : faceStatus.is_enrolled ? 'Enrolled ✓' : 'Tap to Enroll',
+      },
+      {
+        id: 'MANUAL',
+        label: 'Manual Punch',
+        icon: 'user-check',
+        badge: 'Active',
+      },
+      {
+        id: 'BIOMETRIC',
+        label: 'Biometrics',
+        icon: 'fingerprint',
+        disabled: true,
+        badge: 'Turnstile Only',
+        hint: 'Physical turnstile hardware sensor at vahd entrance',
+      },
+    ];
 
   return (
     <div className="card p-5 bg-gradient-to-br from-slate-900 via-blue-950 to-navy-950 text-white rounded-3xl shadow-xl border border-blue-700/40 relative overflow-hidden font-sans space-y-4">
@@ -396,8 +396,8 @@ export function CustomerGeofenceCheckinWidget({ onCheckinSuccess }: CustomerGeof
             toast.type === 'success'
               ? 'bg-emerald-950/95 text-emerald-200 border-emerald-500/50'
               : toast.type === 'error'
-              ? 'bg-rose-950/95 text-rose-200 border-rose-500/50'
-              : 'bg-blue-950/95 text-blue-200 border-blue-500/50'
+                ? 'bg-rose-950/95 text-rose-200 border-rose-500/50'
+                : 'bg-blue-950/95 text-blue-200 border-blue-500/50'
           )}
         >
           <Icon
@@ -407,8 +407,8 @@ export function CustomerGeofenceCheckinWidget({ onCheckinSuccess }: CustomerGeof
               toast.type === 'success'
                 ? 'text-emerald-400 shrink-0'
                 : toast.type === 'error'
-                ? 'text-rose-400 shrink-0'
-                : 'text-blue-400 shrink-0'
+                  ? 'text-rose-400 shrink-0'
+                  : 'text-blue-400 shrink-0'
             }
           />
           <span>{toast.msg}</span>
@@ -423,10 +423,10 @@ export function CustomerGeofenceCheckinWidget({ onCheckinSuccess }: CustomerGeof
           </div>
           <div>
             <h3 className="text-sm font-black text-white flex items-center gap-1.5">
-              <span>Gym Attendance Check-In</span>
+              <span>vahd Attendance Check-In</span>
             </h3>
             <p className="text-[11px] text-slate-300 font-medium">
-              {activeScheme?.branch_name || user?.branchName || 'Main Gym Entrance'} • Real-Time Biometric Access
+              {activeScheme?.branch_name || user?.branchName || 'Main vahd Entrance'} • Real-Time Biometric Access
             </p>
           </div>
         </div>
@@ -519,8 +519,8 @@ export function CustomerGeofenceCheckinWidget({ onCheckinSuccess }: CustomerGeof
                     m.id === 'FACE_ID' && !faceStatus.is_enrolled
                       ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 animate-pulse'
                       : isSelected
-                      ? 'bg-blue-500/30 text-blue-200 border-blue-400/50'
-                      : 'bg-slate-800 text-slate-400 border-slate-700'
+                        ? 'bg-blue-500/30 text-blue-200 border-blue-400/50'
+                        : 'bg-slate-800 text-slate-400 border-slate-700'
                   )}
                 >
                   {m.badge}
@@ -693,8 +693,8 @@ export function CustomerGeofenceCheckinWidget({ onCheckinSuccess }: CustomerGeof
                     verifyState === 'SUCCESS'
                       ? 'border-emerald-400 bg-emerald-500/15 scale-105'
                       : verifyState === 'ERROR'
-                      ? 'border-rose-400 bg-rose-500/15'
-                      : 'border-blue-400'
+                        ? 'border-rose-400 bg-rose-500/15'
+                        : 'border-blue-400'
                   )}
                 >
                   {/* Vertical Scanning Laser Line */}

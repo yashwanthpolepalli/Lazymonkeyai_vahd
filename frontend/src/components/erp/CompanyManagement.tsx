@@ -1156,7 +1156,7 @@ function CompanyFormModal({
                               <body>
                                 <div class="card">
                                   <div class="logo-badge">Official Store Review</div>
-                                  <h1>${form.name || "Our Gym"}</h1>
+                                  <h1>${form.name || "Our vahd"}</h1>
                                   <p style="color:#64748b;font-size:14px;margin-bottom:16px;">Loved your fitness experience with us?</p>
                                   <div class="stars">★★★★★</div>
                                   <div class="qr-box">

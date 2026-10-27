@@ -4,13 +4,13 @@ import { Badge } from '@/components/ui/Badge';
 import { cn } from '@/utils/cn';
 import { biometricService, type EnrollmentDevice, type BiometricType } from '@/services/biometric';
 import { membersApi } from '@/services/membersApi';
-import { trainersApi } from '@/services/trainersApi';
+import { employeesApi } from '@/services/employeesApi';
 
 import { apiClient } from '@/services/apiClient';
 import { getTodayISO, addDaysISO, formatDateDDMMYY } from '@/utils/date';
 import { PaymentTerminalSelector, type PaymentDetailsPayload } from '@/components/payments/PaymentTerminalSelector';
 
-export type EnrollmentPersonType = 'member' | 'trainer';
+export type EnrollmentPersonType = 'member' | 'employee';
 
 export interface PlanItem {
   id?: string;
@@ -49,7 +49,7 @@ interface EnrollmentModalProps {
 }
 
 const memberSteps = ['Details', 'Plan', 'Payment', 'Biometric', 'Review', 'Done'];
-const trainerSteps = ['Personal Details', 'Salary & Banking', 'Payout Terms', 'Biometric', 'Review', 'Done'];
+const employeeSteps = ['Personal Details', 'Salary & Banking', 'Payout Terms', 'Biometric', 'Review', 'Done'];
 
 export function EnrollmentModal({
   open: openProp,
@@ -61,7 +61,7 @@ export function EnrollmentModal({
   onSuccess,
 }: EnrollmentModalProps) {
   const open = openProp ?? isOpen ?? false;
-  const steps = personType === 'trainer' ? trainerSteps : memberSteps;
+  const steps = personType === 'employee' ? employeeSteps : memberSteps;
   const [step, setStep] = useState(initialStep);
   const [plans, setPlans] = useState<PlanItem[]>([]);
   const [branches, setBranches] = useState<Array<{ id: string; branch_name: string; city?: string }>>([]);
@@ -83,7 +83,7 @@ export function EnrollmentModal({
   });
 
   // Dynamic Workout Programs & Duration Tiers State
-  const [selectedProgramId, setSelectedProgramId] = useState<string>('prog_gym');
+  const [selectedProgramId, setSelectedProgramId] = useState<string>('prog_vahd');
   const [selectedDurationDays, setSelectedDurationDays] = useState<number>(30);
   const [selectedProgramCategory, setSelectedProgramCategory] = useState<string>('all');
   const [planSearchQuery, setPlanSearchQuery] = useState<string>('');
@@ -110,7 +110,7 @@ export function EnrollmentModal({
   // Sync initialMember and fetch billing settings when open changes
   useEffect(() => {
     if (open) {
-      apiClient.get<any>('/gym/billing')
+      apiClient.get<any>('/vahd/billing')
         .then((res) => {
           const data = res?.billing || res;
           if (data) {
@@ -119,7 +119,7 @@ export function EnrollmentModal({
             setIncludeGst(isEngineActive);
           }
         })
-        .catch(() => {});
+        .catch(() => { });
 
       setStep(initialStep ?? 0);
       if (initialMember) {
@@ -195,14 +195,14 @@ export function EnrollmentModal({
         ? Boolean(cp.is_combo || cp.isCombo)
         : Boolean((cp.category || '').includes('_') || cp.name.includes('+'));
       const isClass = (cp.category || '').includes('dance') || (cp.category || '').includes('yoga') || (cp.category || '').includes('zumba');
-      const isPt = (cp.category || '').includes('pt') || (cp.category || '').includes('trainer');
+      const isPt = (cp.category || '').includes('pt') || (cp.category || '').includes('employee');
       const programType = isCombo ? 'combos' : isClass ? 'classes' : isPt ? 'pt' : 'training';
 
       const color = cp.color || (
         isCombo ? 'from-rose-500 to-pink-600' :
-        isClass ? 'from-purple-500 to-violet-600' :
-        isPt ? 'from-amber-600 to-yellow-600' :
-        'from-blue-500 to-indigo-600'
+          isClass ? 'from-purple-500 to-violet-600' :
+            isPt ? 'from-amber-600 to-yellow-600' :
+              'from-blue-500 to-indigo-600'
       );
 
       return {
@@ -214,7 +214,7 @@ export function EnrollmentModal({
         isCombo,
         badge: cp.badge || (isCombo ? 'Combo Pack' : ''),
         color,
-        features: cp.features?.length ? cp.features : ['Gym Floor & Facilities Access', 'Locker & Assessment'],
+        features: cp.features?.length ? cp.features : ['vahd Floor & Facilities Access', 'Locker & Assessment'],
         getPriceForDuration: (days: number) => {
           if ((cp.duration_days || 30) === days) {
             const periodLabel = days === 30 ? 'month' : days === 90 ? '3 months' : days === 180 ? '6 months' : days === 365 ? 'year' : `${days} days`;
@@ -317,7 +317,7 @@ export function EnrollmentModal({
       bank_ifsc: '',
       upi_id: '',
     });
-    setSelectedProgramId('prog_gym');
+    setSelectedProgramId('prog_vahd');
     setSelectedDurationDays(30);
     const isEngineActive = billingSettings ? (billingSettings.enable_gst_engine !== false && Number(billingSettings.total_gst_rate) > 0) : true;
     setIncludeGst(isEngineActive);
@@ -407,7 +407,7 @@ export function EnrollmentModal({
       // Only include captured video frame if camera is active (face scan)
       if ((biometricType === 'face' || biometricType === 'face_and_fingerprint') && videoRef.current && cameraActive) {
         const canvas = document.createElement('canvas');
-        canvas.width  = videoRef.current.videoWidth  || 640;
+        canvas.width = videoRef.current.videoWidth || 640;
         canvas.height = videoRef.current.videoHeight || 480;
         const ctx = canvas.getContext('2d');
         if (ctx && videoRef.current.videoWidth > 0) {
@@ -469,7 +469,7 @@ export function EnrollmentModal({
               <Icon name="user-plus" size={20} className="text-white" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-navy-900">{personType === 'trainer' ? 'New Employee' : 'New Student'} Enrollment</h2>
+              <h2 className="text-base font-bold text-navy-900">{personType === 'employee' ? 'New Employee' : 'New Student'} Enrollment</h2>
               <p className="text-xs text-navy-400">Step {step + 1} of {steps.length} · {steps[step]}</p>
             </div>
           </div>
@@ -500,7 +500,7 @@ export function EnrollmentModal({
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="text-sm font-semibold text-navy-700 mb-1.5 block">Full Name</label><input type="text" placeholder="Enter name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input-field" /></div>
                 <div><label className="text-sm font-semibold text-navy-700 mb-1.5 block">Phone</label><input type="text" placeholder="+91 ..." value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="input-field" /></div>
-                <div className={personType === 'trainer' ? 'col-span-2' : ''}><label className="text-sm font-semibold text-navy-700 mb-1.5 block">Email</label><input type="email" placeholder="email@example.com" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="input-field" /></div>
+                <div className={personType === 'employee' ? 'col-span-2' : ''}><label className="text-sm font-semibold text-navy-700 mb-1.5 block">Email</label><input type="email" placeholder="email@example.com" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="input-field" /></div>
                 {personType === 'member' && (
                   <div><label className="text-sm font-semibold text-navy-700 mb-1.5 block">Age</label><input type="number" placeholder="25" value={form.age} onChange={(e) => setForm({ ...form, age: e.target.value })} className="input-field" /></div>
                 )}
@@ -511,9 +511,9 @@ export function EnrollmentModal({
             </div>
           )}
 
-          {/* Step 1: Plan Selection (Member) OR Salary & Banking (Trainer) */}
+          {/* Step 1: Plan Selection (Member) OR Salary & Banking (employee) */}
           {step === 1 && (
-            personType === 'trainer' ? (
+            personType === 'employee' ? (
               <div className="space-y-4 animate-fade-in">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -876,9 +876,9 @@ export function EnrollmentModal({
             )
           )}
 
-          {/* Step 2: Payment (Member) OR Payout Compensation (Trainer) */}
+          {/* Step 2: Payment (Member) OR Payout Compensation (employee) */}
           {step === 2 && (
-            personType === 'trainer' ? (
+            personType === 'employee' ? (
               <div className="space-y-4 animate-fade-in">
                 <div className="card p-4 bg-emerald-50/60 border border-emerald-200/80 space-y-3">
                   <div className="text-xs font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
@@ -1085,16 +1085,16 @@ export function EnrollmentModal({
                           const ct = (d.connection_type || 'LAN').toUpperCase();
                           const connIcon = ct.includes('BLUETOOTH') ? 'bluetooth'
                             : ct.includes('WIFI') || ct.includes('WI-FI') ? 'wifi'
-                            : ct.includes('USB') ? 'usb'
-                            : 'network';
+                              : ct.includes('USB') ? 'usb'
+                                : 'network';
                           const connColor = ct.includes('BLUETOOTH') ? 'text-ai-500'
                             : ct.includes('WIFI') || ct.includes('WI-FI') ? 'text-success-500'
-                            : ct.includes('USB') ? 'text-warning-500'
-                            : 'text-brand-500';
+                              : ct.includes('USB') ? 'text-warning-500'
+                                : 'text-brand-500';
                           const connLabel = ct.includes('BLUETOOTH') ? 'Bluetooth'
                             : ct.includes('WIFI') || ct.includes('WI-FI') ? 'WiFi'
-                            : ct.includes('USB') ? 'USB'
-                            : 'LAN';
+                              : ct.includes('USB') ? 'USB'
+                                : 'LAN';
                           const statusOnline = (d.status || '').toLowerCase() === 'online';
                           const subline = [
                             d.model,
@@ -1147,7 +1147,7 @@ export function EnrollmentModal({
                     {(biometricType === 'face' || biometricType === 'face_and_fingerprint') && (
                       <div className="relative w-full h-full flex items-center justify-center bg-black">
                         <video ref={videoRef} playsInline muted className={cn('w-full h-full object-cover', cameraActive ? 'block' : 'hidden')} />
-                        
+
                         {!cameraActive && (
                           <div className="text-center p-6">
                             <div className="w-24 h-24 rounded-full border-4 border-brand-400/60 flex items-center justify-center mx-auto relative animate-pulse-soft">
@@ -1245,12 +1245,12 @@ export function EnrollmentModal({
           {/* Step 4: Review */}
           {step === 4 && (
             <div className="space-y-4 animate-fade-in">
-              <h3 className="text-base font-bold text-navy-900 text-center">Review & Confirm {personType === 'trainer' ? 'EMP' : 'Member'}</h3>
+              <h3 className="text-base font-bold text-navy-900 text-center">Review & Confirm {personType === 'employee' ? 'EMP' : 'Member'}</h3>
               <div className="card p-4 space-y-2 text-sm">
                 <div className="flex justify-between"><span className="text-navy-400">Name</span><span className="font-semibold text-navy-900">{form.name || '—'}</span></div>
                 <div className="flex justify-between"><span className="text-navy-400">Phone</span><span className="font-semibold text-navy-900">{form.phone || '—'}</span></div>
                 <div className="flex justify-between"><span className="text-navy-400">Email</span><span className="font-semibold text-navy-900">{form.email || '—'}</span></div>
-                {personType === 'trainer' ? (
+                {personType === 'employee' ? (
                   <>
                     <div className="flex justify-between"><span className="text-navy-400">Branch</span><span className="font-semibold text-navy-900">{form.branch || '—'}</span></div>
                     <div className="flex justify-between"><span className="text-navy-400">Date of Joining</span><span className="font-bold text-emerald-600">{formatDateDDMMYY(form.join_date)}</span></div>
@@ -1278,10 +1278,10 @@ export function EnrollmentModal({
                   try {
                     const activePm = customPaymentMethod.trim() || paymentMethod;
                     if (paymentMethod === 'Custom' && customPaymentMethod.trim()) {
-                      apiClient.post('/courses/payment-methods', { name: customPaymentMethod.trim() }).catch(() => {});
+                      apiClient.post('/courses/payment-methods', { name: customPaymentMethod.trim() }).catch(() => { });
                     }
-                    if (personType === 'trainer') {
-                      await trainersApi.create({
+                    if (personType === 'employee') {
+                      await employeesApi.create({
                         name: form.name,
                         email: form.email,
                         phone: form.phone,
@@ -1290,7 +1290,7 @@ export function EnrollmentModal({
                         base_monthly_salary: form.salary,
                         pt_session_rate: form.pt_session_rate,
                         branch: form.branch,
-                        primary_gym_location: form.branch,
+                        primary_vahd_location: form.branch,
                         bank_account_no: form.bank_account_no,
                         bank_ifsc: form.bank_ifsc,
                         upi_id: form.upi_id,
@@ -1311,7 +1311,7 @@ export function EnrollmentModal({
                         age: Number(form.age) || 25,
                         goal: form.goal,
                         branch: form.branch,
-                        primary_gym_location: form.branch,
+                        primary_vahd_location: form.branch,
                         membership: `${currentProgram?.name} (${durationLabel})`,
                         plan_price: finalPlanPrice,
                         paid_amount: finalPaid,
@@ -1335,11 +1335,11 @@ export function EnrollmentModal({
           {step === 5 && (
             <div className="text-center space-y-4 animate-bounce-in py-4">
               <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-success-400 to-success-600 flex items-center justify-center mx-auto shadow-glow"><Icon name="check-circle" size={40} className="text-white" /></div>
-              <div><h3 className="text-lg font-bold text-navy-900">{personType === 'trainer' ? 'Trainer Registered!' : 'Enrollment Complete!'}</h3><p className="text-sm text-navy-500 mt-1">{form.name} has been successfully registered.</p></div>
+              <div><h3 className="text-lg font-bold text-navy-900">{personType === 'employee' ? 'employee Registered!' : 'Enrollment Complete!'}</h3><p className="text-sm text-navy-500 mt-1">{form.name} has been successfully registered.</p></div>
               <div className="grid grid-cols-2 gap-3 text-left">
-                <div className="card p-3 bg-navy-50"><div className="text-xs text-navy-400">{personType === 'trainer' ? 'Trainer ID' : 'Member ID'}</div><div className="text-sm font-bold text-navy-900">{personId.toUpperCase()}</div></div>
-                <div className="card p-3 bg-navy-50"><div className="text-xs text-navy-400">{personType === 'trainer' ? 'Specialization' : 'Plan'}</div><div className="text-sm font-bold text-navy-900">{form.goal || 'Personal Training'}</div></div>
-                <div className="card p-3 bg-navy-50"><div className="text-xs text-navy-400">{personType === 'trainer' ? 'Base Salary' : 'Total Paid'}</div><div className="text-sm font-bold text-navy-900">{personType === 'trainer' ? `₹${Number(form.salary || 0).toLocaleString('en-IN')}` : `₹${total.toLocaleString()}`}</div></div>
+                <div className="card p-3 bg-navy-50"><div className="text-xs text-navy-400">{personType === 'employee' ? 'employee ID' : 'Member ID'}</div><div className="text-sm font-bold text-navy-900">{personId.toUpperCase()}</div></div>
+                <div className="card p-3 bg-navy-50"><div className="text-xs text-navy-400">{personType === 'employee' ? 'Specialization' : 'Plan'}</div><div className="text-sm font-bold text-navy-900">{form.goal || 'Personal Training'}</div></div>
+                <div className="card p-3 bg-navy-50"><div className="text-xs text-navy-400">{personType === 'employee' ? 'Base Salary' : 'Total Paid'}</div><div className="text-sm font-bold text-navy-900">{personType === 'employee' ? `₹${Number(form.salary || 0).toLocaleString('en-IN')}` : `₹${total.toLocaleString()}`}</div></div>
                 <div className="card p-3 bg-navy-50"><div className="text-xs text-navy-400">Biometric</div><div className="text-sm font-bold text-navy-900">{captureState === 'success' ? 'Device Synced' : 'Skipped'}</div></div>
               </div>
               <div className="flex gap-2">

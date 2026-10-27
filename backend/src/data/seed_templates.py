@@ -47,9 +47,9 @@ MASTER_SYSTEM_TEMPLATES: List[Dict[str, Any]] = [
                     "style": {"backgroundColor": "rgba(255,255,255,0.08)", "borderRadius": "14px", "border": "1px solid rgba(234, 179, 8, 0.4)"}
                 },
                 {
-                    "id": "el_gym_name",
+                    "id": "el_vahd_name",
                     "type": "text",
-                    "semantic_role": "gym_name",
+                    "semantic_role": "vahd_name",
                     "editable": True,
                     "position": {"x": 92, "y": 28, "zIndex": 10},
                     "size": {"width": 320, "height": 30},
@@ -57,7 +57,7 @@ MASTER_SYSTEM_TEMPLATES: List[Dict[str, Any]] = [
                     "style": {"fontSize": "22px", "fontFamily": "Impact, sans-serif", "fontWeight": "900", "color": "#FFFFFF", "letterSpacing": "0.1em"}
                 },
                 {
-                    "id": "el_gym_tagline",
+                    "id": "el_vahd_tagline",
                     "type": "text",
                     "semantic_role": "tagline",
                     "editable": True,
@@ -133,7 +133,7 @@ MASTER_SYSTEM_TEMPLATES: List[Dict[str, Any]] = [
                     "editable": True,
                     "position": {"x": 28, "y": 642, "zIndex": 10},
                     "size": {"width": 430, "height": 80},
-                    "content": {"phone": "+91 98765 43210", "email": "info@powerzonegym.com", "address": "Plot 42, Jubilee Hills Road No. 36, Hyderabad"},
+                    "content": {"phone": "+91 98765 43210", "email": "info@powerzonevahd.com", "address": "Plot 42, Jubilee Hills Road No. 36, Hyderabad"},
                     "style": {"fontSize": "9.5px", "color": "#CBD5E1"}
                 },
                 {
@@ -143,7 +143,7 @@ MASTER_SYSTEM_TEMPLATES: List[Dict[str, Any]] = [
                     "editable": True,
                     "position": {"x": 480, "y": 642, "zIndex": 10},
                     "size": {"width": 132, "height": 80},
-                    "content": {"url": "https://powerzonegym.com/join", "label": "SCAN TO JOIN"},
+                    "content": {"url": "https://powerzonevahd.com/join", "label": "SCAN TO JOIN"},
                     "style": {"backgroundColor": "#FFFFFF", "borderRadius": "12px", "color": "#000000"}
                 }
             ]

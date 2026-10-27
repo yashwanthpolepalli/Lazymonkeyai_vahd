@@ -23,7 +23,7 @@ export function OwnerClockInOutWidget({ onPunchSuccess }: OwnerClockInOutWidgetP
   const [isPunchingForSelf, setIsPunchingForSelf] = useState<boolean>(true);
 
   const [deviceCoords, setDeviceCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [distanceToGym, setDistanceToGym] = useState<number | null>(null);
+  const [distanceTovahd, setDistanceTovahd] = useState<number | null>(null);
   const [isWithinGeofence, setIsWithinGeofence] = useState<boolean>(true);
   const [loading, setLoading] = useState(false);
   const [punchState, setPunchState] = useState<{
@@ -128,12 +128,12 @@ export function OwnerClockInOutWidget({ onPunchSuccess }: OwnerClockInOutWidgetP
               activeScheme.latitude,
               activeScheme.longitude
             );
-            setDistanceToGym(dist);
+            setDistanceTovahd(dist);
             setIsWithinGeofence(dist <= (activeScheme.radius_meters || 500));
           }
         },
         () => {
-          setDistanceToGym(null);
+          setDistanceTovahd(null);
           setIsWithinGeofence(true);
         }
       );
@@ -149,7 +149,7 @@ export function OwnerClockInOutWidget({ onPunchSuccess }: OwnerClockInOutWidgetP
         activeScheme.latitude,
         activeScheme.longitude
       );
-      setDistanceToGym(dist);
+      setDistanceTovahd(dist);
       setIsWithinGeofence(dist <= (activeScheme.radius_meters || 500));
     }
   }, [activeScheme, deviceCoords]);
@@ -324,9 +324,9 @@ export function OwnerClockInOutWidget({ onPunchSuccess }: OwnerClockInOutWidgetP
           </div>
           <div className="text-left">
             <div className="text-[11px] font-extrabold text-white flex items-center gap-1">
-              <span>{activeScheme?.branch_name || user?.branchName || 'Gym'} Branch</span>
+              <span>{activeScheme?.branch_name || user?.branchName || 'vahd'} Branch</span>
               <span className="text-[10px] text-purple-300">
-                ({distanceToGym !== null ? `${distanceToGym}m` : 'Nearby'})
+                ({distanceTovahd !== null ? `${distanceTovahd}m` : 'Nearby'})
               </span>
             </div>
             <div className="text-[10px] text-slate-400 font-medium">
@@ -392,16 +392,16 @@ export function OwnerClockInOutWidget({ onPunchSuccess }: OwnerClockInOutWidgetP
                 : 'text-slate-400 hover:text-white'
             )}
           >
-            Staff / Trainer
+            Staff / employee
           </button>
         </div>
       </div>
 
-      {/* Staff Selector Dropdown (When Punching for Trainer/Staff) */}
+      {/* Staff Selector Dropdown (When Punching for employee/Staff) */}
       {!isPunchingForSelf && (
         <div className="pb-4">
           <label className="block text-[11px] font-extrabold text-slate-300 uppercase mb-1.5">
-            Select Employee / Trainer to Punch For:
+            Select Employee / employee to Punch For:
           </label>
           <select
             value={selectedEmpId}

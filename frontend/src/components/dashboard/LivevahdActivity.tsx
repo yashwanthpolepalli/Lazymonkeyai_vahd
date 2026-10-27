@@ -3,10 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { Icon } from '@/components/ui/Icon';
 import type { LiveActivityItem } from '@/types/dashboard';
 import { hrmsApi } from '@/services/hrmsApi';
-import { trainersApi } from '@/services/trainersApi';
+import { employeesApi } from '@/services/employeesApi';
 import { cn } from '@/utils/cn';
 
-interface LiveGymActivityProps {
+interface LivevahdActivityProps {
   activity: LiveActivityItem[];
 }
 
@@ -36,7 +36,7 @@ function resolveRole(roleUpper: string, rawCustId: string): 'Employee' | 'Studen
   }
   if (
     roleUpper === 'EMPLOYEE' ||
-    roleUpper === 'TRAINER' ||
+    roleUpper === 'employee' ||
     roleUpper === 'STAFF' ||
     roleUpper === 'COACH' ||
     roleUpper === 'ADMIN' ||
@@ -66,7 +66,7 @@ function formatTimestamp(timestamp?: string, fallbackTime?: string): { time: str
   return { time: fallbackTime || '', fullDateStr: '', sortTime: Date.now() };
 }
 
-export function LiveGymActivity({ activity }: LiveGymActivityProps) {
+export function LivevahdActivity({ activity }: LivevahdActivityProps) {
   const navigate = useNavigate();
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const [filter, setFilter] = useState<'all' | 'students' | 'employees' | 'checkins' | 'checkouts'>('all');
@@ -77,10 +77,10 @@ export function LiveGymActivity({ activity }: LiveGymActivityProps) {
     Promise.all([
       hrmsApi.getAttendance().catch(() => []),
       hrmsApi.getEmployees().catch(() => []),
-      trainersApi.list().catch(() => []),
-    ]).then(([attendance, _emps, _trainers]) => {
+      employeesApi.list().catch(() => []),
+    ]).then(([attendance, _emps, _employees]) => {
       if (Array.isArray(attendance)) setEmployeeAttendance(attendance);
-    }).catch(() => {});
+    }).catch(() => { });
   }, []);
 
   const handleScroll = (direction: 'up' | 'down') => {

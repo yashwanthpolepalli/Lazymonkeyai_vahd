@@ -18,7 +18,7 @@ export function CustomerGoogleReviewCard() {
     google_review_url: string;
     google_place_id?: string;
     google_review_enabled: boolean;
-    gym_name: string;
+    vahd_name: string;
     qr_code_url: string;
   } | null>(null);
 
@@ -30,24 +30,24 @@ export function CustomerGoogleReviewCard() {
   const [submitted, setSubmitted] = useState(false);
 
   useEffect(() => {
-    // 1. Fetch gym review configuration
+    // 1. Fetch vahd review configuration
     apiClient.get('/reviews/settings')
       .then((res: any) => {
         setReviewSettings(res);
         // 2. Automatically generate AI review suggestions
-        fetchAiSuggestions(res.gym_name);
+        fetchAiSuggestions(res.vahd_name);
       })
       .catch((err) => {
         console.error('Failed to load review settings:', err);
       });
   }, []);
 
-  const fetchAiSuggestions = async (gymName?: string) => {
+  const fetchAiSuggestions = async (vahdName?: string) => {
     setLoadingAi(true);
     try {
       const res: any = await apiClient.post('/reviews/ai-generate', {
         customer_id: user?.id,
-        gym_name: gymName || reviewSettings?.gym_name || 'VAHD Enterprise'
+        vahd_name: vahdName || reviewSettings?.vahd_name || 'VAHD Enterprise'
       });
       if (res?.suggestions && Array.isArray(res.suggestions)) {
         setSuggestions(res.suggestions);
@@ -90,7 +90,7 @@ export function CustomerGoogleReviewCard() {
     try {
       await apiClient.post('/reviews/submit', {
         customer_id: user?.id,
-        customer_name: user?.name || 'Gym Member',
+        customer_name: user?.name || 'vahd Member',
         customer_phone: user?.phone,
         rating: 5,
         review_text: textToShare,
@@ -131,7 +131,7 @@ export function CustomerGoogleReviewCard() {
               </span>
             </div>
             <h3 className="text-lg font-black text-foreground mt-0.5">
-              Share Your Journey at {reviewSettings.gym_name}
+              Share Your Journey at {reviewSettings.vahd_name}
             </h3>
             <p className="text-xs text-muted-foreground mt-0.5">
               Your feedback inspires others to achieve their fitness goals. Choose an AI-crafted review or write your own!
@@ -175,11 +175,10 @@ export function CustomerGoogleReviewCard() {
                   <div
                     key={s.id}
                     onClick={() => setSelectedSuggestionId(s.id)}
-                    className={`p-4 rounded-2xl border transition-all cursor-pointer space-y-2 text-xs ${
-                      isSelected
-                        ? 'border-amber-500 bg-amber-500/5 shadow-xs ring-1 ring-amber-500/30'
-                        : 'border-border bg-card hover:bg-muted/30'
-                    }`}
+                    className={`p-4 rounded-2xl border transition-all cursor-pointer space-y-2 text-xs ${isSelected
+                      ? 'border-amber-500 bg-amber-500/5 shadow-xs ring-1 ring-amber-500/30'
+                      : 'border-border bg-card hover:bg-muted/30'
+                      }`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -211,11 +210,10 @@ export function CustomerGoogleReviewCard() {
               {/* Custom Review Option */}
               <div
                 onClick={() => setSelectedSuggestionId('custom')}
-                className={`p-4 rounded-2xl border transition-all cursor-pointer space-y-2 text-xs ${
-                  selectedSuggestionId === 'custom'
-                    ? 'border-indigo-500 bg-indigo-500/5 shadow-xs ring-1 ring-indigo-500/30'
-                    : 'border-border bg-card hover:bg-muted/30'
-                }`}
+                className={`p-4 rounded-2xl border transition-all cursor-pointer space-y-2 text-xs ${selectedSuggestionId === 'custom'
+                  ? 'border-indigo-500 bg-indigo-500/5 shadow-xs ring-1 ring-indigo-500/30'
+                  : 'border-border bg-card hover:bg-muted/30'
+                  }`}
               >
                 <div className="flex items-center justify-between">
                   <span className="font-extrabold text-foreground flex items-center gap-1.5">
@@ -233,7 +231,7 @@ export function CustomerGoogleReviewCard() {
                     rows={3}
                     value={customText}
                     onChange={(e) => setCustomText(e.target.value)}
-                    placeholder="Share your favorite workout equipment, trainer experience, or gym vibe..."
+                    placeholder="Share your favorite workout equipment, employee experience, or vahd vibe..."
                     className="w-full mt-2 p-3 rounded-xl border border-border bg-background text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/30 resize-none"
                   />
                 )}
@@ -254,7 +252,7 @@ export function CustomerGoogleReviewCard() {
             <div className="space-y-1">
               <h4 className="font-black text-sm text-foreground">1-Click Google Post</h4>
               <p className="text-[11px] text-muted-foreground">
-                Copies your selected review text and opens {reviewSettings.gym_name}'s official Google Review prompt.
+                Copies your selected review text and opens {reviewSettings.vahd_name}'s official Google Review prompt.
               </p>
             </div>
 
@@ -269,7 +267,7 @@ export function CustomerGoogleReviewCard() {
 
             {submitted && (
               <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-200 text-xs font-bold border border-emerald-200">
-                🎉 Thank you for supporting {reviewSettings.gym_name}!
+                🎉 Thank you for supporting {reviewSettings.vahd_name}!
               </div>
             )}
 

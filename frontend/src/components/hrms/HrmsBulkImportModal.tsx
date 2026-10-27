@@ -59,12 +59,12 @@ export function HrmsBulkImportModal({
   const typeTitle = isStudent
     ? 'Students'
     : isEmployee
-    ? 'Employees'
-    : isDepartment
-    ? 'Departments'
-    : isDesignation
-    ? 'Designations'
-    : 'Courses & Programs';
+      ? 'Employees'
+      : isDepartment
+        ? 'Departments'
+        : isDesignation
+          ? 'Designations'
+          : 'Courses & Programs';
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0];
@@ -163,7 +163,7 @@ export function HrmsBulkImportModal({
           const courseStr = s.course?.trim() || '';
           const mediumStr = s.medium?.trim() || '';
           const studentEmail = s.email?.trim() || (s.phone ? `${s.phone}@student.portal` : `${s.fullName.toLowerCase().replace(/[^a-z0-9]/g, '')}${Date.now() % 10000}@student.portal`);
-          
+
           const payload = {
             full_name: s.fullName.toUpperCase().trim(),
             email: studentEmail.toLowerCase(),
@@ -212,7 +212,7 @@ export function HrmsBulkImportModal({
           const e = row as EmployeeImportRow;
           const empEmail = e.email?.trim() || (e.phone ? `${e.phone}@staff.portal` : `${e.fullName.toLowerCase().replace(/[^a-z0-9]/g, '')}${Date.now() % 10000}@staff.portal`);
           const parts = e.fullName.trim().split(' ');
-          
+
           const payload = {
             full_name: e.fullName.trim(),
             first_name: parts[0] || e.fullName.trim(),
@@ -226,7 +226,7 @@ export function HrmsBulkImportModal({
             employment_type: e.employmentType?.trim() || '',
             joined_date: e.joinedDate?.trim() || '',
             salary: e.salary ? Number(e.salary) : 0,
-            gym_branch: e.branch?.trim() || '',
+            vahd_branch: e.branch?.trim() || '',
             specialization: e.specialization?.trim() || '',
             status: e.status?.trim() || '',
             is_active: e.status ? e.status.toLowerCase() !== 'inactive' : true,
@@ -301,7 +301,7 @@ export function HrmsBulkImportModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/70 backdrop-blur-xs overflow-y-auto animate-fade-in font-sans">
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-4xl shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col">
-        
+
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-800 text-white p-5 flex items-center justify-between shadow-md">
           <div className="flex items-center gap-3">
@@ -328,7 +328,7 @@ export function HrmsBulkImportModal({
 
         {/* Body Content */}
         <div className="p-5 sm:p-6 overflow-y-auto space-y-5 text-slate-800 dark:text-slate-200">
-          
+
           {/* Quick Template Download Banner */}
           <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
@@ -464,44 +464,44 @@ export function HrmsBulkImportModal({
                         {isDepartment
                           ? 'DEPARTMENT NAME'
                           : isDesignation
-                          ? 'DESIGNATION TITLE'
-                          : isCourse
-                          ? 'COURSE / PROGRAM NAME'
-                          : 'FULL NAME'}
+                            ? 'DESIGNATION TITLE'
+                            : isCourse
+                              ? 'COURSE / PROGRAM NAME'
+                              : 'FULL NAME'}
                       </th>
                       <th className="p-2.5">
                         {isDepartment
                           ? 'CODE'
                           : isDesignation
-                          ? 'DEPARTMENT'
-                          : isCourse
-                          ? 'CATEGORY / DEPT'
-                          : 'EMAIL'}
+                            ? 'DEPARTMENT'
+                            : isCourse
+                              ? 'CATEGORY / DEPT'
+                              : 'EMAIL'}
                       </th>
                       <th className="p-2.5">
                         {isDepartment
                           ? 'HEAD OF DEPT'
                           : isDesignation
-                          ? 'CAREER LEVEL'
-                          : isCourse
-                          ? 'DURATION'
-                          : 'PHONE'}
+                            ? 'CAREER LEVEL'
+                            : isCourse
+                              ? 'DURATION'
+                              : 'PHONE'}
                       </th>
                       <th className="p-2.5">
                         {isDepartment || isDesignation || isCourse
                           ? 'DESCRIPTION'
                           : isStudent
-                          ? 'COURSE & MEDIUM'
-                          : 'DESIGNATION & DEPT'}
+                            ? 'COURSE & MEDIUM'
+                            : 'DESIGNATION & DEPT'}
                       </th>
                       <th className="p-2.5">
                         {isDepartment || isDesignation
                           ? 'STATUS'
                           : isCourse
-                          ? 'TUITION FEE (₹)'
-                          : isStudent
-                          ? 'FATHER NAME'
-                          : 'LOCATION'}
+                            ? 'TUITION FEE (₹)'
+                            : isStudent
+                              ? 'FATHER NAME'
+                              : 'LOCATION'}
                       </th>
                       <th className="p-2.5 text-center">VALIDATION</th>
                     </tr>
@@ -511,12 +511,12 @@ export function HrmsBulkImportModal({
                       const isValid = isStudent
                         ? Boolean((row as StudentImportRow).fullName && ((row as StudentImportRow).email || (row as StudentImportRow).phone))
                         : isEmployee
-                        ? Boolean((row as EmployeeImportRow).fullName && ((row as EmployeeImportRow).email || (row as EmployeeImportRow).phone))
-                        : isDepartment
-                        ? Boolean((row as DepartmentImportRow).name?.trim())
-                        : isDesignation
-                        ? Boolean((row as DesignationImportRow).title?.trim())
-                        : Boolean((row as CourseImportRow).name?.trim());
+                          ? Boolean((row as EmployeeImportRow).fullName && ((row as EmployeeImportRow).email || (row as EmployeeImportRow).phone))
+                          : isDepartment
+                            ? Boolean((row as DepartmentImportRow).name?.trim())
+                            : isDesignation
+                              ? Boolean((row as DesignationImportRow).title?.trim())
+                              : Boolean((row as CourseImportRow).name?.trim());
 
                       return (
                         <tr
@@ -531,44 +531,44 @@ export function HrmsBulkImportModal({
                             {isDepartment
                               ? (row.name || <span className="text-rose-500 italic">Missing Name</span>)
                               : isDesignation
-                              ? (row.title || <span className="text-rose-500 italic">Missing Title</span>)
-                              : isCourse
-                              ? (row.name || <span className="text-rose-500 italic">Missing Course</span>)
-                              : (row.fullName || <span className="text-rose-500 italic">Missing Name</span>)}
+                                ? (row.title || <span className="text-rose-500 italic">Missing Title</span>)
+                                : isCourse
+                                  ? (row.name || <span className="text-rose-500 italic">Missing Course</span>)
+                                  : (row.fullName || <span className="text-rose-500 italic">Missing Name</span>)}
                           </td>
                           <td className="p-2.5 text-slate-600 dark:text-slate-400 text-[11px]">
                             {isDepartment
                               ? row.code || '—'
                               : isDesignation
-                              ? row.department || 'ALL'
-                              : isCourse
-                              ? row.category || 'General'
-                              : row.email || '—'}
+                                ? row.department || 'ALL'
+                                : isCourse
+                                  ? row.category || 'General'
+                                  : row.email || '—'}
                           </td>
                           <td className="p-2.5 text-slate-600 dark:text-slate-400 text-[11px]">
                             {isDepartment
                               ? row.headName || '—'
                               : isDesignation
-                              ? row.level || 'Mid'
-                              : isCourse
-                              ? (row.durationYears ? `${row.durationYears} Years` : row.durationMonths ? `${row.durationMonths} Months` : '1 Year')
-                              : row.phone || '—'}
+                                ? row.level || 'Mid'
+                                : isCourse
+                                  ? (row.durationYears ? `${row.durationYears} Years` : row.durationMonths ? `${row.durationMonths} Months` : '1 Year')
+                                  : row.phone || '—'}
                           </td>
                           <td className="p-2.5 text-slate-700 dark:text-slate-300 max-w-[200px] truncate">
                             {isDepartment || isDesignation || isCourse
                               ? row.description || '—'
                               : isStudent
-                              ? `${row.course || 'General'} (${row.medium || 'English'})`
-                              : `${row.designation || 'Staff'} (${row.department || 'General'})`}
+                                ? `${row.course || 'General'} (${row.medium || 'English'})`
+                                : `${row.designation || 'Staff'} (${row.department || 'General'})`}
                           </td>
                           <td className="p-2.5 text-slate-600 dark:text-slate-400 text-[11px]">
                             {isDepartment || isDesignation
                               ? row.status || 'Active'
                               : isCourse
-                              ? (row.price ? `₹${Number(row.price).toLocaleString()}` : '₹0')
-                              : isStudent
-                              ? row.fatherName || '—'
-                              : row.branch || '—'}
+                                ? (row.price ? `₹${Number(row.price).toLocaleString()}` : '₹0')
+                                : isStudent
+                                  ? row.fatherName || '—'
+                                  : row.branch || '—'}
                           </td>
                           <td className="p-2.5 text-center">
                             {isValid ? (

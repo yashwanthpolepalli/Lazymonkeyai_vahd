@@ -70,22 +70,22 @@ def onboard_customer(
                 data["ho_id"] = current_user.ho_id or current_user.id
             if not data.get("branch_id") and current_user.branch_id:
                 data["branch_id"] = current_user.branch_id
-        elif u_role in ["MANAGER", "STAFF", "TRAINER"]:
+        elif u_role in ["MANAGER", "STAFF", "employee"]:
             data["owner_id"] = data.get("owner_id") or current_user.owner_id
             data["branch_id"] = data.get("branch_id") or current_user.branch_id
             data["ho_id"] = data.get("ho_id") or current_user.ho_id
 
     # Resolve branch from database to ensure branch_name and hierarchy match
-    from src.models.settings import Branch as GymBranch
+    from src.models.settings import Branch as vahdBranch
     from sqlalchemy import or_
-    b_ref = data.get("branch_id") or data.get("branch") or data.get("primary_gym_location")
+    b_ref = data.get("branch_id") or data.get("branch") or data.get("primary_vahd_location")
     if b_ref:
-        b_obj = db.query(GymBranch).filter(
-            or_(GymBranch.id == b_ref, GymBranch.branch_name.ilike(f"%{b_ref}%"))
+        b_obj = db.query(vahdBranch).filter(
+            or_(vahdBranch.id == b_ref, vahdBranch.branch_name.ilike(f"%{b_ref}%"))
         ).first()
         if b_obj:
             data["branch_id"] = b_obj.id
-            data["primary_gym_location"] = b_obj.branch_name or b_obj.gym_name
+            data["primary_vahd_location"] = b_obj.branch_name or b_obj.vahd_name
             if not data.get("owner_id") and b_obj.owner_id:
                 data["owner_id"] = b_obj.owner_id
             if not data.get("ho_id") and b_obj.ho_id:
@@ -100,13 +100,6 @@ def update_customer(customer_id: str, payload: dict = Body(...), db: Session = D
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
-@router.patch("/{customer_id}/workout-video-access")
-def toggle_workout_video_access(customer_id: str, payload: dict = Body(...), db: Session = Depends(get_db)):
-    enable = payload.get("enable_workout_videos") if "enable_workout_videos" in payload else payload.get("enable", True)
-    try:
-        return CustomerService.toggle_workout_video_access(db, customer_id, bool(enable))
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
 
 @router.post("/{customer_id}/sync-biometric")
 def sync_customer_biometric(customer_id: str, payload: dict = None, db: Session = Depends(get_db)):

@@ -18,6 +18,5 @@ export interface Member {
   weight: number;
   bodyFat: number;
   goal: string;
-  trainer: string;
-  enable_workout_videos?: boolean;
+  employee: string;
 }

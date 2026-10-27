@@ -12,7 +12,7 @@ import {
 
 interface HoOrganizationItem {
   id: string;
-  gym_name: string;
+  vahd_name: string;
   branch_name: string;
   city?: string;
   geofence_portal_enabled: boolean;
@@ -48,7 +48,7 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
   const [activeSchemeId, setActiveSchemeId] = useState<string>('');
   const [schemeName, setSchemeName] = useState('');
   const [branchName, setBranchName] = useState('');
-  const [gymName, setGymName] = useState('');
+  const [vahdName, setvahdName] = useState('');
   const [ipWhitelist, setIpWhitelist] = useState('');
   const [latitude, setLatitude] = useState<number | string>('');
   const [longitude, setLongitude] = useState<number | string>('');
@@ -73,7 +73,7 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
     setTimeout(() => setToastMsg(null), 4000);
   };
 
-  // Fetch initial schemes, branches, gym settings, employees and students from live database
+  // Fetch initial schemes, branches, vahd settings, employees and students from live database
   const loadData = async () => {
     setLoading(true);
     try {
@@ -81,8 +81,8 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
         hrmsApi.getGeofenceSchemes().catch(() => []),
         hrmsApi.getEmployees().catch(() => []),
         apiClient.get<any[]>('/customers').catch(() => []),
-        apiClient.get<any[]>('/gym/branches').catch(() => []),
-        apiClient.get<any>('/gym/settings').catch(() => null),
+        apiClient.get<any[]>('/vahd/branches').catch(() => []),
+        apiClient.get<any>('/vahd/settings').catch(() => null),
       ]);
 
       const emps = empsRes || [];
@@ -92,26 +92,26 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
 
       const realBranches = Array.isArray(branchesRes)
         ? branchesRes.map((b) => ({
-            name: b.branch_name || b.name || '',
-            city: b.city || '',
-          }))
+          name: b.branch_name || b.name || '',
+          city: b.city || '',
+        }))
         : [];
       setAvailableBranches(realBranches);
 
-      const realGymName = settingsRes?.gym_name || realBranches[0]?.name || '';
-      setGymName(realGymName);
+      const realvahdName = settingsRes?.vahd_name || realBranches[0]?.name || '';
+      setvahdName(realvahdName);
 
       const allMemberIds = [...emps.map((e) => e.id), ...custs.map((c) => c.id)];
 
       if (schemesRes && schemesRes.length > 0) {
         setSchemes(schemesRes);
-        loadSchemeIntoForm(schemesRes[0], allMemberIds, realGymName);
+        loadSchemeIntoForm(schemesRes[0], allMemberIds, realvahdName);
       } else {
         setSchemes([]);
         setActiveSchemeId('');
         setSchemeName('');
         setBranchName(realBranches[0]?.name || '');
-        setGymName(realGymName);
+        setvahdName(realvahdName);
         setLatitude(currentDeviceCoords ? currentDeviceCoords.lat : '');
         setLongitude(currentDeviceCoords ? currentDeviceCoords.lng : '');
         setRadiusMeters(0);
@@ -141,7 +141,7 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
             lng: pos.coords.longitude,
           });
         },
-        () => {}
+        () => { }
       );
     }
   }, []);
@@ -179,7 +179,7 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
       );
       showToast(
         res?.message ||
-          `Attendance & Geofence Portal ${nextStatus ? 'ENABLED' : 'DISABLED'} for this organization`
+        `Attendance & Geofence Portal ${nextStatus ? 'ENABLED' : 'DISABLED'} for this organization`
       );
       window.dispatchEvent(
         new CustomEvent('vahd:branch_geofence_toggled', {
@@ -197,11 +197,11 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
   const selectedOrg = hoOrganizations.find((o) => o.id === selectedOrgId) || hoOrganizations[0];
 
 
-  const loadSchemeIntoForm = (scheme: GeofenceScheme, allAvailableIds?: string[], fallbackGymName?: string) => {
+  const loadSchemeIntoForm = (scheme: GeofenceScheme, allAvailableIds?: string[], fallbackvahdName?: string) => {
     setActiveSchemeId(scheme.id || '');
     setSchemeName(scheme.name || '');
     setBranchName(scheme.branch_name || '');
-    setGymName(scheme.gym_name || fallbackGymName || gymName || '');
+    setvahdName(scheme.vahd_name || fallbackvahdName || vahdName || '');
     setIpWhitelist(scheme.ip_whitelist || '');
     setLatitude(scheme.latitude ?? (currentDeviceCoords ? currentDeviceCoords.lat : ''));
     setLongitude(scheme.longitude ?? (currentDeviceCoords ? currentDeviceCoords.lng : ''));
@@ -235,7 +235,7 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
     setActiveSchemeId(newId);
     setSchemeName('');
     setBranchName(targetBranch);
-    setGymName(gymName);
+    setvahdName(vahdName);
     setLatitude(currentDeviceCoords ? currentDeviceCoords.lat : '');
     setLongitude(currentDeviceCoords ? currentDeviceCoords.lng : '');
     setRadiusMeters(0);
@@ -287,7 +287,7 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
         id: activeSchemeId,
         name: schemeName.trim(),
         branch_name: branchName,
-        gym_name: gymName,
+        vahd_name: vahdName,
         ip_whitelist: ipWhitelist,
         latitude: typeof latitude === 'string' ? (latitude === '' ? 0 : parseFloat(latitude)) : latitude,
         longitude: typeof longitude === 'string' ? (longitude === '' ? 0 : parseFloat(longitude)) : longitude,
@@ -333,7 +333,7 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
       name: (emp.full_name || `${emp.first_name || ''} ${emp.last_name || ''}`.trim()) || 'Employee',
       code: emp.code ? `EMP-${emp.code}` : 'EMP',
       role: 'Employee' as const,
-      subText: emp.designation || emp.department || 'Staff / Trainer',
+      subText: emp.designation || emp.department || 'Staff / employee',
       email: emp.email || '',
     })),
     ...students.map((stu, idx) => ({
@@ -447,7 +447,7 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
                 <div className="bg-slate-800/80 backdrop-blur-md border border-slate-700/80 rounded-2xl p-3.5 flex items-center gap-4 shrink-0 shadow-lg">
                   <div className="text-right">
                     <div className="text-[10px] font-extrabold uppercase text-slate-400">
-                      Portal Status for {selectedOrg.gym_name || selectedOrg.branch_name}
+                      Portal Status for {selectedOrg.vahd_name || selectedOrg.branch_name}
                     </div>
                     <div className="flex items-center justify-end gap-1.5 mt-0.5">
                       <span
@@ -522,7 +522,7 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
                       onClick={() => {
                         setSelectedOrgId(org.id);
                         if (org.branch_name) setBranchName(org.branch_name);
-                        if (org.gym_name) setGymName(org.gym_name);
+                        if (org.vahd_name) setvahdName(org.vahd_name);
                       }}
                       className={cn(
                         'cursor-pointer rounded-xl p-3 border transition-all flex items-center justify-between gap-3',
@@ -539,7 +539,7 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
                             className={isSelected ? 'text-indigo-400' : 'text-slate-400'}
                           />
                           <span className="text-xs font-black text-white truncate">
-                            {org.gym_name || org.branch_name}
+                            {org.vahd_name || org.branch_name}
                           </span>
                         </div>
                         <div className="text-[10px] text-slate-400 font-semibold pl-5">
@@ -554,7 +554,7 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
                           e.stopPropagation();
                           setSelectedOrgId(org.id);
                           if (org.branch_name) setBranchName(org.branch_name);
-                          if (org.gym_name) setGymName(org.gym_name);
+                          if (org.vahd_name) setvahdName(org.vahd_name);
                           handleToggleBranchAccess(org.id, org.geofence_portal_enabled);
                         }}
                         disabled={togglingAccess}
@@ -750,11 +750,11 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
               </div>
             </div>
 
-            {/* Branch & Gym Selector Row */}
+            {/* Branch & vahd Selector Row */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-[11px] font-extrabold text-slate-600 uppercase mb-1.5">
-                  GYM BRANCH ASSIGNMENT
+                  vahd BRANCH ASSIGNMENT
                 </label>
                 <select
                   value={branchName}
@@ -775,13 +775,13 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
 
               <div>
                 <label className="block text-[11px] font-extrabold text-slate-600 uppercase mb-1.5">
-                  ORGANIZATION / GYM NAME
+                  ORGANIZATION / vahd NAME
                 </label>
                 <input
                   type="text"
-                  value={gymName}
-                  onChange={(e) => setGymName(e.target.value)}
-                  placeholder="Gym / Facility Name"
+                  value={vahdName}
+                  onChange={(e) => setvahdName(e.target.value)}
+                  placeholder="vahd / Facility Name"
                   className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50/70 border border-slate-200 text-xs font-bold text-slate-900 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
                 />
               </div>
@@ -1249,8 +1249,8 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
               </div>
 
               <div className="flex justify-between items-center py-1 border-b border-slate-100">
-                <span className="text-slate-500 font-medium">Branch / Gym:</span>
-                <span className="font-extrabold text-purple-700">{branchName} ({gymName})</span>
+                <span className="text-slate-500 font-medium">Branch / vahd:</span>
+                <span className="font-extrabold text-purple-700">{branchName} ({vahdName})</span>
               </div>
 
               <div className="flex justify-between items-center py-1 border-b border-slate-100">
@@ -1271,8 +1271,8 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
                   {shiftStartTime && shiftEndTime
                     ? `${shiftStartTime} - ${shiftEndTime} IST (${gracePeriodMins}m grace)`
                     : shiftStartTime
-                    ? `${shiftStartTime} onwards IST (${gracePeriodMins}m grace)`
-                    : 'Flexible / 24x7'}
+                      ? `${shiftStartTime} onwards IST (${gracePeriodMins}m grace)`
+                      : 'Flexible / 24x7'}
                 </span>
               </div>
             </div>

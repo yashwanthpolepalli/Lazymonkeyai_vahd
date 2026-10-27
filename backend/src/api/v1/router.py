@@ -5,7 +5,7 @@ from src.api.v1.courses import router as courses_router
 from src.api.v1.biometrics import router as biometrics_router
 from src.api.v1.super_admin import router as super_admin_router
 from src.api.v1.dashboard import router as dashboard_router
-from src.api.v1.trainers import router as trainers_router
+from src.api.v1.employees import router as employees_router
 from src.api.v1.payroll import router as payroll_router
 from src.api.v1.plans import router as plans_router
 from src.api.v1.settings import router as settings_router
@@ -36,7 +36,7 @@ api_router.include_router(courses_router)
 api_router.include_router(biometrics_router)
 api_router.include_router(super_admin_router)
 api_router.include_router(dashboard_router)
-api_router.include_router(trainers_router)
+api_router.include_router(employees_router)
 api_router.include_router(payroll_router)
 api_router.include_router(plans_router)
 api_router.include_router(settings_router)

@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 class ReviewService:
     @staticmethod
-    def generate_ai_reviews(db: Session, customer_id: Optional[str] = None, gym_name: Optional[str] = None) -> List[Dict[str, Any]]:
+    def generate_ai_reviews(db: Session, customer_id: Optional[str] = None, vahd_name: Optional[str] = None) -> List[Dict[str, Any]]:
         """
         Dynamically analyzes customer profile, attendance history, goals,
         and generates 3 compelling, realistic 5-star Google review suggestions.
@@ -20,7 +20,7 @@ class ReviewService:
         customer_name = ""
         membership_plan = ""
         goal = ""
-        trainer = ""
+        employee = ""
         workout_count = 0
 
         # Dynamic lookup from DB
@@ -28,12 +28,12 @@ class ReviewService:
             cust = db.query(Customer).filter((Customer.id == customer_id) | (Customer.user_id == customer_id)).first()
             if cust:
                 customer_name = cust.full_name or ""
-                goal = cust.goal or cust.training_preference or cust.body_condition or ""
-                if cust.trainer_id:
+                goal = cust.training_preference or ""
+                if cust.employee_id:
                     from src.models.user import User
-                    trainer_user = db.query(User).filter(User.id == cust.trainer_id).first()
-                    if trainer_user and trainer_user.name:
-                        trainer = trainer_user.name
+                    employee_user = db.query(User).filter(User.id == cust.employee_id).first()
+                    if employee_user and employee_user.name:
+                        employee = employee_user.name
 
                 mem = db.query(Membership).filter(Membership.customer_id == cust.id).order_by(Membership.created_at.desc()).first()
                 if mem and mem.plan_name:
@@ -42,43 +42,43 @@ class ReviewService:
                 if getattr(cust, "biometric_logs", None):
                     workout_count = len(cust.biometric_logs)
 
-                if not gym_name and cust.primary_gym_location:
-                    gym_name = cust.primary_gym_location
+                if not vahd_name and cust.primary_vahd_location:
+                    vahd_name = cust.primary_vahd_location
 
-        if not gym_name:
+        if not vahd_name:
             active_company = db.query(Company).filter(Company.status == "active").first()
-            gym_name = active_company.name if active_company else "this gym"
+            vahd_name = active_company.name if active_company else "this vahd"
 
         api_key = get_gemini_key()
         models = build_gemini_fallback_list()
 
-        context_lines = [f"- Facility / Gym Name: {gym_name}"]
+        context_lines = [f"- Facility / vahd Name: {vahd_name}"]
         if customer_name:
             context_lines.append(f"- Member Name: {customer_name}")
         if membership_plan:
             context_lines.append(f"- Membership Tier / Plan: {membership_plan}")
         if goal:
             context_lines.append(f"- Fitness Goal / Routine: {goal}")
-        if trainer:
-            context_lines.append(f"- Personal Trainer / Coach: {trainer}")
+        if employee:
+            context_lines.append(f"- Personal employee / Coach: {employee}")
         if workout_count > 0:
             context_lines.append(f"- Completed Workout Sessions: {workout_count}")
 
         context_str = "\n".join(context_lines)
 
         prompt = f"""
-You are an expert customer experience assistant. Generate 3 unique, highly authentic 5-star Google Business review suggestions for a member at "{gym_name}".
+You are an expert customer experience assistant. Generate 3 unique, highly authentic 5-star Google Business review suggestions for a member at "{vahd_name}".
 Customer Real Data:
 {context_str}
 
 Requirements for the 3 reviews:
-1. Review 1: Focus on state-of-the-art gym equipment, hygiene, and modern facilities.
+1. Review 1: Focus on state-of-the-art vahd equipment, hygiene, and modern facilities.
 2. Review 2: Focus on personal guidance, motivating community, and noticeable body transformation results.
 3. Review 3: Focus on overall atmosphere, helpful staff, clean locker rooms, and value.
 
 Output strict JSON with an array of 3 objects, each having:
 - "id": number (1, 2, 3)
-- "category": string (e.g. "Equipment & Facilities", "Trainer & Results", "Vibe & Community")
+- "category": string (e.g. "Equipment & Facilities", "employee & Results", "Vibe & Community")
 - "title": short catchy headline
 - "text": the full review text (2-3 sentences, natural tone, authentic voice)
 - "rating": 5
@@ -111,10 +111,10 @@ JSON only without markdown fences:
             except Exception as e:
                 logger.error(f"Error configuring Gemini for review suggestions: {e}")
 
-        # Dynamic fallback templates incorporating customer's real gym name and goals
+        # Dynamic fallback templates incorporating customer's real vahd name and goals
         if not generated_data or not isinstance(generated_data, list):
             goal_desc = f" on my {goal.lower()} goals" if goal else ""
-            trainer_desc = f" with {trainer}" if trainer else " with the trainers"
+            employee_desc = f" with {employee}" if employee else " with the employees"
             plan_desc = f" of the {membership_plan}" if membership_plan else ""
 
             generated_data = [
@@ -122,7 +122,7 @@ JSON only without markdown fences:
                     "id": 1,
                     "category": "Equipment & Atmosphere",
                     "title": "Best Fitness Center in Town!",
-                    "text": f"Hands down the best gym experience at {gym_name}! The imported machines, cleanliness, and motivating vibe make every workout session incredible. Highly recommended for anyone serious about fitness!",
+                    "text": f"Hands down the best vahd experience at {vahd_name}! The imported machines, cleanliness, and motivating vibe make every workout session incredible. Highly recommended for anyone serious about fitness!",
                     "rating": 5,
                     "tags": ["Modern Equipment", "Pristine Hygiene", "Great Vibe"]
                 },
@@ -130,7 +130,7 @@ JSON only without markdown fences:
                     "id": 2,
                     "category": "Transformation & Coaching",
                     "title": "Incredible Results & Support",
-                    "text": f"I've been working{goal_desc}{trainer_desc} here and the guidance is top-notch. The customized workout routines and positive environment have helped me achieve noticeable results!",
+                    "text": f"I've been working{goal_desc}{employee_desc} here and the guidance is top-notch. The customized workout routines and positive environment have helped me achieve noticeable results!",
                     "rating": 5,
                     "tags": ["Expert Guidance", "Body Transformation", "Great Coaching"]
                 },
@@ -138,7 +138,7 @@ JSON only without markdown fences:
                     "id": 3,
                     "category": "Value & Community",
                     "title": "Premium Facility with Welcoming Staff",
-                    "text": f"From the friendly front desk team to the spacious training zones and spotless locker rooms, {gym_name} sets a high standard. Worth every penny{plan_desc}!",
+                    "text": f"From the friendly front desk team to the spacious training zones and spotless locker rooms, {vahd_name} sets a high standard. Worth every penny{plan_desc}!",
                     "rating": 5,
                     "tags": ["Friendly Staff", "Value for Money", "Spacious"]
                 }
@@ -184,13 +184,13 @@ JSON only without markdown fences:
         url = company.google_review_url if company and company.google_review_url else ""
         place_id = company.google_place_id if company else ""
         enabled = company.google_review_enabled if company and company.google_review_enabled is not None else False
-        gym_name = company.name if company else "Fitness Center"
+        vahd_name = company.name if company else "Fitness Center"
 
         return {
             "google_review_url": url,
             "google_place_id": place_id,
             "google_review_enabled": enabled,
-            "gym_name": gym_name,
+            "vahd_name": vahd_name,
             "qr_code_url": f"https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=0&data={url}" if url else ""
         }
 

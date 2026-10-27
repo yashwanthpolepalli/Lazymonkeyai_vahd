@@ -14,12 +14,6 @@ export interface CustomerProfile {
   phone: string;
   gender: string;
   age: number;
-  weight: number;
-  height: number;
-  bmi: number;
-  fitness_level: string;
-  goal: string;
-  target_weight?: number;
   profile_image: string;
   status: string;
   membership: CustomerMembership;

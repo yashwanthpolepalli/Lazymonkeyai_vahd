@@ -90,7 +90,7 @@ export function BiometricsPage({ embedded = false }: { embedded?: boolean }) {
     ])
       .then(([analyticsRes, devicesRes, scanRes, membersRes]) => {
         if (analyticsRes) setAnalytics(analyticsRes);
-        
+
         let devList: BiometricDeviceItem[] = [];
         if (Array.isArray(devicesRes)) {
           devList = devicesRes;
@@ -175,9 +175,9 @@ export function BiometricsPage({ embedded = false }: { embedded?: boolean }) {
 
   // Filtered Scans
   const filteredScans = scans.filter((s) => {
-    const nameMatch = (s.customer_name || 'Gym Member').toLowerCase().includes(search.toLowerCase()) ||
+    const nameMatch = (s.customer_name || 'vahd Member').toLowerCase().includes(search.toLowerCase()) ||
       (s.device_name || '').toLowerCase().includes(search.toLowerCase());
-    
+
     if (filterType === 'ALL') return nameMatch;
     if (filterType === 'GRANTED') return nameMatch && (s.status === 'SUCCESS' || s.status === 'GRANTED');
     if (filterType === 'DENIED') return nameMatch && (s.status === 'DENIED' || s.status === 'FAILED');
@@ -510,7 +510,7 @@ export function BiometricsPage({ embedded = false }: { embedded?: boolean }) {
                         </div>
                         <div>
                           <span className="font-extrabold text-slate-900 block truncate max-w-[130px]">
-                            {scan.customer_name || 'Gym Member'}
+                            {scan.customer_name || 'vahd Member'}
                           </span>
                           <span className="text-[10px] text-slate-400 font-semibold block">
                             ID: {scan.customer_id ? scan.customer_id.substring(0, 8) : 'Walk-in'}

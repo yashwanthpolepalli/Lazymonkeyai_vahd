@@ -2,7 +2,7 @@
 
 This router is an application wrapper around the vendor's SOAP client. The
 vendor-facing contract lives in essl_bioserver_client.py; these REST routes
-exist for the FIT CLUB backend/admin UI and for integration testing.
+exist for the vahd backend/admin UI and for integration testing.
 """
 from __future__ import annotations
 
@@ -63,7 +63,7 @@ def require_staff_user(current_user: Any = Depends(_get_current_user) if _get_cu
     if current_user is None:
         raise HTTPException(status_code=401, detail="Authentication required")
     role = str(getattr(current_user, "role", "")).upper()
-    if role not in {"ADMIN", "STAFF", "MANAGER", "OWNER", "SUPER_ADMIN", "TRAINER"}:
+    if role not in {"ADMIN", "STAFF", "MANAGER", "OWNER", "SUPER_ADMIN", "employee"}:
         raise HTTPException(status_code=403, detail="Staff/admin/owner role required")
     return current_user
 
@@ -89,7 +89,7 @@ def _vendor_call(fn: Callable[[], Any]) -> Any:
 # ---------------------------------------------------------------------------
 @router.get("/analytics")
 def attendance_analytics(
-    role: Optional[str] = Query(None, description="Filter by role: ALL, CUSTOMER, TRAINER, STAFF"),
+    role: Optional[str] = Query(None, description="Filter by role: ALL, CUSTOMER, employee, STAFF"),
     physical_only: bool = Query(False, description="Filter only physical biometric hardware devices"),
     _auth: Any = Depends(require_staff_user),
     db: Session = Depends(get_db)
@@ -100,7 +100,7 @@ def attendance_analytics(
 @router.get("/recent")
 def recent_biometrics(
     limit: int = Query(50, ge=1, le=200),
-    role: Optional[str] = Query(None, description="Filter by role: ALL, CUSTOMER, TRAINER, STAFF"),
+    role: Optional[str] = Query(None, description="Filter by role: ALL, CUSTOMER, employee, STAFF"),
     physical_only: bool = Query(False, description="Filter only physical biometric hardware devices"),
     db: Session = Depends(get_db),
     _auth: Any = Depends(require_staff_user),

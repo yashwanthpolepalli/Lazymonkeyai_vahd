@@ -4,6 +4,18 @@ import { useAuth } from '@/context/AuthContext';
 import { Icon } from '@/components/ui/Icon';
 import { apiClient } from '@/services/apiClient';
 
+export interface HoOwnerSummary {
+  id: string;
+  name: string;
+  full_name?: string;
+  email: string;
+  phone?: string | null;
+  role?: string;
+  role_title?: string | null;
+  is_active?: boolean;
+  is_primary?: boolean;
+}
+
 interface HoOrganization {
   id: string;
   vahd_name: string;
@@ -15,6 +27,7 @@ interface HoOrganization {
   owner_email: string | null;
   owner_phone: string | null;
   is_owner_active: boolean;
+  owners?: HoOwnerSummary[];
   employee_count: number;
   student_count: number;
   today_punches: number;
@@ -83,10 +96,13 @@ export const HoDashboard: React.FC = () => {
 
   // Checkbox Selection State
   const [selectedOrgIds, setSelectedOrgIds] = useState<string[]>([]);
+  const [selectedOwnerIds, setSelectedOwnerIds] = useState<string[]>([]);
+  const [collapsedHierarchyOrgIds, setCollapsedHierarchyOrgIds] = useState<string[]>([]);
 
   // Edit Credentials Modal State
   const [showEditCredsModal, setShowEditCredsModal] = useState(false);
   const [editCredsOrg, setEditCredsOrg] = useState<HoOrganization | null>(null);
+  const [editSelectedOwnerId, setEditSelectedOwnerId] = useState<string>('');
   const [editOwnerName, setEditOwnerName] = useState('');
   const [editOwnerEmail, setEditOwnerEmail] = useState('');
   const [editOwnerPhone, setEditOwnerPhone] = useState('');
@@ -99,13 +115,20 @@ export const HoDashboard: React.FC = () => {
   const [editSubmitting, setEditSubmitting] = useState(false);
   const [editError, setEditError] = useState('');
 
-  // Delete Confirmation Modal State
+  // Delete Confirmation Modal State (Organizations)
   const [deleteConfirmModal, setDeleteConfirmModal] = useState<{
     open: boolean;
     orgIds: string[];
     orgNames: string[];
   }>({ open: false, orgIds: [], orgNames: [] });
   const [deleting, setDeleting] = useState(false);
+
+  // Delete Confirmation Modal State (Owners)
+  const [deleteOwnerModal, setDeleteOwnerModal] = useState<{
+    open: boolean;
+    owners: Array<{ id: string; name: string; email: string; orgName: string; isPrimary: boolean }>;
+  }>({ open: false, owners: [] });
+  const [deletingOwner, setDeletingOwner] = useState(false);
 
   // Tab State: Dashboard vs Branch Attendance Reports
   const [hoTab, setHoTab] = useState<'overview' | 'attendance_reports'>('overview');
@@ -265,6 +288,20 @@ export const HoDashboard: React.FC = () => {
     );
   };
 
+  // Toggle selection for a single owner
+  const handleToggleSelectOwner = (ownerId: string) => {
+    setSelectedOwnerIds((prev) =>
+      prev.includes(ownerId) ? prev.filter((item) => item !== ownerId) : [...prev, ownerId]
+    );
+  };
+
+  // Toggle collapse/expand of hierarchy tree per organization
+  const toggleOrgHierarchy = (orgId: string) => {
+    setCollapsedHierarchyOrgIds((prev) =>
+      prev.includes(orgId) ? prev.filter((id) => id !== orgId) : [...prev, orgId]
+    );
+  };
+
   // Open Edit Credentials Modal
   const handleOpenEditCredentials = (orgOrId: HoOrganization | string) => {
     let org: HoOrganization | undefined;
@@ -276,9 +313,12 @@ export const HoDashboard: React.FC = () => {
     if (!org) return;
 
     setEditCredsOrg(org);
-    setEditOwnerName(org.owner_name || '');
-    setEditOwnerEmail(org.owner_email || '');
-    setEditOwnerPhone(org.owner_phone || '');
+    const primaryOrFirst = org.owners?.find((o) => o.is_primary) || org.owners?.[0];
+    const targetOwnerId = primaryOrFirst?.id || org.owner_id || '';
+    setEditSelectedOwnerId(targetOwnerId);
+    setEditOwnerName(primaryOrFirst?.name || primaryOrFirst?.full_name || org.owner_name || '');
+    setEditOwnerEmail(primaryOrFirst?.email || org.owner_email || '');
+    setEditOwnerPhone(primaryOrFirst?.phone || org.owner_phone || '');
     setEditOwnerPassword('');
     setEditShowPassword(false);
     setEditOrgName(org.vahd_name || '');
@@ -307,6 +347,7 @@ export const HoDashboard: React.FC = () => {
     try {
       setEditSubmitting(true);
       const payload: any = {
+        owner_id: editSelectedOwnerId || undefined,
         owner_name: editOwnerName.trim(),
         owner_email: editOwnerEmail.trim().toLowerCase(),
         phone: editOwnerPhone.trim(),
@@ -334,7 +375,7 @@ export const HoDashboard: React.FC = () => {
     }
   };
 
-  // Open Delete Confirmation Modal
+  // Open Delete Confirmation Modal for Organizations
   const handleOpenDeleteModal = (orgIds: string[]) => {
     if (!orgIds.length) return;
     const names = (data?.organizations || [])
@@ -347,7 +388,7 @@ export const HoDashboard: React.FC = () => {
     });
   };
 
-  // Confirm and Execute Deletion
+  // Confirm and Execute Organization Deletion
   const handleConfirmDelete = async () => {
     if (!deleteConfirmModal.orgIds.length) return;
     try {
@@ -367,6 +408,82 @@ export const HoDashboard: React.FC = () => {
     } finally {
       setDeleting(false);
     }
+  };
+
+  // Open Delete Confirmation Modal for Selected Owners (from checkboxes)
+  const handleOpenDeleteOwnersModal = () => {
+    if (!selectedOwnerIds.length || !data?.organizations) return;
+    const targetOwners: Array<{ id: string; name: string; email: string; orgName: string; isPrimary: boolean }> = [];
+    data.organizations.forEach((org) => {
+      org.owners?.forEach((o) => {
+        if (selectedOwnerIds.includes(o.id)) {
+          targetOwners.push({
+            id: o.id,
+            name: o.full_name || o.name || 'Owner',
+            email: o.email || '',
+            orgName: org.vahd_name || org.branch_name,
+            isPrimary: Boolean(o.is_primary),
+          });
+        }
+      });
+    });
+    if (targetOwners.length) {
+      setDeleteOwnerModal({ open: true, owners: targetOwners });
+    }
+  };
+
+  // Open Delete Confirmation Modal for a Single Specific Owner
+  const handleOpenDeleteSingleOwner = (org: HoOrganization, owner: HoOwnerSummary) => {
+    setDeleteOwnerModal({
+      open: true,
+      owners: [{
+        id: owner.id,
+        name: owner.full_name || owner.name || 'Owner',
+        email: owner.email || '',
+        orgName: org.vahd_name || org.branch_name,
+        isPrimary: Boolean(owner.is_primary),
+      }]
+    });
+  };
+
+  // Confirm and Execute Owner Deletion
+  const handleConfirmDeleteOwner = async () => {
+    if (!deleteOwnerModal.owners.length) return;
+    try {
+      setDeletingOwner(true);
+      if (deleteOwnerModal.owners.length === 1) {
+        await apiClient.delete(`/ho/owners/${deleteOwnerModal.owners[0].id}`);
+      } else {
+        await apiClient.post('/ho/owners/bulk-delete', {
+          owner_ids: deleteOwnerModal.owners.map((o) => o.id),
+        });
+      }
+      const removedIds = deleteOwnerModal.owners.map((o) => o.id);
+      setSelectedOwnerIds((prev) => prev.filter((id) => !removedIds.includes(id)));
+      setDeleteOwnerModal({ open: false, owners: [] });
+      await fetchDashboardData();
+    } catch (err: any) {
+      alert(err?.response?.data?.detail || err?.message || 'Failed to delete owner');
+    } finally {
+      setDeletingOwner(false);
+    }
+  };
+
+  // Quick edit credentials for a specific owner from tree
+  const handleOpenEditOwnerSpecific = (org: HoOrganization, owner: HoOwnerSummary) => {
+    setEditCredsOrg(org);
+    setEditSelectedOwnerId(owner.id);
+    setEditOwnerName(owner.full_name || owner.name || '');
+    setEditOwnerEmail(owner.email || '');
+    setEditOwnerPhone(owner.phone || '');
+    setEditOwnerPassword('');
+    setEditShowPassword(false);
+    setEditOrgName(org.vahd_name || '');
+    setEditBranchName(org.branch_name || '');
+    setEditCity(org.city || '');
+    setEditAddress(org.address || '');
+    setEditError('');
+    setShowEditCredsModal(true);
   };
 
   const selectedOrgName = useMemo(() => {
@@ -539,46 +656,81 @@ export const HoDashboard: React.FC = () => {
                   Live mapping of Head Office organizations, assigned owners, and current personnel.
                 </p>
               </div>
-              {selectedOrgIds.length > 0 ? (
+              {(selectedOrgIds.length > 0 || selectedOwnerIds.length > 0) ? (
                 <div className="flex flex-wrap items-center gap-2 bg-purple-50 border border-purple-200/80 rounded-2xl p-1.5 px-3 animate-in fade-in">
-                  <span className="text-xs font-black text-purple-900 flex items-center gap-1.5">
-                    <span className="w-5 h-5 rounded-full bg-purple-600 text-white flex items-center justify-center text-[10px] font-black">
-                      {selectedOrgIds.length}
-                    </span>
-                    <span>Selected</span>
-                  </span>
+                  {/* Selected Owners Action Bar */}
+                  {selectedOwnerIds.length > 0 && (
+                    <div className="flex items-center gap-2 pr-2 border-r border-purple-200/80">
+                      <span className="text-xs font-black text-rose-900 flex items-center gap-1.5 bg-rose-100/90 border border-rose-200 px-2.5 py-1 rounded-xl">
+                        <span className="w-4 h-4 rounded-full bg-rose-600 text-white flex items-center justify-center text-[10px] font-black">
+                          {selectedOwnerIds.length}
+                        </span>
+                        <span>{selectedOwnerIds.length === 1 ? 'Owner' : 'Owners'} Selected</span>
+                      </span>
 
-                  {selectedOrgIds.length === 1 && (
-                    <button
-                      type="button"
-                      onClick={() => handleOpenEditCredentials(selectedOrgIds[0])}
-                      className="px-3 py-1.5 rounded-xl bg-white hover:bg-purple-100 text-purple-700 border border-purple-200 text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
-                    >
-                      <Icon name="key" size={13} />
-                      <span>Edit Credentials</span>
-                    </button>
+                      <button
+                        type="button"
+                        onClick={handleOpenDeleteOwnersModal}
+                        className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+                        title="Delete selected owner accounts without deleting the organisation"
+                      >
+                        <Icon name="trash-2" size={13} />
+                        <span>Delete {selectedOwnerIds.length === 1 ? 'Owner' : `(${selectedOwnerIds.length}) Owners`}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setSelectedOwnerIds([])}
+                        className="text-xs text-slate-500 hover:text-slate-800 font-bold px-2 py-1 cursor-pointer"
+                      >
+                        Clear Owners
+                      </button>
+                    </div>
                   )}
 
-                  <button
-                    type="button"
-                    onClick={() => handleOpenDeleteModal(selectedOrgIds)}
-                    className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
-                  >
-                    <Icon name="trash-2" size={13} />
-                    <span>Delete {selectedOrgIds.length === 1 ? 'Organisation' : `(${selectedOrgIds.length}) Organisations`}</span>
-                  </button>
+                  {/* Selected Organisations Action Bar */}
+                  {selectedOrgIds.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-black text-purple-900 flex items-center gap-1.5">
+                        <span className="w-5 h-5 rounded-full bg-purple-600 text-white flex items-center justify-center text-[10px] font-black">
+                          {selectedOrgIds.length}
+                        </span>
+                        <span>{selectedOrgIds.length === 1 ? 'Org' : 'Orgs'} Selected</span>
+                      </span>
 
-                  <button
-                    type="button"
-                    onClick={() => setSelectedOrgIds([])}
-                    className="text-xs text-slate-500 hover:text-slate-800 font-bold px-2 py-1 cursor-pointer"
-                  >
-                    Clear
-                  </button>
+                      {selectedOrgIds.length === 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditCredentials(selectedOrgIds[0])}
+                          className="px-3 py-1.5 rounded-xl bg-white hover:bg-purple-100 text-purple-700 border border-purple-200 text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+                        >
+                          <Icon name="key" size={13} />
+                          <span>Edit Credentials</span>
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => handleOpenDeleteModal(selectedOrgIds)}
+                        className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+                      >
+                        <Icon name="trash-2" size={13} />
+                        <span>Delete {selectedOrgIds.length === 1 ? 'Organisation' : `(${selectedOrgIds.length}) Organisations`}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setSelectedOrgIds([])}
+                        className="text-xs text-slate-500 hover:text-slate-800 font-bold px-2 py-1 cursor-pointer"
+                      >
+                        Clear Orgs
+                      </button>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="text-xs text-slate-400 font-medium hidden sm:block">
-                  Select checkboxes to edit credentials or delete
+                  Select checkboxes on organisations or individual owners to edit or delete
                 </div>
               )}
             </div>
@@ -647,9 +799,174 @@ export const HoDashboard: React.FC = () => {
                             </div>
                           </td>
 
-                          {/* Onboarded Owner */}
-                          <td className="py-4 px-4">
-                            {org.owner_name ? (
+                          {/* Onboarded Owner Column: Hierarchy Tree & Dropdown */}
+                          <td className="py-4 px-4 align-top">
+                            {org.owners && org.owners.length > 0 ? (
+                              (() => {
+                                const isCollapsed = collapsedHierarchyOrgIds.includes(org.id);
+                                return (
+                                  <div className="space-y-2 max-w-sm">
+                                    {/* Hierarchy Header & Dropdown Toggle */}
+                                    <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-slate-100">
+                                      <div className="flex items-center gap-1.5">
+                                        <span className="w-5 h-5 rounded-md bg-purple-100 text-purple-700 flex items-center justify-center text-[10px] font-black">
+                                          <Icon name="git-branch" size={11} />
+                                        </span>
+                                        <span className="text-[11px] font-extrabold text-slate-800 tracking-tight">
+                                          User Hierarchy
+                                        </span>
+                                        <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-slate-100 text-slate-600">
+                                          {org.owners.length} {org.owners.length > 1 ? 'Owners' : 'Owner'}
+                                        </span>
+                                      </div>
+
+                                      {org.owners.length > 1 && (
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            toggleOrgHierarchy(org.id);
+                                          }}
+                                          className="text-[10px] font-bold text-purple-600 hover:text-purple-800 flex items-center gap-0.5 px-1.5 py-0.5 rounded-md hover:bg-purple-50 transition-colors cursor-pointer"
+                                        >
+                                          <span>{isCollapsed ? 'Expand' : 'Collapse'}</span>
+                                          <Icon name={isCollapsed ? 'chevron-down' : 'chevron-up'} size={11} />
+                                        </button>
+                                      )}
+                                    </div>
+
+                                    {/* Tree Nodes */}
+                                    {!isCollapsed ? (
+                                      <div className="relative pl-3 space-y-2 border-l-2 border-purple-200/90 ml-2 mt-1">
+                                        {org.owners.map((owner, idx) => {
+                                          const isOwnerChecked = selectedOwnerIds.includes(owner.id);
+                                          const isPrimary = Boolean(owner.is_primary);
+
+                                          return (
+                                            <div key={owner.id || idx} className="relative group">
+                                              {/* Horizontal branch connector line */}
+                                              <div className="absolute -left-3 top-3.5 w-3 h-0.5 bg-purple-200/90" />
+
+                                              <div
+                                                className={`p-2.5 rounded-xl border transition-all ${
+                                                  isOwnerChecked
+                                                    ? 'bg-purple-50/95 border-purple-300 shadow-xs ring-1 ring-purple-400'
+                                                    : 'bg-slate-50/80 hover:bg-slate-50 border-slate-200/80 hover:border-slate-300'
+                                                }`}
+                                              >
+                                                <div className="flex items-start justify-between gap-2">
+                                                  <div className="flex items-start gap-2 min-w-0">
+                                                    {/* Particular Owner Checkbox */}
+                                                    <input
+                                                      type="checkbox"
+                                                      checked={isOwnerChecked}
+                                                      onChange={() => handleToggleSelectOwner(owner.id)}
+                                                      onClick={(e) => e.stopPropagation()}
+                                                      className="w-4 h-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500 cursor-pointer mt-0.5 shrink-0"
+                                                      title={`Select ${owner.full_name || owner.name} to delete or manage`}
+                                                    />
+
+                                                    {/* Avatar Icon */}
+                                                    <div
+                                                      className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
+                                                        isPrimary
+                                                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                                          : 'bg-purple-100 text-purple-800 border border-purple-200'
+                                                      }`}
+                                                    >
+                                                      {isPrimary ? '👑' : <Icon name="user" size={13} />}
+                                                    </div>
+
+                                                    {/* Owner Details */}
+                                                    <div className="min-w-0 space-y-0.5">
+                                                      <div className="flex items-center gap-1.5 flex-wrap">
+                                                        <span className="font-extrabold text-slate-900 text-xs truncate">
+                                                          {owner.full_name || owner.name}
+                                                        </span>
+                                                        {owner.role_title && (
+                                                          <span className="text-[9px] font-semibold px-1.5 py-0.2 rounded bg-purple-50 text-purple-700 border border-purple-100">
+                                                            {owner.role_title}
+                                                          </span>
+                                                        )}
+                                                        <span
+                                                          className={`text-[9px] font-black uppercase px-1.5 py-0.2 rounded ${
+                                                            isPrimary
+                                                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                                              : 'bg-slate-100 text-slate-600 border border-slate-200'
+                                                          }`}
+                                                        >
+                                                          {isPrimary ? 'Primary Owner' : 'Co-Owner'}
+                                                        </span>
+                                                      </div>
+
+                                                      <p className="text-[11px] text-slate-500 font-medium truncate">
+                                                        {owner.email}
+                                                      </p>
+
+                                                      {owner.phone && (
+                                                        <p className="text-[10px] text-slate-400 font-medium flex items-center gap-1">
+                                                          <span>📞</span>
+                                                          <span>{owner.phone}</span>
+                                                        </p>
+                                                      )}
+                                                    </div>
+                                                  </div>
+
+                                                  {/* Quick Individual Owner Action Buttons */}
+                                                  <div className="flex items-center gap-1 shrink-0 opacity-70 group-hover:opacity-100 transition-opacity">
+                                                    <button
+                                                      type="button"
+                                                      onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleOpenEditOwnerSpecific(org, owner);
+                                                      }}
+                                                      className="p-1 rounded-md bg-white hover:bg-purple-50 text-slate-500 hover:text-purple-700 border border-slate-200 hover:border-purple-200 transition-colors shadow-2xs cursor-pointer"
+                                                      title={`Edit credentials for ${owner.full_name || owner.name}`}
+                                                    >
+                                                      <Icon name="key" size={11} />
+                                                    </button>
+                                                    <button
+                                                      type="button"
+                                                      onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleOpenDeleteSingleOwner(org, owner);
+                                                      }}
+                                                      className="p-1 rounded-md bg-white hover:bg-rose-50 text-slate-400 hover:text-rose-600 border border-slate-200 hover:border-rose-200 transition-colors shadow-2xs cursor-pointer"
+                                                      title={`Delete owner ${owner.full_name || owner.name}`}
+                                                    >
+                                                      <Icon name="trash-2" size={11} />
+                                                    </button>
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    ) : (
+                                      /* Collapsed Summary Pill */
+                                      <div
+                                        onClick={() => toggleOrgHierarchy(org.id)}
+                                        className="p-2.5 rounded-xl bg-slate-50 hover:bg-purple-50/60 border border-slate-200/80 cursor-pointer flex items-center justify-between text-xs transition-colors"
+                                      >
+                                        <div className="flex items-center gap-2">
+                                          <span className="font-bold text-slate-800">
+                                            {org.owner_name || (org.owners[0]?.full_name || org.owners[0]?.name)}
+                                          </span>
+                                          <span className="text-[10px] font-bold text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded-md border border-purple-100">
+                                            +{org.owners.length - 1} co-owners
+                                          </span>
+                                        </div>
+                                        <span className="text-[10px] font-bold text-slate-400 flex items-center gap-0.5">
+                                          <span>View Tree</span>
+                                          <Icon name="chevron-down" size={11} />
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })()
+                            ) : org.owner_name ? (
                               <div>
                                 <p className="font-bold text-slate-900">{org.owner_name}</p>
                                 <p className="text-[11px] text-slate-500">{org.owner_email}</p>
@@ -1465,10 +1782,44 @@ export const HoDashboard: React.FC = () => {
 
               {/* Owner Credentials */}
               <div className="space-y-3 pt-2">
-                <p className="font-black text-slate-900 text-xs flex items-center gap-1.5">
-                  <Icon name="key" size={13} className="text-purple-600" />
-                  <span>Owner Login &amp; Contact Credentials</span>
-                </p>
+                <div className="flex items-center justify-between">
+                  <p className="font-black text-slate-900 text-xs flex items-center gap-1.5">
+                    <Icon name="key" size={13} className="text-purple-600" />
+                    <span>Owner Login &amp; Contact Credentials</span>
+                  </p>
+                  {editCredsOrg.owners && editCredsOrg.owners.length > 1 && (
+                    <span className="text-[10px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-100">
+                      {editCredsOrg.owners.length} Owners in Organisation
+                    </span>
+                  )}
+                </div>
+
+                {editCredsOrg.owners && editCredsOrg.owners.length > 1 && (
+                  <div>
+                    <label className="font-bold text-slate-700">Select Owner to Edit *</label>
+                    <select
+                      value={editSelectedOwnerId}
+                      onChange={(e) => {
+                        const targetId = e.target.value;
+                        setEditSelectedOwnerId(targetId);
+                        const chosen = editCredsOrg?.owners?.find((o) => o.id === targetId);
+                        if (chosen) {
+                          setEditOwnerName(chosen.full_name || chosen.name || '');
+                          setEditOwnerEmail(chosen.email || '');
+                          setEditOwnerPhone(chosen.phone || '');
+                        }
+                      }}
+                      className="w-full p-2.5 rounded-xl bg-purple-50/60 border border-purple-200 font-semibold text-slate-900 mt-1 cursor-pointer focus:ring-2 focus:ring-purple-500"
+                    >
+                      {editCredsOrg.owners.map((o) => (
+                        <option key={o.id} value={o.id}>
+                          {o.full_name || o.name} ({o.email}) {o.is_primary ? '— Primary Owner' : '— Co-Owner'}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
                 <div>
                   <label className="font-bold text-slate-700">Owner Full Name *</label>
                   <input
@@ -1599,6 +1950,75 @@ export const HoDashboard: React.FC = () => {
               >
                 {deleting && <Icon name="refresh-cw" size={14} className="animate-spin" />}
                 <span>{deleting ? 'Deleting...' : 'Confirm Delete'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── DELETE OWNER CONFIRMATION MODAL ─────────────────────────────────── */}
+      {deleteOwnerModal.open && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-slate-200 space-y-5 my-8">
+            <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
+              <Icon name="user-x" size={24} />
+            </div>
+
+            <div className="text-center space-y-2">
+              <h3 className="text-lg font-black text-slate-900">
+                Delete {deleteOwnerModal.owners.length === 1 ? 'Owner Account' : `${deleteOwnerModal.owners.length} Owner Accounts`}?
+              </h3>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                This will delete the selected owner account(s) and remove their credentials. The organization, campuses, employees, and other owners will remain completely safe.
+              </p>
+            </div>
+
+            {deleteOwnerModal.owners.length > 0 && (
+              <div className="bg-slate-50 rounded-2xl p-3.5 border border-slate-200/80 max-h-48 overflow-y-auto space-y-2">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  Target Owner(s) to Delete:
+                </p>
+                {deleteOwnerModal.owners.map((owner, i) => (
+                  <div key={i} className="flex items-center justify-between gap-2 p-2 rounded-xl bg-white border border-slate-200/80">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-extrabold text-slate-900 text-xs truncate">
+                          {owner.name}
+                        </span>
+                        <span className={`text-[9px] font-bold uppercase px-1.5 py-0.2 rounded ${
+                          owner.isPrimary ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'
+                        }`}>
+                          {owner.isPrimary ? 'Primary' : 'Co-Owner'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 truncate">{owner.email}</p>
+                      <p className="text-[10px] text-purple-600 font-semibold truncate">🏢 {owner.orgName}</p>
+                    </div>
+                    <span className="text-rose-500 shrink-0">
+                      <Icon name="trash-2" size={14} />
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setDeleteOwnerModal({ open: false, owners: [] })}
+                disabled={deletingOwner}
+                className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteOwner}
+                disabled={deletingOwner}
+                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-rose-600/20 transition-all cursor-pointer"
+              >
+                {deletingOwner && <Icon name="refresh-cw" size={14} className="animate-spin" />}
+                <span>{deletingOwner ? 'Deleting...' : 'Confirm Delete Owner'}</span>
               </button>
             </div>
           </div>

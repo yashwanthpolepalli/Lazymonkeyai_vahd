@@ -25,8 +25,10 @@ export function EmployeeDashboard() {
       setKpis(k);
       setMembers((m || []).slice(0, 6));
 
-      if (Array.isArray(recs) && recs.length > 0) {
-        const formatted = recs.map((r: any) => ({
+      const anyRecs = recs as any;
+      const recsList = Array.isArray(anyRecs) ? anyRecs : (anyRecs?.recommendations || (anyRecs?.insight ? [anyRecs] : []));
+      if (Array.isArray(recsList) && recsList.length > 0) {
+        const formatted = recsList.map((r: any) => ({
           text: r.insight || r.suggested_action || r.title || 'Client progression optimal',
           severity: r.priority || 'medium',
         }));

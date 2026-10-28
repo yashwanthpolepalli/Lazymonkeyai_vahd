@@ -510,6 +510,14 @@ class CustomerService:
             or ""
         ).strip()
 
+        gender = (
+            data.get("gender")
+            or (meta_data_payload.get("gender") if isinstance(meta_data_payload, dict) else None)
+            or None
+        )
+        if gender:
+            gender = str(gender).strip()
+
         qualification = (
             data.get("qualification")
             or (meta_data_payload.get("qualification") if isinstance(meta_data_payload, dict) else None)

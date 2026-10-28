@@ -299,13 +299,22 @@ export function EmployeeEnrollmentModal({
         setMasterAreaOfServiceList(serviceOptions);
       }
 
-      // 5. Departments (HRMS API + Settings masterStore)
+      // 5. Departments (HRMS API + Settings masterStore) - Filtered specifically for Employee / Staff View
+      const isEmployeeDept = (d: any) => {
+        if (typeof d === 'object' && d) {
+          const extra = (d.extra_info || '').toLowerCase().trim();
+          if (extra === 'student' || extra === 'students' || extra === 'academic') return false;
+          if (extra === 'employee' || extra === 'staff' || extra === 'both' || extra === 'all') return true;
+        }
+        return true;
+      };
+
       hrmsApi.getDepartments().then((data) => {
-        const apiDepts = Array.isArray(data) ? data : [];
+        const apiDepts = Array.isArray(data) ? data.filter((d: any) => isEmployeeDept(d)) : [];
         const existingNames = new Set(apiDepts.map((d: any) => d.name.toLowerCase()));
         const merged = [...apiDepts];
         if (Array.isArray(parsed.departments)) {
-          parsed.departments.filter((d: any) => d.is_active !== false).forEach((md: any) => {
+          parsed.departments.filter((d: any) => d.is_active !== false && isEmployeeDept(d)).forEach((md: any) => {
             if (!existingNames.has(md.name.toLowerCase())) {
               existingNames.add(md.name.toLowerCase());
               merged.push({
@@ -323,7 +332,7 @@ export function EmployeeEnrollmentModal({
         setDepartmentsList(merged);
       }).catch(() => {
         if (Array.isArray(parsed.departments)) {
-          setDepartmentsList(parsed.departments.filter((d: any) => d.is_active !== false).map((md: any) => ({
+          setDepartmentsList(parsed.departments.filter((d: any) => d.is_active !== false && isEmployeeDept(d)).map((md: any) => ({
             id: md.id || `dept_${md.name}`,
             name: md.name,
             code: md.code || '',

@@ -16,7 +16,7 @@ from src.models.payroll import PayrollInvoice
 from src.models.customer import Customer
 from src.models.user import User
 from src.models.biometric import BiometricLog
-from src.models.settings import Branch as vahdBranch, Setting as vahdSetting
+from src.models.settings import Branch as vahdBranch, Setting as vahdSetting, MasterData
 
 IST = timezone(timedelta(hours=5, minutes=30))
 
@@ -407,7 +407,7 @@ class HrmsService:
     def get_departments(db: Session) -> List[Dict[str, Any]]:
         depts = db.query(Department).order_by(Department.name.asc()).all()
         employees = db.query(Employee).all()
-        employees = db.query(employeeProfile).all()
+        employee_profiles = db.query(employeeProfile).all()
         
         result = []
         for d in depts:
@@ -416,31 +416,31 @@ class HrmsService:
             
             # Map from Employee records
             for e in employees:
-                e_dept = (e.department or "").strip().lower()
+                e_dept = (getattr(e, "department", None) or "").strip().lower()
                 if e_dept and e_dept == dept_name_lower:
                     mapped_emp.append({
                         "id": e.id,
-                        "name": f"{e.first_name or ''} {e.last_name or ''}".strip() or (e.email or "Employee"),
-                        "email": e.email or "",
-                        "code": e.code or "",
-                        "designation": e.designation or "",
+                        "name": f"{getattr(e, 'first_name', '') or ''} {getattr(e, 'last_name', '') or ''}".strip() or (getattr(e, "email", "") or "Employee"),
+                        "email": getattr(e, "email", "") or "",
+                        "code": getattr(e, "code", "") or "",
+                        "designation": getattr(e, "designation", "") or "",
                         "department": d.name,
-                        "phone": e.phone or "",
-                        "status": e.status or "Active",
-                        "avatar": e.avatar or "",
-                        "joined_date": e.joined_date.isoformat() if e.joined_date else None,
+                        "phone": getattr(e, "phone", "") or "",
+                        "status": getattr(e, "status", "Active") or "Active",
+                        "avatar": getattr(e, "avatar", "") or "",
+                        "joined_date": e.joined_date.isoformat() if getattr(e, "joined_date", None) else None,
                     })
             
             # Map from employeeProfile records
-            for t in employees:
+            for t in employee_profiles:
                 t_dept = (getattr(t, "department", None) or getattr(t, "specialization", None) or "").strip().lower()
                 if t_dept and t_dept == dept_name_lower:
                     # Check if already added
-                    if not any(emp["email"].lower() == (t.email or "").lower() for emp in mapped_emp):
+                    if not any(emp["email"].lower() == (getattr(t, "email", "") or "").lower() for emp in mapped_emp):
                         mapped_emp.append({
                             "id": t.id,
-                            "name": getattr(t, "full_name", None) or getattr(t, "name", None) or (t.email or "Staff"),
-                            "email": t.email or "",
+                            "name": getattr(t, "full_name", None) or getattr(t, "name", None) or (getattr(t, "email", "") or "Staff"),
+                            "email": getattr(t, "email", "") or "",
                             "code": f"EMP-{t.id[:4].upper()}" if t.id else "",
                             "designation": getattr(t, "job_designation", None) or getattr(t, "specialization", None) or getattr(t, "role", "") or "",
                             "department": d.name,
@@ -481,6 +481,7 @@ class HrmsService:
         clean_id = (dept_id or "").strip()
         while clean_id.startswith("cat_dept_"):
             clean_id = clean_id[len("cat_dept_"):]
+
         dept = db.query(Department).filter(
             or_(
                 Department.id == clean_id,
@@ -489,20 +490,48 @@ class HrmsService:
                 Department.name.ilike(clean_id)
             )
         ).first()
-        if not dept:
-            dept = Department(
-                id=clean_id if clean_id.startswith("dept_") else f"dept_{uuid.uuid4().hex[:8]}",
-                name=str(payload.get("name") or "").strip(),
-                code=str(payload.get("code") or "").strip(),
-                description=str(payload.get("description") or "").strip(),
-                head_name=str(payload.get("head_name") or "").strip(),
-                is_active=bool(payload.get("is_active", True))
-            )
-            db.add(dept)
-            db.commit()
-            return {"message": "Department created successfully", "id": dept.id}
 
-        if "name" in payload:
+        # If not found directly in Department, check MasterData for matching department
+        m_item = None
+        if not dept:
+            m_item = db.query(MasterData).filter(
+                MasterData.category == "departments",
+                or_(MasterData.id == dept_id, MasterData.id == clean_id)
+            ).first()
+            if m_item:
+                dept = db.query(Department).filter(
+                    or_(
+                        Department.name.ilike(m_item.name),
+                        Department.id == m_item.id
+                    )
+                ).first()
+
+        if not dept:
+            dept_name = str(payload.get("name") or (m_item.name if m_item else "")).strip()
+            if dept_name:
+                dept = db.query(Department).filter(Department.name.ilike(dept_name)).first()
+
+            if not dept:
+                # If name is still empty, do not attempt an invalid empty department insert
+                if not dept_name:
+                    if m_item and "is_active" in payload:
+                        m_item.is_active = bool(payload["is_active"])
+                        db.commit()
+                    return {"message": "Department updated in MasterData", "id": dept_id}
+
+                dept = Department(
+                    id=clean_id if clean_id.startswith("dept_") else f"dept_{uuid.uuid4().hex[:8]}",
+                    name=dept_name,
+                    code=str(payload.get("code") or (m_item.code if m_item else "")).strip() or dept_name[:4].upper(),
+                    description=str(payload.get("description") or (m_item.description if m_item else "")).strip(),
+                    head_name=str(payload.get("head_name") or "").strip(),
+                    is_active=bool(payload.get("is_active", True))
+                )
+                db.add(dept)
+                db.commit()
+                return {"message": "Department created successfully", "id": dept.id}
+
+        if "name" in payload and str(payload["name"]).strip():
             old_name = dept.name
             dept.name = str(payload["name"]).strip()
             # Update associated employees
@@ -515,6 +544,10 @@ class HrmsService:
             dept.head_name = str(payload["head_name"]).strip()
         if "is_active" in payload:
             dept.is_active = bool(payload["is_active"])
+
+        if m_item and "is_active" in payload:
+            m_item.is_active = bool(payload["is_active"])
+
         db.commit()
         return {"message": "Department updated successfully", "id": dept.id}
 

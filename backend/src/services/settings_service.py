@@ -279,6 +279,36 @@ class SettingsService:
                 "created_at": it.created_at.isoformat() if it.created_at else None,
             })
 
+        # Helper to classify departments
+        def infer_dept_type(dept_name: str, cur_extra: str = "") -> str:
+            if cur_extra and cur_extra.strip():
+                return cur_extra.strip().lower()
+            n = (dept_name or "").lower()
+            student_keywords = [
+                "computer", "science", "mechanical", "civil", "electrical", "electronics",
+                "engineering", "tech", "data", "ai", "bba", "mca", "mba", "commerce",
+                "humanities", "polytechnic", "physics", "chemistry", "mathematics",
+                "biology", "sports", "student", "academic", "stream", "curriculum"
+            ]
+            employee_keywords = [
+                "hr", "human resource", "payroll", "admin", "management", "finance",
+                "account", "operations", "facility", "facilities", "security", "transport",
+                "housekeeping", "logistics", "maintenance", "reception", "desk",
+                "faculty", "teaching", "staff", "office", "executive", "it support"
+            ]
+            is_stud = any(k in n for k in student_keywords)
+            is_emp = any(k in n for k in employee_keywords)
+            if is_stud and not is_emp:
+                return "student"
+            if is_emp and not is_stud:
+                return "employee"
+            return "both"
+
+        # Update department items with classification
+        for it in item_dicts:
+            if it.get("category") == "departments":
+                it["extra_info"] = infer_dept_type(it.get("name", ""), it.get("extra_info", ""))
+
         # Also merge departments from hrms_departments if category is 'departments' or all
         if not category or category == "departments":
             existing_dept_names = {d["name"].lower() for d in item_dicts if d["category"] == "departments"}
@@ -295,7 +325,7 @@ class SettingsService:
                         "is_active": d.is_active is not False,
                         "parent_id": "",
                         "parent_name": "",
-                        "extra_info": "",
+                        "extra_info": infer_dept_type(d.name, ""),
                         "level": "",
                         "display_order": 0,
                         "created_at": d.created_at.isoformat() if d.created_at else None,
@@ -351,7 +381,7 @@ class SettingsService:
         is_active = bool(data.get("is_active", True))
         parent_id = str(data.get("parent_id") or "").strip() or None
         parent_name = str(data.get("parent_name") or "").strip() or None
-        extra_info = str(data.get("extra_info") or "").strip() or None
+        extra_info = str(data.get("extra_info") or data.get("applicable_to") or data.get("type") or "").strip() or None
         level = str(data.get("level") or "").strip() or None
         display_order = int(data.get("display_order") or 0)
 
@@ -486,8 +516,8 @@ class SettingsService:
                 item.parent_id = parent_id
             if "parent_name" in data:
                 item.parent_name = parent_name
-            if "extra_info" in data:
-                item.extra_info = extra_info
+            if "extra_info" in data or "applicable_to" in data or "type" in data:
+                item.extra_info = str(data.get("extra_info") or data.get("applicable_to") or data.get("type") or "").strip() or None
             if "level" in data:
                 item.level = level
 

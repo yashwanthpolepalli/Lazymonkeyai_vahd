@@ -403,20 +403,83 @@ def verify_face(
 
 @router.get("/ai/recommendation")
 def get_ai_coach_recommendation(
-    cust: Customer = Depends(get_current_customer),
+    authorization: Optional[str] = Header(None),
     db: Session = Depends(get_db),
 ):
-    """Builds AI recommendation context from customer attendance records."""
-    visits = (
-        db.query(func.count(BiometricLog.id))
-        .filter(BiometricLog.customer_id == cust.id)
-        .scalar()
-        or 0
-    )
+    """
+    Builds AI recommendation context from customer, employee, or user records.
+    Safely resolves identity from JWT claims without throwing a 404 for non-customers.
+    """
+    from src.models.hrms import Employee
+    from sqlalchemy import or_
+
+    customer = None
+    user = None
+    visits = 0
+
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization.split(" ")[1]
+        payload = verify_token(token)
+        if payload:
+            user_id = payload.get("sub")
+            cust_id = payload.get("customer_id")
+            email = (payload.get("email") or "").strip().lower()
+
+            if cust_id:
+                customer = db.query(Customer).filter(Customer.id == cust_id).first()
+            if not customer and user_id:
+                customer = db.query(Customer).filter(Customer.user_id == user_id).first()
+            if not customer and email:
+                customer = db.query(Customer).filter(func.lower(Customer.email) == email).first()
+
+            if user_id:
+                user = db.query(User).filter(User.id == user_id).first()
+            if not user and email:
+                user = db.query(User).filter(func.lower(User.email) == email).first()
+
+    if customer:
+        visits = (
+            db.query(func.count(BiometricLog.id))
+            .filter(BiometricLog.customer_id == customer.id)
+            .scalar()
+            or 0
+        )
+        score = 92 if visits > 5 else 75
+        title = "Membership Active"
+        insight = f"Welcome back, {customer.full_name}! You have {visits} verified check-in session{'s' if visits != 1 else ''}."
+        suggested_action = "View Attendance"
+    elif user:
+        emp = db.query(Employee).filter(
+            func.lower(Employee.email) == (user.email or "").lower()
+        ).first() if user.email else None
+        if emp:
+            title = f"Shift Active • {emp.first_name}"
+            insight = f"Staff assignment active for {emp.first_name} {emp.last_name or ''} at {emp.vahd_branch or 'Campus'}. Geofence & attendance monitoring are enabled."
+            suggested_action = "Review Shift Attendance"
+            score = 95
+        else:
+            title = f"Command Active • {user.full_name or 'Admin'}"
+            insight = f"Welcome, {user.full_name or user.role}! Campus systems, biometric gateways, and user directories are operating normally."
+            suggested_action = "Open Dashboard"
+            score = 98
+    else:
+        title = "System Operational"
+        insight = "Welcome to VAHD. All member check-in portals and learning modules are online."
+        suggested_action = "Check In"
+        score = 85
 
     return {
-        "score": 92 if visits > 5 else 75,
-        "title": "Membership Active",
-        "insight": f"Welcome to VAHD! You have {visits} verified vahd check-in sessions.",
-        "suggested_action": "View Attendance",
+        "score": score,
+        "title": title,
+        "insight": insight,
+        "suggested_action": suggested_action,
+        "visits": visits,
+        "recommendations": [
+            {
+                "title": title,
+                "insight": insight,
+                "suggested_action": suggested_action,
+                "priority": "low" if score >= 85 else "medium"
+            }
+        ]
     }

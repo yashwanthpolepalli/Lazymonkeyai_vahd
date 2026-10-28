@@ -72,9 +72,12 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
   { id: 'sex_sorted_semen', title: 'Sex Sorted Semen', icon: 'dna', bgLight: 'bg-fuchsia-100', textColor: 'text-fuchsia-700', codePrefix: 'SSS' },
 ];
 
-// Helper to get seed data for any category (returns empty by default)
-function getSeedDataForCategory(_catId: string): MasterDataItem[] {
-  return [];
+export function getDepartmentType(item: Partial<MasterDataItem> | { name?: string; extra_info?: string }): 'student' | 'employee' | 'both' {
+  const extra = (item.extra_info || '').toLowerCase().trim();
+  if (extra === 'student' || extra === 'students' || extra === 'academic') return 'student';
+  if (extra === 'employee' || extra === 'employees' || extra === 'staff') return 'employee';
+  if (extra === 'both' || extra === 'all') return 'both';
+  return 'student';
 }
 
 export interface MasterDataSettingsProps {
@@ -96,7 +99,15 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
       const stored = localStorage.getItem('vahd_master_data_v3');
       if (stored) {
         const parsed = JSON.parse(stored);
-        if (parsed && typeof parsed === 'object') return parsed;
+        if (parsed && typeof parsed === 'object') {
+          // Remove any legacy hardcoded dummy seeded records
+          Object.keys(parsed).forEach((k) => {
+            if (Array.isArray(parsed[k])) {
+              parsed[k] = parsed[k].filter((it: MasterDataItem) => !it.id?.startsWith('dept_seed_'));
+            }
+          });
+          return parsed;
+        }
       }
     } catch { }
 
@@ -219,6 +230,10 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
 
+  // Department Sub-View State (Students Departments vs Employee Departments vs All)
+  const [deptTab, setDeptTab] = useState<'students' | 'employees' | 'all'>('students');
+  const [deptTypeInModal, setDeptTypeInModal] = useState<'student' | 'employee' | 'both'>('student');
+
   // Modal State
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'add' | 'edit' | 'view'>('add');
@@ -237,20 +252,185 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
   const [formDays, setFormDays] = useState('');
   const [formActive, setFormActive] = useState(true);
 
+  // Dynamic Status Filter: 'all' | 'active' | 'inactive' across all master data pages
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Filtered rows
+  // Department count metrics for the view switcher
+  const deptCounts = useMemo(() => {
+    if (selectedCatId !== 'departments') return { students: 0, employees: 0, all: 0 };
+    const items = masterStore['departments'] || [];
+    let students = 0;
+    let employees = 0;
+    items.forEach((it) => {
+      const t = getDepartmentType(it);
+      if (t === 'student' || t === 'both') students++;
+      if (t === 'employee' || t === 'both') employees++;
+    });
+    return { students, employees, all: items.length };
+  }, [selectedCatId, masterStore]);
+
+
+
+  // Status counts for the currently selected category & subtab
+  const statusCounts = useMemo(() => {
+    let base = categoryItems;
+    if (selectedCatId === 'departments') {
+      if (deptTab === 'students') {
+        base = base.filter((item) => {
+          const t = getDepartmentType(item);
+          return t === 'student' || t === 'both';
+        });
+      } else if (deptTab === 'employees') {
+        base = base.filter((item) => {
+          const t = getDepartmentType(item);
+          return t === 'employee' || t === 'both';
+        });
+      }
+    }
+    const active = base.filter((i) => i.is_active).length;
+    const inactive = base.filter((i) => !i.is_active).length;
+    return { all: base.length, active, inactive };
+  }, [categoryItems, selectedCatId, deptTab]);
+
+  // Filtered rows (respects department view tab + dynamic active/inactive filter + search)
   const filteredItems = useMemo(() => {
+    let base = categoryItems;
+    if (selectedCatId === 'departments') {
+      if (deptTab === 'students') {
+        base = base.filter((item) => {
+          const t = getDepartmentType(item);
+          return t === 'student' || t === 'both';
+        });
+      } else if (deptTab === 'employees') {
+        base = base.filter((item) => {
+          const t = getDepartmentType(item);
+          return t === 'employee' || t === 'both';
+        });
+      }
+    }
+
+    // Dynamic Active / Inactive filter
+    if (statusFilter === 'active') {
+      base = base.filter((item) => item.is_active);
+    } else if (statusFilter === 'inactive') {
+      base = base.filter((item) => !item.is_active);
+    }
+
     const q = searchQuery.toLowerCase().trim();
-    if (!q) return categoryItems;
-    return categoryItems.filter(
+    if (!q) return base;
+    return base.filter(
       (item) =>
         item.name.toLowerCase().includes(q) ||
         item.code.toLowerCase().includes(q) ||
         (item.parent_name && item.parent_name.toLowerCase().includes(q)) ||
-        (item.extra_info && item.extra_info.toLowerCase().includes(q))
+        (item.extra_info && item.extra_info.toLowerCase().includes(q)) ||
+        (item.description && item.description.toLowerCase().includes(q))
     );
-  }, [categoryItems, searchQuery]);
+  }, [categoryItems, selectedCatId, deptTab, statusFilter, searchQuery]);
+
+  // Dynamically set status for a single item (with backend DB & domain sync)
+  const handleSetItemStatus = (item: MasterDataItem, nextActive: boolean) => {
+    if (!selectedCatId) return;
+
+    // Optimistically update masterStore and localStorage
+    const currentItems = masterStore[selectedCatId] || [];
+    const updated = currentItems.map((i) =>
+      i.id === item.id ? { ...i, is_active: nextActive } : i
+    );
+    saveMasterStore({ ...masterStore, [selectedCatId]: updated });
+
+    // Persist to backend master data table
+    masterDataApi.update(selectedCatId, item.id, { is_active: nextActive }).catch((err) => {
+      console.error('Failed to update status in DB:', err);
+    });
+
+    // Sync with specialized backend tables
+    if (selectedCatId === 'departments') {
+      hrmsApi.updateDepartment(item.id, {
+        name: item.name,
+        code: item.code,
+        is_active: nextActive,
+      }).catch(() => {});
+    } else if (selectedCatId === 'leave_reasons') {
+      hrmsApi.updateLeaveType(item.id, { is_active: nextActive }).catch(() => {});
+    }
+  };
+
+  // Bulk set status for all selected items
+  const handleBulkSetStatus = (nextActive: boolean) => {
+    if (!selectedCatId || selectedItemIds.length === 0) return;
+    const currentItems = masterStore[selectedCatId] || [];
+    const idSet = new Set(selectedItemIds);
+    const updated = currentItems.map((item) =>
+      idSet.has(item.id) ? { ...item, is_active: nextActive } : item
+    );
+    saveMasterStore({ ...masterStore, [selectedCatId]: updated });
+
+    selectedItemIds.forEach((id) => {
+      masterDataApi.update(selectedCatId, id, { is_active: nextActive }).catch(() => {});
+      if (selectedCatId === 'departments') {
+        const it = currentItems.find((i) => i.id === id);
+        hrmsApi.updateDepartment(id, {
+          name: it?.name,
+          code: it?.code,
+          is_active: nextActive,
+        }).catch(() => {});
+      } else if (selectedCatId === 'leave_reasons') {
+        hrmsApi.updateLeaveType(id, { is_active: nextActive }).catch(() => {});
+      }
+    });
+  };
+
+  // Dynamic Active / Inactive selector for table rows (Interactive Select + 1-Click Toggle)
+  const renderActiveStatusSelector = (item: MasterDataItem) => (
+    <div className="inline-flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+      <div className="relative inline-flex items-center">
+        <select
+          value={item.is_active ? 'active' : 'inactive'}
+          onChange={(e) => handleSetItemStatus(item, e.target.value === 'active')}
+          aria-label={`Status for ${item.name}`}
+          className={cn(
+            'appearance-none pl-6 pr-5 py-1 rounded-full text-[11px] font-black cursor-pointer border shadow-2xs transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/40 select-none',
+            item.is_active
+              ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100 hover:border-emerald-400 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800'
+              : 'bg-slate-100 text-slate-600 border-slate-300 hover:bg-slate-200 hover:border-slate-400 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
+          )}
+          title={`Status: ${item.is_active ? 'Active' : 'Inactive'}. Click to change.`}
+        >
+          <option value="active" className="text-emerald-700 font-bold">Active</option>
+          <option value="inactive" className="text-slate-600 font-bold">Inactive</option>
+        </select>
+        <span
+          className={cn(
+            'absolute left-2.5 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full pointer-events-none transition-colors',
+            item.is_active ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'
+          )}
+        />
+        <span className="absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+          <Icon name="chevron-down" size={10} />
+        </span>
+      </div>
+
+      <button
+        type="button"
+        onClick={() => handleSetItemStatus(item, !item.is_active)}
+        className={cn(
+          'w-7 h-4 rounded-full p-0.5 transition-colors cursor-pointer relative shrink-0 focus:outline-none focus:ring-1 focus:ring-blue-500/50',
+          item.is_active ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-slate-300 hover:bg-slate-400 dark:bg-slate-600'
+        )}
+        title={item.is_active ? 'Quick toggle: Click to make Inactive' : 'Quick toggle: Click to make Active'}
+      >
+        <span
+          className={cn(
+            'block w-3 h-3 rounded-full bg-white shadow-2xs transform transition-transform',
+            item.is_active ? 'translate-x-3' : 'translate-x-0'
+          )}
+        />
+      </button>
+    </div>
+  );
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
@@ -273,7 +453,12 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
     setFormName('');
     setFormCode('');
     setFormParentId('');
-    setFormExtra('');
+    
+    // Automatically pre-select Students View or Employee View based on the active tab
+    const initialDeptType = deptTab === 'employees' ? 'employee' : 'student';
+    setDeptTypeInModal(initialDeptType);
+    setFormExtra(selectedCatId === 'departments' ? initialDeptType : '');
+
     setFormCheckIn('');
     setFormCheckOut('');
     setFormLevel('0');
@@ -291,7 +476,11 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
     setFormName(item.name);
     setFormCode(item.code);
     setFormParentId(item.parent_id || '');
-    setFormExtra(item.extra_info || '');
+    
+    const dType = getDepartmentType(item);
+    setDeptTypeInModal(dType);
+    setFormExtra(item.extra_info || dType);
+
     setFormCheckIn(item.check_in_time || '');
     setFormCheckOut(item.check_out_time || '');
     setFormLevel(String(item.level ?? '0'));
@@ -309,7 +498,11 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
     setFormName(item.name);
     setFormCode(item.code);
     setFormParentId(item.parent_id || '');
-    setFormExtra(item.extra_info || '');
+
+    const dType = getDepartmentType(item);
+    setDeptTypeInModal(dType);
+    setFormExtra(item.extra_info || dType);
+
     setFormCheckIn(item.check_in_time || '');
     setFormCheckOut(item.check_out_time || '');
     setFormLevel(String(item.level ?? '0'));
@@ -337,6 +530,10 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
         resolvedParentCode = match.code;
       }
     }
+
+    const finalExtra = selectedCatId === 'departments'
+      ? deptTypeInModal
+      : (formExtra.trim() || resolvedParentCode || undefined);
 
     if (modalMode === 'edit' && editingItem) {
       if (selectedCatId === 'leave_reasons') {
@@ -367,7 +564,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
         is_active: formActive,
         parent_id: formParentId || undefined,
         parent_name: resolvedParentName || editingItem.parent_name,
-        extra_info: formExtra.trim() || resolvedParentCode || editingItem.extra_info,
+        extra_info: finalExtra || editingItem.extra_info,
         level: formLevel || undefined,
         display_order: parseInt(formDisplayOrder, 10) || 0,
         description: formDescription.trim() || undefined,
@@ -381,7 +578,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
             code: formCode.trim() || item.code,
             parent_id: formParentId || undefined,
             parent_name: resolvedParentName || item.parent_name,
-            extra_info: formExtra.trim() || resolvedParentCode || item.extra_info,
+            extra_info: finalExtra || item.extra_info,
             check_in_time: formCheckIn.trim() || undefined,
             check_out_time: formCheckOut.trim() || undefined,
             level: formLevel || undefined,
@@ -436,7 +633,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
         is_active: formActive,
         parent_id: formParentId || undefined,
         parent_name: resolvedParentName || undefined,
-        extra_info: formExtra.trim() || resolvedParentCode || undefined,
+        extra_info: finalExtra,
         check_in_time: formCheckIn.trim() || undefined,
         check_out_time: formCheckOut.trim() || undefined,
         level: formLevel || undefined,
@@ -526,26 +723,33 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
     setSelectedItemIds([]);
   };
 
-  // Sample CSV Download
+  // Dynamic Template CSV Download without hardcoded dummy values
   const handleDownloadSampleCsv = () => {
     if (!selectedCategory) return;
-    const isHierarchical = Boolean(selectedCategory.parentCategory);
-    let csvContent = 'NAME,CODE,IS_ACTIVE';
-    if (isHierarchical) csvContent += ',PARENT_NAME';
-    csvContent += '\n';
+    let headers: string[] = [];
 
-    csvContent += `Sample ${selectedCategory.title} 1,${selectedCategory.codePrefix}-101,TRUE`;
-    if (isHierarchical) csvContent += ',Parent Example';
-    csvContent += '\n';
+    if (selectedCategory.id === 'departments') {
+      headers = ['NAME', 'CODE', 'IS_ACTIVE', 'TYPE', 'DESCRIPTION'];
+    } else if (selectedCategory.id === 'institution_types') {
+      headers = ['NAME', 'CODE', 'CHECK_IN', 'CHECK_OUT', 'LEVEL', 'DISPLAY_ORDER', 'IS_ACTIVE'];
+    } else if (selectedCategory.id === 'leave_reasons') {
+      headers = ['NAME', 'DAYS', 'IS_ACTIVE'];
+    } else if (selectedCategory.parentCategory) {
+      headers = ['NAME', 'CODE', 'IS_ACTIVE', 'PARENT_NAME'];
+    } else {
+      headers = ['NAME', 'CODE', 'IS_ACTIVE'];
+    }
 
+    const csvContent = headers.join(',') + '\n';
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `sample_${selectedCategory.id}.csv`);
+    link.setAttribute('download', `template_${selectedCategory.id}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   // CSV Import
@@ -562,13 +766,36 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
         for (let i = 1; i < lines.length; i++) {
           const cols = lines[i].split(',').map((c) => c.trim().replace(/^"|"$/g, ''));
           if (cols[0]) {
+            let extraVal: string | undefined = undefined;
+            if (selectedCatId === 'departments') {
+              const rawType = cols[3] ? cols[3].toLowerCase() : '';
+              extraVal = (rawType === 'employee' || rawType === 'staff')
+                ? 'employee'
+                : (rawType === 'both' || rawType === 'all')
+                  ? 'both'
+                  : 'student';
+            }
+
             newRecords.push({
               id: `${selectedCatId}_imp_${Date.now()}_${i}`,
               name: cols[0],
               code: cols[1] || `${selectedCategory?.codePrefix || 'CD'}-${Math.floor(100 + Math.random() * 900)}`,
               is_active: cols[2] ? cols[2].toUpperCase() !== 'FALSE' : true,
-              parent_name: cols[3] || undefined,
+              extra_info: extraVal,
+              parent_name: selectedCatId !== 'departments' ? cols[3] || undefined : undefined,
+              description: selectedCatId === 'departments' ? cols[4] || undefined : undefined,
             });
+
+            // Also persist imported department to backend DB
+            if (selectedCatId === 'departments') {
+              masterDataApi.create('departments', {
+                name: cols[0],
+                code: cols[1] || `${selectedCategory?.codePrefix || 'CD'}-${Math.floor(100 + Math.random() * 900)}`,
+                is_active: cols[2] ? cols[2].toUpperCase() !== 'FALSE' : true,
+                extra_info: extraVal,
+                description: cols[4] || undefined,
+              }).catch(() => {});
+            }
           }
         }
         if (newRecords.length > 0) {
@@ -639,6 +866,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                   setSelectedCatId(null);
                 }
                 setSearchQuery('');
+                setStatusFilter('all');
                 setSelectedItemIds([]);
               }}
               className="px-3.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
@@ -673,16 +901,36 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
               Sample .csv
             </button>
 
-            {/* Delete All / Delete Selected */}
+            {/* Dynamic Bulk Status & Delete Actions */}
             {selectedItemIds.length > 0 ? (
-              <button
-                type="button"
-                onClick={handleDeleteSelected}
-                className="px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
-              >
-                <Icon name="trash-2" size={13} />
-                <span>Delete Selected ({selectedItemIds.length})</span>
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => handleBulkSetStatus(true)}
+                  className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                  title="Mark selected records as Active"
+                >
+                  <Icon name="check-circle" size={13} />
+                  <span>Mark Active ({selectedItemIds.length})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleBulkSetStatus(false)}
+                  className="px-3 py-1.5 rounded-xl bg-slate-600 hover:bg-slate-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                  title="Mark selected records as Inactive"
+                >
+                  <Icon name="x-circle" size={13} />
+                  <span>Mark Inactive ({selectedItemIds.length})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteSelected}
+                  className="px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                >
+                  <Icon name="trash-2" size={13} />
+                  <span>Delete ({selectedItemIds.length})</span>
+                </button>
+              </div>
             ) : (
               <button
                 type="button"
@@ -701,22 +949,155 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
               className="px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
             >
               <Icon name="plus" size={14} />
-              <span>+ Add {selectedCategory.title}</span>
+              <span>
+                {selectedCategory.id === 'departments'
+                  ? `+ Add ${deptTab === 'students' ? 'Student' : deptTab === 'employees' ? 'Employee' : ''} Department`
+                  : `+ Add ${selectedCategory.title}`}
+              </span>
             </button>
           </div>
         </div>
 
-        {/* Filter Bar */}
+        {/* Department Sub-Views Switcher (Students Departments vs Employee Departments vs All) */}
+        {selectedCategory.id === 'departments' && (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-2.5 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-2xs">
+            <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-100/90 dark:bg-slate-800/90 rounded-xl border border-slate-200/80 dark:border-slate-700/80">
+              <button
+                type="button"
+                onClick={() => setDeptTab('students')}
+                className={cn(
+                  'flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer',
+                  deptTab === 'students'
+                    ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-400 shadow-xs border border-indigo-200 dark:border-indigo-900/60'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                )}
+              >
+                <Icon name="graduation-cap" size={15} className={deptTab === 'students' ? 'text-indigo-600' : 'text-slate-400'} />
+                <span>Students Departments</span>
+                <span className={cn(
+                  'text-[10px] px-2 py-0.5 rounded-full font-black',
+                  deptTab === 'students' ? 'bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                )}>
+                  {deptCounts.students}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setDeptTab('employees')}
+                className={cn(
+                  'flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer',
+                  deptTab === 'employees'
+                    ? 'bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-xs border border-emerald-200 dark:border-emerald-900/60'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                )}
+              >
+                <Icon name="briefcase" size={15} className={deptTab === 'employees' ? 'text-emerald-600' : 'text-slate-400'} />
+                <span>Employee Departments</span>
+                <span className={cn(
+                  'text-[10px] px-2 py-0.5 rounded-full font-black',
+                  deptTab === 'employees' ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                )}>
+                  {deptCounts.employees}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setDeptTab('all')}
+                className={cn(
+                  'flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer',
+                  deptTab === 'all'
+                    ? 'bg-white dark:bg-slate-900 text-blue-700 dark:text-blue-400 shadow-xs border border-blue-200 dark:border-blue-900/60'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                )}
+              >
+                <Icon name="layers" size={15} className={deptTab === 'all' ? 'text-blue-600' : 'text-slate-400'} />
+                <span>All Departments</span>
+                <span className={cn(
+                  'text-[10px] px-2 py-0.5 rounded-full font-black',
+                  deptTab === 'all' ? 'bg-blue-100 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                )}>
+                  {deptCounts.all}
+                </span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Dynamic Filter Bar (Search + Active/Inactive Filter Tabs + Counts) */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-2xs">
-          <div className="relative flex-1 max-w-sm">
-            <Icon name="search" size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={`Search ${selectedCategory.title.toLowerCase()}...`}
-              className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+          <div className="flex flex-wrap items-center gap-2.5 flex-1">
+            <div className="relative flex-1 min-w-[200px] max-w-sm">
+              <Icon name="search" size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={`Search ${selectedCategory.title.toLowerCase()}...`}
+                className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            {/* Dynamic Status Filter Selector for all pages */}
+            <div className="flex items-center gap-1 p-1 bg-slate-100/90 dark:bg-slate-800/90 rounded-xl border border-slate-200/80 dark:border-slate-700/80 text-xs font-bold">
+              <button
+                type="button"
+                onClick={() => setStatusFilter('all')}
+                className={cn(
+                  'px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1.5',
+                  statusFilter === 'all'
+                    ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs'
+                    : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                )}
+                title="Show all records"
+              >
+                <span>All Status</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                  {statusCounts.all}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter('active')}
+                className={cn(
+                  'px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1.5',
+                  statusFilter === 'active'
+                    ? 'bg-emerald-600 text-white shadow-2xs font-extrabold'
+                    : 'text-emerald-700 dark:text-emerald-400 hover:text-emerald-900'
+                )}
+                title="Show active records only"
+              >
+                <span className={cn('w-1.5 h-1.5 rounded-full', statusFilter === 'active' ? 'bg-white animate-pulse' : 'bg-emerald-500')} />
+                <span>Active</span>
+                <span className={cn(
+                  'text-[10px] px-1.5 py-0.2 rounded-full font-black',
+                  statusFilter === 'active' ? 'bg-emerald-700 text-white' : 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300'
+                )}>
+                  {statusCounts.active}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter('inactive')}
+                className={cn(
+                  'px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1.5',
+                  statusFilter === 'inactive'
+                    ? 'bg-slate-700 text-white shadow-2xs font-extrabold'
+                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                )}
+                title="Show inactive records only"
+              >
+                <span className={cn('w-1.5 h-1.5 rounded-full', statusFilter === 'inactive' ? 'bg-white' : 'bg-slate-400')} />
+                <span>Inactive</span>
+                <span className={cn(
+                  'text-[10px] px-1.5 py-0.2 rounded-full font-black',
+                  statusFilter === 'inactive' ? 'bg-slate-800 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                )}>
+                  {statusCounts.inactive}
+                </span>
+              </button>
+            </div>
           </div>
 
           <div className="flex items-center gap-4 text-xs font-bold text-slate-600 dark:text-slate-400">
@@ -775,6 +1156,14 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                       <th className="py-3.5 px-4">IS ACTIVE</th>
                       <th className="py-3.5 px-4">DAYS</th>
                     </>
+                  ) : selectedCategory.id === 'departments' ? (
+                    <>
+                      <th className="py-3.5 px-4">NAME</th>
+                      <th className="py-3.5 px-4">CODE</th>
+                      <th className="py-3.5 px-4">TYPE / VIEW AUDIENCE</th>
+                      <th className="py-3.5 px-4">DESCRIPTION</th>
+                      <th className="py-3.5 px-4">IS ACTIVE</th>
+                    </>
                   ) : isQualification ? (
                     <>
                       <th className="py-3.5 px-4">NAME</th>
@@ -803,9 +1192,47 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
                 {filteredItems.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="py-10 text-center text-slate-400 font-semibold">
-                      <Icon name="layers" size={24} className="mx-auto text-slate-300 mb-2" />
-                      <div>No records found for "{selectedCategory.title}".</div>
+                    <td colSpan={10} className="py-12 text-center text-slate-400 font-semibold">
+                      {selectedCategory.id === 'departments' ? (
+                        <div className="max-w-md mx-auto space-y-3">
+                          <div className="w-12 h-12 mx-auto rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                            <Icon name={deptTab === 'students' ? 'graduation-cap' : deptTab === 'employees' ? 'briefcase' : 'layers'} size={24} />
+                          </div>
+                          <div className="text-sm font-black text-slate-800 dark:text-slate-200">
+                            No {deptTab === 'students' ? 'Students' : deptTab === 'employees' ? 'Employee' : ''} Departments Found
+                          </div>
+                          <p className="text-xs text-slate-400">
+                            {deptTab === 'students'
+                              ? 'Academic streams & degree departments appear during student enrollment.'
+                              : deptTab === 'employees'
+                                ? 'Staff, operational & administrative departments appear during employee onboarding.'
+                                : 'Configure academic and operational departments.'}
+                          </p>
+                          <div className="flex items-center justify-center gap-2 pt-1">
+                            <button
+                              type="button"
+                              onClick={handleOpenAdd}
+                              className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+                            >
+                              <Icon name="plus" size={13} />
+                              <span>+ Add Department</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => fileInputRef.current?.click()}
+                              className="px-3.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                            >
+                              <Icon name="upload" size={13} />
+                              <span>Import CSV</span>
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <Icon name="layers" size={24} className="mx-auto text-slate-300 mb-2" />
+                          <div>No records found for "{selectedCategory.title}".</div>
+                        </>
+                      )}
                     </td>
                   </tr>
                 ) : (
@@ -841,9 +1268,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                               {item.name}
                             </td>
                             <td className="py-3.5 px-4">
-                              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                {item.is_active ? 'Active' : 'Inactive'}
-                              </span>
+                              {renderActiveStatusSelector(item)}
                             </td>
                             <td className="py-3.5 px-4 font-bold text-slate-800 dark:text-slate-200">
                               {item.parent_name || '—'}
@@ -891,9 +1316,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                               {item.display_order ?? '—'}
                             </td>
                             <td className="py-3.5 px-4">
-                              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                {item.is_active ? 'Active' : 'Inactive'}
-                              </span>
+                              {renderActiveStatusSelector(item)}
                             </td>
                           </>
                         ) : isLeaveReasons ? (
@@ -903,12 +1326,73 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                               {item.name}
                             </td>
                             <td className="py-3.5 px-4">
-                              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                {item.is_active ? 'Active' : 'Inactive'}
-                              </span>
+                              {renderActiveStatusSelector(item)}
                             </td>
                             <td className="py-3.5 px-4 font-bold text-slate-800 dark:text-slate-200">
                               {item.days ?? '—'}
+                            </td>
+                          </>
+                        ) : selectedCategory.id === 'departments' ? (
+                          <>
+                            <td className="py-3.5 px-4 font-bold text-slate-900 dark:text-white">
+                              <div className="flex items-center gap-2">
+                                <span className={cn(
+                                  'w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-xs',
+                                  getDepartmentType(item) === 'student'
+                                    ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950/80 dark:text-indigo-300'
+                                    : getDepartmentType(item) === 'employee'
+                                      ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-300'
+                                      : 'bg-blue-100 text-blue-700 dark:bg-blue-950/80 dark:text-blue-300'
+                                )}>
+                                  <Icon
+                                    name={
+                                      getDepartmentType(item) === 'student'
+                                        ? 'graduation-cap'
+                                        : getDepartmentType(item) === 'employee'
+                                          ? 'briefcase'
+                                          : 'layers'
+                                    }
+                                    size={14}
+                                  />
+                                </span>
+                                <span>{item.name}</span>
+                              </div>
+                            </td>
+                            <td className="py-3.5 px-4 font-mono font-bold text-slate-700 dark:text-slate-300">
+                              {item.code}
+                            </td>
+                            <td className="py-3.5 px-4">
+                              {(() => {
+                                const t = getDepartmentType(item);
+                                if (t === 'student') {
+                                  return (
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800">
+                                      <Icon name="graduation-cap" size={12} className="text-indigo-600 dark:text-indigo-400" />
+                                      <span>Students View</span>
+                                    </span>
+                                  );
+                                }
+                                if (t === 'employee') {
+                                  return (
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800">
+                                      <Icon name="briefcase" size={12} className="text-emerald-600 dark:text-emerald-400" />
+                                      <span>Employee View</span>
+                                    </span>
+                                  );
+                                }
+                                return (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200/80 dark:border-blue-800">
+                                    <Icon name="layers" size={12} className="text-blue-600 dark:text-blue-400" />
+                                    <span>Both (Shared)</span>
+                                  </span>
+                                );
+                              })()}
+                            </td>
+                            <td className="py-3.5 px-4 text-slate-500 font-medium line-clamp-1 max-w-xs">
+                              {item.description || '—'}
+                            </td>
+                            <td className="py-3.5 px-4">
+                              {renderActiveStatusSelector(item)}
                             </td>
                           </>
                         ) : isQualification ? (
@@ -918,9 +1402,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                               {item.name}
                             </td>
                             <td className="py-3.5 px-4">
-                              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                {item.is_active ? 'Active' : 'Inactive'}
-                              </span>
+                              {renderActiveStatusSelector(item)}
                             </td>
                           </>
                         ) : (
@@ -933,16 +1415,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                               {item.code}
                             </td>
                             <td className="py-3.5 px-4">
-                              <span
-                                className={cn(
-                                  'px-2.5 py-0.5 rounded-full text-[11px] font-extrabold',
-                                  item.is_active
-                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                    : 'bg-slate-100 text-slate-500 border border-slate-200'
-                                )}
-                              >
-                                {item.is_active ? 'Active' : 'Inactive'}
-                              </span>
+                              {renderActiveStatusSelector(item)}
                             </td>
                             {selectedCategory.parentCategory && (
                               <td className="py-3.5 px-4 font-semibold text-slate-700 dark:text-slate-300">
@@ -1242,18 +1715,142 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                   </>
                 )}
 
-                {/* Active Checkbox */}
-                {modalMode !== 'view' && (
-                  <label className="flex items-center gap-2 cursor-pointer pt-1 select-none">
-                    <input
-                      type="checkbox"
-                      checked={formActive}
-                      onChange={(e) => setFormActive(e.target.checked)}
-                      className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                    />
-                    <span className="font-bold text-slate-700 dark:text-slate-300">Status is Active</span>
-                  </label>
+                {/* Department Type / View Audience Selection */}
+                {selectedCategory.id === 'departments' && (
+                  <>
+                    <div className="space-y-1.5 p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700">
+                      <label className="block font-black uppercase text-[10px] tracking-wider text-slate-700 dark:text-slate-300">
+                        DEPARTMENT VIEW AUDIENCE *
+                      </label>
+                      <p className="text-[11px] text-slate-500 font-medium leading-tight">
+                        Choose whether this department appears during student enrollment or employee onboarding.
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+                        <button
+                          type="button"
+                          disabled={modalMode === 'view'}
+                          onClick={() => setDeptTypeInModal('student')}
+                          className={cn(
+                            'flex items-center gap-2 p-2.5 rounded-xl border text-left transition-all cursor-pointer',
+                            deptTypeInModal === 'student'
+                              ? 'bg-indigo-50 border-indigo-400 text-indigo-900 dark:bg-indigo-950/70 dark:border-indigo-600 dark:text-indigo-200 font-bold ring-2 ring-indigo-500/20 shadow-2xs'
+                              : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-300'
+                          )}
+                        >
+                          <div className={cn(
+                            'w-7 h-7 rounded-lg flex items-center justify-center shrink-0',
+                            deptTypeInModal === 'student' ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-500'
+                          )}>
+                            <Icon name="graduation-cap" size={14} />
+                          </div>
+                          <div>
+                            <div className="text-xs font-black">Students View</div>
+                            <div className="text-[10px] text-slate-400 font-normal">Student Enrollment</div>
+                          </div>
+                        </button>
+
+                        <button
+                          type="button"
+                          disabled={modalMode === 'view'}
+                          onClick={() => setDeptTypeInModal('employee')}
+                          className={cn(
+                            'flex items-center gap-2 p-2.5 rounded-xl border text-left transition-all cursor-pointer',
+                            deptTypeInModal === 'employee'
+                              ? 'bg-emerald-50 border-emerald-400 text-emerald-900 dark:bg-emerald-950/70 dark:border-emerald-600 dark:text-emerald-200 font-bold ring-2 ring-emerald-500/20 shadow-2xs'
+                              : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-300'
+                          )}
+                        >
+                          <div className={cn(
+                            'w-7 h-7 rounded-lg flex items-center justify-center shrink-0',
+                            deptTypeInModal === 'employee' ? 'bg-emerald-600 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-500'
+                          )}>
+                            <Icon name="briefcase" size={14} />
+                          </div>
+                          <div>
+                            <div className="text-xs font-black">Employee View</div>
+                            <div className="text-[10px] text-slate-400 font-normal">Staff & Operations</div>
+                          </div>
+                        </button>
+
+                        <button
+                          type="button"
+                          disabled={modalMode === 'view'}
+                          onClick={() => setDeptTypeInModal('both')}
+                          className={cn(
+                            'flex items-center gap-2 p-2.5 rounded-xl border text-left transition-all cursor-pointer',
+                            deptTypeInModal === 'both'
+                              ? 'bg-blue-50 border-blue-400 text-blue-900 dark:bg-blue-950/70 dark:border-blue-600 dark:text-blue-200 font-bold ring-2 ring-blue-500/20 shadow-2xs'
+                              : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-300'
+                          )}
+                        >
+                          <div className={cn(
+                            'w-7 h-7 rounded-lg flex items-center justify-center shrink-0',
+                            deptTypeInModal === 'both' ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-500'
+                          )}>
+                            <Icon name="layers" size={14} />
+                          </div>
+                          <div>
+                            <div className="text-xs font-black">Both Views</div>
+                            <div className="text-[10px] text-slate-400 font-normal">Shared Across All</div>
+                          </div>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block font-black uppercase text-[10px] tracking-wider text-slate-700 dark:text-slate-300">
+                        DESCRIPTION / PURPOSE
+                      </label>
+                      <input
+                        type="text"
+                        value={formDescription}
+                        onChange={(e) => setFormDescription(e.target.value)}
+                        placeholder="e.g. Undergraduate computing, HR & payroll operations, etc."
+                        disabled={modalMode === 'view'}
+                        className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
+                      />
+                    </div>
+                  </>
                 )}
+
+                {/* Dynamic Active / Inactive Selector in Modal */}
+                <div className="space-y-1.5 pt-1">
+                  <label className="block font-black uppercase text-[10px] tracking-wider text-slate-700 dark:text-slate-300">
+                    RECORD STATUS
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      disabled={modalMode === 'view'}
+                      onClick={() => setFormActive(true)}
+                      className={cn(
+                        'flex items-center justify-center gap-2 py-2 px-3 rounded-xl border text-xs font-bold transition-all select-none',
+                        modalMode !== 'view' ? 'cursor-pointer' : 'cursor-default',
+                        formActive
+                          ? 'bg-emerald-50 border-emerald-400 text-emerald-800 dark:bg-emerald-950/70 dark:border-emerald-700 dark:text-emerald-200 ring-2 ring-emerald-500/20 shadow-2xs'
+                          : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 hover:border-slate-300'
+                      )}
+                    >
+                      <span className={cn('w-2 h-2 rounded-full', formActive ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300')} />
+                      <span>Active</span>
+                    </button>
+                    <button
+                      type="button"
+                      disabled={modalMode === 'view'}
+                      onClick={() => setFormActive(false)}
+                      className={cn(
+                        'flex items-center justify-center gap-2 py-2 px-3 rounded-xl border text-xs font-bold transition-all select-none',
+                        modalMode !== 'view' ? 'cursor-pointer' : 'cursor-default',
+                        !formActive
+                          ? 'bg-slate-100 border-slate-400 text-slate-800 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-200 ring-2 ring-slate-500/20 shadow-2xs'
+                          : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 hover:border-slate-300'
+                      )}
+                    >
+                      <span className={cn('w-2 h-2 rounded-full', !formActive ? 'bg-slate-600' : 'bg-slate-300')} />
+                      <span>Inactive</span>
+                    </button>
+                  </div>
+                </div>
 
                 {/* Actions */}
                 <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">

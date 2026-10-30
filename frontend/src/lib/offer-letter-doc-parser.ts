@@ -398,7 +398,7 @@ export async function parseUploadedOfferDoc(file: File): Promise<ParsedOfferDoc>
     subjectText = candidateRole ? `Formal Offer of Employment — ${candidateRole}` : `Formal Offer of Employment`;
   }
 
-  const finalClauses = clausesText || `1. PROBATION & CONFIRMATION: You will be on probation for a designated initial tenure from the date of joining. Upon successful evaluation, your employment will be confirmed in writing.\n2. NOTICE PERIOD: Either party may terminate the employment by giving 30 days written notice or gross salary in lieu thereof.\n3. CONFIDENTIALITY & IP: All proprietary information, customer records, source code, and intellectual property developed during your employment belong exclusively to the organization.\n4. STATUTORY COMPLIANCE: Standard statutory deductions and taxes will be applied as per government regulations.`;
+  const finalClauses = clausesText || `1. PROBATION & CONFIRMATION: You will be on probation for a designated initial tenure from the date of joining. Upon successful evaluation, your employment will be confirmed in writing.\n2. NOTICE PERIOD: Either party may terminate the employment by giving 30 days written notice or gross salary in lieu thereof.\n3. CONFIDENTIALITY & IP: All proprietary information, student records, source code, and intellectual property developed during your employment belong exclusively to the organization.\n4. STATUTORY COMPLIANCE: Standard statutory deductions and taxes will be applied as per government regulations.`;
 
   return {
     fileName,

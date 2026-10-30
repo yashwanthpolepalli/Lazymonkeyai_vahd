@@ -534,8 +534,8 @@ export const HoDashboard: React.FC = () => {
         <button
           onClick={() => setHoTab('overview')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer ${hoTab === 'overview'
-              ? 'bg-purple-600 text-white shadow-md shadow-purple-600/25'
-              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+            ? 'bg-purple-600 text-white shadow-md shadow-purple-600/25'
+            : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
             }`}
         >
           <Icon name="layout-dashboard" size={15} />
@@ -554,8 +554,8 @@ export const HoDashboard: React.FC = () => {
         <button
           onClick={() => setHoTab('attendance_reports')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer ${hoTab === 'attendance_reports'
-              ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-600/25'
-              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+            ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-600/25'
+            : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
             }`}
         >
           <Icon name="calendar-check" size={15} />
@@ -651,9 +651,9 @@ export const HoDashboard: React.FC = () => {
           <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
             <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <h3 className="text-lg font-black text-slate-900 tracking-tight">Organizations &amp; Branch Directory</h3>
+                <h3 className="text-lg font-black text-slate-900 tracking-tight">Institutions &amp; Branch Directory</h3>
                 <p className="text-xs text-slate-500 font-medium mt-0.5">
-                  Live mapping of Head Office organizations, assigned owners, and current personnel.
+                  Live mapping of Head Office institutions, assigned owners, and current personnel.
                 </p>
               </div>
               {(selectedOrgIds.length > 0 || selectedOwnerIds.length > 0) ? (
@@ -695,7 +695,7 @@ export const HoDashboard: React.FC = () => {
                         <span className="w-5 h-5 rounded-full bg-purple-600 text-white flex items-center justify-center text-[10px] font-black">
                           {selectedOrgIds.length}
                         </span>
-                        <span>{selectedOrgIds.length === 1 ? 'Org' : 'Orgs'} Selected</span>
+                        <span>{selectedOrgIds.length === 1 ? 'Institution' : 'Institutions'} Selected</span>
                       </span>
 
                       {selectedOrgIds.length === 1 && (
@@ -715,7 +715,7 @@ export const HoDashboard: React.FC = () => {
                         className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
                       >
                         <Icon name="trash-2" size={13} />
-                        <span>Delete {selectedOrgIds.length === 1 ? 'Organisation' : `(${selectedOrgIds.length}) Organisations`}</span>
+                        <span>Delete {selectedOrgIds.length === 1 ? 'Institution' : `(${selectedOrgIds.length}) Institutions`}</span>
                       </button>
 
                       <button
@@ -723,14 +723,14 @@ export const HoDashboard: React.FC = () => {
                         onClick={() => setSelectedOrgIds([])}
                         className="text-xs text-slate-500 hover:text-slate-800 font-bold px-2 py-1 cursor-pointer"
                       >
-                        Clear Orgs
+                        Clear Selection
                       </button>
                     </div>
                   )}
                 </div>
               ) : (
                 <div className="text-xs text-slate-400 font-medium hidden sm:block">
-                  Select checkboxes on organisations or individual owners to edit or delete
+                  Select checkboxes on institutions or individual owners to edit or delete
                 </div>
               )}
             </div>
@@ -753,10 +753,10 @@ export const HoDashboard: React.FC = () => {
                         title="Select All"
                       />
                     </th>
-                    <th className="py-3.5 px-4">Organization &amp; Branch</th>
+                    <th className="py-3.5 px-4">Institution &amp; Branch</th>
                     <th className="py-3.5 px-4">Onboarded Owner</th>
-                    <th className="py-3.5 px-4">City / Location</th>
-                    <th className="py-3.5 px-4 text-center">Employees</th>
+                    <th className="py-3.5 px-4">Location</th>
+                    <th className="py-3.5 px-4 text-center">Emp</th>
                     <th className="py-3.5 px-4 text-center">Students</th>
                     <th className="py-3.5 px-4 text-right">Actions</th>
                   </tr>
@@ -770,10 +770,10 @@ export const HoDashboard: React.FC = () => {
                         <tr
                           key={org.id}
                           className={`hover:bg-slate-50/80 transition-colors ${isChecked
-                              ? 'bg-purple-50/60'
-                              : isCurrentSelected
-                                ? 'bg-purple-50/30 font-semibold'
-                                : ''
+                            ? 'bg-purple-50/60'
+                            : isCurrentSelected
+                              ? 'bg-purple-50/30 font-semibold'
+                              : ''
                             }`}
                         >
                           {/* Checkbox */}
@@ -848,11 +848,10 @@ export const HoDashboard: React.FC = () => {
                                               <div className="absolute -left-3 top-3.5 w-3 h-0.5 bg-purple-200/90" />
 
                                               <div
-                                                className={`p-2.5 rounded-xl border transition-all ${
-                                                  isOwnerChecked
+                                                className={`p-2.5 rounded-xl border transition-all ${isOwnerChecked
                                                     ? 'bg-purple-50/95 border-purple-300 shadow-xs ring-1 ring-purple-400'
                                                     : 'bg-slate-50/80 hover:bg-slate-50 border-slate-200/80 hover:border-slate-300'
-                                                }`}
+                                                  }`}
                                               >
                                                 <div className="flex items-start justify-between gap-2">
                                                   <div className="flex items-start gap-2 min-w-0">
@@ -868,11 +867,10 @@ export const HoDashboard: React.FC = () => {
 
                                                     {/* Avatar Icon */}
                                                     <div
-                                                      className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
-                                                        isPrimary
+                                                      className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${isPrimary
                                                           ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                                                           : 'bg-purple-100 text-purple-800 border border-purple-200'
-                                                      }`}
+                                                        }`}
                                                     >
                                                       {isPrimary ? '👑' : <Icon name="user" size={13} />}
                                                     </div>
@@ -889,11 +887,10 @@ export const HoDashboard: React.FC = () => {
                                                           </span>
                                                         )}
                                                         <span
-                                                          className={`text-[9px] font-black uppercase px-1.5 py-0.2 rounded ${
-                                                            isPrimary
+                                                          className={`text-[9px] font-black uppercase px-1.5 py-0.2 rounded ${isPrimary
                                                               ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                                                               : 'bg-slate-100 text-slate-600 border border-slate-200'
-                                                          }`}
+                                                            }`}
                                                         >
                                                           {isPrimary ? 'Primary Owner' : 'Co-Owner'}
                                                         </span>
@@ -1010,8 +1007,8 @@ export const HoDashboard: React.FC = () => {
                               <button
                                 onClick={() => handleSelectOrganization(org.id)}
                                 className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${isCurrentSelected
-                                    ? 'bg-purple-600 text-white shadow-xs'
-                                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                                  ? 'bg-purple-600 text-white shadow-xs'
+                                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
                                   }`}
                               >
                                 {isCurrentSelected ? 'Viewing' : 'Switch View'}
@@ -1254,8 +1251,8 @@ export const HoDashboard: React.FC = () => {
                       <button
                         onClick={() => setTab('employees')}
                         className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${currentTab === 'employees'
-                            ? 'bg-purple-600 text-white shadow-xs'
-                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                          ? 'bg-purple-600 text-white shadow-xs'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                           }`}
                       >
                         👥 Staff Members ({b.employees?.total_count || 0})
@@ -1266,8 +1263,8 @@ export const HoDashboard: React.FC = () => {
                       <button
                         onClick={() => setTab('students')}
                         className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${currentTab === 'students'
-                            ? 'bg-purple-600 text-white shadow-xs'
-                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                          ? 'bg-purple-600 text-white shadow-xs'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                           }`}
                       >
                         🎓 Enrolled Students ({b.students?.total_count || 0})
@@ -1319,10 +1316,10 @@ export const HoDashboard: React.FC = () => {
                                 <td className="py-3 px-3 text-center">
                                   <span
                                     className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${emp.attendance_percentage >= 75
-                                        ? 'bg-emerald-100 text-emerald-800'
-                                        : emp.attendance_percentage >= 60
-                                          ? 'bg-amber-100 text-amber-800'
-                                          : 'bg-rose-100 text-rose-800'
+                                      ? 'bg-emerald-100 text-emerald-800'
+                                      : emp.attendance_percentage >= 60
+                                        ? 'bg-amber-100 text-amber-800'
+                                        : 'bg-rose-100 text-rose-800'
                                       }`}
                                   >
                                     {emp.attendance_percentage}%
@@ -1397,10 +1394,10 @@ export const HoDashboard: React.FC = () => {
                                 <td className="py-3 px-3 text-center">
                                   <span
                                     className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${s.attendance_percentage >= 75
-                                        ? 'bg-emerald-100 text-emerald-800'
-                                        : s.attendance_percentage >= 60
-                                          ? 'bg-amber-100 text-amber-800'
-                                          : 'bg-rose-100 text-rose-800'
+                                      ? 'bg-emerald-100 text-emerald-800'
+                                      : s.attendance_percentage >= 60
+                                        ? 'bg-amber-100 text-amber-800'
+                                        : 'bg-rose-100 text-rose-800'
                                       }`}
                                   >
                                     {s.attendance_percentage}%
@@ -1410,7 +1407,7 @@ export const HoDashboard: React.FC = () => {
                                 <td className="py-3 px-3 text-right">
                                   <div className="inline-flex items-center gap-1.5">
                                     <a
-                                      href={`/api/v1/customers/${s.id}/attendance-report/csv?year=${repYear}&month=${repMonth}`}
+                                      href={`/api/v1/students/${s.id}/attendance-report/csv?year=${repYear}&month=${repMonth}`}
                                       download
                                       className="p-1.5 rounded-lg bg-slate-100 hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 transition-colors"
                                       title="Download Student CSV"
@@ -1418,7 +1415,7 @@ export const HoDashboard: React.FC = () => {
                                       <Icon name="download" size={13} />
                                     </a>
                                     <a
-                                      href={`/api/v1/customers/${s.id}/attendance-report/pdf?year=${repYear}&month=${repMonth}`}
+                                      href={`/api/v1/students/${s.id}/attendance-report/pdf?year=${repYear}&month=${repMonth}`}
                                       target="_blank"
                                       rel="noreferrer"
                                       className="p-1.5 rounded-lg bg-slate-100 hover:bg-indigo-50 text-slate-600 hover:text-indigo-700 transition-colors"
@@ -1451,9 +1448,9 @@ export const HoDashboard: React.FC = () => {
                 <span className="text-[10px] font-black uppercase tracking-wider text-purple-600 bg-purple-50 px-2.5 py-0.5 rounded-full">
                   Head Office Admin
                 </span>
-                <h3 className="text-xl font-black text-slate-900 mt-1">Onboard vahd Owner</h3>
+                <h3 className="text-xl font-black text-slate-900 mt-1">Onboard Institution Owner</h3>
                 <p className="text-xs text-slate-500 font-medium">
-                  Create owner credentials and assign them to manage an organization under this Head Office.
+                  Create owner credentials and assign them to manage an institution or branch under this Head Office.
                 </p>
               </div>
               <button
@@ -1497,7 +1494,7 @@ export const HoDashboard: React.FC = () => {
                       <span className="font-bold text-emerald-600">{onboardSuccess.owner?.role}</span>
                     </div>
                     <div>
-                      <span className="text-[10px] text-slate-400 block font-bold">Organization:</span>
+                      <span className="text-[10px] text-slate-400 block font-bold">Institution:</span>
                       <strong className="text-slate-900">{onboardSuccess.organization?.vahd_name}</strong>
                     </div>
                   </div>
@@ -1517,29 +1514,29 @@ export const HoDashboard: React.FC = () => {
               </div>
             ) : (
               <form onSubmit={handleOnboardSubmit} className="space-y-4 text-xs">
-                {/* Organization Selection Mode */}
+                {/* Institution Selection Mode */}
                 <div className="space-y-1.5">
-                  <label className="font-bold text-slate-700">Target Organization</label>
+                  <label className="font-bold text-slate-700">Target Institution / Branch</label>
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
                       onClick={() => setIsCreatingNewOrg(false)}
                       className={`p-2.5 rounded-xl border text-xs font-bold transition-all ${!isCreatingNewOrg
-                          ? 'border-purple-600 bg-purple-50/50 text-purple-900'
-                          : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
+                        ? 'border-purple-600 bg-purple-50/50 text-purple-900'
+                        : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
                         }`}
                     >
-                      Existing Organization
+                      Existing Institution
                     </button>
                     <button
                       type="button"
                       onClick={() => setIsCreatingNewOrg(true)}
                       className={`p-2.5 rounded-xl border text-xs font-bold transition-all ${isCreatingNewOrg
-                          ? 'border-purple-600 bg-purple-50/50 text-purple-900'
-                          : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
+                        ? 'border-purple-600 bg-purple-50/50 text-purple-900'
+                        : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
                         }`}
                     >
-                      + Create New Organization
+                      + Create New Institution
                     </button>
                   </div>
                 </div>
@@ -1547,7 +1544,7 @@ export const HoDashboard: React.FC = () => {
                 {/* If Existing: Select Dropdown */}
                 {!isCreatingNewOrg ? (
                   <div className="space-y-1">
-                    <label className="font-bold text-slate-700">Select Organization to Assign Owner</label>
+                    <label className="font-bold text-slate-700">Select Institution to Assign Owner</label>
                     <select
                       value={modalTargetOrgId}
                       onChange={(e) => setModalTargetOrgId(e.target.value)}
@@ -1565,12 +1562,12 @@ export const HoDashboard: React.FC = () => {
                   <div className="p-3.5 rounded-2xl bg-purple-50/40 border border-purple-100 space-y-3">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="font-bold text-slate-700">Organization Name *</label>
+                        <label className="font-bold text-slate-700">Institution Name *</label>
                         <input
                           type="text"
                           value={newOrgName}
                           onChange={(e) => setNewOrgName(e.target.value)}
-                          placeholder="Enter organization name"
+                          placeholder="Enter institution name"
                           className="w-full p-2 rounded-xl bg-white border border-slate-200 font-medium text-slate-900 mt-1"
                           required
                         />
@@ -1985,9 +1982,8 @@ export const HoDashboard: React.FC = () => {
                         <span className="font-extrabold text-slate-900 text-xs truncate">
                           {owner.name}
                         </span>
-                        <span className={`text-[9px] font-bold uppercase px-1.5 py-0.2 rounded ${
-                          owner.isPrimary ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'
-                        }`}>
+                        <span className={`text-[9px] font-bold uppercase px-1.5 py-0.2 rounded ${owner.isPrimary ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'
+                          }`}>
                           {owner.isPrimary ? 'Primary' : 'Co-Owner'}
                         </span>
                       </div>

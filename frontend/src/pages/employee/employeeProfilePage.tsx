@@ -27,7 +27,7 @@ export function EmployeeProfilePage() {
               Certified Fitness Specialist · {user?.email || 'Active Staff'}
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <div><div className="stat-label">Customers</div><div className="text-lg font-bold text-navy-900">0</div></div>
+              <div><div className="stat-label">students</div><div className="text-lg font-bold text-navy-900">0</div></div>
               <div><div className="stat-label">Rating</div><div className="text-lg font-bold text-navy-900 flex items-center gap-1"><Icon name="star" size={14} className="text-warning-500" />5.0</div></div>
               <div><div className="stat-label">Experience</div><div className="text-lg font-bold text-navy-900">Certified</div></div>
               <div><div className="stat-label">Revenue</div><div className="text-lg font-bold text-navy-900">₹0</div></div>

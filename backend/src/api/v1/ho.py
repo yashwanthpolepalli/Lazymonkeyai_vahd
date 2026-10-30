@@ -12,7 +12,7 @@ from sqlalchemy import or_, and_, func, desc, String
 from src.database.session import get_db
 from src.models.user import User
 from src.models.settings import vahdBranch
-from src.models.customer import Customer
+from src.models.student import student
 from src.models.hrms import Employee, EmployeeAttendance, Department, LeaveRequest
 from src.models.biometric import BiometricLog
 from src.models.membership import Membership
@@ -54,20 +54,22 @@ def get_ho_organizations(
 
     result = []
     for b in branches:
-        # Resolve all owners for this branch
+        # Resolve all owners for this branch (strictly role == 'OWNER')
         branch_owners = db.query(User).filter(
             or_(
                 User.branch_id == b.id,
                 User.id == b.owner_id
             ),
-            User.role.in_(["OWNER", "HEAD_OFFICE"])
+            User.role == "OWNER"
         ).order_by(User.created_at.asc()).all()
 
         primary_owner = None
         if b.owner_id:
             primary_owner = next((o for o in branch_owners if o.id == b.owner_id), None)
             if not primary_owner:
-                primary_owner = db.query(User).filter(User.id == b.owner_id).first()
+                candidate = db.query(User).filter(User.id == b.owner_id).first()
+                if candidate and candidate.role == "OWNER":
+                    primary_owner = candidate
         if not primary_owner and branch_owners:
             primary_owner = branch_owners[0]
 
@@ -100,14 +102,14 @@ def get_ho_organizations(
         ).count()
 
         # Student count
-        student_count = db.query(Customer).filter(
+        student_count = db.query(student).filter(
             or_(
-                Customer.branch_id == b.id,
-                Customer.primary_vahd_location.ilike(f"%{b.branch_name}%"),
-                Customer.primary_vahd_location.ilike(f"%{b.vahd_name}%") if b.vahd_name else False,
-                Customer.owner_id.in_(owner_ids) if owner_ids else False
+                student.branch_id == b.id,
+                student.primary_vahd_location.ilike(f"%{b.branch_name}%"),
+                student.primary_vahd_location.ilike(f"%{b.vahd_name}%") if b.vahd_name else False,
+                student.owner_id.in_(owner_ids) if owner_ids else False
             ),
-            or_(func.upper(Customer.status) == "ACTIVE", Customer.status == "ACTIVE", Customer.status == "Active", Customer.status.is_(None))
+            or_(func.upper(student.status) == "ACTIVE", student.status == "ACTIVE", student.status == "Active", student.status.is_(None))
         ).count()
 
         # Today punches
@@ -126,7 +128,7 @@ def get_ho_organizations(
             "branch_name": b.branch_name,
             "city": b.city or "",
             "address": b.address or "",
-            "owner_id": primary_owner.id if primary_owner else b.owner_id,
+            "owner_id": primary_owner.id if primary_owner else None,
             "owner_name": primary_owner.full_name if primary_owner else None,
             "owner_email": primary_owner.email if primary_owner else None,
             "owner_phone": primary_owner.phone if primary_owner else None,
@@ -628,19 +630,19 @@ def get_ho_dashboard(
 
     # 4. Student Metrics (Case-insensitive status check: ACTIVE, Active, active or None)
     stud_status_filter = or_(
-        func.upper(Customer.status) == "ACTIVE",
-        Customer.status == "ACTIVE",
-        Customer.status == "Active",
-        Customer.status.is_(None)
+        func.upper(student.status) == "ACTIVE",
+        student.status == "ACTIVE",
+        student.status == "Active",
+        student.status.is_(None)
     )
-    stud_query = db.query(Customer).filter(stud_status_filter)
+    stud_query = db.query(student).filter(stud_status_filter)
     if is_filtered and target_branch:
         stud_query = stud_query.filter(
             or_(
-                Customer.branch_id == target_branch.id,
-                Customer.primary_vahd_location.ilike(f"%{target_branch.branch_name}%"),
-                Customer.primary_vahd_location.ilike(f"%{target_branch.vahd_name}%") if target_branch.vahd_name else False,
-                Customer.owner_id == target_branch.owner_id if target_branch.owner_id else False
+                student.branch_id == target_branch.id,
+                student.primary_vahd_location.ilike(f"%{target_branch.branch_name}%"),
+                student.primary_vahd_location.ilike(f"%{target_branch.vahd_name}%") if target_branch.vahd_name else False,
+                student.owner_id == target_branch.owner_id if target_branch.owner_id else False
             )
         )
     else:
@@ -649,11 +651,11 @@ def get_ho_dashboard(
         owner_ids = [b.owner_id for b in all_branches if b.owner_id]
         stud_query = stud_query.filter(
             or_(
-                Customer.ho_id == ho_id,
-                Customer.branch_id.in_(active_branch_ids),
-                Customer.primary_vahd_location.in_(branch_names),
-                Customer.primary_vahd_location.in_(vahd_names),
-                Customer.owner_id.in_(owner_ids)
+                student.ho_id == ho_id,
+                student.branch_id.in_(active_branch_ids),
+                student.primary_vahd_location.in_(branch_names),
+                student.primary_vahd_location.in_(vahd_names),
+                student.owner_id.in_(owner_ids)
             )
         )
     total_students = stud_query.count()
@@ -685,8 +687,8 @@ def get_ho_dashboard(
         person_name = meta.get("user_name") or meta.get("employee_name") or meta.get("name") or ""
         role_label = meta.get("user_role") or meta.get("role") or log.user_role or ""
 
-        if not person_name and log.customer_id:
-            c = db.query(Customer).filter(Customer.id == log.customer_id).first()
+        if not person_name and log.student_id:
+            c = db.query(student).filter(student.id == log.student_id).first()
             if c:
                 person_name = c.full_name or ""
                 role_label = role_label or "Student"
@@ -729,14 +731,16 @@ def get_ho_dashboard(
                 User.branch_id == b.id,
                 User.id == b.owner_id
             ),
-            User.role.in_(["OWNER", "HEAD_OFFICE"])
+            User.role == "OWNER"
         ).order_by(User.created_at.asc()).all()
 
         primary_owner = None
         if b.owner_id:
             primary_owner = next((o for o in branch_owners if o.id == b.owner_id), None)
             if not primary_owner:
-                primary_owner = db.query(User).filter(User.id == b.owner_id).first()
+                candidate = db.query(User).filter(User.id == b.owner_id).first()
+                if candidate and candidate.role == "OWNER":
+                    primary_owner = candidate
         if not primary_owner and branch_owners:
             primary_owner = branch_owners[0]
 
@@ -766,12 +770,12 @@ def get_ho_dashboard(
             ),
             emp_status_filter
         ).count()
-        b_stud_count = db.query(Customer).filter(
+        b_stud_count = db.query(student).filter(
             or_(
-                Customer.branch_id == b.id,
-                Customer.primary_vahd_location.ilike(f"%{b.branch_name}%"),
-                Customer.primary_vahd_location.ilike(f"%{b.vahd_name}%") if b.vahd_name else False,
-                Customer.owner_id.in_(b_owner_ids) if b_owner_ids else False
+                student.branch_id == b.id,
+                student.primary_vahd_location.ilike(f"%{b.branch_name}%"),
+                student.primary_vahd_location.ilike(f"%{b.vahd_name}%") if b.vahd_name else False,
+                student.owner_id.in_(b_owner_ids) if b_owner_ids else False
             ),
             stud_status_filter
         ).count()
@@ -782,7 +786,7 @@ def get_ho_dashboard(
             "branch_name": b.branch_name or "",
             "city": b.city or "",
             "address": b.address or "",
-            "owner_id": primary_owner.id if primary_owner else b.owner_id,
+            "owner_id": primary_owner.id if primary_owner else None,
             "owner_name": primary_owner.full_name if primary_owner else None,
             "owner_email": primary_owner.email if primary_owner else None,
             "owner_phone": primary_owner.phone if primary_owner else None,
@@ -803,7 +807,7 @@ def get_ho_dashboard(
                 User.branch_id == target_branch.id,
                 User.id == target_branch.owner_id
             ),
-            User.role.in_(["OWNER", "HEAD_OFFICE"])
+            User.role == "OWNER"
         ).order_by(User.created_at.asc()).all()
 
         selected_owners_list = [
@@ -823,7 +827,9 @@ def get_ho_dashboard(
         if target_branch.owner_id:
             pri_owner = next((o for o in target_owners if o.id == target_branch.owner_id), None)
             if not pri_owner:
-                pri_owner = db.query(User).filter(User.id == target_branch.owner_id).first()
+                candidate = db.query(User).filter(User.id == target_branch.owner_id).first()
+                if candidate and candidate.role == "OWNER":
+                    pri_owner = candidate
         if not pri_owner and target_owners:
             pri_owner = target_owners[0]
 
@@ -898,14 +904,16 @@ def _gather_ho_branch_attendance(
                 User.branch_id == b.id,
                 User.id == b.owner_id
             ),
-            User.role.in_(["OWNER", "HEAD_OFFICE"])
+            User.role == "OWNER"
         ).order_by(User.created_at.asc()).all()
 
         primary_owner = None
         if b.owner_id:
             primary_owner = next((o for o in branch_owners if o.id == b.owner_id), None)
             if not primary_owner:
-                primary_owner = db.query(User).filter(User.id == b.owner_id).first()
+                candidate = db.query(User).filter(User.id == b.owner_id).first()
+                if candidate and candidate.role == "OWNER":
+                    primary_owner = candidate
         if not primary_owner and branch_owners:
             primary_owner = branch_owners[0]
 
@@ -950,9 +958,9 @@ def _gather_ho_branch_attendance(
         avg_emp_pct = round(b_emp_pct_sum / len(emps), 1) if emps else 0.0
 
         # Fetch students
-        students = db.query(Customer).filter(
-            or_(Customer.branch_id == b.id, Customer.primary_vahd_location.ilike(f"%{b.branch_name}%")),
-            or_(func.upper(Customer.status) == "ACTIVE", Customer.status == "ACTIVE", Customer.status == "Active", Customer.status.is_(None))
+        students = db.query(student).filter(
+            or_(student.branch_id == b.id, student.primary_vahd_location.ilike(f"%{b.branch_name}%")),
+            or_(func.upper(student.status) == "ACTIVE", student.status == "ACTIVE", student.status == "Active", student.status.is_(None))
         ).all()
 
         stud_list = []
@@ -963,7 +971,7 @@ def _gather_ho_branch_attendance(
         for s in students:
             try:
                 s_rep = StudentAttendanceReportService.compute_student_monthly_attendance(
-                    db, customer_id=s.id, year=target_year, month=target_month
+                    db, student_id=s.id, year=target_year, month=target_month
                 )
                 b_stud_present_sum += s_rep["days_present"]
                 b_stud_absent_sum += s_rep["days_absent"]
@@ -1472,7 +1480,7 @@ def get_ho_organisations_matrix(
                 BiometricLog.user_role.in_(["employee", "STAFF", "MANAGER", "EMPLOYEE"])
             ).all()
             for bp in bio_punches:
-                m_emp_id = (bp.meta_data or {}).get("employee_id") or bp.customer_id
+                m_emp_id = (bp.meta_data or {}).get("employee_id") or bp.student_id
                 if m_emp_id in emp_ids:
                     emp_present_set.add(m_emp_id)
 
@@ -1497,19 +1505,19 @@ def get_ho_organisations_matrix(
         emp_absent = max(0, total_emp - emp_present - emp_leave)
 
         # 2. Students in this branch
-        students = db.query(Customer).filter(
-            or_(Customer.branch_id == b.id, Customer.primary_vahd_location.ilike(f"%{b.branch_name}%")),
-            or_(func.upper(Customer.status) == "ACTIVE", Customer.status == "ACTIVE", Customer.status == "Active", Customer.status.is_(None))
+        students = db.query(student).filter(
+            or_(student.branch_id == b.id, student.primary_vahd_location.ilike(f"%{b.branch_name}%")),
+            or_(func.upper(student.status) == "ACTIVE", student.status == "ACTIVE", student.status == "Active", student.status.is_(None))
         ).all()
         student_ids = [s.id for s in students]
         total_students = len(student_ids)
 
         student_present_set = set()
         if student_ids:
-            bio_stud_punches = db.query(BiometricLog.customer_id).filter(
+            bio_stud_punches = db.query(BiometricLog.student_id).filter(
                 BiometricLog.timestamp >= day_start,
                 BiometricLog.timestamp <= day_end,
-                BiometricLog.customer_id.in_(student_ids)
+                BiometricLog.student_id.in_(student_ids)
             ).all()
             student_present_set.update([p[0] for p in bio_stud_punches if p[0]])
 

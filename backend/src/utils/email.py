@@ -19,9 +19,9 @@ def generate_enrollment_password(full_name: str, phone: str) -> str:
     return f"{first_4}{last_4}"
 
 
-def send_enrollment_email(to_email: str, full_name: str, password: str, role: str = "CUSTOMER", plan_name: str = None) -> bool:
+def send_enrollment_email(to_email: str, full_name: str, password: str, role: str = "student", plan_name: str = None) -> bool:
     """
-    Sends automated welcome email with login credentials to a newly enrolled customer or employee.
+    Sends automated welcome email with login credentials to a newly enrolled student or employee.
     All branding text is pulled dynamically from settings — zero hardcoded strings.
     """
     vahd_name = settings.vahd_NAME

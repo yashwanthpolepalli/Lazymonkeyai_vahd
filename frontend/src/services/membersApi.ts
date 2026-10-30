@@ -1,7 +1,7 @@
 import { apiClient } from './apiClient';
 import type { Member } from '@/types/member';
 
-export interface CustomerView extends Partial<Member> {
+export interface studentView extends Partial<Member> {
   id: string;
   name: string;
   phone?: string;
@@ -13,7 +13,7 @@ export interface CustomerView extends Partial<Member> {
 export type { Member };
 
 export const membersApi = {
-  getCustomers: async (params?: Record<string, string>): Promise<Member[]> => {
+  getstudents: async (params?: Record<string, string>): Promise<Member[]> => {
     return membersApi.list(params);
   },
   list: async (params?: Record<string, string>): Promise<Member[]> => {
@@ -21,7 +21,7 @@ export const membersApi = {
     /* eslint-disable @typescript-eslint/no-explicit-any */
     let rawList: any[] = [];
     try {
-      const res = await apiClient.get<any[]>(`/customers${query}`);
+      const res = await apiClient.get<any[]>(`/students${query}`);
       rawList = Array.isArray(res) ? res : [];
     } catch (_err) {
       try {
@@ -66,7 +66,7 @@ export const membersApi = {
   },
   get: async (id: string): Promise<Member | null> => {
     try {
-      const item: any = await apiClient.get<any>(`/customers/${id}`);
+      const item: any = await apiClient.get<any>(`/students/${id}`);
       if (!item) return null;
       return {
         id: item.id || id,
@@ -92,7 +92,7 @@ export const membersApi = {
     }
   },
   update: async (id: string, data: any): Promise<any> => {
-    return apiClient.patch(`/customers/${id}`, data);
+    return apiClient.patch(`/students/${id}`, data);
   },
   create: async (data: Partial<Member> & {
     role?: string;
@@ -107,11 +107,11 @@ export const membersApi = {
     branch?: string;
     primary_vahd_location?: string;
   }): Promise<any> => {
-    return apiClient.post('/customers/onboard', {
+    return apiClient.post('/students/onboard', {
       full_name: data.name,
       email: data.email,
       phone: data.phone,
-      role: data.role || 'CUSTOMER',
+      role: data.role || 'student',
       gender: data.gender,
       age: data.age ? Number(data.age) : undefined,
       goal: (data as any).goal,

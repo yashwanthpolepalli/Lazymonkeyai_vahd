@@ -78,7 +78,7 @@ export function getActiveStorefrontTenantId(): string | null {
       const tid = parsed?.user?.tenantId || parsed?.user?.tenant_id;
       if (tid && tid !== "default" && typeof tid === "string" && tid.length > 10) return tid;
     }
-  } catch (e) {}
+  } catch (e) { }
   return null;
 }
 
@@ -205,10 +205,10 @@ export const fetchStorefrontProductById = async (productId: string): Promise<Sto
 };
 
 export const createStorefrontOrder = async (orderData: {
-  customer_name: string;
-  customer_id?: string;
-  customer_email?: string;
-  customer_phone?: string;
+  student_name: string;
+  student_id?: string;
+  student_email?: string;
+  student_phone?: string;
   total_amount: number;
   delivery_partner?: string;
   expected_delivery?: string;
@@ -220,7 +220,7 @@ export const createStorefrontOrder = async (orderData: {
   const rootBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
   const marketplaceBase = `${rootBase}/marketplace`;
   const tid = getActiveStorefrontTenantId();
-  
+
   const payload = {
     ...orderData,
     tenant_id: tid,
@@ -241,11 +241,11 @@ export const createStorefrontOrder = async (orderData: {
   throw new Error(errorBody.detail || "Failed to place order and reserve stock.");
 };
 
-export const fetchStorefrontUserOrders = async (customerEmail?: string, customerId?: string): Promise<any[]> => {
+export const fetchStorefrontUserOrders = async (studentEmail?: string, studentId?: string): Promise<any[]> => {
   const rootBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
   const url = new URL(`${rootBase}/marketplace/orders`);
-  if (customerEmail) url.searchParams.append('customer_email', customerEmail);
-  if (customerId) url.searchParams.append('customer_id', customerId);
+  if (studentEmail) url.searchParams.append('student_email', studentEmail);
+  if (studentId) url.searchParams.append('student_id', studentId);
   const res = await fetch(url.toString());
   if (!res.ok) throw new Error(`Failed to fetch orders: ${res.status}`);
   return res.json();

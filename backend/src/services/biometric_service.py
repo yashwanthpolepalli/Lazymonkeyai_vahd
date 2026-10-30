@@ -15,7 +15,7 @@ from sqlalchemy import func
 
 from src.models.biometric import BiometricLog
 from src.models.biometric_device import BiometricDevice
-from src.models.customer import Customer
+from src.models.student import student
 from src.services.essl_bioserver_client import (
     essl_client,
     EsslConnectionError,
@@ -79,13 +79,13 @@ def _first_device_by_serial(db: Session, serial: str) -> Optional[BiometricDevic
     return db.query(BiometricDevice).filter(BiometricDevice.serial_number == serial).first()
 
 
-def _resolve_customer(db: Session, employee_code: str) -> Optional[Customer]:
+def _resolve_student(db: Session, employee_code: str) -> Optional[student]:
     # The supplied eBioServer webhook manual gives EmployeeCode, but it does
-    # not define how that value maps to the application's Customer table.
+    # not define how that value maps to the application's student table.
     # First try the application's primary key; deployments with a dedicated
     # employee-code column can add that mapping here without changing the
     # vendor contract.
-    return db.query(Customer).filter(Customer.id == employee_code).first()
+    return db.query(student).filter(student.id == employee_code).first()
 
 
 def _is_physical_log(log: BiometricLog) -> bool:
@@ -101,7 +101,7 @@ def _is_physical_log(log: BiometricLog) -> bool:
         return False
     if dev_id == "ess_geofence_portal" or method == "GPS_GEOFENCE" or punch_mode == "GPS":
         return False
-    if channel in ["CUSTOMER_MOBILE_WEB_PORTAL", "STAFF_PORTAL", "MANUAL_GPS"]:
+    if channel in ["student_MOBILE_WEB_PORTAL", "STAFF_PORTAL", "MANUAL_GPS"]:
         return False
     if event_type in ["GPS_SCAN"]:
         return False
@@ -122,8 +122,8 @@ class BiometricService:
 
         if role_filter and str(role_filter).strip().upper() not in ["ALL", ""]:
             rf = str(role_filter).strip().upper()
-            if rf in ["CUSTOMER", "CUSTOMERS"]:
-                query = query.filter(BiometricLog.user_role == "CUSTOMER")
+            if rf in ["student", "studentS"]:
+                query = query.filter(BiometricLog.user_role == "student")
             elif rf in ["employee", "STAFF", "employeeS", "employee_STAFF", "EMPLOYEE", "STAFF_employee"]:
                 query = query.filter(BiometricLog.user_role.in_(["employee", "STAFF", "OWNER", "MANAGER"]))
 
@@ -133,49 +133,49 @@ class BiometricService:
         if physical_only:
             logs = [l for l in logs if _is_physical_log(l)][:limit]
 
-        customer_ids = {x.customer_id for x in logs if x.customer_id}
-        customers = {
+        student_ids = {x.student_id for x in logs if x.student_id}
+        students = {
             c.id: c
-            for c in (db.query(Customer).filter(Customer.id.in_(customer_ids)).all() if customer_ids else [])
+            for c in (db.query(student).filter(student.id.in_(student_ids)).all() if student_ids else [])
         }
 
         from src.models.user import User
         users = {
             u.id: u
-            for u in (db.query(User).filter(User.id.in_(customer_ids)).all() if customer_ids else [])
+            for u in (db.query(User).filter(User.id.in_(student_ids)).all() if student_ids else [])
         }
 
         from src.models.hrms import Employee
         from src.models.employee import employeeProfile
         employees = {
             t.id: t
-            for t in (db.query(employeeProfile).filter(employeeProfile.id.in_(customer_ids)).all() if customer_ids else [])
+            for t in (db.query(employeeProfile).filter(employeeProfile.id.in_(student_ids)).all() if student_ids else [])
         }
         employees = {
             e.id: e
-            for e in (db.query(Employee).filter(Employee.id.in_(customer_ids)).all() if customer_ids else [])
+            for e in (db.query(Employee).filter(Employee.id.in_(student_ids)).all() if student_ids else [])
         }
 
         result = []
         for log in logs:
             meta = log.meta_data or {}
-            raw_role = (log.user_role or meta.get("user_role") or "CUSTOMER").upper()
+            raw_role = (log.user_role or meta.get("user_role") or "student").upper()
 
             resolved_name = (
-                meta.get("customer_name")
+                meta.get("student_name")
                 or meta.get("employee_name")
                 or meta.get("user_name")
-                or (customers.get(log.customer_id).full_name if log.customer_id in customers else None)
-                or (employees.get(log.customer_id).full_name if log.customer_id in employees else None)
-                or (users.get(log.customer_id).full_name if log.customer_id in users else None)
-                or (f"{employees.get(log.customer_id).first_name} {employees.get(log.customer_id).last_name or ''}".strip() if log.customer_id in employees else None)
-                or (f"Member ({log.customer_id[:6]})" if log.customer_id else "vahd Member")
+                or (students.get(log.student_id).full_name if log.student_id in students else None)
+                or (employees.get(log.student_id).full_name if log.student_id in employees else None)
+                or (users.get(log.student_id).full_name if log.student_id in users else None)
+                or (f"{employees.get(log.student_id).first_name} {employees.get(log.student_id).last_name or ''}".strip() if log.student_id in employees else None)
+                or (f"Member ({log.student_id[:6]})" if log.student_id else "vahd Member")
             )
 
             result.append({
                 "id": log.id,
-                "customer_id": log.customer_id,
-                "customer_name": resolved_name,
+                "student_id": log.student_id,
+                "student_name": resolved_name,
                 "person_name": resolved_name,
                 "user_role": raw_role,
                 "timestamp": log.timestamp.isoformat() if log.timestamp else None,
@@ -208,8 +208,8 @@ class BiometricService:
 
         if role_filter and str(role_filter).strip().upper() not in ["ALL", ""]:
             rf = str(role_filter).strip().upper()
-            if rf in ["CUSTOMER", "CUSTOMERS"]:
-                query = query.filter(BiometricLog.user_role == "CUSTOMER")
+            if rf in ["student", "studentS"]:
+                query = query.filter(BiometricLog.user_role == "student")
             elif rf in ["employee", "STAFF", "employeeS", "employee_STAFF", "EMPLOYEE", "STAFF_employee"]:
                 query = query.filter(BiometricLog.user_role.in_(["employee", "STAFF", "OWNER", "MANAGER"]))
 
@@ -239,8 +239,8 @@ class BiometricService:
             )
         if role_filter and str(role_filter).strip().upper() not in ["ALL", ""]:
             rf = str(role_filter).strip().upper()
-            if rf in ["CUSTOMER", "CUSTOMERS"]:
-                week_query = week_query.filter(BiometricLog.user_role == "CUSTOMER")
+            if rf in ["student", "studentS"]:
+                week_query = week_query.filter(BiometricLog.user_role == "student")
             elif rf in ["employee", "STAFF", "employeeS", "employee_STAFF", "EMPLOYEE", "STAFF_employee"]:
                 week_query = week_query.filter(BiometricLog.user_role.in_(["employee", "STAFF", "OWNER", "MANAGER"]))
 
@@ -275,12 +275,12 @@ class BiometricService:
         total_events = len(logs)
         success_rate = round((granted_count / total_events * 100), 1) if total_events > 0 else 0.0
 
-        customer_count = len([x for x in checkins if (x.user_role or "").upper() == "CUSTOMER"])
+        student_count = len([x for x in checkins if (x.user_role or "").upper() == "student"])
         staff_count = len([x for x in checkins if (x.user_role or "").upper() in ["employee", "STAFF", "OWNER", "MANAGER"]])
 
         return {
             "today_checkins": len(checkins),
-            "customer_checkins": customer_count,
+            "student_checkins": student_count,
             "staff_checkins": staff_count,
             "today_events": total_events,
             "today_granted": granted_count,
@@ -297,15 +297,15 @@ class BiometricService:
         }
 
     @staticmethod
-    def _is_duplicate(db: Session, customer_id: Optional[str], device_id: str,
+    def _is_duplicate(db: Session, student_id: Optional[str], device_id: str,
                       direction: str, event_time: dt.datetime) -> Optional[BiometricLog]:
-        if not customer_id:
+        if not student_id:
             return None
         cutoff = event_time - dt.timedelta(seconds=DUPLICATE_WINDOW_SECONDS)
         return (
             db.query(BiometricLog)
             .filter(
-                BiometricLog.customer_id == customer_id,
+                BiometricLog.student_id == student_id,
                 BiometricLog.device_id == device_id,
                 BiometricLog.direction == direction,
                 BiometricLog.timestamp >= cutoff,
@@ -317,7 +317,7 @@ class BiometricService:
     @staticmethod
     def record_checkin(
         db: Session,
-        customer_id: Optional[str],
+        student_id: Optional[str],
         event_type: str,
         device_id: str,
         direction: str,
@@ -330,7 +330,7 @@ class BiometricService:
             raise ValueError(f"Invalid direction '{direction}'")
         timestamp = event_time or _now()
 
-        duplicate = BiometricService._is_duplicate(db, customer_id, device_id, direction, timestamp)
+        duplicate = BiometricService._is_duplicate(db, student_id, device_id, direction, timestamp)
         if duplicate:
             return duplicate
 
@@ -340,8 +340,8 @@ class BiometricService:
 
         log = BiometricLog(
             id=f"bio_{uuid.uuid4().hex}",
-            customer_id=customer_id,
-            user_role="CUSTOMER" if customer_id else "UNKNOWN",
+            student_id=student_id,
+            user_role="student" if student_id else "UNKNOWN",
             event_type=event_type,
             device_id=device_id,
             device_name=device_name,
@@ -531,7 +531,7 @@ class BiometricService:
 
         event_time = _parse_vendor_time(payload["LogDate"])
         direction = _direction(payload["Direction"])
-        customer = _resolve_customer(db, employee_code)
+        student = _resolve_student(db, employee_code)
         event_type = _verification_to_event_type(payload.get("VerificationType", ""))
 
         meta = {
@@ -547,15 +547,15 @@ class BiometricService:
             "VerificationType": payload.get("VerificationType"),
             "GPS": payload.get("GPS"),
         }
-        customer_id = customer.id if customer else None
-        existing = BiometricService._is_duplicate(db, customer_id, device.id, direction, event_time)
+        student_id = student.id if student else None
+        existing = BiometricService._is_duplicate(db, student_id, device.id, direction, event_time)
         if existing:
             log = existing
             outcome = "DUPLICATE"
         else:
             log = BiometricService.record_checkin(
                 db=db,
-                customer_id=customer_id,
+                student_id=student_id,
                 event_type=event_type,
                 device_id=device.id,
                 direction=direction,

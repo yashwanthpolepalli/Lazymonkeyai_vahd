@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, desc, or_
 
 from src.models.user import User
-from src.models.customer import Customer
+from src.models.student import student
 from src.models.membership import Membership
 from src.models.settings import Branch as vahdBranch, FeatureControl
 from src.models.biometric_device import BiometricDevice
@@ -28,20 +28,72 @@ class SuperAdminService:
     # 1. PLATFORM OVERVIEW & LIVE HEALTH
     # =========================================================================
     @staticmethod
-    def get_platform_overview(db: Session) -> dict:
+    def get_platform_overview(db: Session, ho_id_filter: Optional[str] = None) -> dict:
         ho_users = db.query(User).filter(
             or_(
                 func.upper(User.role) == "HEAD_OFFICE",
                 func.upper(User.role) == "HO"
             )
         ).all()
-        ho_user_ids = {u.id for u in ho_users}
-        total_orgs = len(ho_user_ids)
-        active_orgs = db.query(vahdBranch).filter(vahdBranch.owner_id.in_(ho_user_ids), vahdBranch.is_active == True).count()
-        total_members = db.query(Customer).count()
+        if ho_id_filter and ho_id_filter != "all":
+            ho_users = [u for u in ho_users if u.id == ho_id_filter or u.ho_id == ho_id_filter]
+
+        total_hos = len(ho_users)
+        active_hos = len([u for u in ho_users if u.is_active])
+
+        # Gather scoped branch IDs
+        if ho_id_filter and ho_id_filter != "all":
+            scoped_branches = db.query(vahdBranch).filter(
+                or_(
+                    vahdBranch.ho_id == ho_id_filter,
+                    vahdBranch.ho_id.in_([u.ho_id for u in ho_users if u.ho_id])
+                )
+            ).all()
+            scoped_branch_ids = [b.id for b in scoped_branches]
+            total_owners = db.query(User).filter(
+                User.role == "OWNER",
+                or_(
+                    User.ho_id == ho_id_filter,
+                    User.branch_id.in_(scoped_branch_ids) if scoped_branch_ids else False
+                )
+            ).count()
+            total_employees = db.query(User).filter(
+                or_(
+                    func.upper(User.role).in_(["EMPLOYEE", "STAFF", "COACH"]),
+                    User.role == "employee"
+                ),
+                or_(
+                    User.ho_id == ho_id_filter,
+                    User.branch_id.in_(scoped_branch_ids) if scoped_branch_ids else False
+                )
+            ).count()
+            total_members = db.query(student).filter(
+                or_(
+                    student.ho_id == ho_id_filter,
+                    student.branch_id.in_(scoped_branch_ids) if scoped_branch_ids else False
+                )
+            ).count()
+            if total_members == 0:
+                total_members = db.query(User).filter(
+                    User.role.in_(["STUDENT", "student"]),
+                    or_(
+                        User.ho_id == ho_id_filter,
+                        User.branch_id.in_(scoped_branch_ids) if scoped_branch_ids else False
+                    )
+                ).count()
+        else:
+            total_owners = db.query(User).filter(User.role == "OWNER").count()
+            total_employees = db.query(User).filter(
+                or_(
+                    func.upper(User.role).in_(["EMPLOYEE", "STAFF", "COACH"]),
+                    User.role == "employee"
+                )
+            ).count()
+            total_members = db.query(student).count()
+            if total_members == 0:
+                total_members = db.query(User).filter(User.role.in_(["STUDENT", "student"])).count()
+
         total_users = db.query(User).count()
-        total_employees = db.query(User).filter(User.role == "employee").count()
-        total_owners = len(ho_user_ids)
 
         # Dynamic MRR sum from active memberships
         total_mrr_sum = db.query(func.sum(Membership.price)).filter(Membership.status == "ACTIVE").scalar()
@@ -109,8 +161,8 @@ class SuperAdminService:
         total_tokens = db.query(func.sum(AiJobLog.tokens_used)).scalar() or 0
 
         return {
-            "totalOrganizations": total_orgs,
-            "activeOrganizations": active_orgs,
+            "totalOrganizations": total_hos,
+            "activeOrganizations": active_hos,
             "totalMembers": total_members,
             "totalUsers": total_users,
             "totalemployees": total_employees,
@@ -126,7 +178,7 @@ class SuperAdminService:
         }
 
     # =========================================================================
-    # 2. ORGANIZATIONS / vahdS DIRECTORY & INSPECTOR
+    # 2. ORGANIZATIONS / HEAD OFFICES DIRECTORY & INSPECTOR
     # =========================================================================
     @staticmethod
     def ensure_default_feature_controls(db: Session):
@@ -151,111 +203,159 @@ class SuperAdminService:
         db: Session,
         status_filter: Optional[str] = None,
         plan_filter: Optional[str] = None,
-        search: Optional[str] = None
+        search: Optional[str] = None,
+        ho_id_filter: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         SuperAdminService.ensure_default_feature_controls(db)
-        query = db.query(vahdBranch)
-        if search:
-            query = query.filter(or_(
-                vahdBranch.vahd_name.ilike(f"%{search}%"),
-                vahdBranch.city.ilike(f"%{search}%")
-            ))
-        if status_filter and status_filter != "all":
-            if status_filter == "active":
-                query = query.filter(vahdBranch.is_active == True)
-            elif status_filter == "suspended":
-                query = query.filter(vahdBranch.is_active == False)
 
-        # Super Admin Head Office Directory must ONLY return Head Offices (HOs),
-        # not organizations/branches created by HOs for their branch owners.
-        ho_users = db.query(User).filter(
+        # Retrieve all Head Office users
+        ho_users_query = db.query(User).filter(
             or_(
                 func.upper(User.role) == "HEAD_OFFICE",
                 func.upper(User.role) == "HO"
             )
-        ).all()
-        ho_user_ids = {u.id for u in ho_users}
+        )
+        if ho_id_filter and ho_id_filter.strip() and ho_id_filter != "all":
+            ho_users_query = ho_users_query.filter(
+                or_(User.id == ho_id_filter.strip(), User.ho_id == ho_id_filter.strip())
+            )
 
-        query = query.filter(vahdBranch.owner_id.in_(ho_user_ids))
-        branches = query.order_by(desc(vahdBranch.created_at)).all()
+        ho_users = ho_users_query.order_by(desc(User.created_at)).all()
 
         res = []
-        for b in branches:
-            owner = db.query(User).filter(User.id == b.owner_id).first()
-            if not owner:
-                owner = db.query(User).filter(User.branch_id == b.id).first()
-
-            # Dynamic member count across this entire Head Office
-            member_count = db.query(Customer).filter(
+        for ho in ho_users:
+            # Locate primary branch or any branch linked to this HO
+            primary_branch = db.query(vahdBranch).filter(
                 or_(
-                    Customer.ho_id == b.ho_id,
-                    Customer.branch_id == b.id,
-                    Customer.owner_id == b.owner_id,
-                    Customer.primary_vahd_location.ilike(f"%{b.branch_name}%")
+                    vahdBranch.ho_id == ho.ho_id if ho.ho_id else False,
+                    vahdBranch.id == ho.branch_id if ho.branch_id else False
+                )
+            ).order_by(vahdBranch.created_at.asc()).first()
+
+            # All institutions/branches linked to this Head Office
+            ho_branches = db.query(vahdBranch).filter(
+                or_(
+                    vahdBranch.ho_id == ho.ho_id if ho.ho_id else False,
+                    vahdBranch.id == ho.branch_id if ho.branch_id else False
+                )
+            ).all()
+            ho_branch_ids = [b.id for b in ho_branches]
+
+            # All Owners under this Head Office
+            ho_owners = db.query(User).filter(
+                User.role == "OWNER",
+                or_(
+                    User.ho_id == ho.ho_id if ho.ho_id else False,
+                    User.branch_id.in_(ho_branch_ids) if ho_branch_ids else False,
+                    User.id.in_([b.owner_id for b in ho_branches if b.owner_id]) if ho_branches else False
+                )
+            ).all()
+
+            # All Employees / Staff under this Head Office
+            employees_count = db.query(User).filter(
+                or_(
+                    func.upper(User.role).in_(["EMPLOYEE", "STAFF", "COACH"]),
+                    User.role == "employee"
+                ),
+                or_(
+                    User.ho_id == ho.ho_id if ho.ho_id else False,
+                    User.branch_id.in_(ho_branch_ids) if ho_branch_ids else False
                 )
             ).count()
 
-            # Dynamic employee count for this Head Office
-            employee_count = db.query(User).filter(
-                User.role == "employee",
+            # All Students under this Head Office
+            students_count = db.query(student).filter(
                 or_(
-                    User.ho_id == b.ho_id,
-                    User.branch_id == b.id,
-                    User.owner_id == b.owner_id
+                    student.ho_id == ho.ho_id if ho.ho_id else False,
+                    student.branch_id.in_(ho_branch_ids) if ho_branch_ids else False
                 )
             ).count()
-
-            # Dynamic revenue for this Head Office
-            branch_cust_ids = [
-                c.id for c in db.query(Customer.id).filter(
+            if students_count == 0:
+                students_count = db.query(User).filter(
+                    User.role.in_(["STUDENT", "student"]),
                     or_(
-                        Customer.ho_id == b.ho_id,
-                        Customer.branch_id == b.id,
-                        Customer.owner_id == b.owner_id,
-                        Customer.primary_vahd_location.ilike(f"%{b.branch_name}%")
+                        User.ho_id == ho.ho_id if ho.ho_id else False,
+                        User.branch_id.in_(ho_branch_ids) if ho_branch_ids else False
+                    )
+                ).count()
+
+            # Revenue under this Head Office
+            rev_sum = 0.0
+            branch_cust_ids = [
+                c.id for c in db.query(student.id).filter(
+                    or_(
+                        student.ho_id == ho.ho_id if ho.ho_id else False,
+                        student.branch_id.in_(ho_branch_ids) if ho_branch_ids else False
                     )
                 ).all()
             ]
-
-            rev_sum = 0.0
             if branch_cust_ids:
                 rev_sum = db.query(func.sum(Membership.paid_amount)).filter(
-                    Membership.customer_id.in_(branch_cust_ids)
+                    Membership.student_id.in_(branch_cust_ids)
                 ).scalar() or 0.0
 
-            ai_credits = db.query(func.sum(AiJobLog.credits_consumed)).filter(
-                or_(AiJobLog.organization_id == b.id, AiJobLog.organization_name == b.vahd_name)
-            ).scalar() or 0
-            devices_cnt = db.query(BiometricDevice).count()
+            org_name = (
+                (primary_branch.vahd_name if primary_branch and primary_branch.vahd_name else None)
+                or (getattr(ho, "organization_name", None))
+                or (f"{ho.full_name}'s Head Office" if ho.full_name else "Central Head Office")
+            )
+            branch_name = (primary_branch.branch_name if primary_branch and primary_branch.branch_name else "") or "Main Head Office"
+            city = (primary_branch.city if primary_branch and primary_branch.city else "") or ""
+
+            # Search filter
+            if search and search.strip():
+                q = search.strip().lower()
+                matches = (
+                    q in org_name.lower() or
+                    q in branch_name.lower() or
+                    q in (ho.full_name or "").lower() or
+                    q in (ho.email or "").lower() or
+                    q in city.lower()
+                )
+                if not matches:
+                    continue
+
+            # Status filter
+            if status_filter and status_filter != "all":
+                if status_filter == "active" and not ho.is_active:
+                    continue
+                elif status_filter == "suspended" and ho.is_active:
+                    continue
 
             res.append({
-                "id": b.id,
-                "name": b.vahd_name,
-                "branch_name": b.branch_name or "",
-                "city": b.city or "",
-                "address": b.address or "",
-                "owner_id": owner.id if owner else b.owner_id,
-                "owner_name": owner.full_name if owner else "",
-                "owner_email": owner.email if owner else "",
-                "phone": owner.phone if owner else "",
-                "members": member_count,
-                "employees": employee_count,
+                "id": primary_branch.id if primary_branch else ho.id,
+                "ho_id": ho.ho_id or (primary_branch.ho_id if primary_branch else None) or ho.id,
+                "name": org_name,
+                "branch_name": branch_name,
+                "city": city,
+                "address": (primary_branch.address if primary_branch and primary_branch.address else "") or "",
+                "owner_id": ho.id,
+                "owner_name": ho.full_name or "Head Office Admin",
+                "owner_email": ho.email,
+                "phone": ho.phone or "",
+                "members": students_count,
+                "students_count": students_count,
+                "employees": employees_count,
+                "employees_count": employees_count,
+                "owners_count": len(ho_owners),
+                "branches_count": len(ho_branches),
                 "revenue": float(rev_sum),
-                "plan_id": getattr(b, "plan_id", None),
-                "plan": getattr(b, "plan_name", None) or "",
-                "plan_tier": getattr(b, "plan_tier", None) or "",
-                "billing_cycle": getattr(b, "billing_cycle", None) or "",
-                "payment_method": getattr(b, "payment_method", None) or "",
-                "paid_amount": float(getattr(b, "paid_amount", 0.0) or 0.0),
-                "custom_features": getattr(b, "custom_features", None) or [],
-                "status": "Active" if b.is_active else "Suspended",
-                "is_active": b.is_active,
-                "health_score": 100 if b.is_active else 0,
-                "ai_credits_used": int(ai_credits),
+                "plan_id": getattr(primary_branch, "plan_id", None) if primary_branch else None,
+                "plan": (getattr(primary_branch, "plan_name", None) if primary_branch else None) or "Enterprise",
+                "plan_tier": (getattr(primary_branch, "plan_tier", None) if primary_branch else None) or "PRO",
+                "billing_cycle": (getattr(primary_branch, "billing_cycle", None) if primary_branch else None) or "annual",
+                "payment_method": (getattr(primary_branch, "payment_method", None) if primary_branch else None) or "Cash",
+                "paid_amount": float(getattr(primary_branch, "paid_amount", 0.0) or 0.0) if primary_branch else 0.0,
+                "custom_features": (getattr(primary_branch, "custom_features", None) if primary_branch else None) or [],
+                "status": "Active" if ho.is_active else "Suspended",
+                "is_active": bool(ho.is_active),
+                "health_score": 100 if ho.is_active else 0,
+                "ai_credits_used": 0,
                 "storage_used_gb": 0.0,
-                "devices_count": devices_cnt,
-                "created_at": b.created_at.strftime("%b %d, %Y") if b.created_at else ""
+                "devices_count": db.query(BiometricDevice).count(),
+                "created_at": ho.created_at.strftime("%b %d, %Y") if ho.created_at else ""
             })
+
         return res
 
     @staticmethod
@@ -271,20 +371,20 @@ class SuperAdminService:
             owner = db.query(User).filter(User.branch_id == branch.id, User.role == "OWNER").first()
 
         branch_cust_ids = [
-            c.id for c in db.query(Customer.id).filter(
+            c.id for c in db.query(student.id).filter(
                 or_(
-                    Customer.branch_id == branch.id,
-                    Customer.owner_id == branch.owner_id,
-                    Customer.primary_vahd_location.ilike(f"%{branch.branch_name}%")
+                    student.branch_id == branch.id,
+                    student.owner_id == branch.owner_id,
+                    student.primary_vahd_location.ilike(f"%{branch.branch_name}%")
                 )
             ).all()
         ]
 
         member_count = len(branch_cust_ids)
         active_members = (
-            db.query(Customer).filter(
-                Customer.id.in_(branch_cust_ids),
-                Customer.status == "ACTIVE"
+            db.query(student).filter(
+                student.id.in_(branch_cust_ids),
+                student.status == "ACTIVE"
             ).count()
             if branch_cust_ids else 0
         )
@@ -301,10 +401,10 @@ class SuperAdminService:
         mrr_sum = 0.0
         if branch_cust_ids:
             rev_sum = db.query(func.sum(Membership.paid_amount)).filter(
-                Membership.customer_id.in_(branch_cust_ids)
+                Membership.student_id.in_(branch_cust_ids)
             ).scalar() or 0.0
             mrr_sum = db.query(func.sum(Membership.price)).filter(
-                Membership.customer_id.in_(branch_cust_ids),
+                Membership.student_id.in_(branch_cust_ids),
                 Membership.status == "ACTIVE"
             ).scalar() or 0.0
 
@@ -408,7 +508,7 @@ class SuperAdminService:
         if not owner_email:
             return {"success": False, "message": "Owner email is required"}
         if not password:
-            return {"success": False, "message": "Owner password is required"}
+            password = f"vahd@{uuid.uuid4().hex[:6]}"
         if not owner_name:
             owner_name = "vahd Owner"
 
@@ -468,8 +568,8 @@ class SuperAdminService:
             existing_user.is_active = True
             existing_user.is_tenant_owner = True
             owner_user = existing_user
-
-        branch.owner_id = owner_user.id
+        # Only assign branch.owner_id if target_role is OWNER; for HEAD_OFFICE, the branch has no owner yet
+        branch.owner_id = owner_user.id if target_role == "OWNER" else None
 
         actor_name, actor_email = SuperAdminService._resolve_actor(db, actor_info)
 
@@ -548,9 +648,9 @@ class SuperAdminService:
             if branch and branch.owner_id:
                 user = db.query(User).filter(User.id == branch.owner_id).first()
 
-        # If still not found, check Customer or employee profile
+        # If still not found, check student or employee profile
         if not user:
-            cust = db.query(Customer).filter(or_(Customer.id == clean_target, func.lower(Customer.email) == clean_target.lower())).first()
+            cust = db.query(student).filter(or_(student.id == clean_target, func.lower(student.email) == clean_target.lower())).first()
             if cust and cust.user_id:
                 user = db.query(User).filter(User.id == cust.user_id).first()
 
@@ -601,7 +701,7 @@ class SuperAdminService:
     def _cascade_delete_branch_data(db: Session, branch: vahdBranch):
         """
         Deep-cascades deletion of all foreign-key linked entities for a branch / organization
-        including Customers, Memberships, Attendance, Biometrics, HRMS Employees, Courses,
+        including students, Memberships, Attendance, Biometrics, HRMS Employees, Courses,
         and unlinks/removes owner or HO users if no other branches remain.
         """
         clean_id = branch.id
@@ -611,19 +711,19 @@ class SuperAdminService:
         vahd_name = branch.vahd_name
 
         from src.models import (
-            Customer, User, Membership, BiometricLog, BiometricDevice,
+            student, User, Membership, BiometricLog, BiometricDevice,
             Employee, employeeProfile, Course, StudentCourse, StudentAttendanceReportLog,
             EmployeeAttendance, LeaveRequest, EmployeeLeaveBalance, AttendanceCorrection,
             PayrollRecord, EmployeeDocument, EmployeePerformance, ExitRequest, PayrollInvoice
         )
         from sqlalchemy import or_
 
-        # 1. Customers / Students tied to this branch or location
-        custs = db.query(Customer).filter(
+        # 1. students / Students tied to this branch or location
+        custs = db.query(student).filter(
             or_(
-                Customer.branch_id == clean_id,
-                Customer.primary_vahd_location == branch_name,
-                Customer.primary_vahd_location == vahd_name
+                student.branch_id == clean_id,
+                student.primary_vahd_location == branch_name,
+                student.primary_vahd_location == vahd_name
             )
         ).all()
         cust_ids = [c.id for c in custs if c.id]
@@ -631,15 +731,15 @@ class SuperAdminService:
 
         if cust_ids:
             db.query(StudentAttendanceReportLog).filter(StudentAttendanceReportLog.student_id.in_(cust_ids)).delete(synchronize_session=False)
-            db.query(Membership).filter(Membership.customer_id.in_(cust_ids)).delete(synchronize_session=False)
-            db.query(BiometricLog).filter(BiometricLog.customer_id.in_(cust_ids)).delete(synchronize_session=False)
-            db.query(StudentCourse).filter(StudentCourse.customer_id.in_(cust_ids)).delete(synchronize_session=False)
-            db.query(Customer).filter(Customer.id.in_(cust_ids)).delete(synchronize_session=False)
+            db.query(Membership).filter(Membership.student_id.in_(cust_ids)).delete(synchronize_session=False)
+            db.query(BiometricLog).filter(BiometricLog.student_id.in_(cust_ids)).delete(synchronize_session=False)
+            db.query(StudentCourse).filter(StudentCourse.student_id.in_(cust_ids)).delete(synchronize_session=False)
+            db.query(student).filter(student.id.in_(cust_ids)).delete(synchronize_session=False)
 
         if cust_user_ids:
             db.query(User).filter(
                 User.id.in_(cust_user_ids),
-                User.role.in_(["CUSTOMER", "STUDENT", "MEMBER"])
+                User.role.in_(["student", "STUDENT", "MEMBER"])
             ).delete(synchronize_session=False)
 
         # 2. Employees tied to this branch or location
@@ -706,14 +806,14 @@ class SuperAdminService:
                     vahdBranch.id != clean_id
                 ).count()
                 if remaining_branches == 0:
-                    rem_custs = db.query(Customer).filter(Customer.owner_id == owner_id).all()
+                    rem_custs = db.query(student).filter(student.owner_id == owner_id).all()
                     rem_c_ids = [c.id for c in rem_custs if c.id]
                     rem_c_uids = [c.user_id for c in rem_custs if c.user_id]
                     if rem_c_ids:
-                        db.query(Membership).filter(Membership.customer_id.in_(rem_c_ids)).delete(synchronize_session=False)
-                        db.query(BiometricLog).filter(BiometricLog.customer_id.in_(rem_c_ids)).delete(synchronize_session=False)
-                        db.query(StudentCourse).filter(StudentCourse.customer_id.in_(rem_c_ids)).delete(synchronize_session=False)
-                        db.query(Customer).filter(Customer.id.in_(rem_c_ids)).delete(synchronize_session=False)
+                        db.query(Membership).filter(Membership.student_id.in_(rem_c_ids)).delete(synchronize_session=False)
+                        db.query(BiometricLog).filter(BiometricLog.student_id.in_(rem_c_ids)).delete(synchronize_session=False)
+                        db.query(StudentCourse).filter(StudentCourse.student_id.in_(rem_c_ids)).delete(synchronize_session=False)
+                        db.query(student).filter(student.id.in_(rem_c_ids)).delete(synchronize_session=False)
                     if rem_c_uids:
                         db.query(User).filter(User.id.in_(rem_c_uids)).delete(synchronize_session=False)
 
@@ -851,6 +951,18 @@ class SuperAdminService:
         is_active = (status.lower() == "active")
         branch.is_active = is_active
 
+        # Also sync associated owner / branch users
+        try:
+            db.query(User).filter(
+                or_(
+                    User.ho_id == branch.id,
+                    User.branch_id == branch.id,
+                    User.email == branch.email
+                )
+            ).update({"is_active": is_active}, synchronize_session=False)
+        except Exception:
+            pass
+
         # Audit log event
         actor_name, actor_email = SuperAdminService._resolve_actor(db, actor_info)
         log = PlatformAuditLog(
@@ -950,7 +1062,7 @@ class SuperAdminService:
             transactions.append({
                 "id": m.id,
                 "invoice_number": f"INV-{m.id[:8].upper()}" if m.id else "",
-                "customer_id": m.customer_id,
+                "student_id": m.student_id,
                 "amount": float(m.paid_amount or m.price or 0.0),
                 "plan_name": m.plan_name or "",
                 "payment_method": m.payment_method or "",

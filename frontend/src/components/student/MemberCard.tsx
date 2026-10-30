@@ -1,8 +1,8 @@
 import { Icon } from '@/components/ui/Icon';
 import { Badge } from '@/components/ui/Badge';
-import type { CustomerProfile } from '@/types/customer';
+import type { studentProfile } from '@/types/student';
 
-export function MemberCard({ profile }: { profile: CustomerProfile }) {
+export function MemberCard({ profile }: { profile: studentProfile }) {
   const memberId = profile.member_code || `CUS-${profile.id}`;
 
   return (

@@ -28,9 +28,9 @@ export interface PosDocumentRecord {
   id: string;
   invoice_number?: string;
   invoice_type?: string;
-  customer_name?: string;
-  customer_phone?: string;
-  customer_gstin?: string;
+  student_name?: string;
+  student_phone?: string;
+  student_gstin?: string;
   billing_address?: string;
   shipping_address?: string;
   reference_number?: string;
@@ -178,10 +178,10 @@ export function PosCreditNotes() {
 
             <div class="info-grid">
               <div>
-                <h4>Issued To (Customer)</h4>
-                <p><strong>${note.customer_name || "Valued Customer"}</strong></p>
-                <p>${note.customer_phone ? `Phone: ${note.customer_phone}` : ""}</p>
-                <p>${note.customer_gstin ? `GSTIN: ${note.customer_gstin}` : ""}</p>
+                <h4>Issued To (student)</h4>
+                <p><strong>${note.student_name || "Valued student"}</strong></p>
+                <p>${note.student_phone ? `Phone: ${note.student_phone}` : ""}</p>
+                <p>${note.student_gstin ? `GSTIN: ${note.student_gstin}` : ""}</p>
                 <p>${note.billing_address || ""}</p>
               </div>
               <div>
@@ -244,7 +244,7 @@ export function PosCreditNotes() {
 
             <div class="footer">
               <p>This is a computer-generated GST Credit Note issued in compliance with Section 34 of the CGST Act, 2017.</p>
-              <p>The above credit amount has been adjusted towards customer ledger / store credit balance.</p>
+              <p>The above credit amount has been adjusted towards student ledger / store credit balance.</p>
             </div>
           </div>
         </body>
@@ -261,9 +261,9 @@ export function PosCreditNotes() {
   };
 
   const handleSendWhatsApp = async (note: PosDocumentRecord | any) => {
-    const phone = note.customer_phone || "";
+    const phone = note.student_phone || "";
     if (!phone) {
-      toast.error("Customer has no phone number on record.");
+      toast.error("student has no phone number on record.");
       return;
     }
 
@@ -287,8 +287,8 @@ export function PosCreditNotes() {
     const q = searchTerm.toLowerCase();
     const matchesSearch =
       (n.invoice_number || "").toLowerCase().includes(q) ||
-      (n.customer_name || "").toLowerCase().includes(q) ||
-      (n.customer_phone || "").toLowerCase().includes(q) ||
+      (n.student_name || "").toLowerCase().includes(q) ||
+      (n.student_phone || "").toLowerCase().includes(q) ||
       (n.reference_number || "").toLowerCase().includes(q) ||
       (n.notes || "").toLowerCase().includes(q);
 
@@ -304,8 +304,8 @@ export function PosCreditNotes() {
           <div className="flex items-center gap-2">
             <span className="p-1 bg-rose-600 text-white rounded-lg font-bold text-xs">CN</span>
             <div>
-              <h3 className="font-bold text-xs text-rose-900">New Customer Credit Note (Sales Return / Rebate)</h3>
-              <p className="text-[11px] text-rose-700">Issue store credit or return adjustment for customer against sales invoice</p>
+              <h3 className="font-bold text-xs text-rose-900">New student Credit Note (Sales Return / Rebate)</h3>
+              <p className="text-[11px] text-rose-700">Issue store credit or return adjustment for student against sales invoice</p>
             </div>
           </div>
           <button
@@ -337,7 +337,7 @@ export function PosCreditNotes() {
             Credit Notes (Sales Returns & Rebates)
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Manage customer credit notes, return goods adjustments, and GST Sec 34 credit memos
+            Manage student credit notes, return goods adjustments, and GST Sec 34 credit memos
           </p>
         </div>
 
@@ -402,7 +402,7 @@ export function PosCreditNotes() {
           <Search className="size-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Search Credit Note #, Customer Name, Phone, Original Inv Ref..."
+            placeholder="Search Credit Note #, student Name, Phone, Original Inv Ref..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:ring-1 focus:ring-rose-500"
@@ -421,7 +421,7 @@ export function PosCreditNotes() {
             </div>
             <p className="text-xs font-semibold text-slate-700">No Credit Notes Found</p>
             <p className="text-[11px] text-slate-400 max-w-sm mx-auto">
-              Issue a credit note when a customer returns goods or when you provide a post-sale rebate.
+              Issue a credit note when a student returns goods or when you provide a post-sale rebate.
             </p>
             <button
               type="button"
@@ -438,7 +438,7 @@ export function PosCreditNotes() {
                 <tr>
                   <th className="px-4 py-3">Note Number</th>
                   <th className="px-4 py-3">Issue Date</th>
-                  <th className="px-4 py-3">Customer Party</th>
+                  <th className="px-4 py-3">student Party</th>
                   <th className="px-4 py-3">Original Invoice Ref</th>
                   <th className="px-4 py-3">Reason for Note</th>
                   <th className="px-4 py-3 text-right">Credit Amount</th>
@@ -457,9 +457,9 @@ export function PosCreditNotes() {
                         {note.invoice_date || new Date().toISOString().slice(0, 10)}
                       </td>
                       <td className="px-4 py-3">
-                        <div className="font-bold text-slate-800">{note.customer_name || "Walk-in Customer"}</div>
-                        {note.customer_phone && (
-                          <div className="text-[11px] text-slate-400">{note.customer_phone}</div>
+                        <div className="font-bold text-slate-800">{note.student_name || "Walk-in student"}</div>
+                        {note.student_phone && (
+                          <div className="text-[11px] text-slate-400">{note.student_phone}</div>
                         )}
                       </td>
                       <td className="px-4 py-3 font-mono text-slate-600">

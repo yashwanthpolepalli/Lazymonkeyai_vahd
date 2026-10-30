@@ -89,7 +89,7 @@ def _vendor_call(fn: Callable[[], Any]) -> Any:
 # ---------------------------------------------------------------------------
 @router.get("/analytics")
 def attendance_analytics(
-    role: Optional[str] = Query(None, description="Filter by role: ALL, CUSTOMER, employee, STAFF"),
+    role: Optional[str] = Query(None, description="Filter by role: ALL, student, employee, STAFF"),
     physical_only: bool = Query(False, description="Filter only physical biometric hardware devices"),
     _auth: Any = Depends(require_staff_user),
     db: Session = Depends(get_db)
@@ -100,7 +100,7 @@ def attendance_analytics(
 @router.get("/recent")
 def recent_biometrics(
     limit: int = Query(50, ge=1, le=200),
-    role: Optional[str] = Query(None, description="Filter by role: ALL, CUSTOMER, employee, STAFF"),
+    role: Optional[str] = Query(None, description="Filter by role: ALL, student, employee, STAFF"),
     physical_only: bool = Query(False, description="Filter only physical biometric hardware devices"),
     db: Session = Depends(get_db),
     _auth: Any = Depends(require_staff_user),
@@ -112,7 +112,7 @@ def recent_biometrics(
 def manual_checkin(payload: BiometricCheckinCreate, db: Session = Depends(get_db), _auth: Any = Depends(require_staff_user)):
     return BiometricService.record_checkin(
         db=db,
-        customer_id=payload.customer_id,
+        student_id=payload.student_id,
         event_type=payload.event_type,
         device_id=payload.device_id,
         direction=payload.direction,

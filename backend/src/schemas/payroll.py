@@ -31,7 +31,7 @@ class employeeResponse(BaseModel):
     bank_account_no: Optional[str] = None
     bank_ifsc: Optional[str] = None
     upi_id: Optional[str] = None
-    assigned_customers_count: int = 0
+    assigned_students_count: int = 0
     is_active: bool
     created_at: datetime
     today_status: Optional[str] = "Absent"

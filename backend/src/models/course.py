@@ -29,7 +29,7 @@ class StudentCourse(Base):
     __tablename__ = "student_courses"
 
     id = Column(String, primary_key=True, index=True)
-    customer_id = Column(String, ForeignKey("customers.id"), index=True, nullable=False)
+    student_id = Column(String, ForeignKey("students.id"), index=True, nullable=False)
     course_name = Column(String, nullable=True)
     course_type = Column(String, nullable=True)
     status = Column(String, nullable=True)

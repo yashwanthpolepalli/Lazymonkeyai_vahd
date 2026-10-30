@@ -4,8 +4,8 @@ from sqlalchemy import Column, String, Float, Integer, DateTime, ForeignKey, Boo
 from sqlalchemy.orm import relationship
 from src.database.base import Base
 
-class Customer(Base):
-    __tablename__ = "customers"
+class student(Base):
+    __tablename__ = "students"
 
     id = Column(String, primary_key=True, index=True)
     user_id = Column(String, ForeignKey("users.id"), unique=True, nullable=False)
@@ -33,6 +33,6 @@ class Customer(Base):
     updated_at = Column(DateTime, default=now_ist_naive, onupdate=now_ist_naive)
 
     # Relationships
-    user = relationship("User", foreign_keys=[user_id], back_populates="customer_profile")
-    memberships = relationship("Membership", back_populates="customer", cascade="all, delete-orphan")
-    biometric_logs = relationship("BiometricLog", back_populates="customer", cascade="all, delete-orphan")
+    user = relationship("User", foreign_keys=[user_id], back_populates="student_profile")
+    memberships = relationship("Membership", back_populates="student", cascade="all, delete-orphan")
+    biometric_logs = relationship("BiometricLog", back_populates="student", cascade="all, delete-orphan")

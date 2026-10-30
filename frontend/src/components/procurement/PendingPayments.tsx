@@ -9,7 +9,7 @@ import { triggerThermalPrint } from "../../lib/print-helper";
 import { useCurrency } from "@/hooks/use-currency";
 
 export function PendingPayments() {
-    const { currency, formatCurrency } = useCurrency();
+  const { currency, formatCurrency } = useCurrency();
   const [bills, setBills] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
@@ -59,9 +59,9 @@ export function PendingPayments() {
         payment_method: paymentMethod,
         reference_number: referenceNumber
       });
-      
+
       const bill = bills.find(b => b.id === selectedBillId);
-      
+
       // Auto-allocate surplus (FIFO) if amountPaid > balance
       const balance = bill.total_amount - bill.paid_amount;
       const surplus = Number(amountPaid) - balance;
@@ -70,19 +70,19 @@ export function PendingPayments() {
       } else {
         toast.success("Vendor payment processed successfully");
       }
-      
+
       setPrintedPayment({
         id: `PAY-${Date.now().toString().slice(-6)}`,
         created_at: new Date().toISOString(),
         payment_method: paymentMethod,
         amount: Number(amountPaid),
-        customer_name: bill?.supplier_name || "Vendor",
+        student_name: bill?.supplier_name || "Vendor",
         cashier_name: "Admin"
       });
-      
+
       setIsOpen(false);
       fetchPendingBills();
-      
+
       // Slight delay before printing to allow state to set
       setTimeout(() => {
         triggerThermalPrint();
@@ -146,8 +146,8 @@ export function PendingPayments() {
                 </div>
 
                 <div className="mt-4 flex gap-2">
-                  <Button 
-                    onClick={() => handleOpenPayment(bill)} 
+                  <Button
+                    onClick={() => handleOpenPayment(bill)}
                     className="flex-1 gradient-brand text-white border-0 font-semibold rounded-lg shadow-sm"
                   >
                     Process Payment
@@ -221,10 +221,10 @@ export function PendingPayments() {
           </div>
         </div>
       )}
-      
+
       {printedPayment && (
-        <ThermalReceiptPrinter 
-          bill={printedPayment} 
+        <ThermalReceiptPrinter
+          bill={printedPayment}
         />
       )}
     </div>

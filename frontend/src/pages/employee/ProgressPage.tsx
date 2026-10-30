@@ -11,12 +11,12 @@ export function ProgressPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.customers.list().then((data) => { setMembers(data.slice(0, 6)); setLoading(false); });
+    api.students.list().then((data) => { setMembers(data.slice(0, 6)); setLoading(false); });
   }, []);
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Customer Progress" breadcrumb={['employee', 'Progress']} />
+      <PageHeader title="student Progress" breadcrumb={['employee', 'Progress']} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="card p-5">

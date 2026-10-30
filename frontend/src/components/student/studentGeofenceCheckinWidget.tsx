@@ -3,15 +3,15 @@ import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/utils/cn';
 import { useAuth } from '@/context/AuthContext';
 import { hrmsApi, type GeofenceScheme, type PunchResponse } from '@/services/hrmsApi';
-import { customerApi } from '@/services/customerApi';
+import { studentApi } from '@/services/studentApi';
 
-interface CustomerGeofenceCheckinWidgetProps {
+interface studentGeofenceCheckinWidgetProps {
   onCheckinSuccess?: (res: PunchResponse) => void;
 }
 
 export type VerificationMethodType = 'FACE_ID' | 'MANUAL';
 
-export function CustomerGeofenceCheckinWidget({ onCheckinSuccess }: CustomerGeofenceCheckinWidgetProps) {
+export function StudentGeofenceCheckinWidget({ onCheckinSuccess }: studentGeofenceCheckinWidgetProps) {
   const { user } = useAuth();
   const [activeScheme, setActiveScheme] = useState<GeofenceScheme | null>(null);
   const [loading, setLoading] = useState(false);
@@ -66,7 +66,7 @@ export function CustomerGeofenceCheckinWidget({ onCheckinSuccess }: CustomerGeof
   };
 
   const refreshLiveState = () => {
-    customerApi.getAttendance()
+    studentApi.getAttendance()
       .then((att) => {
         if (att) {
           setCheckinStatus({
@@ -82,7 +82,7 @@ export function CustomerGeofenceCheckinWidget({ onCheckinSuccess }: CustomerGeof
   const refreshFaceStatus = async () => {
     setCheckingFaceStatus(true);
     try {
-      const res = await customerApi.getFaceStatus();
+      const res = await studentApi.getFaceStatus();
       setFaceStatus(res);
     } catch {
       // Fallback
@@ -168,7 +168,7 @@ export function CustomerGeofenceCheckinWidget({ onCheckinSuccess }: CustomerGeof
     }
 
     try {
-      const res = await customerApi.registerFace({ face_image_base64: snapshot });
+      const res = await studentApi.registerFace({ face_image_base64: snapshot });
       setRegisterSuccess(true);
       setFaceStatus({
         is_enrolled: true,
@@ -236,14 +236,14 @@ export function CustomerGeofenceCheckinWidget({ onCheckinSuccess }: CustomerGeof
 
         try {
           const devicePlatform = (navigator as any).userAgentData?.platform || navigator.platform || 'Web Browser';
-          const res = await customerApi.verifyFace({
+          const res = await studentApi.verifyFace({
             live_image_base64: liveSnapshot,
             action,
             verification_type: 'FACE_BIOMETRIC',
             method: 'LIVE_CAMERA_SCAN',
             device_name: `${devicePlatform} (${window.innerWidth}x${window.innerHeight})`,
             device_type: 'WEBCAM_FACE_SCANNER',
-            user_role: user?.role || 'CUSTOMER',
+            user_role: user?.role || 'student',
             branch: activeScheme?.branch_name || user?.branchName || '',
             latitude: activeScheme?.latitude ?? null,
             longitude: activeScheme?.longitude ?? null,
@@ -314,9 +314,9 @@ export function CustomerGeofenceCheckinWidget({ onCheckinSuccess }: CustomerGeof
         method: 'MANUAL',
         latitude: activeScheme?.latitude ?? null,
         longitude: activeScheme?.longitude ?? null,
-        user_role: 'CUSTOMER',
+        user_role: 'student',
         branch: activeScheme?.branch_name || user?.branchName || '',
-        note: `Customer manual attendance check-${action === 'CHECK_IN' ? 'in' : 'out'}`,
+        note: `student manual attendance check-${action === 'CHECK_IN' ? 'in' : 'out'}`,
       };
 
       const res = await hrmsApi.recordPunch(payload);

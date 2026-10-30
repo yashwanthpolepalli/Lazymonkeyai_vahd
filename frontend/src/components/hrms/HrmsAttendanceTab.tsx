@@ -7,12 +7,12 @@ import type { AttendanceRecord } from '@/services/hrmsApi';
 import { cn } from '@/utils/cn';
 import { EmployeeAttendanceReportsModal } from './EmployeeAttendanceReportsModal';
 
-export type AttendanceRoleFilter = 'ALL' | 'CUSTOMER' | 'employee_STAFF';
+export type AttendanceRoleFilter = 'ALL' | 'student' | 'employee_STAFF';
 
 interface RecentCheckin {
   id: string;
-  customer_id: string;
-  customer_name: string;
+  student_id: string;
+  student_name: string;
   person_name?: string;
   user_role?: string;
   event_type: string;
@@ -26,7 +26,7 @@ interface RecentCheckin {
 
 interface AttendanceAnalytics {
   today_checkins: number;
-  customer_checkins?: number;
+  student_checkins?: number;
   staff_checkins?: number;
   today_events?: number;
   today_granted?: number;
@@ -120,7 +120,7 @@ export function HrmsAttendanceTab({ attendanceLogs }: HrmsAttendanceTabProps) {
 
   // KPIs from DB
   const todayCheckins = analytics?.today_checkins ?? 0;
-  const customerCheckins = analytics?.customer_checkins ?? (analytics?.today_checkins ?? 0);
+  const studentCheckins = analytics?.student_checkins ?? (analytics?.today_checkins ?? 0);
   const staffCheckins = analytics?.staff_checkins ?? 0;
   const peakHour = analytics?.peak_hour ?? '—';
   const avgDuration = analytics?.avg_duration ?? '1h 15m';
@@ -130,8 +130,8 @@ export function HrmsAttendanceTab({ attendanceLogs }: HrmsAttendanceTabProps) {
 
   // Filtered check-ins
   const filteredCheckins = rawRecentCheckins.filter((r) => {
-    const name = (r.person_name || r.customer_name || '').toLowerCase();
-    const id = (r.customer_id || '').toLowerCase();
+    const name = (r.person_name || r.student_name || '').toLowerCase();
+    const id = (r.student_id || '').toLowerCase();
     const dev = (r.device_name || '').toLowerCase();
     const type = (r.event_type || '').toLowerCase();
     const role = (r.user_role || '').toLowerCase();
@@ -187,8 +187,8 @@ export function HrmsAttendanceTab({ attendanceLogs }: HrmsAttendanceTabProps) {
               onChange={(e) => setRoleFilter(e.target.value as AttendanceRoleFilter)}
               className="bg-white text-navy-900 font-bold text-xs py-1.5 px-3 rounded-lg border border-navy-200 outline-none shadow-xs cursor-pointer hover:border-purple-400 focus:border-purple-600 transition"
             >
-              <option value="ALL">👥 All Attendance (Customer + Staff)</option>
-              <option value="CUSTOMER">👤 Customer Attendance Only</option>
+              <option value="ALL">👥 All Attendance (student + Staff)</option>
+              <option value="student">👤 student Attendance Only</option>
               <option value="employee_STAFF">🏋️ employee / Staff Attendance Only</option>
             </select>
           </div>
@@ -264,7 +264,7 @@ export function HrmsAttendanceTab({ attendanceLogs }: HrmsAttendanceTabProps) {
             </div>
             <div className="text-2xl sm:text-3xl font-black text-navy-900">{todayCheckins}</div>
             <div className="text-[11px] text-purple-700 font-bold mt-1 flex items-center gap-1.5">
-              <span>{customerCheckins} Customers</span>
+              <span>{studentCheckins} students</span>
               <span>•</span>
               <span>{staffCheckins} Staff</span>
             </div>
@@ -304,7 +304,7 @@ export function HrmsAttendanceTab({ attendanceLogs }: HrmsAttendanceTabProps) {
             </div>
             <div className="text-2xl sm:text-3xl font-black text-navy-900">
               {rawRecentCheckins.length > 0
-                ? new Set(rawRecentCheckins.map(r => r.customer_id || r.customer_name)).size
+                ? new Set(rawRecentCheckins.map(r => r.student_id || r.student_name)).size
                 : 0}
             </div>
             <div className="text-[11px] text-blue-600 font-bold mt-1">Unique individuals scanned</div>
@@ -326,7 +326,7 @@ export function HrmsAttendanceTab({ attendanceLogs }: HrmsAttendanceTabProps) {
                   <span>Live Attendance &amp; Biometric Check-Ins Feed</span>
                 </h3>
                 <p className="text-xs text-navy-500 font-medium">
-                  Dynamic records from database filtered by: <span className="font-bold text-purple-700">{roleFilter === 'ALL' ? 'All Roles (Customer + Staff)' : roleFilter === 'CUSTOMER' ? 'Customers' : 'employees & Staff'}</span>
+                  Dynamic records from database filtered by: <span className="font-bold text-purple-700">{roleFilter === 'ALL' ? 'All Roles (student + Staff)' : roleFilter === 'student' ? 'students' : 'employees & Staff'}</span>
                 </p>
               </div>
 
@@ -348,20 +348,20 @@ export function HrmsAttendanceTab({ attendanceLogs }: HrmsAttendanceTabProps) {
             ) : filteredCheckins.length === 0 ? (
               <div className="py-12 text-center text-navy-400 text-xs font-bold space-y-1">
                 <Icon name="calendar-x" size={28} className="mx-auto text-navy-300 mb-2" />
-                <div>No attendance check-ins found for {roleFilter === 'ALL' ? 'selected criteria' : roleFilter === 'CUSTOMER' ? 'customers' : 'employees/staff'} today.</div>
+                <div>No attendance check-ins found for {roleFilter === 'ALL' ? 'selected criteria' : roleFilter === 'student' ? 'students' : 'employees/staff'} today.</div>
               </div>
             ) : (
               <div className="flex flex-col gap-2.5">
                 {filteredCheckins.map((r, i) => {
                   const roleBadge = getRoleBadge(r.user_role);
                   const methodBadge = getMethodBadge(r.event_type);
-                  const displayName = r.person_name || r.customer_name || 'vahd Member';
+                  const displayName = r.person_name || r.student_name || 'vahd Member';
                   const initials = displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
                   const isCheckOut = (r.direction || '').toLowerCase().includes('out');
 
                   return (
                     <div
-                      key={`${r.id || r.customer_id}-${i}`}
+                      key={`${r.id || r.student_id}-${i}`}
                       className="p-3.5 px-4 rounded-xl border border-navy-100 bg-white hover:bg-navy-50/50 transition-all shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3"
                     >
                       <div className="flex items-center gap-3.5 min-w-0">
@@ -492,14 +492,14 @@ export function HrmsAttendanceTab({ attendanceLogs }: HrmsAttendanceTabProps) {
                     filteredCheckins.map((r, idx) => {
                       const roleBadge = getRoleBadge(r.user_role);
                       const methodBadge = getMethodBadge(r.event_type);
-                      const displayName = r.person_name || r.customer_name || 'vahd Member';
+                      const displayName = r.person_name || r.student_name || 'vahd Member';
                       const isCheckOut = (r.direction || '').toLowerCase().includes('out');
 
                       return (
                         <tr key={r.id || idx} className="hover:bg-navy-50/40 transition-colors">
                           <td className="py-3.5 px-4 font-bold text-navy-900">
                             <div>{displayName}</div>
-                            <div className="text-[10px] text-navy-400 font-mono">{r.customer_id || '--'}</div>
+                            <div className="text-[10px] text-navy-400 font-mono">{r.student_id || '--'}</div>
                           </td>
                           <td className="py-3.5 px-4">
                             <span className={cn('px-2 py-0.5 rounded-full text-[10px] font-extrabold border', roleBadge.color)}>

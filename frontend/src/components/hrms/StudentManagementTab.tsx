@@ -133,6 +133,7 @@ export function StudentManagementTab() {
   });
   const [selectedSubBranch, setSelectedSubBranch] = useState<string>('all');
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   // Sub-branches belonging specifically to the selected organisation
   const subBranches = useMemo(() => {
@@ -194,7 +195,7 @@ export function StudentManagementTab() {
     }
     setDispatchingReports(true);
     try {
-      const res = await apiClient.post<any>('/customers/attendance-reports/dispatch-monthly', {});
+      const res = await apiClient.post<any>('/students/attendance-reports/dispatch-monthly', {});
       showToast(res.data?.message || 'Monthly attendance reports dispatched to parents via WhatsApp!');
     } catch (err: any) {
       showToast(err?.response?.data?.detail || err?.message || 'Failed to dispatch monthly reports.');
@@ -206,7 +207,7 @@ export function StudentManagementTab() {
   const handleSendSingleStudentWhatsAppReport = async (studentId: string) => {
     setSendingSingleReport(true);
     try {
-      const res = await apiClient.post<any>(`/customers/${studentId}/attendance-report/send-whatsapp`, {});
+      const res = await apiClient.post<any>(`/students/${studentId}/attendance-report/send-whatsapp`, {});
       if (res?.whatsapp_url && !res?.gateway_sent) {
         window.open(res.whatsapp_url, '_blank');
         showToast(`Opening WhatsApp Web for ${res?.parent_phone || 'parent'} with pre-filled attendance report...`);
@@ -286,7 +287,7 @@ export function StudentManagementTab() {
     setDispatchingWhatsAppId(student.id);
     try {
       const now = new Date();
-      const res = await apiClient.post<any>(`/customers/${student.id}/attendance-report/send-whatsapp`, {
+      const res = await apiClient.post<any>(`/students/${student.id}/attendance-report/send-whatsapp`, {
         year: now.getFullYear(),
         month: now.getMonth() + 1,
         dispatch_type: 'MANUAL_ROW_DISPATCH'
@@ -306,15 +307,34 @@ export function StudentManagementTab() {
 
   const fetchStudents = async () => {
     setLoading(true);
+    setFetchError(null);
     try {
       const [res, coursesRes, branchesRes] = await Promise.all([
-        apiClient.get<any[]>('/customers').catch(() => []),
+        apiClient.get<any>('/students').catch((err) => {
+          console.error('Error fetching students:', err);
+          return { _error: err?.response?.data?.detail || err?.response?.data?.message || err?.message || 'Failed to load students' };
+        }),
         apiClient.get<any[]>('/courses').catch(() => []),
         apiClient.get<any[]>('/vahd/branches').catch(() => []),
       ]);
-      if (Array.isArray(res)) {
-        setStudents(res);
+
+      if (res && (res as any)._error) {
+        setFetchError((res as any)._error);
+        setStudents([]);
+      } else {
+        let studentData: any[] = [];
+        if (Array.isArray(res)) {
+          studentData = res;
+        } else if (Array.isArray((res as any)?.items)) {
+          studentData = (res as any).items;
+        } else if (Array.isArray((res as any)?.data)) {
+          studentData = (res as any).data;
+        } else if (Array.isArray((res as any)?.students)) {
+          studentData = (res as any).students;
+        }
+        setStudents(studentData);
       }
+
       if (Array.isArray(coursesRes)) {
         const names = coursesRes.map((c: any) => c.name).filter(Boolean);
         setAvailableCourses(names);
@@ -322,7 +342,8 @@ export function StudentManagementTab() {
       if (Array.isArray(branchesRes)) {
         setBranchesList(branchesRes);
       }
-    } catch {
+    } catch (err: any) {
+      setFetchError(err?.message || 'Failed to load students');
       setStudents([]);
     } finally {
       setLoading(false);
@@ -336,7 +357,7 @@ export function StudentManagementTab() {
   const handleSyncBiometric = async (studentId: string) => {
     setSyncingId(studentId);
     try {
-      await apiClient.post(`/customers/${studentId}/sync-biometric`, {});
+      await apiClient.post(`/students/${studentId}/sync-biometric`, {});
       showToast('Biometric Face Profile synchronized successfully.');
       fetchStudents();
     } catch {
@@ -350,7 +371,7 @@ export function StudentManagementTab() {
     const name = studentName || 'this student';
     if (!window.confirm(`Are you sure you want to delete ${name}? This action cannot be undone.`)) return;
     try {
-      await apiClient.delete(`/customers/${studentId}`);
+      await apiClient.delete(`/students/${studentId}`);
       showToast('Student record deleted successfully.');
       setSelectedIds((prev) => {
         const next = new Set(prev);
@@ -421,12 +442,22 @@ export function StudentManagementTab() {
     let matchesBranch = true;
     if (!isAll) {
       const targetBranch = branchesList.find(
-        (b) => b.id === selectedBranch || b.branch_name === selectedBranch || (b as any).vahd_name === selectedBranch
+        (b) => b.id === selectedBranch || b.branch_name === selectedBranch || (b as any).vahd_name === selectedBranch || (b as any).ho_id === selectedBranch
       );
 
       const sBranchId = s.branch_id || meta.branch_id;
+      const sHoId = s.ho_id || meta.ho_id;
+      const sOwnerId = s.owner_id || meta.owner_id;
+
       const matchesBranchId = Boolean(
         sBranchId && (sBranchId === selectedBranch || (targetBranch && sBranchId === targetBranch.id))
+      );
+
+      const matchesHoId = Boolean(
+        sHoId && (
+          sHoId === selectedBranch ||
+          (targetBranch && (sHoId === targetBranch.id || sHoId === (targetBranch as any).ho_id))
+        )
       );
 
       const targetNames = [
@@ -442,6 +473,7 @@ export function StudentManagementTab() {
         meta.branch?.toLowerCase(),
         meta.vahd_branch?.toLowerCase(),
         (s as any).organisation?.toLowerCase(),
+        meta.organisation_name?.toLowerCase(),
       ].filter(Boolean) as string[];
 
       const matchesName = targetNames.some((tn) =>
@@ -449,10 +481,10 @@ export function StudentManagementTab() {
       );
 
       const matchesOwner = Boolean(
-        targetBranch && (targetBranch as any).owner_id && (s.owner_id === (targetBranch as any).owner_id || (s as any).ho_id === targetBranch.id)
+        targetBranch && (targetBranch as any).owner_id && (sOwnerId === (targetBranch as any).owner_id || sHoId === targetBranch.id)
       );
 
-      matchesBranch = Boolean(matchesBranchId || matchesName || matchesOwner);
+      matchesBranch = Boolean(matchesBranchId || matchesHoId || matchesName || matchesOwner);
     }
 
     if (selectedSubBranch && selectedSubBranch !== 'all') {
@@ -504,7 +536,7 @@ export function StudentManagementTab() {
     try {
       const idsToDelete = Array.from(selectedIds);
       const results = await Promise.allSettled(
-        idsToDelete.map((id) => apiClient.delete(`/customers/${id}`))
+        idsToDelete.map((id) => apiClient.delete(`/students/${id}`))
       );
       const fulfilled = results.filter((r) => r.status === 'fulfilled').length;
       showToast(`Successfully deleted ${fulfilled} student record(s).`);
@@ -524,7 +556,7 @@ export function StudentManagementTab() {
     try {
       const idsToSync = Array.from(selectedIds);
       await Promise.allSettled(
-        idsToSync.map((id) => apiClient.post(`/customers/${id}/sync-biometric`, {}))
+        idsToSync.map((id) => apiClient.post(`/students/${id}/sync-biometric`, {}))
       );
       showToast(`Biometric synchronization requested for ${count} students.`);
       fetchStudents();
@@ -541,7 +573,7 @@ export function StudentManagementTab() {
       prev.map((stu) => (stu.id === studentId ? { ...stu, status: newStatus } : stu))
     );
     try {
-      await apiClient.put(`/customers/${studentId}`, { status: newStatus });
+      await apiClient.put(`/students/${studentId}`, { status: newStatus });
       showToast(`Student status updated to ${newStatus}.`);
       fetchStudents();
     } catch (e) {
@@ -838,6 +870,25 @@ export function StudentManagementTab() {
       {/* ───────────────────────────────────────────────────────────── */}
       {/* 3. STUDENTS DIRECTORY TABLE / GRID                             */}
       {/* ───────────────────────────────────────────────────────────── */}
+      {fetchError && (
+        <div className="card p-4 bg-rose-50 border border-rose-200 text-rose-800 rounded-2xl flex items-center justify-between gap-3 animate-fade-in">
+          <div className="flex items-center gap-2">
+            <Icon name="alert-circle" size={18} className="text-rose-600 shrink-0" />
+            <div>
+              <span className="text-xs font-bold block">Unable to load student directory</span>
+              <span className="text-[11px] text-rose-600 font-medium">{fetchError}</span>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={fetchStudents}
+            className="px-3.5 py-1.5 bg-rose-600 text-white rounded-xl text-xs font-bold hover:bg-rose-700 transition shrink-0"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
       {loading ? (
         <div className="card p-12 text-center text-slate-400 bg-white dark:bg-slate-900 border border-slate-200/90 rounded-2xl">
           <div className="w-8 h-8 border-2 border-blue-600/30 border-t-blue-600 rounded-full animate-spin mx-auto mb-2" />

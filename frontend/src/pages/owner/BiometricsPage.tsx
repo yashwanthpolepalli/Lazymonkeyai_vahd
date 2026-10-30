@@ -21,8 +21,8 @@ interface BiometricDeviceItem {
 
 interface BiometricScanItem {
   id: string;
-  customer_id?: string;
-  customer_name?: string;
+  student_id?: string;
+  student_name?: string;
   timestamp: string;
   event_type: string;
   device_id?: string;
@@ -74,7 +74,7 @@ export function BiometricsPage({ embedded = false }: { embedded?: boolean }) {
 
   // Manual Checkin Form State
   const [manualCheckin, setManualCheckin] = useState({
-    customer_id: '',
+    student_id: '',
     event_type: 'FACE_SCAN',
     direction: 'CHECK_IN',
     status: 'SUCCESS',
@@ -146,7 +146,7 @@ export function BiometricsPage({ embedded = false }: { embedded?: boolean }) {
     try {
       const physicalDev = devices.find((d) => (d.status || '').toLowerCase() === 'online') || devices[0];
       const payload = {
-        customer_id: manualCheckin.customer_id || undefined,
+        student_id: manualCheckin.student_id || undefined,
         event_type: manualCheckin.event_type,
         device_id: physicalDev?.id || 'dev_essl_mb20_01',
         direction: manualCheckin.direction,
@@ -155,7 +155,7 @@ export function BiometricsPage({ embedded = false }: { embedded?: boolean }) {
       await api.biometrics.checkIn(payload);
       setCheckinModalOpen(false);
       setManualCheckin({
-        customer_id: '',
+        student_id: '',
         event_type: 'FACE_SCAN',
         direction: 'CHECK_IN',
         status: 'SUCCESS',
@@ -175,7 +175,7 @@ export function BiometricsPage({ embedded = false }: { embedded?: boolean }) {
 
   // Filtered Scans
   const filteredScans = scans.filter((s) => {
-    const nameMatch = (s.customer_name || 'vahd Member').toLowerCase().includes(search.toLowerCase()) ||
+    const nameMatch = (s.student_name || 'vahd Member').toLowerCase().includes(search.toLowerCase()) ||
       (s.device_name || '').toLowerCase().includes(search.toLowerCase());
 
     if (filterType === 'ALL') return nameMatch;
@@ -506,14 +506,14 @@ export function BiometricsPage({ embedded = false }: { embedded?: boolean }) {
                     <tr key={scan.id} className="hover:bg-slate-50/80 transition-colors">
                       <td className="py-3 pl-2 flex items-center gap-2.5">
                         <div className="w-7 h-7 rounded-xl bg-slate-100 text-slate-600 font-extrabold flex items-center justify-center text-xs shrink-0">
-                          {(scan.customer_name || 'G')[0].toUpperCase()}
+                          {(scan.student_name || 'G')[0].toUpperCase()}
                         </div>
                         <div>
                           <span className="font-extrabold text-slate-900 block truncate max-w-[130px]">
-                            {scan.customer_name || 'vahd Member'}
+                            {scan.student_name || 'vahd Member'}
                           </span>
                           <span className="text-[10px] text-slate-400 font-semibold block">
-                            ID: {scan.customer_id ? scan.customer_id.substring(0, 8) : 'Walk-in'}
+                            ID: {scan.student_id ? scan.student_id.substring(0, 8) : 'Walk-in'}
                           </span>
                         </div>
                       </td>
@@ -716,10 +716,10 @@ export function BiometricsPage({ embedded = false }: { embedded?: boolean }) {
 
             <form onSubmit={handleManualCheckin} className="space-y-4 text-xs">
               <div>
-                <label className="font-bold text-slate-700 block mb-1">Select Member / Customer</label>
+                <label className="font-bold text-slate-700 block mb-1">Select Member / student</label>
                 <select
-                  value={manualCheckin.customer_id}
-                  onChange={(e) => setManualCheckin({ ...manualCheckin, customer_id: e.target.value })}
+                  value={manualCheckin.student_id}
+                  onChange={(e) => setManualCheckin({ ...manualCheckin, student_id: e.target.value })}
                   className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:border-brand-500 font-semibold cursor-pointer"
                 >
                   <option value="">Walk-in / Unknown</option>

@@ -9,9 +9,9 @@ from src.models.user import User
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
 @router.get("/overview")
-@router.get("/customer/{customer_id}")
-def get_customer_dashboard(customer_id: str = "active", db: Session = Depends(get_db)):
-    return DashboardService.get_aggregated_dashboard(db, customer_id if customer_id != "active" else None)
+@router.get("/student/{student_id}")
+def get_student_dashboard(student_id: str = "active", db: Session = Depends(get_db)):
+    return DashboardService.get_aggregated_dashboard(db, student_id if student_id != "active" else None)
 
 @router.get("/owner")
 def get_owner_dashboard(
@@ -34,16 +34,16 @@ def get_owner_kpis(db: Session = Depends(get_db)):
     return DashboardService.get_owner_kpis(db)
 
 @router.get("/super-admin-kpis")
-def get_super_admin_kpis(db: Session = Depends(get_db)):
-    return DashboardService.get_super_admin_kpis(db)
+def get_super_admin_kpis(ho_id: Optional[str] = Query(None), db: Session = Depends(get_db)):
+    return DashboardService.get_super_admin_kpis(db, ho_id=ho_id)
 
 @router.get("/employee-kpis")
 def get_employee_kpis(db: Session = Depends(get_db)):
     return DashboardService.get_employee_kpis(db)
 
-@router.get("/customer-kpis")
-def get_customer_kpis(db: Session = Depends(get_db)):
-    return DashboardService.get_customer_kpis(db)
+@router.get("/student-kpis")
+def get_student_kpis(db: Session = Depends(get_db)):
+    return DashboardService.get_student_kpis(db)
 
 @router.get("/activity")
 def get_activity(db: Session = Depends(get_db)):
@@ -54,8 +54,8 @@ def get_attention(db: Session = Depends(get_db)):
     return DashboardService.get_attention(db)
 
 @router.get("/radar")
-def get_customer_radar(db: Session = Depends(get_db)):
-    return DashboardService.get_customer_radar(db)
+def get_student_radar(db: Session = Depends(get_db)):
+    return DashboardService.get_student_radar(db)
 
 @router.get("/reports-analytics")
 def get_reports_analytics(db: Session = Depends(get_db)):

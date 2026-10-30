@@ -25,8 +25,8 @@ interface RazorpayPOSModalProps {
   isOpen: boolean;
   amount: number;
   billNumber: string;
-  customerMobile?: string;
-  customerName?: string;
+  studentMobile?: string;
+  studentName?: string;
   companyId?: string;
   onClose: () => void;
   onSuccess: (paymentData: {
@@ -47,13 +47,13 @@ export function RazorpayPOSModal({
   isOpen,
   amount,
   billNumber,
-  customerMobile = "",
-  customerName = "Valued Customer",
+  studentMobile = "",
+  studentName = "Valued student",
   companyId,
   onClose,
   onSuccess,
 }: RazorpayPOSModalProps) {
-  const [mobile, setMobile] = useState(customerMobile);
+  const [mobile, setMobile] = useState(studentMobile);
   const [loading, setLoading] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [order, setOrder] = useState<RazorpayOrderResponse | null>(null);
@@ -80,7 +80,7 @@ export function RazorpayPOSModal({
   useEffect(() => {
     if (isOpen) {
       hasTriggeredSuccessRef.current = false;
-      setMobile(customerMobile);
+      setMobile(studentMobile);
       setIsPaid(false);
       initiateOrderAndQR();
     } else {
@@ -238,7 +238,7 @@ export function RazorpayPOSModal({
       description: `Bill Payment #${billNumber}`,
       order_id: order.id,
       prefill: {
-        name: customerName,
+        name: studentName,
         contact: mobile || undefined,
       },
       theme: {
@@ -302,8 +302,8 @@ export function RazorpayPOSModal({
       const linkRes = await paymentsApi.createRazorpayLink({
         amount,
         description: `Payment for Bill #${billNumber}`,
-        customer_name: customerName,
-        customer_phone: cleanMobile,
+        student_name: studentName,
+        student_phone: cleanMobile,
         notify_sms: true,
         company_id: companyId,
         notes: { bill_no: billNumber },
@@ -314,7 +314,7 @@ export function RazorpayPOSModal({
       setPaymentLink(url);
       setPaymentLinkId(linkId);
       toast.success(`Payment link generated and SMS dispatched to ${cleanMobile}!`);
-      
+
       if (linkId) {
         startUnifiedPolling(order?.id, linkId);
       }
@@ -354,7 +354,7 @@ export function RazorpayPOSModal({
           return;
         }
       }
-      toast.info("No captured payment received yet. Customer has not completed payment.");
+      toast.info("No captured payment received yet. student has not completed payment.");
     } catch (err: any) {
       toast.error(err.message || "Failed to check payment status.");
     } finally {
@@ -416,33 +416,30 @@ export function RazorpayPOSModal({
             <button
               type="button"
               onClick={() => setActiveTab("qr")}
-              className={`py-2 px-2 rounded-xl font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
-                activeTab === "qr"
+              className={`py-2 px-2 rounded-xl font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${activeTab === "qr"
                   ? "bg-blue-600 text-white shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
-              }`}
+                }`}
             >
               <QrCode className="size-3.5" /> Dynamic QR
             </button>
             <button
               type="button"
               onClick={() => setActiveTab("checkout")}
-              className={`py-2 px-2 rounded-xl font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
-                activeTab === "checkout"
+              className={`py-2 px-2 rounded-xl font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${activeTab === "checkout"
                   ? "bg-blue-600 text-white shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
-              }`}
+                }`}
             >
               <CreditCard className="size-3.5" /> Checkout
             </button>
             <button
               type="button"
               onClick={() => setActiveTab("link")}
-              className={`py-2 px-2 rounded-xl font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
-                activeTab === "link"
+              className={`py-2 px-2 rounded-xl font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${activeTab === "link"
                   ? "bg-blue-600 text-white shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
-              }`}
+                }`}
             >
               <Smartphone className="size-3.5" /> SMS Link
             </button>
@@ -486,7 +483,7 @@ export function RazorpayPOSModal({
                   </div>
                 )}
               </div>
-              
+
               <div className="text-center space-y-1.5 w-full">
                 <p className="font-bold text-foreground text-sm">Scan with Any UPI App or Camera</p>
                 <div className="flex items-center justify-center gap-1.5 text-[10px] font-semibold text-muted-foreground flex-wrap">
@@ -561,7 +558,7 @@ export function RazorpayPOSModal({
 
           {activeTab === "link" && (
             <div className="space-y-3 bg-muted/20 p-4 rounded-2xl border border-border/60">
-              <label className="block font-bold text-foreground">Customer Mobile Number</label>
+              <label className="block font-bold text-foreground">student Mobile Number</label>
               <div className="flex gap-2">
                 <input
                   type="tel"
@@ -609,7 +606,7 @@ export function RazorpayPOSModal({
             <div className="flex items-center gap-2 text-muted-foreground">
               <RefreshCw className={`size-3.5 text-blue-600 ${pollCount > 0 ? "animate-spin" : ""}`} />
               <span className="font-medium text-[11px]">
-                {isPaid ? "Payment Verified & Captured" : "Listening for customer payment..."}
+                {isPaid ? "Payment Verified & Captured" : "Listening for student payment..."}
               </span>
             </div>
             <button

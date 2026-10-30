@@ -30,9 +30,9 @@ export interface PosDocumentRecord {
   id: string;
   invoice_number?: string;
   invoice_type?: string;
-  customer_name?: string;
-  customer_phone?: string;
-  customer_gstin?: string;
+  student_name?: string;
+  student_phone?: string;
+  student_gstin?: string;
   billing_address?: string;
   shipping_address?: string;
   reference_number?: string;
@@ -178,10 +178,10 @@ export function PosProformaInvoices() {
 
             <div class="info-grid">
               <div>
-                <h4>Customer Details</h4>
-                <p><strong>${note.customer_name || "Valued Customer"}</strong></p>
-                <p>${note.customer_phone ? `Phone: ${note.customer_phone}` : ""}</p>
-                <p>${note.customer_gstin ? `GSTIN: ${note.customer_gstin}` : ""}</p>
+                <h4>student Details</h4>
+                <p><strong>${note.student_name || "Valued student"}</strong></p>
+                <p>${note.student_phone ? `Phone: ${note.student_phone}` : ""}</p>
+                <p>${note.student_gstin ? `GSTIN: ${note.student_gstin}` : ""}</p>
                 <p>${note.billing_address || ""}</p>
               </div>
               <div>
@@ -250,9 +250,9 @@ export function PosProformaInvoices() {
   };
 
   const handleSendWhatsApp = async (note: PosDocumentRecord | any) => {
-    const phone = note.customer_phone || "";
+    const phone = note.student_phone || "";
     if (!phone) {
-      toast.error("Customer has no phone number on record.");
+      toast.error("student has no phone number on record.");
       return;
     }
 
@@ -275,8 +275,8 @@ export function PosProformaInvoices() {
     const q = searchTerm.toLowerCase();
     return (
       (n.invoice_number || "").toLowerCase().includes(q) ||
-      (n.customer_name || "").toLowerCase().includes(q) ||
-      (n.customer_phone || "").toLowerCase().includes(q) ||
+      (n.student_name || "").toLowerCase().includes(q) ||
+      (n.student_phone || "").toLowerCase().includes(q) ||
       (n.notes || "").toLowerCase().includes(q)
     );
   });
@@ -388,7 +388,7 @@ export function PosProformaInvoices() {
           <Search className="size-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Search Proforma #, Customer Name, Phone..."
+            placeholder="Search Proforma #, student Name, Phone..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:ring-1 focus:ring-blue-500"
@@ -425,7 +425,7 @@ export function PosProformaInvoices() {
                   <th className="px-4 py-3">Proforma Number</th>
                   <th className="px-4 py-3">Issue Date</th>
                   <th className="px-4 py-3">Valid Until</th>
-                  <th className="px-4 py-3">Customer Party</th>
+                  <th className="px-4 py-3">student Party</th>
                   <th className="px-4 py-3 text-right">Total Quote Amount</th>
                   <th className="px-4 py-3 text-center">Actions</th>
                 </tr>
@@ -445,9 +445,9 @@ export function PosProformaInvoices() {
                         {note.due_date || "30 Days"}
                       </td>
                       <td className="px-4 py-3">
-                        <div className="font-bold text-slate-800">{note.customer_name || "Walk-in Customer"}</div>
-                        {note.customer_phone && (
-                          <div className="text-[11px] text-slate-400">{note.customer_phone}</div>
+                        <div className="font-bold text-slate-800">{note.student_name || "Walk-in student"}</div>
+                        {note.student_phone && (
+                          <div className="text-[11px] text-slate-400">{note.student_phone}</div>
                         )}
                       </td>
                       <td className="px-4 py-3 text-right font-bold text-blue-600 text-sm">

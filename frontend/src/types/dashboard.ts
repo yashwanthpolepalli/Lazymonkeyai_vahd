@@ -35,7 +35,7 @@ export interface LiveActivityItem {
   time: string;
   timestamp?: string;
   member?: string;
-  customerId?: string;
+  studentId?: string;
   userRole?: string;
   direction?: string;
   status?: string;

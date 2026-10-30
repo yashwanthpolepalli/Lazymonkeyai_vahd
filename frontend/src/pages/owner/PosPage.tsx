@@ -68,7 +68,7 @@ interface CartItem {
 interface HeldBill {
   id: string;
   heldAt: string;
-  customerName: string;
+  studentName: string;
   cart: CartItem[];
   discountPercent: number;
   discountAmount: number;
@@ -81,8 +81,8 @@ interface HeldBill {
 interface RecentSale {
   id: string;
   invoiceId: string;
-  customerName: string;
-  customerPhone?: string;
+  studentName: string;
+  studentPhone?: string;
   itemsStr: string;
   items?: Array<{ name: string; price: number; qty: number; total: number }>;
   amount: number;
@@ -218,11 +218,11 @@ export function PosPage() {
   const [recentSales, setRecentSales] = useState<RecentSale[]>([]);
   const [dailySummary, setDailySummary] = useState<DailySummary | null>(null);
 
-  // Customer Selection State
-  const [selectedCustomer, setSelectedCustomer] = useState<{ id?: string; name: string; phone?: string } | null>(null);
-  const [customerModalOpen, setCustomerModalOpen] = useState(false);
-  const [customerList, setCustomerList] = useState<Array<{ id: string; name: string; phone: string }>>([]);
-  const [customerSearch, setCustomerSearch] = useState('');
+  // student Selection State
+  const [selectedstudent, setSelectedstudent] = useState<{ id?: string; name: string; phone?: string } | null>(null);
+  const [studentModalOpen, setstudentModalOpen] = useState(false);
+  const [studentList, setstudentList] = useState<Array<{ id: string; name: string; phone: string }>>([]);
+  const [studentSearch, setstudentSearch] = useState('');
 
   // Receipt Modal State
   const [receiptModalOpen, setReceiptModalOpen] = useState(false);
@@ -242,7 +242,7 @@ export function PosPage() {
       apiClient.get<POSProduct[]>('/pos/products'),
       apiClient.get<RecentSale[]>('/pos/recent-sales'),
       apiClient.get<DailySummary>('/pos/daily-summary'),
-      apiClient.get<any[]>('/customers'),
+      apiClient.get<any[]>('/students'),
       apiClient.get<any>('/vahd/billing').catch(() => null)
     ])
       .then(([prodsRes, salesRes, summaryRes, custRes, billingRes]) => {
@@ -262,7 +262,7 @@ export function PosPage() {
           }
         }
         if (Array.isArray(custRes)) {
-          setCustomerList(
+          setstudentList(
             custRes.map((c) => ({
               id: c.id,
               name: c.name || `${c.first_name || ''} ${c.last_name || ''}`.trim() || 'Member',
@@ -321,7 +321,7 @@ export function PosPage() {
 
   const clearCart = () => {
     setCart([]);
-    setSelectedCustomer(null);
+    setSelectedstudent(null);
     setDiscountPercent(0);
     setCustomDiscountPercent('');
     setAdditionalCharge(0);
@@ -400,7 +400,7 @@ export function PosPage() {
     const newHold: HeldBill = {
       id: `HOLD-${Date.now().toString().slice(-4)}`,
       heldAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      customerName: selectedCustomer?.name || 'Walk-in Customer',
+      studentName: selectedstudent?.name || 'Walk-in student',
       cart: [...cart],
       discountPercent: activeDiscountRate,
       discountAmount,
@@ -447,9 +447,9 @@ export function PosPage() {
     setIsCheckingOut(true);
     try {
       const payload = {
-        customer_id: selectedCustomer?.id,
-        customer_name: selectedCustomer?.name || 'Walk-in Customer',
-        customer_phone: selectedCustomer?.phone,
+        student_id: selectedstudent?.id,
+        student_name: selectedstudent?.name || 'Walk-in student',
+        student_phone: selectedstudent?.phone,
         payment_method: chosenMethod,
         discount_amount: discountAmount,
         additional_charge: additionalCharge,
@@ -471,8 +471,8 @@ export function PosPage() {
       const completedRecord: RecentSale = {
         id: res.id,
         invoiceId: res.invoiceNumber,
-        customerName: res.customerName,
-        customerPhone: selectedCustomer?.phone,
+        studentName: res.studentName,
+        studentPhone: selectedstudent?.phone,
         itemsStr: cart.map((c) => `${c.product.name} (x${c.qty})`).join(', '),
         items: res.items,
         amount: res.grandTotal || grandTotal,
@@ -739,7 +739,7 @@ export function PosPage() {
                 </button>
               </div>
 
-              {/* Customer Box */}
+              {/* student Box */}
               <div className="p-3 bg-slate-50 rounded-2xl flex items-center justify-between border border-slate-200">
                 <div className="flex items-center gap-2.5 overflow-hidden">
                   <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center shrink-0">
@@ -747,20 +747,20 @@ export function PosPage() {
                   </div>
                   <div className="truncate">
                     <span className="text-xs font-black text-slate-900 block truncate">
-                      {selectedCustomer ? selectedCustomer.name : 'Walk-in Customer'}
+                      {selectedstudent ? selectedstudent.name : 'Walk-in student'}
                     </span>
                     <span className="text-[10px] text-slate-400 font-semibold">
-                      {selectedCustomer?.phone || 'No customer attached'}
+                      {selectedstudent?.phone || 'No student attached'}
                     </span>
                   </div>
                 </div>
 
                 <button
                   type="button"
-                  onClick={() => setCustomerModalOpen(true)}
+                  onClick={() => setstudentModalOpen(true)}
                   className="px-2.5 py-1 bg-white border border-slate-200 hover:bg-slate-100 rounded-xl text-[10px] font-bold text-slate-700 shrink-0 cursor-pointer"
                 >
-                  {selectedCustomer ? 'Change' : 'Link Customer'}
+                  {selectedstudent ? 'Change' : 'Link student'}
                 </button>
               </div>
 
@@ -1172,7 +1172,7 @@ export function PosPage() {
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <div>
               <h3 className="text-sm font-black text-slate-900">Recent POS Invoices & Receipts</h3>
-              <p className="text-xs text-slate-400">View customer purchases, payment methods, and reprint tax receipts</p>
+              <p className="text-xs text-slate-400">View student purchases, payment methods, and reprint tax receipts</p>
             </div>
           </div>
 
@@ -1182,7 +1182,7 @@ export function PosPage() {
                 <tr>
                   <th className="py-3 px-4">Invoice #</th>
                   <th className="py-3 px-4">Date & Time</th>
-                  <th className="py-3 px-4">Customer</th>
+                  <th className="py-3 px-4">student</th>
                   <th className="py-3 px-4">Items</th>
                   <th className="py-3 px-4">Payment</th>
                   <th className="py-3 px-4 text-right">Amount</th>
@@ -1195,7 +1195,7 @@ export function PosPage() {
                   <tr key={s.id} className="hover:bg-slate-50">
                     <td className="py-3.5 px-4 font-mono font-bold text-slate-900">{s.invoiceId}</td>
                     <td className="py-3.5 px-4 text-slate-500 font-medium">{s.dateTimeStr}</td>
-                    <td className="py-3.5 px-4 font-bold text-slate-900">{s.customerName}</td>
+                    <td className="py-3.5 px-4 font-bold text-slate-900">{s.studentName}</td>
                     <td className="py-3.5 px-4 text-slate-600 max-w-xs truncate">{s.itemsStr}</td>
                     <td className="py-3.5 px-4 font-bold text-slate-700">{s.paymentMethod}</td>
                     <td className="py-3.5 px-4 text-right font-black text-slate-900">{formatPrice(s.amount)}</td>
@@ -1273,7 +1273,7 @@ export function PosPage() {
         isOpen={pineLabsModalOpen}
         amount={grandTotal}
         billNumber={`POS-${Date.now().toString().slice(-6)}`}
-        customerMobile={selectedCustomer?.phone}
+        studentMobile={selectedstudent?.phone}
         terminalId="TID-882194"
         onClose={() => setPineLabsModalOpen(false)}
         onSuccess={(paymentData) => {
@@ -1289,8 +1289,8 @@ export function PosPage() {
         isOpen={razorpayModalOpen}
         amount={grandTotal}
         billNumber={`POS-${Date.now().toString().slice(-6)}`}
-        customerMobile={selectedCustomer?.phone}
-        customerName={selectedCustomer?.name}
+        studentMobile={selectedstudent?.phone}
+        studentName={selectedstudent?.name}
         onClose={() => setRazorpayModalOpen(false)}
         onSuccess={(paymentData) => {
           setRazorpayModalOpen(false);
@@ -1360,7 +1360,7 @@ export function PosPage() {
                     className="p-3 bg-slate-50 rounded-2xl border border-slate-200 flex items-center justify-between"
                   >
                     <div>
-                      <span className="text-xs font-bold text-slate-900 block">{b.id} • {b.customerName}</span>
+                      <span className="text-xs font-bold text-slate-900 block">{b.id} • {b.studentName}</span>
                       <span className="text-[10px] text-slate-400 font-semibold">{b.cart.length} items • Held at {b.heldAt}</span>
                     </div>
                     <button
@@ -1433,16 +1433,16 @@ export function PosPage() {
       )}
 
       {/* ───────────────────────────────────────────────────────────── */}
-      {/* MODAL 6: CUSTOMER SELECTION MODAL                             */}
+      {/* MODAL 6: student SELECTION MODAL                             */}
       {/* ───────────────────────────────────────────────────────────── */}
-      {customerModalOpen && (
+      {studentModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl p-6 space-y-4 animate-scale-up border border-slate-200">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-sm font-black text-slate-900">Select Customer / Member</h3>
+              <h3 className="text-sm font-black text-slate-900">Select student / Member</h3>
               <button
                 type="button"
-                onClick={() => setCustomerModalOpen(false)}
+                onClick={() => setstudentModalOpen(false)}
                 className="p-1 rounded-xl text-slate-400 hover:bg-slate-50 cursor-pointer"
               >
                 <X size={16} />
@@ -1452,8 +1452,8 @@ export function PosPage() {
             <input
               type="text"
               placeholder="Search member by name or mobile..."
-              value={customerSearch}
-              onChange={(e) => setCustomerSearch(e.target.value)}
+              value={studentSearch}
+              onChange={(e) => setstudentSearch(e.target.value)}
               className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-blue-500"
             />
 
@@ -1461,28 +1461,28 @@ export function PosPage() {
               <button
                 type="button"
                 onClick={() => {
-                  setSelectedCustomer(null);
-                  setCustomerModalOpen(false);
+                  setSelectedstudent(null);
+                  setstudentModalOpen(false);
                 }}
                 className="w-full p-2.5 rounded-2xl border border-dashed border-slate-300 text-left text-xs font-bold text-slate-600 hover:bg-slate-50 cursor-pointer"
               >
-                Walk-in Customer (Guest)
+                Walk-in student (Guest)
               </button>
 
-              {customerList
+              {studentList
                 .filter(
                   (c) =>
-                    !customerSearch ||
-                    c.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
-                    c.phone.includes(customerSearch)
+                    !studentSearch ||
+                    c.name.toLowerCase().includes(studentSearch.toLowerCase()) ||
+                    c.phone.includes(studentSearch)
                 )
                 .map((cust) => (
                   <button
                     key={cust.id}
                     type="button"
                     onClick={() => {
-                      setSelectedCustomer(cust);
-                      setCustomerModalOpen(false);
+                      setSelectedstudent(cust);
+                      setstudentModalOpen(false);
                     }}
                     className="w-full p-2.5 rounded-2xl bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-200 text-left flex items-center justify-between cursor-pointer"
                   >
@@ -1523,8 +1523,8 @@ export function PosPage() {
 
             <div className="text-xs space-y-1 text-slate-600">
               <div className="flex justify-between">
-                <span>Customer:</span>
-                <span className="font-bold text-slate-900">{activeInvoice.customerName}</span>
+                <span>student:</span>
+                <span className="font-bold text-slate-900">{activeInvoice.studentName}</span>
               </div>
               <div className="flex justify-between">
                 <span>Date & Time:</span>

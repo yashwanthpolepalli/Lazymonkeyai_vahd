@@ -152,6 +152,22 @@ export function HrmsBulkImportModal({
     setProgress(0);
     setErrorMsg(null);
 
+    let userHoId: string | undefined = undefined;
+    let userOwnerId: string | undefined = undefined;
+    let userBranchId: string | undefined = undefined;
+    const selectedOrgId = localStorage.getItem('vahd_selected_org_id');
+    try {
+      const uStr = localStorage.getItem('vahd_user');
+      if (uStr) {
+        const parsed = JSON.parse(uStr);
+        const role = (parsed?.role || '').toUpperCase();
+        userHoId = parsed?.ho_id || (['HEAD_OFFICE', 'HO'].includes(role) ? parsed?.id : undefined);
+        userOwnerId = parsed?.owner_id || (['OWNER'].includes(role) ? parsed?.id : undefined);
+        userBranchId = parsed?.branch_id || undefined;
+      }
+    } catch {}
+    const defaultBranchId = (selectedOrgId && selectedOrgId !== 'all') ? selectedOrgId : userBranchId;
+
     let successCount = 0;
     const total = validRows.length;
 
@@ -173,30 +189,37 @@ export function HrmsBulkImportModal({
             role: 'STUDENT',
             goal: courseStr ? `${courseStr}${mediumStr ? ` (${mediumStr} Medium)` : ''}` : 'Student Admission',
             status: s.status || 'ACTIVE',
+            branch_id: defaultBranchId,
+            ho_id: userHoId,
+            owner_id: userOwnerId,
             meta_data: {
               admission_type: 'DEGREE_ADMISSION',
               course: courseStr,
               medium: mediumStr,
+              branch_id: defaultBranchId,
+              ho_id: userHoId,
+              owner_id: userOwnerId,
               academic_year: s.academicYear || `${new Date().getFullYear()} - ${new Date().getFullYear() + 1}`,
               father_name: s.fatherName?.toUpperCase().trim() || '',
               mother_name: s.motherName?.toUpperCase().trim() || '',
               permanent_address: {
-                door_no: s.doorNo || '',
-                street: s.street || '',
-                village: s.village || '',
-                mandal: s.mandal || '',
-                district: s.district || '',
-                state: s.state || '',
-                mobile: s.phone || '',
+                door_no: s.permDoorNo || '',
+                street: s.permStreet || '',
+                village: s.permVillage || '',
+                mandal: s.permMandal || '',
+                district: s.permDistrict || '',
+                state: s.permState || '',
+                mobile: s.permMobile || s.phone || '',
               },
               present_address: {
-                door_no: s.doorNo || '',
-                street: s.street || '',
-                village: s.village || '',
-                mandal: s.mandal || '',
-                district: s.district || '',
-                state: s.state || '',
-                mobile: s.phone || '',
+                door_no: s.presDoorNo || '',
+                street: s.presStreet || '',
+                village: s.presVillage || '',
+                mandal: s.presMandal || '',
+                district: s.presDistrict || '',
+                state: s.presState || '',
+                mobile: s.presMobile || '',
+                telephone: s.telephone || '',
               },
               dob: s.dob || '',
               age: s.age || '',
@@ -207,7 +230,7 @@ export function HrmsBulkImportModal({
             },
           };
 
-          await apiClient.post('/customers', payload).catch(() => null);
+          await apiClient.post('/students', payload).catch(() => null);
         } else if (isEmployee) {
           const e = row as EmployeeImportRow;
           const empEmail = e.email?.trim() || (e.phone ? `${e.phone}@staff.portal` : `${e.fullName.toLowerCase().replace(/[^a-z0-9]/g, '')}${Date.now() % 10000}@staff.portal`);
@@ -227,7 +250,7 @@ export function HrmsBulkImportModal({
             joined_date: e.joinedDate?.trim() || '',
             salary: e.salary ? Number(e.salary) : 0,
             vahd_branch: e.branch?.trim() || '',
-            specialization: e.specialization?.trim() || '',
+            specialization: e.areaOfService?.trim() || '',
             status: e.status?.trim() || '',
             is_active: e.status ? e.status.toLowerCase() !== 'inactive' : true,
           };

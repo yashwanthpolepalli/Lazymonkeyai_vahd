@@ -4,7 +4,7 @@ import { Trophy, Gift, Settings } from "lucide-react";
 import { useCurrency } from "@/hooks/use-currency";
 
 export function LoyaltyPrograms() {
-    const { currency, formatCurrency } = useCurrency();
+  const { currency, formatCurrency } = useCurrency();
   const tiers = [
     { name: "Bronze", points: "0 - 499", reward: "1% Cash-back", color: "text-orange-700", bg: "bg-orange-700/10" },
     { name: "Silver", points: "500 - 999", reward: "3% Cash-back + Free Shipping", color: "text-slate-500", bg: "bg-slate-500/10" },
@@ -23,7 +23,7 @@ export function LoyaltyPrograms() {
 
       <Card className="p-6 border-primary bg-primary/5">
         <h3 className="font-bold text-lg mb-2 flex items-center gap-2"><Gift className="size-5 text-primary" /> Active Program: Points to Cash</h3>
-        <p className="text-sm">Customers earn 1 point for every {currency.symbol}100 spent. 10 Points = {currency.symbol}1. Points can be redeemed during checkout directly on the POS Terminal.</p>
+        <p className="text-sm">students earn 1 point for every {currency.symbol}100 spent. 10 Points = {currency.symbol}1. Points can be redeemed during checkout directly on the POS Terminal.</p>
       </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">

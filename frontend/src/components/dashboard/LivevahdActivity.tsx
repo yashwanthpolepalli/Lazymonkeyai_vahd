@@ -15,7 +15,7 @@ interface EnrichedActivityItem {
   role: 'Student' | 'Employee';
   action: 'Check-in' | 'Check-out';
   name: string;
-  customerId: string;
+  studentId: string;
   location: string;
   device: string;
   time: string;
@@ -28,7 +28,7 @@ interface EnrichedActivityItem {
 function resolveRole(roleUpper: string, rawCustId: string): 'Employee' | 'Student' {
   if (
     roleUpper === 'STUDENT' ||
-    roleUpper === 'CUSTOMER' ||
+    roleUpper === 'student' ||
     roleUpper === 'MEMBER' ||
     (rawCustId.startsWith('cust_') && !rawCustId.startsWith('cust_usr_'))
   ) {
@@ -45,7 +45,7 @@ function resolveRole(roleUpper: string, rawCustId: string): 'Employee' | 'Studen
   ) {
     return 'Employee';
   }
-  // Fallback: if no customer ID prefix → treat as employee (staff have no cust_ id)
+  // Fallback: if no student ID prefix → treat as employee (staff have no cust_ id)
   return rawCustId.startsWith('emp_') || rawCustId.startsWith('tr_') || !rawCustId
     ? 'Employee'
     : 'Student';
@@ -101,13 +101,13 @@ export function LivevahdActivity({ activity }: LivevahdActivityProps) {
       if (!dir.includes('IN') && !dir.includes('OUT') && !dir.includes('EXIT') && !dir.includes('ENTRY') && item.type !== 'checkin' && item.type !== 'checkout') return;
 
       const roleUpper = (item.userRole || '').toUpperCase();
-      const rawCustId = (item.customerId || '').trim();
+      const rawCustId = (item.studentId || '').trim();
       const role = resolveRole(roleUpper, rawCustId);
 
       // Display ID: strip cust_usr_ prefix for employees
-      let displayCustomerId = rawCustId;
-      if (role === 'Employee' && displayCustomerId.startsWith('cust_usr_')) {
-        displayCustomerId = displayCustomerId.replace('cust_', '');
+      let displaystudentId = rawCustId;
+      if (role === 'Employee' && displaystudentId.startsWith('cust_usr_')) {
+        displaystudentId = displaystudentId.replace('cust_', '');
       }
 
       // Name: use exactly what backend resolved — no generic overrides
@@ -122,7 +122,7 @@ export function LivevahdActivity({ activity }: LivevahdActivityProps) {
         role,
         action: isLogout ? 'Check-out' : 'Check-in',
         name: displayName,
-        customerId: displayCustomerId,
+        studentId: displaystudentId,
         location: item.location || desc.split('·')[0]?.trim() || '',
         device: item.device || desc.split('·')[1]?.trim() || '',
         time,
@@ -165,7 +165,7 @@ export function LivevahdActivity({ activity }: LivevahdActivityProps) {
           role: 'Employee',
           action,
           name: empName,
-          customerId: String(empId),
+          studentId: String(empId),
           location: emp.department || '',
           device: '',
           time: formattedTime,
@@ -317,9 +317,9 @@ export function LivevahdActivity({ activity }: LivevahdActivityProps) {
                         </h4>
 
                         {/* Real ID from DB */}
-                        {item.customerId && (
+                        {item.studentId && (
                           <span className="px-1.5 py-0.5 rounded-md text-[10px] font-mono font-semibold bg-navy-100/80 text-navy-700 border border-navy-200/70">
-                            ID: {item.customerId}
+                            ID: {item.studentId}
                           </span>
                         )}
 

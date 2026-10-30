@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from src.models.employee import employeeProfile
 from src.models.payroll import PayrollInvoice
 from src.models.biometric import BiometricLog
-from src.models.customer import Customer
+from src.models.student import student
 from src.models.user import User
 from src.utils.security import hash_password
 from src.utils.email import generate_enrollment_password, send_enrollment_email
@@ -164,8 +164,8 @@ class PayrollService:
             setattr(t, 'primary_vahd_location', vahd_branch_val)
             setattr(t, 'employee_code', emp_code_val)
 
-            count = db.query(Customer).filter((Customer.employee_id == t.id) | (Customer.employee_id == t.user_id)).count()
-            setattr(t, 'assigned_customers_count', count)
+            count = db.query(student).filter((student.employee_id == t.id) | (student.employee_id == t.user_id)).count()
+            setattr(t, 'assigned_students_count', count)
 
             # Match keys for this employee
             emp_keys = {str(t.id), str(t.id).replace('tr_', ''), f"emp_{t.id}", f"tr_{t.id}"}
@@ -184,9 +184,9 @@ class PayrollService:
             # Find matching Biometric logs
             matching_logs = []
             for b in today_bio_logs:
-                cid = str(b.customer_id or '')
+                cid = str(b.student_id or '')
                 meta = b.meta_data or {}
-                meta_uid = str(meta.get("user_id") or meta.get("employee_id") or meta.get("customer_id") or '')
+                meta_uid = str(meta.get("user_id") or meta.get("employee_id") or meta.get("student_id") or '')
                 meta_name = str(meta.get("user_name") or meta.get("employee_name") or '').strip().lower()
                 meta_email = str(meta.get("email") or '').strip().lower()
 
@@ -274,25 +274,25 @@ class PayrollService:
         return employees
 
     @staticmethod
-    def get_employee_customers(db: Session, employee_id: str) -> List[Customer]:
+    def get_employee_students(db: Session, employee_id: str) -> List[student]:
         """
-        Returns all customer members assigned to a specific employee.
+        Returns all student members assigned to a specific employee.
         """
         employee = db.query(employeeProfile).filter(employeeProfile.id == employee_id).first()
         employee_user_id = employee.user_id if employee else None
-        return db.query(Customer).filter(
-            (Customer.employee_id == employee_id) | 
-            ((Customer.employee_id == employee_user_id) if employee_user_id else False)
+        return db.query(student).filter(
+            (student.employee_id == employee_id) | 
+            ((student.employee_id == employee_user_id) if employee_user_id else False)
         ).all()
 
     @staticmethod
-    def assign_customer(db: Session, employee_id: str, customer_id: str) -> Customer:
+    def assign_student(db: Session, employee_id: str, student_id: str) -> student:
         """
-        Assigns or reassigns a customer to a employee.
+        Assigns or reassigns a student to a employee.
         """
-        cust = db.query(Customer).filter(Customer.id == customer_id).first()
+        cust = db.query(student).filter(student.id == student_id).first()
         if not cust:
-            raise ValueError(f"Customer '{customer_id}' not found.")
+            raise ValueError(f"student '{student_id}' not found.")
         cust.employee_id = employee_id
         db.commit()
         db.refresh(cust)
@@ -528,7 +528,7 @@ class PayrollService:
         # Count biometric punch days present
         logs = db.query(BiometricLog).filter(BiometricLog.meta_data.op('->>')('user_id') == employee_id).all()
         if not logs:
-            logs = db.query(BiometricLog).filter(BiometricLog.customer_id == employee_id).all()
+            logs = db.query(BiometricLog).filter(BiometricLog.student_id == employee_id).all()
 
         distinct_days = set()
         for log in logs:

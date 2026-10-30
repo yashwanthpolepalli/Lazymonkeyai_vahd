@@ -895,13 +895,35 @@ export function StudentEnrollmentModal({
     const aadharJoined = aadharNumber.join('');
     const validEmail = studentEmail.trim().toLowerCase();
 
+    let userHoId: string | undefined = undefined;
+    let userOwnerId: string | undefined = undefined;
+    let userBranchId: string | undefined = undefined;
+    try {
+      const uStr = localStorage.getItem('vahd_user');
+      if (uStr) {
+        const parsed = JSON.parse(uStr);
+        const role = (parsed?.role || '').toUpperCase();
+        userHoId = parsed?.ho_id || (['HEAD_OFFICE', 'HO'].includes(role) ? parsed?.id : undefined);
+        userOwnerId = parsed?.owner_id || (['OWNER'].includes(role) ? parsed?.id : undefined);
+        userBranchId = parsed?.branch_id || undefined;
+      }
+    } catch {}
+
+    const resolvedBranchId = selectedBranchId || currentOrg?.id || userBranchId || undefined;
+    const resolvedHoId = (currentOrg as any)?.ho_id || userHoId || undefined;
+    const resolvedOwnerId = (currentOrg as any)?.owner_id || userOwnerId || undefined;
+    const resolvedLocation = getOrgDisplayName(currentOrg) || (currentOrg as any)?.branch_name || (currentOrg as any)?.vahd_name || undefined;
+
     const studentPayload = {
       full_name: fullName.toUpperCase().trim(),
       email: validEmail,
       phone: finalMobile,
       parent_phone: cleanParentMobile,
       parent_mobile: cleanParentMobile,
-      branch_id: selectedBranchId || currentOrg?.id || undefined,
+      branch_id: resolvedBranchId,
+      ho_id: resolvedHoId,
+      owner_id: resolvedOwnerId,
+      primary_vahd_location: resolvedLocation,
       gender: gender.toLowerCase(),
       age: age ? parseInt(age, 10) : undefined,
       role: 'STUDENT',
@@ -918,8 +940,10 @@ export function StudentEnrollmentModal({
         affiliation: affiliation.trim(),
         college_logo: collegeLogo || undefined,
         academic_year: academicYear,
-        branch_id: selectedBranchId || currentOrg?.id || undefined,
-        organisation_name: getOrgDisplayName(currentOrg) || undefined,
+        branch_id: resolvedBranchId,
+        ho_id: resolvedHoId,
+        owner_id: resolvedOwnerId,
+        organisation_name: resolvedLocation,
         course: selectedFinalCourse,
         medium: selectedFinalMedium,
         department: department || undefined,
@@ -968,15 +992,30 @@ export function StudentEnrollmentModal({
     };
 
     try {
+      let res: any;
       if (studentToEdit?.id) {
-        await apiClient.put(`/customers/${studentToEdit.id}`, studentPayload);
+        res = await apiClient.put(`/students/${studentToEdit.id}`, studentPayload);
       } else {
-        await apiClient.post('/customers', studentPayload);
+        res = await apiClient.post('/students', studentPayload);
       }
+
+      // Explicitly check response body for failures even if HTTP 200/201
+      if (res && res.success === false) {
+        setErrorMsg(res.message || res.detail || 'Failed to submit student application.');
+        return;
+      }
+
+      // Verify confirmed student record exists in response
+      const confirmedId = res?.id || res?.student?.id || res?.data?.id || (res?.success && (res?.student_id || res?.id));
+      if (!confirmedId && !res?.full_name && res?.success !== true) {
+        setErrorMsg(res?.message || 'Server did not confirm student enrollment. Please verify.');
+        return;
+      }
+
       if (onSuccess) onSuccess();
       onClose();
     } catch (err: any) {
-      setErrorMsg(err?.response?.data?.detail || err?.message || 'Failed to submit student application.');
+      setErrorMsg(err?.response?.data?.detail || err?.response?.data?.message || err?.message || 'Failed to submit student application.');
     } finally {
       setLoading(false);
     }

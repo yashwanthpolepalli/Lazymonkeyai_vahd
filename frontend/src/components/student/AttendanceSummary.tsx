@@ -1,7 +1,7 @@
 import { Icon } from '@/components/ui/Icon';
-import type { CustomerAttendanceData } from '@/types/customer';
+import type { studentAttendanceData } from '@/types/student';
 
-export function AttendanceSummary({ attendance }: { attendance?: CustomerAttendanceData | null }) {
+export function AttendanceSummary({ attendance }: { attendance?: studentAttendanceData | null }) {
   if (!attendance) return null;
 
   const monthlyTarget = 20;

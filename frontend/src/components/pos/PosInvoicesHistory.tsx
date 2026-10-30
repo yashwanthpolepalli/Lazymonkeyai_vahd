@@ -56,9 +56,9 @@ import { formatDisplayDate, formatDisplayDateTime, getTodayDateString } from "@/
 interface LocalInvoiceRecord {
   id: string;
   invoice_number: string;
-  customer_name: string;
-  customer_phone?: string;
-  customer_gstin?: string;
+  student_name: string;
+  student_phone?: string;
+  student_gstin?: string;
   sales_executive?: string;
   sales_points_earned?: number;
   invoice_date: string;
@@ -216,7 +216,7 @@ export function PosInvoicesHistory({ onNewInvoice, onNavigateTab }: PosInvoicesH
           if (Array.isArray(prods) && Array.isArray(cancellingInvoice.items)) {
             cancellingInvoice.items.forEach((line: any) => {
               const qty = Number(line.quantity) || 1;
-              const match = prods.find((p: any) => 
+              const match = prods.find((p: any) =>
                 (line.product_id && p.id === line.product_id) ||
                 (line.sku && p.sku === line.sku) ||
                 (line.product_name && p.name && p.name.toLowerCase() === line.product_name.toLowerCase())
@@ -257,7 +257,7 @@ export function PosInvoicesHistory({ onNewInvoice, onNavigateTab }: PosInvoicesH
             });
           }
         }
-      } catch (e) {}
+      } catch (e) { }
 
       if (reopenInSales) {
         // Prepare Sales Invoice to be recreated with the exact cancelled invoice number
@@ -347,7 +347,7 @@ export function PosInvoicesHistory({ onNewInvoice, onNavigateTab }: PosInvoicesH
       try {
         localStorage.setItem(storageKey, JSON.stringify(updatedInvoices));
         window.dispatchEvent(new Event("pos_invoices_updated"));
-      } catch (e) {}
+      } catch (e) { }
 
       toast.success(`Recorded ${formatCurrency(amountToCollect)} payment for ${settlingInvoice.invoice_number || "invoice"}!`);
       setIsSettleModalOpen(false);
@@ -380,9 +380,9 @@ export function PosInvoicesHistory({ onNewInvoice, onNavigateTab }: PosInvoicesH
                 }
               });
             }
-          } catch (e) {}
+          } catch (e) { }
         }
-      } catch (e) {}
+      } catch (e) { }
 
       // 2. Fetch remote ERP Invoices from Backend API
       try {
@@ -449,14 +449,14 @@ export function PosInvoicesHistory({ onNewInvoice, onNavigateTab }: PosInvoicesH
               tenant_id: inv.tenant_id,
               company_id: inv.company_id,
               invoice_number: inv.invoice_number || `INV-${String(inv.id).slice(0, 6).toUpperCase()}`,
-              customer_name: inv.customer_name || inv.customer?.name || "Walk-in Customer",
-              customer_phone: inv.customer?.phone || inv.customer_phone || "",
-              customer_email: inv.customer?.email || inv.customer_email || "",
-              customer_company: inv.customer?.company || inv.customer_company || "",
-              customer_gstin: inv.customer?.tax_number || inv.customer?.gst_number || inv.customer_gstin || "",
-              customer_type: inv.customer?.customer_type || inv.customer?.type || inv.customer?.category || inv.customer_type || (inv as any).pricing_mode || undefined,
-              customer_billing_address: inv.billing_address || inv.customer?.billing_address || inv.customer_billing_address || "",
-              customer_shipping_address: inv.shipping_address || inv.customer?.shipping_address || inv.customer_shipping_address || "",
+              student_name: inv.student_name || inv.student?.name || "Walk-in student",
+              student_phone: inv.student?.phone || inv.student_phone || "",
+              student_email: inv.student?.email || inv.student_email || "",
+              student_company: inv.student?.company || inv.student_company || "",
+              student_gstin: inv.student?.tax_number || inv.student?.gst_number || inv.student_gstin || "",
+              student_type: inv.student?.student_type || inv.student?.type || inv.student?.category || inv.student_type || (inv as any).pricing_mode || undefined,
+              student_billing_address: inv.billing_address || inv.student?.billing_address || inv.student_billing_address || "",
+              student_shipping_address: inv.shipping_address || inv.student?.shipping_address || inv.student_shipping_address || "",
               sales_executive: inv.created_by_name || "Sales Executive",
               sales_points_earned: Math.floor(finalGrandTotal / 100),
               invoice_date: inv.invoice_date || (inv.created_at ? new Date(inv.created_at).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10)),
@@ -520,9 +520,9 @@ export function PosInvoicesHistory({ onNewInvoice, onNavigateTab }: PosInvoicesH
             remoteRecords.push({
               id: tx.id,
               invoice_number: receiptNum,
-              customer_name: tx.customer?.name || "Walk-in Guest",
-              customer_phone: tx.customer?.phone || "",
-              customer_gstin: tx.customer?.gst_number || "",
+              student_name: tx.student?.name || "Walk-in Guest",
+              student_phone: tx.student?.phone || "",
+              student_gstin: tx.student?.gst_number || "",
               sales_executive: tx.cashier?.full_name || "POS Cashier",
               sales_points_earned: Math.floor(txGrand / 100),
               invoice_date: tx.created_at ? new Date(tx.created_at).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
@@ -561,11 +561,11 @@ export function PosInvoicesHistory({ onNewInvoice, onNavigateTab }: PosInvoicesH
               remote.total_tax = inv.total_tax;
               remote.grand_total = inv.grand_total;
             }
-            if ((inv as any).customer_type) (remote as any).customer_type = (inv as any).customer_type;
-            if ((inv as any).customer_company) (remote as any).customer_company = (inv as any).customer_company;
-            if ((inv as any).customer_email) (remote as any).customer_email = (inv as any).customer_email;
-            if ((inv as any).customer_billing_address) (remote as any).customer_billing_address = (inv as any).customer_billing_address;
-            if ((inv as any).customer_shipping_address) (remote as any).customer_shipping_address = (inv as any).customer_shipping_address;
+            if ((inv as any).student_type) (remote as any).student_type = (inv as any).student_type;
+            if ((inv as any).student_company) (remote as any).student_company = (inv as any).student_company;
+            if ((inv as any).student_email) (remote as any).student_email = (inv as any).student_email;
+            if ((inv as any).student_billing_address) (remote as any).student_billing_address = (inv as any).student_billing_address;
+            if ((inv as any).student_shipping_address) (remote as any).student_shipping_address = (inv as any).student_shipping_address;
             if ((inv as any).cgst_amount !== undefined) (remote as any).cgst_amount = (inv as any).cgst_amount;
             if ((inv as any).sgst_amount !== undefined) (remote as any).sgst_amount = (inv as any).sgst_amount;
             if ((inv as any).igst_amount !== undefined) (remote as any).igst_amount = (inv as any).igst_amount;
@@ -683,14 +683,14 @@ export function PosInvoicesHistory({ onNewInvoice, onNavigateTab }: PosInvoicesH
 
           fullInvRecord = {
             ...inv,
-            customer_name: remote.customer_name || remote.customer?.name || inv.customer_name,
-            customer_phone: remote.customer_phone || remote.customer?.phone || inv.customer_phone,
-            customer_email: remote.customer_email || remote.customer?.email || (inv as any).customer_email || "",
-            customer_company: remote.customer?.company || remote.customer_company || (inv as any).customer_company || "",
-            customer_gstin: remote.customer_gstin || remote.customer?.tax_number || remote.customer?.gst_number || inv.customer_gstin,
-            customer_type: remote.customer?.customer_type || remote.customer?.type || remote.customer?.category || (inv as any).customer_type || (inv as any).customerType,
-            customer_billing_address: remote.billing_address || remote.customer?.billing_address || (inv as any).customer_billing_address || "",
-            customer_shipping_address: remote.shipping_address || remote.customer?.shipping_address || (inv as any).customer_shipping_address || "",
+            student_name: remote.student_name || remote.student?.name || inv.student_name,
+            student_phone: remote.student_phone || remote.student?.phone || inv.student_phone,
+            student_email: remote.student_email || remote.student?.email || (inv as any).student_email || "",
+            student_company: remote.student?.company || remote.student_company || (inv as any).student_company || "",
+            student_gstin: remote.student_gstin || remote.student?.tax_number || remote.student?.gst_number || inv.student_gstin,
+            student_type: remote.student?.student_type || remote.student?.type || remote.student?.category || (inv as any).student_type || (inv as any).studentType,
+            student_billing_address: remote.billing_address || remote.student?.billing_address || (inv as any).student_billing_address || "",
+            student_shipping_address: remote.shipping_address || remote.student?.shipping_address || (inv as any).student_shipping_address || "",
             subtotal: rawSubtotal,
             taxable_value: rawSubtotal,
             total_tax: rawTax,
@@ -741,20 +741,20 @@ export function PosInvoicesHistory({ onNewInvoice, onNavigateTab }: PosInvoicesH
     const sgstAmt = fullInvRecord.sgst_amount !== undefined ? Number(fullInvRecord.sgst_amount) : (!isInterState ? calculatedTax / 2 : 0);
     const igstAmt = fullInvRecord.igst_amount !== undefined ? Number(fullInvRecord.igst_amount) : (isInterState ? calculatedTax : 0);
 
-    const custType = fullInvRecord.customer_type || (fullInvRecord as any).customerType || undefined;
+    const custType = fullInvRecord.student_type || (fullInvRecord as any).studentType || undefined;
 
     setFullInvoiceModalData({
       invoice_number: fullInvRecord.invoice_number,
       invoice_type: fullInvRecord.invoice_type || "TAX_INVOICE",
-      customerName: fullInvRecord.customer_name || 'Walk-in Customer',
-      customerPhone: fullInvRecord.customer_phone || '',
-      customerEmail: fullInvRecord.customer_email || '',
-      customerCompany: fullInvRecord.customer_company || '',
-      customerGST: fullInvRecord.customer_gstin || '',
-      customerAddress: fullInvRecord.customer_billing_address || fullInvRecord.billing_address || '',
-      customerBillingAddress: fullInvRecord.customer_billing_address || fullInvRecord.billing_address || '',
-      customerShippingAddress: fullInvRecord.customer_shipping_address || fullInvRecord.shipping_address || '',
-      customerType: custType,
+      studentName: fullInvRecord.student_name || 'Walk-in student',
+      studentPhone: fullInvRecord.student_phone || '',
+      studentEmail: fullInvRecord.student_email || '',
+      studentCompany: fullInvRecord.student_company || '',
+      studentGST: fullInvRecord.student_gstin || '',
+      studentAddress: fullInvRecord.student_billing_address || fullInvRecord.billing_address || '',
+      studentBillingAddress: fullInvRecord.student_billing_address || fullInvRecord.billing_address || '',
+      studentShippingAddress: fullInvRecord.student_shipping_address || fullInvRecord.shipping_address || '',
+      studentType: custType,
       sales_executive: fullInvRecord.sales_executive,
       invoice_date: fullInvRecord.invoice_date,
       due_date: fullInvRecord.due_date,
@@ -807,7 +807,7 @@ export function PosInvoicesHistory({ onNewInvoice, onNavigateTab }: PosInvoicesH
         setInvoices((prev) =>
           prev.map((item) =>
             item.id === inv.id || item.invoice_number === inv.invoice_number
-              ? { ...item, customer_phone: cleanedPhone, is_whatsapp_sent: true }
+              ? { ...item, student_phone: cleanedPhone, is_whatsapp_sent: true }
               : item
           )
         );
@@ -820,9 +820,9 @@ export function PosInvoicesHistory({ onNewInvoice, onNavigateTab }: PosInvoicesH
     }
   };
 
-  // Trigger WhatsApp sending: opens phone dialog if customer phone is not on record
+  // Trigger WhatsApp sending: opens phone dialog if student phone is not on record
   const handleSendWhatsApp = (inv: LocalInvoiceRecord) => {
-    const existingPhone = (inv.customer_phone || (inv as any).phone || "").trim();
+    const existingPhone = (inv.student_phone || (inv as any).phone || "").trim();
     if (existingPhone && existingPhone.length >= 7) {
       dispatchWhatsAppSend(inv, existingPhone);
     } else {
@@ -880,7 +880,7 @@ export function PosInvoicesHistory({ onNewInvoice, onNavigateTab }: PosInvoicesH
                   <p>Sales Invoice #: ${inv.invoice_number}</p>
                   <p>Date: ${inv.invoice_date} | Rep: ${inv.sales_executive || "Admin"}</p>
                   <div class="line"></div>
-                  <div style="font-size:11px; margin-bottom:4px;"><b>Customer:</b> ${inv.customer_name} (${inv.customer_phone || "N/A"})</div>
+                  <div style="font-size:11px; margin-bottom:4px;"><b>student:</b> ${inv.student_name} (${inv.student_phone || "N/A"})</div>
                   <div class="line"></div>
                   ${itemsHtml}
           <div class="line"></div>
@@ -939,8 +939,8 @@ export function PosInvoicesHistory({ onNewInvoice, onNavigateTab }: PosInvoicesH
       from_trade_name: activeBilling?.trade_name || activeBilling?.legal_name || "",
       from_address: activeBilling?.address || "",
       from_city: activeBilling?.state_name || "",
-      to_customer_name: inv.customer_name,
-      to_gstin: inv.customer_gstin || "URP",
+      to_student_name: inv.student_name,
+      to_gstin: inv.student_gstin || "URP",
       items: inv.items || [],
       eway_bill_number: cachedEwb?.eway_bill_number || inv.eway_bill_number,
       eway_bill_data: cachedEwb,
@@ -992,8 +992,8 @@ export function PosInvoicesHistory({ onNewInvoice, onNavigateTab }: PosInvoicesH
       const matchesSearch =
         !q ||
         inv.invoice_number.toLowerCase().includes(q) ||
-        inv.customer_name.toLowerCase().includes(q) ||
-        (inv.customer_phone && inv.customer_phone.includes(q)) ||
+        inv.student_name.toLowerCase().includes(q) ||
+        (inv.student_phone && inv.student_phone.includes(q)) ||
         (inv.sales_executive && inv.sales_executive.toLowerCase().includes(q));
 
       const matchesStatus = statusFilter === "All" || inv.payment_status === statusFilter;
@@ -1117,7 +1117,7 @@ export function PosInvoicesHistory({ onNewInvoice, onNavigateTab }: PosInvoicesH
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Search Invoice #, Customer Name, Phone, Sales Rep..."
+            placeholder="Search Invoice #, student Name, Phone, Sales Rep..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-10 pr-4 py-2 text-xs font-medium outline-none focus:ring-2 focus:ring-blue-500"
@@ -1220,7 +1220,7 @@ export function PosInvoicesHistory({ onNewInvoice, onNavigateTab }: PosInvoicesH
                     {sortOrder !== "newest" && sortOrder !== "oldest" && <ArrowUpDown className="w-3 h-3 text-slate-400" />}
                   </div>
                 </th>
-                <th className="px-4 py-3 text-left">Customer / Party</th>
+                <th className="px-4 py-3 text-left">student / Party</th>
                 <th className="px-4 py-3 text-left">Sales Representative</th>
                 <th className="px-4 py-3 text-left">Payment</th>
                 <th className="px-4 py-3 text-left">Sales/Thermal bills</th>
@@ -1284,10 +1284,10 @@ export function PosInvoicesHistory({ onNewInvoice, onNavigateTab }: PosInvoicesH
                       </div>
                     </td>
 
-                    {/* Customer */}
+                    {/* student */}
                     <td className="px-4 py-3">
-                      <div className="font-bold text-slate-800">{inv.customer_name}</div>
-                      {inv.customer_phone && <div className="text-[10px] text-slate-400">{inv.customer_phone}</div>}
+                      <div className="font-bold text-slate-800">{inv.student_name}</div>
+                      {inv.student_phone && <div className="text-[10px] text-slate-400">{inv.student_phone}</div>}
                     </td>
 
                     {/* Sales Representative */}
@@ -1309,12 +1309,12 @@ export function PosInvoicesHistory({ onNewInvoice, onNavigateTab }: PosInvoicesH
                         <div className="flex items-center gap-1.5">
                           <span
                             className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${inv.payment_status === "Paid"
-                                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                : inv.payment_status === "Partial"
-                                  ? "bg-amber-50 text-amber-800 border border-amber-300 font-black"
-                                  : inv.payment_status === "Cancelled" || inv.status === "cancelled"
-                                    ? "bg-rose-100 text-rose-800 border border-rose-300 font-black"
-                                    : "bg-rose-50 text-rose-700 border border-rose-200"
+                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                              : inv.payment_status === "Partial"
+                                ? "bg-amber-50 text-amber-800 border border-amber-300 font-black"
+                                : inv.payment_status === "Cancelled" || inv.status === "cancelled"
+                                  ? "bg-rose-100 text-rose-800 border border-rose-300 font-black"
+                                  : "bg-rose-50 text-rose-700 border border-rose-200"
                               }`}
                           >
                             {inv.payment_status === "Partial" ? "Partially Paid" : inv.payment_status === "Cancelled" || inv.status === "cancelled" ? "Cancelled" : inv.payment_status}
@@ -1522,28 +1522,28 @@ export function PosInvoicesHistory({ onNewInvoice, onNavigateTab }: PosInvoicesH
 
             {/* Drawer Body */}
             <div className="p-6 space-y-6 flex-1">
-              {/* Customer & Rep Card */}
+              {/* student & Rep Card */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-200">
                 <div>
-                  <span className="text-[10px] font-bold uppercase text-slate-400 block mb-1">Customer / Billed To</span>
-                  <div className="font-extrabold text-slate-900 text-sm">{selectedInvoice.customer_name}</div>
-                  {selectedInvoice.customer_billing_address && (
-                    <div className="text-xs text-slate-600 mt-0.5">{selectedInvoice.customer_billing_address}</div>
+                  <span className="text-[10px] font-bold uppercase text-slate-400 block mb-1">student / Billed To</span>
+                  <div className="font-extrabold text-slate-900 text-sm">{selectedInvoice.student_name}</div>
+                  {selectedInvoice.student_billing_address && (
+                    <div className="text-xs text-slate-600 mt-0.5">{selectedInvoice.student_billing_address}</div>
                   )}
-                  <div className="text-xs text-slate-500 mt-0.5">{selectedInvoice.customer_phone || "Walk-in Guest"}</div>
-                  {selectedInvoice.customer_gstin && (
-                    <div className="text-[10px] font-mono text-blue-600 font-bold mt-1">GSTIN: {selectedInvoice.customer_gstin}</div>
+                  <div className="text-xs text-slate-500 mt-0.5">{selectedInvoice.student_phone || "Walk-in Guest"}</div>
+                  {selectedInvoice.student_gstin && (
+                    <div className="text-[10px] font-mono text-blue-600 font-bold mt-1">GSTIN: {selectedInvoice.student_gstin}</div>
                   )}
                 </div>
 
                 <div>
                   <span className="text-[10px] font-bold uppercase text-indigo-500 block mb-1">Shipped To / Destination</span>
-                  <div className="font-extrabold text-slate-900 text-sm">{selectedInvoice.customer_name}</div>
+                  <div className="font-extrabold text-slate-900 text-sm">{selectedInvoice.student_name}</div>
                   <div className="text-xs text-slate-700 font-medium mt-0.5">
-                    {selectedInvoice.customer_shipping_address || selectedInvoice.customer_billing_address || "Same as Billing Address"}
+                    {selectedInvoice.student_shipping_address || selectedInvoice.student_billing_address || "Same as Billing Address"}
                   </div>
-                  {selectedInvoice.customer_phone && (
-                    <div className="text-xs text-slate-500 mt-0.5">Contact: {selectedInvoice.customer_phone}</div>
+                  {selectedInvoice.student_phone && (
+                    <div className="text-xs text-slate-500 mt-0.5">Contact: {selectedInvoice.student_phone}</div>
                   )}
                 </div>
 
@@ -1675,11 +1675,11 @@ export function PosInvoicesHistory({ onNewInvoice, onNavigateTab }: PosInvoicesH
 
             {/* Modal Body */}
             <div className="p-6 space-y-4">
-              {/* Customer & Bill Summary Card */}
+              {/* student & Bill Summary Card */}
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2">
                 <div className="flex justify-between text-xs">
-                  <span className="text-slate-500 font-medium">Customer:</span>
-                  <span className="font-bold text-slate-900">{settlingInvoice.customer_name}</span>
+                  <span className="text-slate-500 font-medium">student:</span>
+                  <span className="font-bold text-slate-900">{settlingInvoice.student_name}</span>
                 </div>
                 <div className="flex justify-between text-xs">
                   <span className="text-slate-500 font-medium">Total Bill Amount:</span>
@@ -1707,8 +1707,8 @@ export function PosInvoicesHistory({ onNewInvoice, onNavigateTab }: PosInvoicesH
                       type="button"
                       onClick={() => setSettlePaymentMode(mode)}
                       className={`py-2 px-1 text-xs font-bold rounded-xl border transition-all text-center ${settlePaymentMode === mode
-                          ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
-                          : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+                        ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
+                        : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
                         }`}
                     >
                       {mode}
@@ -1874,8 +1874,8 @@ export function PosInvoicesHistory({ onNewInvoice, onNavigateTab }: PosInvoicesH
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-500 font-medium">Customer / Party</span>
-                  <span className="font-bold text-slate-800">{whatsappInvoice.customer_name || "Walk-in Guest"}</span>
+                  <span className="text-slate-500 font-medium">student / Party</span>
+                  <span className="font-bold text-slate-800">{whatsappInvoice.student_name || "Walk-in Guest"}</span>
                 </div>
                 <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-200/60">
                   <span className="text-slate-500 font-medium">Grand Total</span>
@@ -1888,7 +1888,7 @@ export function PosInvoicesHistory({ onNewInvoice, onNavigateTab }: PosInvoicesH
               {/* Phone input field */}
               <div className="space-y-1.5">
                 <label className="block text-xs font-bold text-slate-800">
-                  Customer's WhatsApp Mobile Number <span className="text-rose-500">*</span>
+                  student's WhatsApp Mobile Number <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative flex items-center">
                   <span className="absolute left-3.5 text-xs font-bold text-slate-400 select-none">
@@ -1897,7 +1897,7 @@ export function PosInvoicesHistory({ onNewInvoice, onNavigateTab }: PosInvoicesH
                   <input
                     type="tel"
                     autoFocus
-                    placeholder="Enter 10-digit customer phone number"
+                    placeholder="Enter 10-digit student phone number"
                     value={whatsappPhoneInput}
                     onChange={(e) => setWhatsappPhoneInput(e.target.value)}
                     onKeyDown={(e) => {
@@ -1986,8 +1986,8 @@ export function PosInvoicesHistory({ onNewInvoice, onNavigateTab }: PosInvoicesH
               {/* Invoice Summary */}
               <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-500 font-medium">Customer / Party:</span>
-                  <span className="font-bold text-slate-800">{cancellingInvoice.customer_name || "Walk-in Guest"}</span>
+                  <span className="text-slate-500 font-medium">student / Party:</span>
+                  <span className="font-bold text-slate-800">{cancellingInvoice.student_name || "Walk-in Guest"}</span>
                 </div>
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-slate-500 font-medium">Invoice Date:</span>
@@ -2027,7 +2027,7 @@ export function PosInvoicesHistory({ onNewInvoice, onNavigateTab }: PosInvoicesH
                   rows={2}
                   value={cancellationReason}
                   onChange={(e) => setCancellationReason(e.target.value)}
-                  placeholder="e.g., Customer cancelled order / Price dispute / Data entry mistake"
+                  placeholder="e.g., student cancelled order / Price dispute / Data entry mistake"
                   className="w-full p-3 bg-white border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-rose-500 transition-all placeholder:text-slate-400"
                 />
               </div>

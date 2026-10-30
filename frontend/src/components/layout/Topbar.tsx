@@ -113,7 +113,26 @@ export function Topbar() {
   useEffect(() => {
     const fetchOrgs = async () => {
       try {
-        if (user?.role === 'ho') {
+        if (user?.role === 'super_admin') {
+          const res = await apiClient.get<any[]>('/superadmin/vahds');
+          if (Array.isArray(res)) {
+            const seen = new Set<string>();
+            const unique: typeof topbarOrgs = [];
+            for (const h of res) {
+              const id = h.ho_id || h.id;
+              if (id && !seen.has(id)) {
+                seen.add(id);
+                unique.push({
+                  id: id,
+                  name: h.name || 'Head Office',
+                  branch: h.branch_name || 'HQ',
+                  city: h.city || '',
+                });
+              }
+            }
+            setTopbarOrgs(unique);
+          }
+        } else if (user?.role === 'ho') {
           const res = await apiClient.get<any>('/ho/organizations');
           if (res?.organizations) {
             const seen = new Set<string>();
@@ -174,7 +193,6 @@ export function Topbar() {
     owner: 'Owner',
     employee: 'Employee',
     student: 'Student',
-    customer: 'Student',
   };
   const roleLabel = roleLabelMap[user?.role || 'owner'] || 'Owner';
 
@@ -238,7 +256,11 @@ export function Topbar() {
               <span className="truncate max-w-[200px]">
                 {(() => {
                   if (selectedTopbarOrg === 'all') {
-                    return user?.role === 'ho' ? 'All Organizations (HQ)' : user?.vahdName || 'All Branches';
+                    return user?.role === 'super_admin'
+                      ? 'All Head Offices'
+                      : user?.role === 'ho'
+                        ? 'All Organizations (HQ)'
+                        : user?.vahdName || 'All Branches';
                   }
                   const match = topbarOrgs.find((o) => o.id === selectedTopbarOrg);
                   if (match) {
@@ -246,7 +268,9 @@ export function Topbar() {
                       ? `${match.name} - ${match.branch}`
                       : match.name;
                   }
-                  return user?.vahdName || 'Selected Organization';
+                  return user?.role === 'super_admin'
+                    ? 'Selected Head Office'
+                    : user?.vahdName || 'Selected Organization';
                 })()}
               </span>
               <Icon name="chevron-down" size={12} className="text-slate-400 shrink-0" />
@@ -255,7 +279,7 @@ export function Topbar() {
             {showOrgDropdown && (
               <div className="absolute left-0 top-11 w-64 bg-white rounded-2xl p-2 z-50 shadow-2xl border border-slate-200 text-xs animate-in fade-in slide-in-from-top-1 duration-150">
                 <p className="px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-slate-400">
-                  Switch Organization
+                  {user?.role === 'super_admin' ? 'Filter by Head Office' : 'Switch Organization'}
                 </p>
                 <div className="space-y-0.5 max-h-56 overflow-y-auto">
                   <button
@@ -270,7 +294,7 @@ export function Topbar() {
                       : 'hover:bg-slate-50 text-slate-700 font-medium'
                       }`}
                   >
-                    <span>All Organizations</span>
+                    <span>{user?.role === 'super_admin' ? 'All Head Offices' : 'All Organizations'}</span>
                     {selectedTopbarOrg === 'all' && <Icon name="check" size={13} className="text-purple-600" />}
                   </button>
                   {topbarOrgs.map((o) => (
@@ -481,7 +505,8 @@ export function Topbar() {
                 <button
                   onClick={() => {
                     setShowProfile(false);
-                    navigate(user?.role === 'customer' ? '/app/profile' : `/${user?.role || 'owner'}/settings`);
+                    const profilePath = user?.role === 'super_admin' ? '/super-admin/settings' : (user?.role === 'student' ? '/app/profile' : `/${user?.role || 'owner'}/settings`);
+                    navigate(profilePath);
                   }}
                   className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors flex items-center gap-2"
                 >
@@ -491,7 +516,8 @@ export function Topbar() {
                 <button
                   onClick={() => {
                     setShowProfile(false);
-                    navigate(`/${user?.role || 'owner'}/settings`);
+                    const settingsPath = user?.role === 'super_admin' ? '/super-admin/settings' : `/${user?.role || 'owner'}/settings`;
+                    navigate(settingsPath);
                   }}
                   className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors flex items-center gap-2"
                 >

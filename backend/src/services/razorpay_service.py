@@ -131,27 +131,27 @@ class RazorpayService:
         self,
         amount: float,
         description: str,
-        customer_name: Optional[str] = None,
-        customer_phone: Optional[str] = None,
-        customer_email: Optional[str] = None,
+        student_name: Optional[str] = None,
+        student_phone: Optional[str] = None,
+        student_email: Optional[str] = None,
         notify_sms: bool = True,
         notify_email: bool = True,
         notes: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """Creates a Razorpay Payment Link that can be shared via SMS, WhatsApp, or Email."""
         amount_subunits = int(round(amount * 100))
-        customer_payload: Dict[str, Any] = {}
-        if customer_name:
-            customer_payload["name"] = customer_name
-        if customer_phone:
-            clean_phone = "".join(filter(str.isdigit, customer_phone))
+        student_payload: Dict[str, Any] = {}
+        if student_name:
+            student_payload["name"] = student_name
+        if student_phone:
+            clean_phone = "".join(filter(str.isdigit, student_phone))
             if len(clean_phone) == 10:
                 clean_phone = f"+91{clean_phone}"
             elif not clean_phone.startswith("+"):
                 clean_phone = f"+{clean_phone}"
-            customer_payload["contact"] = clean_phone
-        if customer_email:
-            customer_payload["email"] = customer_email
+            student_payload["contact"] = clean_phone
+        if student_email:
+            student_payload["email"] = student_email
 
         payload: Dict[str, Any] = {
             "amount": amount_subunits,
@@ -159,14 +159,14 @@ class RazorpayService:
             "accept_partial": False,
             "description": description,
             "notify": {
-                "sms": notify_sms if customer_phone else False,
-                "email": notify_email if customer_email else False,
+                "sms": notify_sms if student_phone else False,
+                "email": notify_email if student_email else False,
             },
             "reminder_enable": True,
             "notes": notes or {},
         }
-        if customer_payload:
-            payload["customer"] = customer_payload
+        if student_payload:
+            payload["student"] = student_payload
 
         async with httpx.AsyncClient(timeout=15.0) as client:
             res = await client.post(

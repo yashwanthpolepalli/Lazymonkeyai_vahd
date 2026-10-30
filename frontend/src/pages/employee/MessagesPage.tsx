@@ -12,7 +12,7 @@ export function MessagesPage() {
   const [chatMessages, setChatMessages] = useState<Record<number, any[]>>({});
 
   useEffect(() => {
-    api.customers.list()
+    api.students.list()
       .then((data: Member[]) => {
         if (data && data.length > 0) {
           const avatars = ['from-brand-400 to-brand-600', 'from-success-400 to-success-600', 'from-warning-400 to-warning-600', 'from-ai-400 to-ai-600'];

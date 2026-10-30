@@ -480,26 +480,33 @@ export function SettingsPage() {
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 gap-3 sm:gap-4 pt-1">
             {SETTING_CARDS.filter((card) => {
               if (isHo) return true;
-              if (card.id === 'permissions') return false;
+              if (card.id === 'permissions') {
+                return !!(user?.permissions && (user.permissions['permissions.view'] || user.permissions['permissions']));
+              }
               if (!user?.permissions || Object.keys(user.permissions).length === 0) return true;
               const perms = user.permissions;
+
+              // 1. Direct card check if explicitly granted/denied
+              const specificPerm = perms[`${card.id}.view`] ?? perms[card.id];
+              if (specificPerm !== undefined) {
+                return !!specificPerm;
+              }
+
+              // 2. Fallbacks for master data categories
               if (card.type === 'master') {
                 return !!(perms['master_data.view'] || perms['master_data']);
-              }
-              if (card.id === 'roles') {
-                return !!(perms['roles.view'] || perms['roles'] || perms['master_data.view']);
               }
               if (card.id === 'courses') {
                 return !!(perms['courses.view'] || perms['courses']);
               }
               if (card.id === 'reports') {
-                return !!(perms['reports.view'] || perms['reports_attendance.view'] || perms['reports_financial.view']);
+                return !!(perms['reports_section.view'] || perms['reports.view'] || perms['reports_attendance.view'] || perms['reports_financial.view']);
               }
               if (card.id === 'erp') {
-                return !!(perms['branch_profile.view'] || perms['settings.profile']);
+                return !!(perms['erp.view'] || perms['erp'] || perms['branch_profile.view'] || perms['settings.profile']);
               }
               if (card.id === 'general') {
-                return !!(perms['settings_section.view'] || perms['settings.view'] || perms['branch_profile.view'] || perms['settings.profile']);
+                return !!(perms['general.view'] || perms['general'] || perms['settings_section.view'] || perms['settings.view'] || perms['branch_profile.view'] || perms['settings.profile']);
               }
               return true;
             }).map((card) => (

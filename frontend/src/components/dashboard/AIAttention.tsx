@@ -22,7 +22,7 @@ export function AIAttention({ attention, onNavigate }: AIAttentionProps) {
       iconBg: 'bg-rose-500 text-white',
       cardBg: 'bg-rose-50/60 border-rose-100 hover:border-rose-200',
       badgeBg: 'bg-rose-100 text-rose-700',
-      module: 'customers',
+      module: 'students',
     },
     {
       id: 'expiring',

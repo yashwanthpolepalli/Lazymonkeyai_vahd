@@ -535,7 +535,7 @@
                     meanings ascribed below:</p>
                 <ul>
                     <li><strong>"Account":</strong> A unique authorized credential created for a Facility Owner, Staff
-                        Member, Personal employee, or vahd Customer to access the Platform.</li>
+                        Member, Personal employee, or vahd student to access the Platform.</li>
                     <li><strong>"Biometric Data":</strong> Any personal data resulting from specific technical
                         processing relating to the physical, physiological, or behavioral characteristics of a natural
                         person, including facial mathematical feature vector hashes, facial geometry representations,
@@ -547,7 +547,7 @@
                     <li><strong>"Facility Operator / Owner":</strong> The commercial enterprise or vahd business entity
                         operating a physical fitness location that utilizes LazyMonkey VAHD software and hardware
                         middleware to manage operations.</li>
-                    <li><strong>"Member / Customer":</strong> An individual registered with a Facility Operator who
+                    <li><strong>"Member / student":</strong> An individual registered with a Facility Operator who
                         utilizes physical vahd services, access control doors, body scanners, or mobile member portals.
                     </li>
                     <li><strong>"eBioserver Middleware":</strong> The physical or cloud SOAP/HTTP server layer
@@ -623,7 +623,8 @@
                     F-series devices). The raw image is immediately processed locally by the hardware or eBioserver
                     middleware to extract key spatial nodal points, creating an encrypted mathematical vector (hash).
                     <strong>We do not store unencrypted raw facial photo files or raw fingerprint images in our
-                        biometric database.</strong></p>
+                        biometric database.</strong>
+                </p>
 
                 <h3>4.2 Written Consent Requirement</h3>
                 <p>Prior to initial biometric enrollment, every member or staff member must provide explicit written or
@@ -759,7 +760,8 @@
                         volumes are encrypted using FIPS 140-2 validated <strong>AES-256</strong> algorithm.</li>
                     <li><strong>Encryption in Transit:</strong> All data moving between physical eSSL terminals,
                         eBioserver middleware, FastAPI backend services, and web frontend clients is transmitted via
-                        <strong>TLS 1.3</strong> (HTTPS/WSS) with forced Perfect Forward Secrecy.</li>
+                        <strong>TLS 1.3</strong> (HTTPS/WSS) with forced Perfect Forward Secrecy.
+                    </li>
                     <li><strong>Network Isolation:</strong> Biometric middleware servers operate inside isolated Virtual
                         Private Clouds (VPC) protected by strict Web Application Firewalls (WAF) and zero-trust security
                         groups.</li>

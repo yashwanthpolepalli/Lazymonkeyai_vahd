@@ -1,7 +1,7 @@
 from __future__ import annotations
 """
 vahd — Live Gemini AI Coach Chat Endpoint
-Receives user questions, retrieves active customer metrics and attendance logs from PostgreSQL,
+Receives user questions, retrieves active student metrics and attendance logs from PostgreSQL,
 and invokes Gemini 2.0 Flash to generate real-time intelligent responses.
 """
 import os
@@ -17,7 +17,7 @@ import google.generativeai as genai
 from dotenv import load_dotenv
 
 from src.database.session import get_db
-from src.models.customer import Customer
+from src.models.student import student
 from src.utils.timezone import now_ist_naive, today_ist_start, today_ist_end, to_ist_str
 from src.utils.gemini_config import get_gemini_key, get_primary_model, build_gemini_fallback_list, is_valid_gemini_key
 
@@ -31,21 +31,21 @@ router = APIRouter(prefix="/ai", tags=["AI Coach"])
 
 
 class CoachChatRequest(BaseModel):
-    customer_id: str
+    student_id: str
     message: str
 
 
 @router.post("/coach-chat")
 def coach_chat(req: CoachChatRequest, db: Session = Depends(get_db)):
     """
-    Real-time dynamic AI Coach assistant using Gemini with live PostgreSQL customer context.
+    Real-time dynamic AI Coach assistant using Gemini with live PostgreSQL student context.
     """
-    customer_id = req.customer_id
+    student_id = req.student_id
     user_msg = req.message.strip()
 
-    # Fetch Customer Context
-    customer = db.query(Customer).filter(Customer.id == customer_id).first()
-    customer_name = customer.full_name if customer else "Member"
+    # Fetch student Context
+    student = db.query(student).filter(student.id == student_id).first()
+    student_name = student.full_name if student else "Member"
 
     # Always read fresh from .env at request-time
     current_key = get_gemini_key()
@@ -54,7 +54,7 @@ def coach_chat(req: CoachChatRequest, db: Session = Depends(get_db)):
     if not is_valid_gemini_key(current_key):
         return {
             "status": "FALLBACK",
-            "reply": f"Hi {customer_name}! Your profile is active. Configure GEMINI_API_KEY in .env for full AI conversation.",
+            "reply": f"Hi {student_name}! Your profile is active. Configure GEMINI_API_KEY in .env for full AI conversation.",
             "mode": "CONTEXTUAL_RULE_ENGINE"
         }
 
@@ -62,11 +62,11 @@ def coach_chat(req: CoachChatRequest, db: Session = Depends(get_db)):
         genai.configure(api_key=current_key)
         model = genai.GenerativeModel(current_model)
 
-        system_context = f"""You are the elite vahd AI Assistant for member '{customer_name}'.
-Customer Live Context:
-- Full Name: {customer_name}
-- Status: {customer.status if customer else 'ACTIVE'}
-- Qualification / Specialization: {getattr(customer, 'specialization', '') or getattr(customer, 'qualification', '') or 'Enrolled'}
+        system_context = f"""You are the elite vahd AI Assistant for member '{student_name}'.
+student Live Context:
+- Full Name: {student_name}
+- Status: {student.status if student else 'ACTIVE'}
+- Qualification / Specialization: {getattr(student, 'specialization', '') or getattr(student, 'qualification', '') or 'Enrolled'}
 - Attendance / Activity: Active
 
 Guidelines:
@@ -111,7 +111,7 @@ Guidelines:
         print(f"[AICoach] Gemini Execution Error: {e}")
         return {
             "reply": (
-                f"I've analyzed your progress, {customer_name}. "
+                f"I've analyzed your progress, {student_name}. "
                 f"Stay consistent with your daily learning and attendance goals!"
             )
         }

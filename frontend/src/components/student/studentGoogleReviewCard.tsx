@@ -12,7 +12,7 @@ export interface AISuggestion {
   tags: string[];
 }
 
-export function CustomerGoogleReviewCard() {
+export function StudentGoogleReviewCard() {
   const { user } = useAuth();
   const [reviewSettings, setReviewSettings] = useState<{
     google_review_url: string;
@@ -46,7 +46,7 @@ export function CustomerGoogleReviewCard() {
     setLoadingAi(true);
     try {
       const res: any = await apiClient.post('/reviews/ai-generate', {
-        customer_id: user?.id,
+        student_id: user?.id,
         vahd_name: vahdName || reviewSettings?.vahd_name || 'VAHD Enterprise'
       });
       if (res?.suggestions && Array.isArray(res.suggestions)) {
@@ -89,9 +89,9 @@ export function CustomerGoogleReviewCard() {
     // 2. Record review submission in backend
     try {
       await apiClient.post('/reviews/submit', {
-        customer_id: user?.id,
-        customer_name: user?.name || 'vahd Member',
-        customer_phone: user?.phone,
+        student_id: user?.id,
+        student_name: user?.name || 'vahd Member',
+        student_phone: user?.phone,
         rating: 5,
         review_text: textToShare,
         sentiment: 'Positive',

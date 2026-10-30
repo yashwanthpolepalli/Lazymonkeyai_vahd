@@ -11,7 +11,7 @@ export { membersApi } from './membersApi';
 export { employeesApi } from './employeesApi';
 export { biometricService } from './biometric';
 
-export { customerApi } from './customerApi';
+export { studentApi } from './studentApi';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export const api = {
@@ -42,7 +42,7 @@ export const api = {
         ) as User['role'];
 
         return {
-          id: res.user_id || res.customer_id || '',
+          id: res.user_id || res.student_id || '',
           name: res.full_name || email.split('@')[0] || '',
           email: res.email || email,
           phone: res.phone || '',
@@ -115,7 +115,7 @@ export const api = {
         ) as User['role'];
 
         return {
-          id: res.user_id || res.customer_id || '',
+          id: res.user_id || res.student_id || '',
           name: res.full_name || res.email?.split('@')[0] || '',
           email: res.email || '',
           phone: res.phone || '',
@@ -137,15 +137,16 @@ export const api = {
   dashboard: {
     ...dashboardApi,
     ownerKpis: (): Promise<any[]> => apiClient.get('/dashboard/owner-kpis'),
-    superAdminKpis: (): Promise<any[]> => apiClient.get('/dashboard/super-admin-kpis'),
+    superAdminKpis: (hoId?: string): Promise<any[]> =>
+      apiClient.get(`/dashboard/super-admin-kpis${hoId && hoId !== 'all' ? `?ho_id=${encodeURIComponent(hoId)}` : ''}`),
     employeeKpis: (): Promise<any[]> => apiClient.get('/dashboard/employee-kpis'),
-    customerKpis: (): Promise<any[]> => apiClient.get('/dashboard/customer-kpis'),
+    studentKpis: (): Promise<any[]> => apiClient.get('/dashboard/student-kpis'),
     activity: (): Promise<any[]> => apiClient.get('/dashboard/activity'),
     attention: (): Promise<any[]> => apiClient.get('/dashboard/attention'),
-    customerRadar: (): Promise<any> => apiClient.get('/dashboard/radar'),
+    studentRadar: (): Promise<any> => apiClient.get('/dashboard/radar'),
     revenue: (): Promise<any> => apiClient.get('/dashboard/revenue'),
   },
-  customers: membersApi,
+  students: membersApi,
   members: membersApi,
   employees: employeesApi,
   biometrics: {
@@ -175,7 +176,7 @@ export const api = {
     membershipTransactions: (params?: any): Promise<any> => apiClient.get('/courses/transactions', { params }),
   },
   aiCoach: {
-    recommendations: (): Promise<any[]> => apiClient.get('/customer/ai/recommendation'),
+    recommendations: (): Promise<any[]> => apiClient.get('/student/ai/recommendation'),
     chat: (message: string): Promise<any> => apiClient.post('/ai-coach/chat', { message }),
   },
   crm: {
@@ -195,7 +196,8 @@ export const api = {
     products: (): Promise<any[]> => apiClient.get('/inventory/products'),
   },
   superAdmin: {
-    vahds: (): Promise<any[]> => apiClient.get('/superadmin/vahds'),
+    vahds: (hoId?: string): Promise<any[]> =>
+      apiClient.get(`/superadmin/vahds${hoId && hoId !== 'all' ? `?ho_id=${encodeURIComponent(hoId)}` : ''}`),
     onboardvahd: (payload: any): Promise<any> => apiClient.post('/superadmin/vahds', payload),
     deleteOrganization: (vahdId: string): Promise<any> => apiClient.delete(`/superadmin/organizations/${vahdId}`),
     bulkDeleteOrganizations: (vahdIds: string[]): Promise<any> => apiClient.post('/superadmin/organizations/bulk-delete', { vahd_ids: vahdIds }),

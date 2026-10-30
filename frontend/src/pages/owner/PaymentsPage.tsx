@@ -376,8 +376,8 @@ export function PaymentsPage() {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as TabCategory)}
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition-all ${active
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/25'
-                    : 'text-navy-600 hover:text-navy-900 hover:bg-navy-50'
+                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/25'
+                  : 'text-navy-600 hover:text-navy-900 hover:bg-navy-50'
                   }`}
               >
                 <IconComp size={14} />
@@ -534,7 +534,7 @@ export function PaymentsPage() {
                         </div>
                       </td>
 
-                      {/* Entity / Customer / Employee */}
+                      {/* Entity / student / Employee */}
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-2.5">
                           <div

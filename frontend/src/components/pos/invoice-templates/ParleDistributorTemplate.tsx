@@ -106,22 +106,22 @@ export function ParleDistributorTemplate({
           </div>
         </div>
 
-        {/* Right: Customer & Invoice Meta */}
+        {/* Right: student & Invoice Meta */}
         <div className="col-span-4 p-1 space-y-0.5 flex flex-col justify-between">
           <div>
             <div className="flex justify-between items-start">
-              <span className="text-[9px] font-bold">M/s {invoice.customerName || 'Customer'}</span>
+              <span className="text-[9px] font-bold">M/s {invoice.studentName || 'student'}</span>
               <span className="text-[8px] font-mono text-gray-500">Page No. 1</span>
             </div>
             <p className="text-[9px] text-gray-700 leading-snug">
-              <span className="font-bold text-gray-900">Bill To: </span>{invoice.customerBillingAddress || invoice.customerAddress || 'Local Market'}
+              <span className="font-bold text-gray-900">Bill To: </span>{invoice.studentBillingAddress || invoice.studentAddress || 'Local Market'}
             </p>
             <p className="text-[8.5px] text-teal-900 leading-snug font-medium">
-              <span className="font-bold text-teal-950">Ship To: </span>{invoice.customerShippingAddress || invoice.customerBillingAddress || invoice.customerAddress || 'Same as Bill To'}
+              <span className="font-bold text-teal-950">Ship To: </span>{invoice.studentShippingAddress || invoice.studentBillingAddress || invoice.studentAddress || 'Same as Bill To'}
             </p>
-            {invoice.customerPhone && <p className="text-[9px]">Ph.No.: <span className="font-mono">{invoice.customerPhone}</span></p>}
+            {invoice.studentPhone && <p className="text-[9px]">Ph.No.: <span className="font-mono">{invoice.studentPhone}</span></p>}
             <p className="font-bold text-[9px]">
-              GST : <span className="font-mono">{invoice.customerGST || 'UNREGISTERED'}</span>
+              GST : <span className="font-mono">{invoice.studentGST || 'UNREGISTERED'}</span>
             </p>
           </div>
         </div>

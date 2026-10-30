@@ -80,7 +80,7 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
       const [schemesRes, empsRes, custsRes, branchesRes, settingsRes] = await Promise.all([
         hrmsApi.getGeofenceSchemes().catch(() => []),
         hrmsApi.getEmployees().catch(() => []),
-        apiClient.get<any[]>('/customers').catch(() => []),
+        apiClient.get<any[]>('/students').catch(() => []),
         apiClient.get<any[]>('/vahd/branches').catch(() => []),
         apiClient.get<any>('/vahd/settings').catch(() => null),
       ]);

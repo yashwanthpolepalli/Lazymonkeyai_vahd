@@ -26,7 +26,7 @@ export function MultiBranchPage() {
     setLoading(true);
     Promise.all([
       apiClient.get<any[]>('/vahd/branches').catch(() => []),
-      api.customers.list().catch(() => []),
+      api.students.list().catch(() => []),
     ]).then(([bList, mList]) => {
       if (Array.isArray(bList) && bList.length > 0) {
         setBranches(bList.map((b: any) => ({

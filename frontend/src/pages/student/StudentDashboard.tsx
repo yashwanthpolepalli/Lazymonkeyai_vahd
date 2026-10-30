@@ -7,23 +7,23 @@ import { KpiCard } from '@/components/ui/KpiCard';
 import { SkeletonCard, Skeleton } from '@/components/ui/Skeleton';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { useAuth } from '@/context/AuthContext';
-import { customerApi } from '@/services/customerApi';
+import { studentApi } from '@/services/studentApi';
 import type {
-  CustomerDashboardData,
-  CustomerAttendanceData,
+  studentDashboardData,
+  studentAttendanceData,
   AICoachRecommendation,
-} from '@/types/customer';
-import { CustomerGoogleReviewCard } from '@/components/customer/CustomerGoogleReviewCard';
-import { AttendanceSummary } from '@/components/customer/AttendanceSummary';
+} from '@/types/student';
+import { StudentGoogleReviewCard } from '@/components/student/studentGoogleReviewCard';
+import { AttendanceSummary } from '@/components/student/AttendanceSummary';
 import { cn } from '@/utils/cn';
 import { getISTGreeting } from '@/utils/date';
 
-export function CustomerDashboard() {
+export function studentDashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  const [dashboard, setDashboard] = useState<CustomerDashboardData | null>(null);
-  const [attendance, setAttendance] = useState<CustomerAttendanceData | null>(null);
+  const [dashboard, setDashboard] = useState<studentDashboardData | null>(null);
+  const [attendance, setAttendance] = useState<studentAttendanceData | null>(null);
   const [aiCoach, setAiCoach] = useState<AICoachRecommendation | null>(null);
 
   const [loading, setLoading] = useState(true);
@@ -33,9 +33,9 @@ export function CustomerDashboard() {
     setLoading(true);
     setError(null);
     Promise.all([
-      customerApi.getDashboard(),
-      customerApi.getAttendance().catch(() => null),
-      customerApi.getAICoachRecommendation().catch(() => null),
+      studentApi.getDashboard(),
+      studentApi.getAttendance().catch(() => null),
+      studentApi.getAICoachRecommendation().catch(() => null),
     ])
       .then(([d, att, a]) => {
         setDashboard(d);
@@ -65,7 +65,7 @@ export function CustomerDashboard() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <PageHeader title={`${getISTGreeting()}, ${userName}`} breadcrumb={['Customer', 'Home']} />
+        <PageHeader title={`${getISTGreeting()}, ${userName}`} breadcrumb={['student', 'Home']} />
         <Skeleton className="h-44 w-full rounded-2xl" />
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
@@ -79,7 +79,7 @@ export function CustomerDashboard() {
   if (error) {
     return (
       <div className="space-y-6">
-        <PageHeader title={`${getISTGreeting()}, ${userName}`} breadcrumb={['Customer', 'Home']} />
+        <PageHeader title={`${getISTGreeting()}, ${userName}`} breadcrumb={['student', 'Home']} />
         <ErrorState message={error} onRetry={fetchDashboard} />
       </div>
     );
@@ -90,7 +90,7 @@ export function CustomerDashboard() {
       <PageHeader
         title={dashboard?.greeting || `${getISTGreeting()}, ${userName} 👋`}
         subtitle={dashboard?.subtitle || "Here is your attendance and member portal overview today."}
-        breadcrumb={['Customer', 'Home']}
+        breadcrumb={['student', 'Home']}
       />
 
       <div className="card p-6 bg-gradient-to-br from-brand-600 via-brand-700 to-brand-900 text-white relative overflow-hidden">
@@ -185,7 +185,7 @@ export function CustomerDashboard() {
       </div>
 
       {/* Official Google Business Reviews & AI Suggestion Hub */}
-      <CustomerGoogleReviewCard />
+      <StudentGoogleReviewCard />
     </div>
   );
 }

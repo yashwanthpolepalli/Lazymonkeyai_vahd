@@ -7,7 +7,7 @@ from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc, or_
 
-from src.models.customer import Customer
+from src.models.student import student
 from src.models.settings import vahdBranch
 from src.models.biometric import BiometricLog
 from src.models.crm import WhatsAppSessionModel
@@ -48,7 +48,7 @@ class StudentAttendanceReportService:
     @staticmethod
     def compute_student_monthly_attendance(
         db: Session,
-        customer_id: str,
+        student_id: str,
         year: Optional[int] = None,
         month: Optional[int] = None
     ) -> Dict[str, Any]:
@@ -70,9 +70,9 @@ class StudentAttendanceReportService:
             target_year, target_month, up_to_day=up_to_day
         )
 
-        student = db.query(Customer).filter(Customer.id == customer_id).first()
+        student = db.query(student).filter(student.id == student_id).first()
         if not student:
-            raise ValueError(f"Student with ID '{customer_id}' not found.")
+            raise ValueError(f"Student with ID '{student_id}' not found.")
 
         meta = student.meta_data or {}
         parent_phone = (
@@ -87,7 +87,7 @@ class StudentAttendanceReportService:
         logs = (
             db.query(BiometricLog)
             .filter(
-                BiometricLog.customer_id == student.id,
+                BiometricLog.student_id == student.id,
                 BiometricLog.timestamp >= start_dt,
                 BiometricLog.timestamp <= end_dt,
                 BiometricLog.status != "DENIED"
@@ -401,7 +401,7 @@ class StudentAttendanceReportService:
     @staticmethod
     def send_report_to_parent(
         db: Session,
-        customer_id: str,
+        student_id: str,
         year: Optional[int] = None,
         month: Optional[int] = None,
         dispatch_type: str = "MANUAL_DISPATCH"
@@ -412,14 +412,14 @@ class StudentAttendanceReportService:
         Saves a persistent audit record into `student_attendance_report_logs`.
         """
         report = StudentAttendanceReportService.compute_student_monthly_attendance(
-            db, customer_id=customer_id, year=year, month=month
+            db, student_id=student_id, year=year, month=month
         )
 
         parent_phone = report.get("parent_phone")
         if not parent_phone:
             # Log skipped attempt
             log_entry = StudentAttendanceReportLog(
-                student_id=customer_id,
+                student_id=student_id,
                 student_name=report.get("student_name", "Unknown"),
                 parent_phone="MISSING",
                 branch_id=report.get("branch_id"),
@@ -440,7 +440,7 @@ class StudentAttendanceReportService:
 
             return {
                 "success": False,
-                "student_id": customer_id,
+                "student_id": student_id,
                 "student_name": report.get("student_name"),
                 "message": f"Missing parent mobile number for {report.get('student_name')}. Please update student dossier with parent mobile number."
             }
@@ -469,7 +469,7 @@ class StudentAttendanceReportService:
 
         # Create persistent audit log in DB
         log_entry = StudentAttendanceReportLog(
-            student_id=customer_id,
+            student_id=student_id,
             student_name=report.get("student_name"),
             parent_phone=parent_phone,
             branch_id=report.get("branch_id"),
@@ -505,7 +505,7 @@ class StudentAttendanceReportService:
         return {
             "success": True,
             "log_id": log_entry.id,
-            "student_id": customer_id,
+            "student_id": student_id,
             "student_name": report.get("student_name"),
             "parent_phone": parent_phone,
             "formatted_phone": formatted_phone,
@@ -530,16 +530,16 @@ class StudentAttendanceReportService:
         Dispatches monthly attendance reports to all enrolled students' respective mapped parent mobile numbers.
         Executed automatically at month-end or triggered on-demand by the owner.
         """
-        query = db.query(Customer).filter(
+        query = db.query(student).filter(
             or_(
-                func.upper(Customer.status) == "ACTIVE",
-                Customer.status == "ACTIVE",
-                Customer.status == "Active",
-                Customer.status.is_(None)
+                func.upper(student.status) == "ACTIVE",
+                student.status == "ACTIVE",
+                student.status == "Active",
+                student.status.is_(None)
             )
         )
         if branch_id:
-            query = query.filter(Customer.branch_id == branch_id)
+            query = query.filter(student.branch_id == branch_id)
 
         students = query.all()
         results = []
@@ -549,7 +549,7 @@ class StudentAttendanceReportService:
         for s in students:
             try:
                 res = StudentAttendanceReportService.send_report_to_parent(
-                    db, customer_id=s.id, year=year, month=month, dispatch_type=dispatch_type
+                    db, student_id=s.id, year=year, month=month, dispatch_type=dispatch_type
                 )
                 if res.get("success"):
                     sent_count += 1
@@ -598,16 +598,16 @@ class StudentAttendanceReportService:
         # Query branches to provide branch_name and vahd_name mapping
         branches_dict = {b.id: b for b in db.query(vahdBranch).all()}
 
-        query = db.query(Customer).filter(
+        query = db.query(student).filter(
             or_(
-                func.upper(Customer.status) == "ACTIVE",
-                Customer.status == "ACTIVE",
-                Customer.status == "Active",
-                Customer.status.is_(None)
+                func.upper(student.status) == "ACTIVE",
+                student.status == "ACTIVE",
+                student.status == "Active",
+                student.status.is_(None)
             )
         )
         if branch_id and branch_id != "all":
-            query = query.filter(Customer.branch_id == branch_id)
+            query = query.filter(student.branch_id == branch_id)
 
         students = query.all()
 
@@ -634,7 +634,7 @@ class StudentAttendanceReportService:
         for s in students:
             try:
                 rep = StudentAttendanceReportService.compute_student_monthly_attendance(
-                    db, customer_id=s.id, year=target_year, month=target_month
+                    db, student_id=s.id, year=target_year, month=target_month
                 )
             except Exception as e:
                 logger.error(f"Error computing attendance for student {s.id}: {e}")

@@ -2,7 +2,7 @@ from typing import Optional
 from pydantic import BaseModel, EmailStr
 from datetime import datetime
 
-class CustomerBase(BaseModel):
+class studentBase(BaseModel):
     full_name: str
     email: Optional[str] = None
     phone: Optional[str] = None
@@ -15,8 +15,8 @@ class CustomerBase(BaseModel):
     specialization: Optional[str] = None
     meta_data: Optional[dict] = None
 
-class CustomerCreate(CustomerBase):
-    role: Optional[str] = "CUSTOMER"
+class studentCreate(studentBase):
+    role: Optional[str] = "student"
     assigned_employee_name: Optional[str] = None
     membership_plan: Optional[str] = None
     plan_price: Optional[float] = None
@@ -32,7 +32,7 @@ class CustomerCreate(CustomerBase):
     invoice_number: Optional[str] = None
     transaction_id: Optional[str] = None
 
-class CustomerResponse(CustomerBase):
+class studentResponse(studentBase):
     id: str
     user_id: str
     employee_id: Optional[str] = None

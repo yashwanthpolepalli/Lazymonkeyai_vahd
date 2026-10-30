@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Icon } from '@/components/ui/Icon';
 import { HrmsemployeesTab } from '@/components/hrms/HrmsemployeesTab';
@@ -36,7 +36,7 @@ export function HrmsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const rawTab = searchParams.get('tab');
   const rawView = searchParams.get('view');
-  const initialView = rawView === 'students' || rawTab === 'students' || rawTab === 'customers' ? 'students' : 'employees';
+  const initialView = rawView === 'students' || rawTab === 'students' || rawTab === 'students' ? 'students' : 'employees';
   const initialTab = rawTab === 'employees' || !rawTab ? 'employees' : rawTab;
 
   // View Mode: Students View vs Employees View
@@ -104,10 +104,30 @@ export function HrmsPage() {
     setTimeout(() => setToastMessage(null), 4000);
   };
 
+  // Permission guards for primary views
+  const canViewStudents = useMemo(() => {
+    if (isHoUser || !user?.permissions || Object.keys(user.permissions).length === 0) return true;
+    const perms = user.permissions;
+    const val = perms['students_section.view'] ?? perms['student_details.view'] ?? perms['student_enrollment.view'] ?? perms['student_attendance.view'];
+    return val !== undefined ? !!val : true;
+  }, [isHoUser, user?.permissions]);
+
+  const canViewEmployees = useMemo(() => {
+    if (isHoUser || !user?.permissions || Object.keys(user.permissions).length === 0) return true;
+    const perms = user.permissions;
+    const val = perms['hrms_section.view'] ?? perms['employee_details.view'] ?? perms['attendance.view'] ?? perms['leave_management.view'] ?? perms['payroll.view'] ?? perms['exit_management.view'];
+    return val !== undefined ? !!val : true;
+  }, [isHoUser, user?.permissions]);
+
   // Sync tab with URL
   useEffect(() => {
-    if (rawView === 'students' || rawTab === 'students' || rawTab === 'customers') {
+    if (!canViewStudents && canViewEmployees && viewMode === 'students') {
+      setViewMode('employees');
+    } else if (!canViewEmployees && canViewStudents && viewMode === 'employees') {
       setViewMode('students');
+    }
+    if (rawView === 'students' || rawTab === 'students') {
+      if (canViewStudents) setViewMode('students');
     }
     if (initialTab) {
       const normalizedTab = initialTab === 'employees' ? 'employees' : initialTab;
@@ -190,38 +210,42 @@ export function HrmsPage() {
       {/* ───────────────────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-3xl p-2.5 shadow-xs">
         <div className="inline-flex p-1 rounded-2xl bg-slate-100/90 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700">
-          <button
-            type="button"
-            onClick={() => {
-              setViewMode('students');
-              setSearchParams({ view: 'students' });
-            }}
-            className={cn(
-              'flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-extrabold transition-all duration-200',
-              viewMode === 'students'
-                ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm border border-slate-200/60 dark:border-slate-700 scale-[1.01]'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-            )}
-          >
-            <Icon name="users" size={16} className={viewMode === 'students' ? 'text-blue-600' : 'text-slate-500'} />
-            <span>Students View</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setViewMode('employees');
-              setSearchParams({ view: 'employees' });
-            }}
-            className={cn(
-              'flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-extrabold transition-all duration-200',
-              viewMode === 'employees'
-                ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm border border-slate-200/60 dark:border-slate-700 scale-[1.01]'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-            )}
-          >
-            <Icon name="user-check" size={16} className={viewMode === 'employees' ? 'text-blue-600' : 'text-slate-500'} />
-            <span>Employees View</span>
-          </button>
+          {canViewStudents && (
+            <button
+              type="button"
+              onClick={() => {
+                setViewMode('students');
+                setSearchParams({ view: 'students' });
+              }}
+              className={cn(
+                'flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-extrabold transition-all duration-200',
+                viewMode === 'students'
+                  ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm border border-slate-200/60 dark:border-slate-700 scale-[1.01]'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              )}
+            >
+              <Icon name="users" size={16} className={viewMode === 'students' ? 'text-blue-600' : 'text-slate-500'} />
+              <span>Students View</span>
+            </button>
+          )}
+          {canViewEmployees && (
+            <button
+              type="button"
+              onClick={() => {
+                setViewMode('employees');
+                setSearchParams({ view: 'employees' });
+              }}
+              className={cn(
+                'flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-extrabold transition-all duration-200',
+                viewMode === 'employees'
+                  ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm border border-slate-200/60 dark:border-slate-700 scale-[1.01]'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              )}
+            >
+              <Icon name="user-check" size={16} className={viewMode === 'employees' ? 'text-blue-600' : 'text-slate-500'} />
+              <span>Employees View</span>
+            </button>
+          )}
         </div>
 
         <div className="flex items-center gap-2 text-xs font-bold text-slate-500 pr-2">
@@ -246,18 +270,31 @@ export function HrmsPage() {
           <div className="bg-white border border-navy-100 rounded-2xl p-1.5 shadow-xs overflow-x-auto">
             <div className="flex items-center gap-1 min-w-max">
               {[
-                { id: 'Employee Management', label: 'Employee Management', icon: 'users' },
-                { id: 'Attendance', label: 'Attendance', icon: 'clock' },
-                { id: 'Leave', label: 'Leave', icon: 'calendar' },
-                { id: 'Payroll', label: 'Payroll', icon: 'credit-card' },
-                { id: 'Exit Management', label: 'Exit Management', icon: 'log-out' },
-              ].map((cat) => (
+                { id: 'Employee Management', label: 'Employee Management', icon: 'users', permKey: 'hrms_employees' },
+                { id: 'Attendance', label: 'Attendance', icon: 'clock', permKey: 'hrms_attendance' },
+                { id: 'Leave', label: 'Leave', icon: 'calendar', permKey: 'leave_management' },
+                { id: 'Payroll', label: 'Payroll', icon: 'credit-card', permKey: 'payroll' },
+                { id: 'Exit Management', label: 'Exit Management', icon: 'log-out', permKey: 'exit_management' },
+              ].filter((cat) => {
+                if (isHoUser || !user?.permissions || Object.keys(user.permissions).length === 0) return true;
+                const perms = user.permissions;
+                if (cat.id === 'Employee Management') {
+                  const val = perms['hrms_section.view'] ?? perms['employee_details.view'] ?? perms['hrms_departments.view'] ?? perms['hrms_designations.view'] ?? perms['hrms_teams.view'] ?? perms['hrms_documents.view'];
+                  return val !== undefined ? !!val : true;
+                }
+                if (cat.id === 'Attendance') {
+                  const val = perms['attendance.view'] ?? perms['geofence_portal.view'] ?? perms['biometrics.view'] ?? perms['face_recognition.view'] ?? perms['gps_attendance.view'] ?? perms['shift_attendance.view'] ?? perms['attendance_corrections.view'];
+                  return val !== undefined ? !!val : true;
+                }
+                const val = perms[`${cat.permKey}.view`] ?? perms[cat.permKey];
+                return val !== undefined ? !!val : true;
+              }).map((cat) => (
                 <button
                   key={cat.id}
                   onClick={() => switchTab(cat.id as HrmsCategory)}
                   className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${activeCategory === cat.id
-                      ? 'bg-purple-50 text-purple-700 border border-purple-200/80 shadow-sm'
-                      : 'text-navy-600 hover:text-navy-900 hover:bg-navy-50'
+                    ? 'bg-purple-50 text-purple-700 border border-purple-200/80 shadow-sm'
+                    : 'text-navy-600 hover:text-navy-900 hover:bg-navy-50'
                     }`}
                 >
                   <Icon name={cat.icon} size={15} className={activeCategory === cat.id ? 'text-purple-600' : 'text-navy-400'} />
@@ -271,12 +308,17 @@ export function HrmsPage() {
           {activeCategory === 'Employee Management' && (
             <div className="flex items-center gap-2 overflow-x-auto pb-1">
               {[
-                { id: 'employees', label: 'Employee Directory', icon: 'user-cog' },
-                { id: 'departments', label: 'Departments', icon: 'building-2' },
-                { id: 'designations', label: 'Designations', icon: 'award' },
-                { id: 'teams', label: 'Teams', icon: 'users-2' },
-                { id: 'documents', label: 'Documents', icon: 'file-text' },
-              ].map((sub) => (
+                { id: 'employees', label: 'Employee Directory', icon: 'user-cog', permKey: 'employee_details' },
+                { id: 'departments', label: 'Departments', icon: 'building-2', permKey: 'hrms_departments' },
+                { id: 'designations', label: 'Designations', icon: 'award', permKey: 'hrms_designations' },
+                { id: 'teams', label: 'Teams', icon: 'users-2', permKey: 'hrms_teams' },
+                { id: 'documents', label: 'Documents', icon: 'file-text', permKey: 'hrms_documents' },
+              ].filter((sub) => {
+                if (isHoUser || !user?.permissions || Object.keys(user.permissions).length === 0) return true;
+                const perms = user.permissions;
+                const val = perms[`${sub.permKey}.view`] ?? perms[sub.permKey] ?? perms[`${sub.id}.view`];
+                return val !== undefined ? !!val : true;
+              }).map((sub) => (
                 <button
                   key={sub.id}
                   onClick={() => {
@@ -284,8 +326,8 @@ export function HrmsPage() {
                     setSearchParams({ view: 'employees', tab: sub.id });
                   }}
                   className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${activeSubTab === sub.id
-                      ? 'bg-purple-600 text-white shadow-md shadow-purple-600/20'
-                      : 'bg-white hover:bg-navy-50 text-navy-600 border border-navy-200/60'
+                    ? 'bg-purple-600 text-white shadow-md shadow-purple-600/20'
+                    : 'bg-white hover:bg-navy-50 text-navy-600 border border-navy-200/60'
                     }`}
                 >
                   <Icon name={sub.icon} size={14} />
@@ -411,16 +453,21 @@ export function HrmsPage() {
               {/* Sub-Pills Navigation matching Screenshot 2 */}
               <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
                 {[
-                  { id: 'attendance', label: 'Daily Attendance', icon: 'calendar-check' },
+                  { id: 'attendance', label: 'Daily Attendance', icon: 'calendar-check', permKey: 'attendance' },
                   ...(isHoUser || geofencePortalEnabled
-                    ? [{ id: 'geofence_portal', label: 'Attendance & Geofence Portal', icon: 'sliders' }]
+                    ? [{ id: 'geofence_portal', label: 'Attendance & Geofence Portal', icon: 'sliders', permKey: 'geofence_portal' }]
                     : []),
-                  { id: 'biometric', label: 'Biometric', icon: 'fingerprint' },
-                  { id: 'face_recognition', label: 'Face Recognition', icon: 'camera' },
-                  { id: 'gps_attendance', label: 'GPS Attendance', icon: 'map-pin' },
-                  { id: 'shift_attendance', label: 'Shift Attendance', icon: 'clock' },
-                  { id: 'corrections', label: 'Attendance Corrections', icon: 'edit-3' },
-                ].map((sub) => {
+                  { id: 'biometric', label: 'Biometric', icon: 'fingerprint', permKey: 'biometrics' },
+                  { id: 'face_recognition', label: 'Face Recognition', icon: 'camera', permKey: 'face_recognition' },
+                  { id: 'gps_attendance', label: 'GPS Attendance', icon: 'map-pin', permKey: 'gps_attendance' },
+                  { id: 'shift_attendance', label: 'Shift Attendance', icon: 'clock', permKey: 'shift_attendance' },
+                  { id: 'corrections', label: 'Attendance Corrections', icon: 'edit-3', permKey: 'attendance_corrections' },
+                ].filter((sub) => {
+                  if (isHoUser || !user?.permissions || Object.keys(user.permissions).length === 0) return true;
+                  const perms = user.permissions;
+                  const val = perms[`${sub.permKey}.view`] ?? perms[sub.permKey] ?? perms[`${sub.id}.view`];
+                  return val !== undefined ? !!val : true;
+                }).map((sub) => {
                   const isSelected =
                     activeSubTab === sub.id ||
                     (sub.id === 'attendance' && activeSubTab === 'daily_attendance') ||
@@ -434,8 +481,8 @@ export function HrmsPage() {
                         setSearchParams({ tab: sub.id });
                       }}
                       className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap shadow-2xs ${isSelected
-                          ? 'bg-purple-600 text-white shadow-md shadow-purple-600/25 ring-2 ring-purple-300/40'
-                          : 'bg-white hover:bg-navy-50 text-navy-600 border border-navy-200/80'
+                        ? 'bg-purple-600 text-white shadow-md shadow-purple-600/25 ring-2 ring-purple-300/40'
+                        : 'bg-white hover:bg-navy-50 text-navy-600 border border-navy-200/80'
                         }`}
                     >
                       <Icon name={sub.icon} size={14} />

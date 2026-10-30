@@ -27,18 +27,12 @@ export const navConfig: Record<Role, NavItem[]> = {
   ],
   employee: [
     { label: 'Dashboard', path: '/employee', icon: 'layout-dashboard' },
-    { label: 'Students', path: '/employee/customers', icon: 'users' },
+    { label: 'Students', path: '/employee/students', icon: 'users' },
     { label: 'HRMS', path: '/employee/hrms', icon: 'users' },
     { label: 'AI Coach', path: '/employee/ai-coach', icon: 'sparkles' },
     { label: 'Profile', path: '/employee/profile', icon: 'user' },
   ],
   student: [
-    { label: 'Home', path: '/app', icon: 'home' },
-    { label: 'Attendance', path: '/app/attendance', icon: 'calendar-check' },
-    { label: 'AI Coach', path: '/app/ai-coach', icon: 'sparkles' },
-    { label: 'Profile', path: '/app/profile', icon: 'user' },
-  ],
-  customer: [
     { label: 'Home', path: '/app', icon: 'home' },
     { label: 'Attendance', path: '/app/attendance', icon: 'calendar-check' },
     { label: 'AI Coach', path: '/app/ai-coach', icon: 'sparkles' },
@@ -52,7 +46,6 @@ export const roleHomePath: Record<Role, string> = {
   owner: '/owner',
   employee: '/employee',
   student: '/app',
-  customer: '/app',
 };
 
 export function getNavItems(role: Role, permissions?: Record<string, any>): NavItem[] {
@@ -81,13 +74,24 @@ export function getNavItems(role: Role, permissions?: Record<string, any>): NavI
     permissions['hrms_overview.view'] ||
     permissions['employee_details.view'] ||
     permissions['employees.view'] ||
+    permissions['hrms_departments.view'] ||
+    permissions['hrms_designations.view'] ||
+    permissions['hrms_teams.view'] ||
+    permissions['hrms_documents.view'] ||
     permissions['attendance.view'] ||
+    permissions['geofence_portal.view'] ||
+    permissions['biometrics.view'] ||
+    permissions['face_recognition.view'] ||
+    permissions['gps_attendance.view'] ||
+    permissions['shift_attendance.view'] ||
+    permissions['attendance_corrections.view'] ||
     permissions['attendance_approve.view'] ||
     permissions['absent_employees.view'] ||
     permissions['attendance_report.view'] ||
     permissions['leave_management.view'] ||
     permissions['leaves.view'] ||
     permissions['payroll.view'] ||
+    permissions['exit_management.view'] ||
     permissions['students_section.view'] ||
     permissions['students.view'] ||
     permissions['student_details.view'] ||
@@ -96,29 +100,6 @@ export function getNavItems(role: Role, permissions?: Record<string, any>): NavI
   );
   if (hasHrms) {
     items.push({ label: 'HRMS & Students', path: '/owner/hrms', icon: 'users' });
-  }
-
-  // POS & Billing - strictly only if ticked
-  const hasPos = !!(
-    permissions['pos_billing.view'] ||
-    permissions['pos.view'] ||
-    permissions['invoices.view'] ||
-    permissions['inventory.view'] ||
-    permissions['procurement.view']
-  );
-  if (hasPos) {
-    items.push({ label: 'POS & Billing', path: '/owner/pos', icon: 'receipt' });
-  }
-
-  // Payments - strictly only if ticked
-  const hasPayments = !!(
-    permissions['payments_section.view'] ||
-    permissions['payments.view'] ||
-    permissions['fee_collection.view'] ||
-    permissions['transactions.view']
-  );
-  if (hasPayments) {
-    items.push({ label: 'Payments', path: '/owner/payments', icon: 'wallet' });
   }
 
   // Reports - strictly only if ticked
@@ -138,10 +119,23 @@ export function getNavItems(role: Role, permissions?: Record<string, any>): NavI
     permissions['settings_section.view'] ||
     permissions['settings.view'] ||
     permissions['branch_profile.view'] ||
+    permissions['general.view'] ||
     permissions['settings.profile'] ||
     permissions['courses.view'] ||
+    permissions['courses'] ||
     permissions['master_data.view'] ||
-    permissions['roles.view']
+    permissions['districts.view'] ||
+    permissions['mandals.view'] ||
+    permissions['towns.view'] ||
+    permissions['departments.view'] ||
+    permissions['designations.view'] ||
+    permissions['roles.view'] ||
+    permissions['institution_types.view'] ||
+    permissions['qualifications.view'] ||
+    permissions['specializations.view'] ||
+    permissions['leave_reasons.view'] ||
+    permissions['erp.view'] ||
+    permissions['permissions.view']
   );
   if (hasSettings) {
     items.push({ label: 'Settings', path: '/owner/settings', icon: 'settings' });

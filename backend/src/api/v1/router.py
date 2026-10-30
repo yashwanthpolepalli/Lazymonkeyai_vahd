@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Body
 from src.api.v1.auth import router as auth_router
-from src.api.v1.customers import router as customers_router, members_router, crm_customers_router, students_router
+from src.api.v1.students import router as students_main_router, members_router, crm_students_router, students_router as students_reports_router
 from src.api.v1.courses import router as courses_router
 from src.api.v1.biometrics import router as biometrics_router
 from src.api.v1.super_admin import router as super_admin_router
@@ -10,7 +10,7 @@ from src.api.v1.payroll import router as payroll_router
 from src.api.v1.plans import router as plans_router
 from src.api.v1.settings import router as settings_router
 from src.api.v1.ai_coach import router as ai_coach_router
-from src.api.v1.customer_portal import router as customer_portal_router
+from src.api.v1.student_portal import router as student_portal_router
 from src.api.v1.hrms import router as hrms_router
 from src.api.v1.hrms_payroll import router as hrms_payroll_router
 from src.api.v1.inventory import router as inventory_router
@@ -28,9 +28,11 @@ from src.api.v1.ho import router as ho_router
 api_router = APIRouter()
 api_router.include_router(ho_router)
 api_router.include_router(auth_router)
-api_router.include_router(customers_router)
-api_router.include_router(students_router)
-api_router.include_router(crm_customers_router)
+api_router.include_router(students_main_router)
+api_router.include_router(students_reports_router)
+api_router.include_router(students_main_router, prefix="/students")
+api_router.include_router(students_reports_router, prefix="/students")
+api_router.include_router(crm_students_router)
 api_router.include_router(members_router)
 api_router.include_router(courses_router)
 api_router.include_router(biometrics_router)
@@ -41,7 +43,7 @@ api_router.include_router(payroll_router)
 api_router.include_router(plans_router)
 api_router.include_router(settings_router)
 api_router.include_router(ai_coach_router)
-api_router.include_router(customer_portal_router)
+api_router.include_router(student_portal_router)
 api_router.include_router(hrms_router)
 api_router.include_router(hrms_payroll_router)
 api_router.include_router(inventory_router)

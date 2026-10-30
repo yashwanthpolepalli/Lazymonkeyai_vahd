@@ -8,7 +8,7 @@ from src.services.settings_service import SettingsService
 from src.models.user import User
 from src.models.course import Course, StudentCourse
 from src.models.membership import Membership
-from src.models.customer import Customer
+from src.models.student import student
 from src.models.plan import MembershipPlan
 from src.api.deps import get_current_user
 
@@ -223,21 +223,21 @@ def delete_course(
 # STUDENT COURSE ASSIGN & RENEW
 # ============================================================
 
-@router.get("/customer/{customer_id}")
-def get_customer_course(
-    customer_id: str,
+@router.get("/student/{student_id}")
+def get_student_course(
+    student_id: str,
     db: Session = Depends(get_db),
 ):
     """
     Returns active course enrollment belonging to a student.
     """
-    membership = MembershipService.get_membership_by_customer(db, customer_id)
+    membership = MembershipService.get_membership_by_student(db, student_id)
     if not membership:
         raise HTTPException(status_code=404, detail="Course enrollment not found for student")
 
     return {
         "id": membership.id,
-        "customer_id": membership.customer_id,
+        "student_id": membership.student_id,
         "plan_name": membership.plan_name,
         "plan_type": membership.plan_type,
         "status": membership.status,
@@ -260,9 +260,9 @@ def assign_course(payload: dict, db: Session = Depends(get_db)):
     return MembershipService.assign_membership(db, payload)
 
 
-@router.post("/renew/{customer_id}")
-def renew_course(customer_id: str, payload: dict, db: Session = Depends(get_db)):
-    return MembershipService.renew_membership(db, customer_id, payload)
+@router.post("/renew/{student_id}")
+def renew_course(student_id: str, payload: dict, db: Session = Depends(get_db)):
+    return MembershipService.renew_membership(db, student_id, payload)
 
 
 @router.get("/transactions")
@@ -272,16 +272,16 @@ def get_all_course_transactions(
     db: Session = Depends(get_db),
 ):
     query = (
-        db.query(Membership, Customer)
-        .join(Customer, Customer.id == Membership.customer_id)
+        db.query(Membership, student)
+        .join(student, student.id == Membership.student_id)
     )
 
     if search:
         search_value = f"%{search}%"
         query = query.filter(
-            (Customer.full_name.ilike(search_value))
-            | (Customer.email.ilike(search_value))
-            | (Customer.phone.ilike(search_value))
+            (student.full_name.ilike(search_value))
+            | (student.email.ilike(search_value))
+            | (student.phone.ilike(search_value))
         )
 
     if status:
@@ -293,7 +293,7 @@ def get_all_course_transactions(
 
     transactions = []
 
-    for membership, customer in rows:
+    for membership, student in rows:
         amount = 0.0
         if membership.paid_amount is not None and membership.paid_amount > 0:
             amount = float(membership.paid_amount)
@@ -310,10 +310,10 @@ def get_all_course_transactions(
 
         transactions.append({
             "id": membership.id,
-            "customer_id": membership.customer_id,
-            "member": customer.full_name,
-            "email": customer.email,
-            "phone": customer.phone,
+            "student_id": membership.student_id,
+            "member": student.full_name,
+            "email": student.email,
+            "phone": student.phone,
             "plan_name": membership.plan_name,
             "plan_type": membership.plan_type,
             "amount": amount,

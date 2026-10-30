@@ -5,7 +5,7 @@ interface DashboardHeaderProps {
   userName?: string;
   vahdName?: string;
   branchName?: string;
-  onAddCustomer?: () => void;
+  onAddstudent?: () => void;
   onAddPayment?: () => void;
   onAddSalesInvoice?: () => void;
 }

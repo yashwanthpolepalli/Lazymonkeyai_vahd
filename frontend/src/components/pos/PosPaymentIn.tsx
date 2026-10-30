@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { crmApi, invoicesApi, procurementApi, inventoryApi, crmWalletApi, posApi } from "../../lib/api-client";
-import { 
-  Search, 
-  HelpCircle, 
-  Settings, 
-  ChevronDown, 
-  Filter, 
-  Printer, 
-  MoreVertical, 
+import {
+  Search,
+  HelpCircle,
+  Settings,
+  ChevronDown,
+  Filter,
+  Printer,
+  MoreVertical,
   ArrowLeft,
   X,
   Plus,
@@ -40,14 +40,14 @@ export function PosPaymentIn() {
   const posStorageKey = `pos_saved_invoices_${currentTenantId}_${currentCompanyId}`;
 
   const [isRecordingPayment, setIsRecordingPayment] = useState(false);
-  
+
   const [parties, setParties] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [selectedParty, setSelectedParty] = useState<any>(null);
   const [partySummary, setPartySummary] = useState<any>(null);
   const [walletBalance, setWalletBalance] = useState<number>(0);
-  
+
   // Payment Mode / Purpose: 'settle_due' | 'wallet_topup' | 'wallet_debit'
   const [paymentPurpose, setPaymentPurpose] = useState<'settle_due' | 'wallet_topup' | 'wallet_debit'>('settle_due');
   const [paymentAmount, setPaymentAmount] = useState<number | "">("");
@@ -57,7 +57,7 @@ export function PosPaymentIn() {
   const [paymentDiscount, setPaymentDiscount] = useState<number | "">("");
   const [paymentNotes, setPaymentNotes] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
-  
+
   const [pendingInvoices, setPendingInvoices] = useState<any[]>([]);
   const [pastPayments, setPastPayments] = useState<any[]>([]);
   const [stats, setStats] = useState({
@@ -72,7 +72,7 @@ export function PosPaymentIn() {
   // Ledger Filter Tabs: 'all_passbook' | 'credits_only' | 'debits_only' | 'settlements_only' | 'notes_only' | 'wallet_movements'
   const [activeLedgerTab, setActiveLedgerTab] = useState<'all_passbook' | 'credits_only' | 'debits_only' | 'settlements_only' | 'notes_only' | 'wallet_movements'>('all_passbook');
   const [tableSearchQuery, setTableSearchQuery] = useState("");
-  const [customerFilter, setCustomerFilter] = useState<string>("All");
+  const [studentFilter, setstudentFilter] = useState<string>("All");
   const [dateFilter, setDateFilter] = useState("Last 365 Days");
   const [isDateDropdownOpen, setIsDateDropdownOpen] = useState(false);
   const [modeFilter, setModeFilter] = useState("All");
@@ -95,7 +95,7 @@ export function PosPaymentIn() {
       } else {
         const cleanNum = invoiceIdOrNumber.replace(/^(Invoice\s*#?|Bill\s*#?)/i, '').trim();
         const res: any = await invoicesApi.listInvoices({ search: cleanNum, page_size: 5 });
-        const found = (res.items || res || []).find((i: any) => 
+        const found = (res.items || res || []).find((i: any) =>
           i.invoice_number?.toLowerCase() === cleanNum.toLowerCase() ||
           i.id === cleanNum
         ) || res.items?.[0];
@@ -135,7 +135,7 @@ export function PosPaymentIn() {
         invoicesApi.listInvoices({ invoice_type: "debit_note", page_size: 200 }).catch(() => null),
         posApi.getHistory({ limit: 500 }).catch(() => [])
       ]);
-      
+
       // 1. Invoice Settlements (Credits / Inflows)
       const invPayments = (invoicesRes?.items || []).map((p: any) => ({
         id: p.id,
@@ -143,9 +143,9 @@ export function PosPaymentIn() {
         reference_text: p.invoice_number ? `Invoice #${p.invoice_number}` : "Invoice Settlement",
         invoice_id: p.invoice_id,
         invoice_number: p.invoice_number,
-        party_name: p.party_name || p.customer_name || "Customer",
-        party_type: 'Customer',
-        party_id: p.customer_id,
+        party_name: p.party_name || p.student_name || "student",
+        party_type: 'student',
+        party_id: p.student_id,
         entry_type: 'credit',
         credit_amount: Number(p.amount) || 0,
         debit_amount: 0,
@@ -159,7 +159,7 @@ export function PosPaymentIn() {
         created_at: p.payment_date || new Date().toISOString()
       }));
 
-      // 2. Customer Wallet Transactions (Both Credits and Debits)
+      // 2. student Wallet Transactions (Both Credits and Debits)
       const walletTransactions = (walletRes?.items || []).map((w: any) => {
         const isCredit = ["manual_credit", "topup", "refund", "cashback", "adjustment"].includes(w.transaction_type);
         const amountNum = Number(w.amount) || 0;
@@ -167,16 +167,16 @@ export function PosPaymentIn() {
           id: w.id,
           voucher_number: w.reference_id || `WAL-${String(w.id).slice(0, 8).toUpperCase()}`,
           reference_text: w.description || (isCredit ? "Wallet Advance Deposit" : "Invoice Paid via Wallet"),
-          party_name: w.customer_name || "Customer",
-          party_type: 'Customer',
-          party_id: w.customer_id,
+          party_name: w.student_name || "student",
+          party_type: 'student',
+          party_id: w.student_id,
           entry_type: isCredit ? 'credit' : 'debit',
           credit_amount: isCredit ? amountNum : 0,
           debit_amount: isCredit ? 0 : amountNum,
           amount: amountNum,
           running_balance: w.balance_after != null ? Number(w.balance_after) : null,
           payment_date: w.created_at,
-          payment_method: isCredit 
+          payment_method: isCredit
             ? (w.description?.toLowerCase().includes("upi") ? "UPI" : (w.description?.toLowerCase().includes("card") ? "Card" : "Cash / Advance"))
             : "Wallet (Store Credit)",
           badge: isCredit ? "Wallet Top-up" : (w.transaction_type === "payment" ? "Invoice Paid (Wallet)" : "Wallet Debit"),
@@ -186,7 +186,7 @@ export function PosPaymentIn() {
           created_at: w.created_at || new Date().toISOString()
         };
       });
-      
+
       // 3. Vendor Bill Payments (Debits / Payouts)
       const venPayments = (vendorPaymentsRes || []).map((p: any) => {
         const bill = (vendorBillsRes || []).find((b: any) => b.id === p.vendor_bill_id);
@@ -212,19 +212,19 @@ export function PosPaymentIn() {
         };
       });
 
-      // 4. Credit Notes (Customer Returns / Sales Adjustments)
+      // 4. Credit Notes (student Returns / Sales Adjustments)
       const rawCreditNotes = creditNotesRes?.items || (Array.isArray(creditNotesRes) ? creditNotesRes : []);
       const creditNoteEntries = rawCreditNotes.map((cn: any) => {
         const amt = Number(cn.total_amount || cn.grand_total || cn.total || 0);
         return {
           id: cn.id,
           voucher_number: cn.invoice_number || `CN-${String(cn.id).slice(0, 6).toUpperCase()}`,
-          reference_text: cn.reference_number || cn.notes || (cn.original_invoice_ref ? `Credit Note against ${cn.original_invoice_ref}` : "Customer Credit Note"),
+          reference_text: cn.reference_number || cn.notes || (cn.original_invoice_ref ? `Credit Note against ${cn.original_invoice_ref}` : "student Credit Note"),
           invoice_id: cn.id,
           invoice_number: cn.invoice_number,
-          party_name: cn.customer_name || "Customer",
-          party_type: 'Customer',
-          party_id: cn.customer_id,
+          party_name: cn.student_name || "student",
+          party_type: 'student',
+          party_id: cn.student_id,
           entry_type: 'debit',
           credit_amount: 0,
           debit_amount: amt,
@@ -234,7 +234,7 @@ export function PosPaymentIn() {
           payment_method: cn.payment_method || "Credit Note",
           badge: "Credit Note",
           badge_variant: "rose",
-          notes: cn.note_reason || cn.notes || "Customer Return / Credit Adjustment",
+          notes: cn.note_reason || cn.notes || "student Return / Credit Adjustment",
           created_at: cn.created_at || cn.invoice_date || new Date().toISOString(),
         };
       });
@@ -249,9 +249,9 @@ export function PosPaymentIn() {
           reference_text: dn.reference_number || dn.notes || "Supplier Debit Note",
           invoice_id: dn.id,
           invoice_number: dn.invoice_number,
-          party_name: dn.customer_name || dn.vendor_name || "Vendor / Party",
-          party_type: dn.vendor_name ? 'Vendor' : 'Customer',
-          party_id: dn.customer_id || "Party",
+          party_name: dn.student_name || dn.vendor_name || "Vendor / Party",
+          party_type: dn.vendor_name ? 'Vendor' : 'student',
+          party_id: dn.student_id || "Party",
           entry_type: 'credit',
           credit_amount: amt,
           debit_amount: 0,
@@ -277,9 +277,9 @@ export function PosPaymentIn() {
           id: p.id,
           voucher_number: p.receipt_number || `POS-${String(p.id).slice(0, 6).toUpperCase()}`,
           reference_text: isRefund ? "POS Counter Return / Refund" : "POS Counter Sale Bill",
-          party_name: p.customer_name || p.customer_id || "Walk-in Guest",
-          party_type: 'Customer',
-          party_id: p.customer_id || "Walk-in",
+          party_name: p.student_name || p.student_id || "Walk-in Guest",
+          party_type: 'student',
+          party_id: p.student_id || "Walk-in",
           entry_type: isRefund ? 'debit' : 'credit',
           credit_amount: isRefund ? 0 : absTotal,
           debit_amount: isRefund ? absTotal : 0,
@@ -293,7 +293,7 @@ export function PosPaymentIn() {
           created_at: p.created_at || new Date().toISOString()
         };
       });
-      
+
       const combined = [
         ...invPayments,
         ...walletTransactions,
@@ -301,17 +301,17 @@ export function PosPaymentIn() {
         ...creditNoteEntries,
         ...debitNoteEntries,
         ...posCounterEntries
-      ].sort((a, b) => 
+      ].sort((a, b) =>
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
-      
+
       setPastPayments(combined);
-      
+
       let totCredits = 0;
       let totDebits = 0;
       let wDeposits = 0;
       let wDebits = 0;
-      
+
       combined.forEach((p: any) => {
         totCredits += p.credit_amount;
         totDebits += p.debit_amount;
@@ -322,7 +322,7 @@ export function PosPaymentIn() {
           wDebits += p.debit_amount;
         }
       });
-      
+
       setStats({
         totalCredits: totCredits,
         totalDebits: totDebits,
@@ -338,14 +338,14 @@ export function PosPaymentIn() {
 
   useEffect(() => {
     Promise.all([
-      crmApi.getCustomers(1, 100),
+      crmApi.getstudents(1, 100),
       procurementApi.getVendors(1, 100).catch(() => [])
     ]).then(([custRes, vendRes]) => {
-      const c = (custRes.items || custRes || []).map((x: any) => ({ ...x, type: 'customer' }));
+      const c = (custRes.items || custRes || []).map((x: any) => ({ ...x, type: 'student' }));
       const v = (vendRes.items || vendRes || []).map((x: any) => ({ ...x, type: 'vendor' }));
       setParties([...c, ...v]);
     }).catch(console.error);
-    
+
     fetchPayments();
   }, []);
 
@@ -353,23 +353,23 @@ export function PosPaymentIn() {
     setSelectedParty(party);
     setSearchQuery(party.name);
     setIsDropdownOpen(false);
-    
+
     try {
-      if (party.type === 'customer') {
+      if (party.type === 'student') {
         const [data, walletRes]: any = await Promise.all([
-          invoicesApi.getCustomerSummary(party.id).catch(() => null),
+          invoicesApi.getstudentSummary(party.id).catch(() => null),
           crmWalletApi.getBalance(party.id).catch(() => ({ balance: 0 }))
         ]);
         setWalletBalance(walletRes?.balance || 0);
 
-        // Check local storage saved invoices for this customer
+        // Check local storage saved invoices for this student
         let localInvoices: any[] = [];
         try {
           const stored = localStorage.getItem(posStorageKey);
           if (stored) {
             localInvoices = JSON.parse(stored);
           }
-        } catch (e) {}
+        } catch (e) { }
 
         const backendUnpaid = (data?.unpaid_invoices || []).filter((inv: any) => {
           const rawStatus = String(inv.status || "").toLowerCase();
@@ -377,12 +377,12 @@ export function PosPaymentIn() {
           return !["paid", "voided", "cancelled", "completed"].includes(rawStatus) && due > 0.05;
         });
 
-        // Also check if any local invoice for this customer is Unpaid or Partial
-        const localUnpaidForCustomer = localInvoices
+        // Also check if any local invoice for this student is Unpaid or Partial
+        const localUnpaidForstudent = localInvoices
           .filter((inv: any) => {
-            const isMatch = (inv.customer_id && inv.customer_id === party.id) ||
-              (inv.customer_name && inv.customer_name.toLowerCase() === party.name.toLowerCase()) ||
-              (inv.customer_phone && party.phone && inv.customer_phone === party.phone);
+            const isMatch = (inv.student_id && inv.student_id === party.id) ||
+              (inv.student_name && inv.student_name.toLowerCase() === party.name.toLowerCase()) ||
+              (inv.student_phone && party.phone && inv.student_phone === party.phone);
             if (!isMatch) return false;
 
             const isPaid = inv.payment_status === "Paid" || (Number(inv.amount_received || 0) >= Number(inv.grand_total || 0) - 0.05);
@@ -408,7 +408,7 @@ export function PosPaymentIn() {
             pending: Number(inv.balance_due || 0),
           });
         });
-        localUnpaidForCustomer.forEach((inv: any) => {
+        localUnpaidForstudent.forEach((inv: any) => {
           if (!mergedMap.has(inv.id)) {
             mergedMap.set(inv.id, inv);
           }
@@ -433,15 +433,15 @@ export function PosPaymentIn() {
       } else {
         // Vendor logic
         const bills: any = await inventoryApi.getVendorBills().catch(() => []);
-        const pending = (bills || []).filter((b: any) => 
-          b.supplier_name === party.name && 
+        const pending = (bills || []).filter((b: any) =>
+          b.supplier_name === party.name &&
           (b.status === "Unpaid" || b.status === "Partially Paid" || b.status === "Overdue")
         );
-        
+
         const totalPending = pending.reduce((sum: number, b: any) => sum + (b.total_amount - b.paid_amount), 0);
         setPartySummary({ total_pending_due: totalPending });
         setPaymentPurpose('settle_due');
-        
+
         setPendingInvoices(
           pending.map((inv: any) => ({
             id: inv.bill_number || "Bill",
@@ -466,7 +466,7 @@ export function PosPaymentIn() {
   const calculateAllocation = () => {
     let remaining = Number(paymentAmount) || 0;
     let allocated = 0;
-    
+
     if (paymentPurpose === 'wallet_topup') {
       return { allocations: [], remainingAdvance: remaining, totalAllocated: 0 };
     }
@@ -510,7 +510,7 @@ export function PosPaymentIn() {
       } else {
         updated[invId] = fullPending;
       }
-      
+
       // Auto-update total payment amount to match selected invoices
       const sum = Object.values(updated).reduce((a, b) => a + b, 0);
       setPaymentAmount(sum > 0 ? sum : "");
@@ -534,18 +534,18 @@ export function PosPaymentIn() {
       toast.error("Please enter a valid payment amount.");
       return;
     }
-    
+
     if (!selectedParty) {
-      toast.error("Please select a customer or party.");
+      toast.error("Please select a student or party.");
       return;
     }
 
     setIsProcessing(true);
     try {
       const numAmount = Number(paymentAmount);
-      
+
       // Case 1: Wallet Debit / Cash Payout
-      if (paymentPurpose === 'wallet_debit' && selectedParty.type === 'customer') {
+      if (paymentPurpose === 'wallet_debit' && selectedParty.type === 'student') {
         if (numAmount > walletBalance) {
           toast.error(`Cannot debit more than available wallet balance (${formatCurrency(walletBalance)})`);
           setIsProcessing(false);
@@ -554,11 +554,11 @@ export function PosPaymentIn() {
         await crmWalletApi.debit(
           selectedParty.id,
           numAmount,
-          paymentNotes || `Customer Wallet Debit / Withdrawal (${paymentMode})`,
+          paymentNotes || `student Wallet Debit / Withdrawal (${paymentMode})`,
           paymentNumber
         );
         toast.success(`Successfully debited ${formatCurrency(numAmount)} from ${selectedParty.name}'s wallet!`);
-      } else if (paymentPurpose === 'wallet_topup' && selectedParty.type === 'customer') {
+      } else if (paymentPurpose === 'wallet_topup' && selectedParty.type === 'student') {
         // Case 2: Direct Wallet Top-Up (Credit In)
         await crmWalletApi.credit(
           selectedParty.id,
@@ -572,7 +572,7 @@ export function PosPaymentIn() {
         let totalApplied = 0;
         for (const inv of allocations) {
           if (inv.allocated > 0) {
-            if (selectedParty.type === 'customer') {
+            if (selectedParty.type === 'student') {
               await invoicesApi.recordPayment(inv.realId, {
                 amount: inv.allocated,
                 payment_date: paymentDate,
@@ -589,18 +589,18 @@ export function PosPaymentIn() {
             totalApplied += inv.allocated;
           }
         }
-        
+
         // Excess surplus goes to wallet
-        if (remainingAdvance > 0 && selectedParty.type === 'customer') {
+        if (remainingAdvance > 0 && selectedParty.type === 'student') {
           await crmWalletApi.credit(
             selectedParty.id,
             remainingAdvance,
             `Surplus Overpayment from POS Payment #${paymentNumber}`,
             paymentNumber
           );
-          toast.success(`Overpayment of ${formatCurrency(remainingAdvance)} credited to Customer Wallet.`);
+          toast.success(`Overpayment of ${formatCurrency(remainingAdvance)} credited to student Wallet.`);
         }
-        
+
         // Sync settled amounts with pos_saved_invoices in localStorage
         try {
           const syncStorage = (key: string) => {
@@ -637,7 +637,7 @@ export function PosPaymentIn() {
         window.dispatchEvent(new Event("pos_invoices_updated"));
         window.dispatchEvent(new Event("storage"));
       }
-      
+
       fetchPayments();
       setSelectedParty(null);
       setPartySummary(null);
@@ -656,10 +656,10 @@ export function PosPaymentIn() {
 
   const filteredPayments = React.useMemo(() => {
     let filtered = [...pastPayments];
-    
-    // Customer Filter
-    if (customerFilter !== "All") {
-      filtered = filtered.filter(p => p.party_name === customerFilter || p.party_id === customerFilter);
+
+    // student Filter
+    if (studentFilter !== "All") {
+      filtered = filtered.filter(p => p.party_name === studentFilter || p.party_id === studentFilter);
     }
 
     // Tab Filter
@@ -677,7 +677,7 @@ export function PosPaymentIn() {
 
     if (tableSearchQuery) {
       const q = tableSearchQuery.toLowerCase();
-      filtered = filtered.filter(p => 
+      filtered = filtered.filter(p =>
         (p.party_name && p.party_name.toLowerCase().includes(q)) ||
         (p.voucher_number && p.voucher_number.toLowerCase().includes(q)) ||
         (p.reference_text && p.reference_text.toLowerCase().includes(q)) ||
@@ -702,23 +702,23 @@ export function PosPaymentIn() {
       return true;
     });
     return filtered;
-  }, [pastPayments, activeLedgerTab, customerFilter, tableSearchQuery, dateFilter, modeFilter]);
+  }, [pastPayments, activeLedgerTab, studentFilter, tableSearchQuery, dateFilter, modeFilter]);
 
   const handlePrintPaymentReceipt = (payment: any) => {
     setActionMenuOpenId(null);
     const billData = {
-      invoice_number: `PAY-${(payment.id || "000000").substring(0,6).toUpperCase()}`,
+      invoice_number: `PAY-${(payment.id || "000000").substring(0, 6).toUpperCase()}`,
       invoice_date: payment.payment_date,
-      customer_name: payment.party_name,
+      student_name: payment.party_name,
       total_amount: payment.amount,
       amount_paid: payment.amount,
       balance_due: 0,
       payment_method: payment.payment_method,
       lines: [{
-         item_name: `Payment / Wallet Credit (#${payment.invoice_number || payment.id?.substring(0,6)})`,
-         quantity: 1,
-         unit_price: payment.amount,
-         line_total: payment.amount
+        item_name: `Payment / Wallet Credit (#${payment.invoice_number || payment.id?.substring(0, 6)})`,
+        quantity: 1,
+        unit_price: payment.amount,
+        line_total: payment.amount
       }]
     };
     setPrintedPayment(billData);
@@ -731,10 +731,10 @@ export function PosPaymentIn() {
     const reportData = {
       title: "Passbook Ledger Report",
       items: filteredPayments.map(p => ({
-         name: `${p.party_name} (${p.voucher_number})`,
-         quantity: 1,
-         price: p.credit_amount > 0 ? p.credit_amount : p.debit_amount,
-         subtotal: p.credit_amount > 0 ? p.credit_amount : p.debit_amount
+        name: `${p.party_name} (${p.voucher_number})`,
+        quantity: 1,
+        price: p.credit_amount > 0 ? p.credit_amount : p.debit_amount,
+        subtotal: p.credit_amount > 0 ? p.credit_amount : p.debit_amount
       }))
     };
     setPrintedPayment(reportData);
@@ -745,29 +745,29 @@ export function PosPaymentIn() {
 
   return (
     <div className="flex w-full h-full relative overflow-hidden text-slate-800">
-      
+
       {/* Hidden Thermal Printer Element */}
       {printedPayment && (
-         <div className="hidden">
-           <ThermalReceiptPrinter bill={printedPayment} />
-         </div>
+        <div className="hidden">
+          <ThermalReceiptPrinter bill={printedPayment} />
+        </div>
       )}
-      
+
       {/* LEFT PANE (Main Content) */}
       <div className={`flex-1 flex flex-col transition-all duration-300 ${isRecordingPayment ? "mr-[500px]" : "mr-0"}`}>
         <div className="space-y-6 h-full flex flex-col w-full overflow-y-auto">
-          
+
           {/* Header */}
           <div className="flex flex-wrap justify-between items-center gap-3">
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-2xl font-bold tracking-tight text-foreground">Payment In & Customer Wallet Ledger</h2>
+                <h2 className="text-2xl font-bold tracking-tight text-foreground">Payment In & student Wallet Ledger</h2>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400">Real-Time Debit / Credit</span>
               </div>
-              <p className="text-sm text-muted-foreground mt-1">Full double-entry passbook, customer credit settlements, wallet top-ups, and live balance auditing.</p>
+              <p className="text-sm text-muted-foreground mt-1">Full double-entry passbook, student credit settlements, wallet top-ups, and live balance auditing.</p>
             </div>
             <div className="flex gap-2">
-              <button 
+              <button
                 onClick={() => {
                   setPaymentNumber(`PAY-${Math.floor(1000 + Math.random() * 9000)}`);
                   setPaymentPurpose('settle_due');
@@ -812,9 +812,9 @@ export function PosPaymentIn() {
                 <FileSpreadsheet className="w-6 h-6" />
               </div>
               <div>
-                <p className="text-xs font-semibold text-slate-500 mb-0.5">Customer Wallet Float</p>
+                <p className="text-xs font-semibold text-slate-500 mb-0.5">student Wallet Float</p>
                 <p className="text-lg font-black text-purple-700">{formatCurrency(stats.walletDeposits)}</p>
-                <p className="text-[11px] text-purple-600 font-semibold mt-0.5">Active customer store credit</p>
+                <p className="text-[11px] text-purple-600 font-semibold mt-0.5">Active student store credit</p>
               </div>
             </div>
 
@@ -846,11 +846,10 @@ export function PosPaymentIn() {
               <button
                 key={tab.id}
                 onClick={() => setActiveLedgerTab(tab.id as any)}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all ${
-                  activeLedgerTab === tab.id
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all ${activeLedgerTab === tab.id
                     ? "bg-slate-900 text-white shadow-xs"
                     : "text-slate-600 hover:bg-slate-100"
-                }`}
+                  }`}
               >
                 {tab.label}
               </button>
@@ -861,20 +860,20 @@ export function PosPaymentIn() {
           <div className="flex flex-wrap gap-3 mb-4 no-print">
             <div className="relative flex-1 min-w-[220px]">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input 
-                type="text" 
+              <input
+                type="text"
                 value={tableSearchQuery}
                 onChange={(e) => setTableSearchQuery(e.target.value)}
-                placeholder="Search by customer, voucher #, invoice #, remarks..."
+                placeholder="Search by student, voucher #, invoice #, remarks..."
                 className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-indigo-400 bg-white font-medium"
               />
             </div>
 
-            {/* Customer Passbook Filter */}
+            {/* student Passbook Filter */}
             <div className="relative">
               <select
-                value={customerFilter}
-                onChange={(e) => setCustomerFilter(e.target.value)}
+                value={studentFilter}
+                onChange={(e) => setstudentFilter(e.target.value)}
                 className="h-10 px-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 outline-none focus:ring-2 focus:ring-indigo-500 shadow-2xs"
               >
                 <option value="All">👤 All Parties & Accounts</option>
@@ -885,10 +884,10 @@ export function PosPaymentIn() {
                 ))}
               </select>
             </div>
-            
+
             {/* Date Filter Dropdown */}
             <div className="relative">
-              <button 
+              <button
                 onClick={() => setIsDateDropdownOpen(!isDateDropdownOpen)}
                 className="flex items-center gap-2 border border-slate-200 rounded-xl px-4 py-2 text-sm text-slate-700 bg-white hover:bg-slate-50"
               >
@@ -897,7 +896,7 @@ export function PosPaymentIn() {
               {isDateDropdownOpen && (
                 <div className="absolute top-full left-0 mt-1 w-48 bg-white border border-slate-200 rounded-xl shadow-lg z-10 py-1">
                   {["Today", "Last 7 Days", "Last 30 Days", "Last 365 Days", "All Time"].map(opt => (
-                    <button 
+                    <button
                       key={opt}
                       onClick={() => { setDateFilter(opt); setIsDateDropdownOpen(false); }}
                       className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
@@ -908,10 +907,10 @@ export function PosPaymentIn() {
                 </div>
               )}
             </div>
-            
+
             {/* Mode Filter Dropdown */}
             <div className="relative">
-              <button 
+              <button
                 onClick={() => setIsModeDropdownOpen(!isModeDropdownOpen)}
                 className="flex items-center gap-2 border border-slate-200 rounded-xl px-4 py-2 text-sm text-slate-700 bg-white hover:bg-slate-50"
               >
@@ -920,7 +919,7 @@ export function PosPaymentIn() {
               {isModeDropdownOpen && (
                 <div className="absolute top-full right-0 mt-1 w-48 bg-white border border-slate-200 rounded-xl shadow-lg z-10 py-1">
                   {["All", "Cash", "UPI", "Card", "Wallet", "Bank Transfer"].map(opt => (
-                    <button 
+                    <button
                       key={opt}
                       onClick={() => { setModeFilter(opt); setIsModeDropdownOpen(false); }}
                       className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
@@ -932,7 +931,7 @@ export function PosPaymentIn() {
               )}
             </div>
 
-            <button 
+            <button
               onClick={handlePrintTableThermally}
               className="border border-slate-200 rounded-xl px-3 py-2 text-slate-600 bg-white hover:bg-slate-50"
               title="Print Passbook Table Thermally"
@@ -946,8 +945,8 @@ export function PosPaymentIn() {
             <div className="overflow-x-auto flex-1">
               <table className="w-full text-left border-collapse text-sm">
                 <thead className="bg-slate-50 border-b text-slate-600 text-xs uppercase font-semibold">
-              <tr>
-                <th className="py-3.5 px-4">Date & Time</th>
+                  <tr>
+                    <th className="py-3.5 px-4">Date & Time</th>
                     <th className="py-3.5 px-4">Voucher / Ref #</th>
                     <th className="py-3.5 px-4">Party & Account</th>
                     <th className="py-3.5 px-4 text-right text-emerald-700">Credit (+) In</th>
@@ -973,12 +972,11 @@ export function PosPaymentIn() {
                         </td>
                         <td className="py-3.5 px-4">
                           <span className="font-mono font-bold text-indigo-600 block">{p.voucher_number}</span>
-                          <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider mt-0.5 ${
-                            p.badge_variant === "purple" ? "bg-purple-100 text-purple-800" :
-                            p.badge_variant === "rose" ? "bg-rose-100 text-rose-800" :
-                            p.badge_variant === "amber" ? "bg-amber-100 text-amber-800" :
-                            "bg-emerald-100 text-emerald-800"
-                          }`}>
+                          <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider mt-0.5 ${p.badge_variant === "purple" ? "bg-purple-100 text-purple-800" :
+                              p.badge_variant === "rose" ? "bg-rose-100 text-rose-800" :
+                                p.badge_variant === "amber" ? "bg-amber-100 text-amber-800" :
+                                  "bg-emerald-100 text-emerald-800"
+                            }`}>
                             {p.badge}
                           </span>
                           {p.invoice_number ? (
@@ -1006,7 +1004,7 @@ export function PosPaymentIn() {
                         <td className="py-3.5 px-4">
                           <p className="font-bold text-slate-900">{p.party_name}</p>
                           <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 uppercase font-semibold">
-                            {p.party_type || "Customer"}
+                            {p.party_type || "student"}
                           </span>
                         </td>
                         <td className="py-3.5 px-4 text-right font-black">
@@ -1057,13 +1055,13 @@ export function PosPaymentIn() {
       </div>
 
       {/* RIGHT PANE (Record Payment / Wallet Drawer) */}
-      <div 
+      <div
         className={`absolute top-0 right-0 w-[500px] h-full bg-white shadow-[-10px_0_30px_rgba(0,0,0,0.08)] border-l border-slate-200 transition-transform duration-300 flex flex-col z-50 ${isRecordingPayment ? "translate-x-0" : "translate-x-full"}`}
       >
         {/* Drawer Header */}
         <div className="flex items-center justify-between p-4 border-b border-slate-200 bg-slate-50/50">
           <div className="flex items-center gap-3">
-            <button 
+            <button
               onClick={() => setIsRecordingPayment(false)}
               className="text-slate-500 hover:text-slate-800 p-1 rounded-lg hover:bg-slate-200"
             >
@@ -1071,12 +1069,12 @@ export function PosPaymentIn() {
             </button>
             <div>
               <h3 className="text-base font-black text-slate-900">
-                {paymentPurpose === 'wallet_debit' ? "Debit Customer Wallet" : paymentPurpose === 'wallet_topup' ? "Top-Up Customer Wallet" : "Record Customer Payment In"}
+                {paymentPurpose === 'wallet_debit' ? "Debit student Wallet" : paymentPurpose === 'wallet_topup' ? "Top-Up student Wallet" : "Record student Payment In"}
               </h3>
               <p className="text-[11px] text-slate-500 font-mono">Voucher Ref: #{paymentNumber}</p>
             </div>
           </div>
-          <button 
+          <button
             onClick={() => setIsRecordingPayment(false)}
             className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100"
           >
@@ -1086,14 +1084,14 @@ export function PosPaymentIn() {
 
         {/* Drawer Form Body */}
         <div className="flex-1 overflow-y-auto p-6 space-y-5">
-          
+
           {/* Party Selection */}
           <div className="relative">
-            <label className="text-xs font-bold text-slate-700 block mb-1.5">Select Customer / Party <span className="text-rose-500">*</span></label>
+            <label className="text-xs font-bold text-slate-700 block mb-1.5">Select student / Party <span className="text-rose-500">*</span></label>
             <div className="relative">
               <input
                 type="text"
-                placeholder="Search customer by name or phone..."
+                placeholder="Search student by name or phone..."
                 value={searchQuery}
                 onFocus={() => setIsDropdownOpen(true)}
                 onChange={(e) => {
@@ -1104,14 +1102,14 @@ export function PosPaymentIn() {
                 className="w-full border border-slate-300 rounded-xl h-11 pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white font-medium"
               />
               <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-              
+
               {isDropdownOpen && (
                 <div className="absolute z-20 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl max-h-56 overflow-y-auto">
                   {parties
                     .filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()))
                     .map(c => (
-                      <div 
-                        key={`${c.type}-${c.id}`} 
+                      <div
+                        key={`${c.type}-${c.id}`}
                         onClick={() => handleSelectParty(c)}
                         className="px-3.5 py-2.5 hover:bg-indigo-50/50 cursor-pointer border-b border-slate-100 last:border-0"
                       >
@@ -1127,7 +1125,7 @@ export function PosPaymentIn() {
             </div>
           </div>
 
-          {/* Customer Live Status Card */}
+          {/* student Live Status Card */}
           {selectedParty && (
             <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
               <div className="flex items-center justify-between">
@@ -1152,40 +1150,37 @@ export function PosPaymentIn() {
           )}
 
           {/* Purpose Mode Selector */}
-          {selectedParty && selectedParty.type === 'customer' && (
+          {selectedParty && selectedParty.type === 'student' && (
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-slate-700 block">Entry Purpose & Action</label>
               <div className="grid grid-cols-3 gap-1.5 bg-slate-100 p-1 rounded-xl">
                 <button
                   type="button"
                   onClick={() => setPaymentPurpose('settle_due')}
-                  className={`py-2 px-1.5 rounded-lg text-xs font-bold transition-all text-center ${
-                    paymentPurpose === 'settle_due'
+                  className={`py-2 px-1.5 rounded-lg text-xs font-bold transition-all text-center ${paymentPurpose === 'settle_due'
                       ? "bg-white text-indigo-700 shadow-xs"
                       : "text-slate-600 hover:text-slate-900"
-                  }`}
+                    }`}
                 >
                   💳 Settle Dues
                 </button>
                 <button
                   type="button"
                   onClick={() => setPaymentPurpose('wallet_topup')}
-                  className={`py-2 px-1.5 rounded-lg text-xs font-bold transition-all text-center ${
-                    paymentPurpose === 'wallet_topup'
+                  className={`py-2 px-1.5 rounded-lg text-xs font-bold transition-all text-center ${paymentPurpose === 'wallet_topup'
                       ? "bg-white text-purple-700 shadow-xs"
                       : "text-slate-600 hover:text-slate-900"
-                  }`}
+                    }`}
                 >
                   💰 Top-Up Wallet
                 </button>
                 <button
                   type="button"
                   onClick={() => setPaymentPurpose('wallet_debit')}
-                  className={`py-2 px-1.5 rounded-lg text-xs font-bold transition-all text-center ${
-                    paymentPurpose === 'wallet_debit'
+                  className={`py-2 px-1.5 rounded-lg text-xs font-bold transition-all text-center ${paymentPurpose === 'wallet_debit'
                       ? "bg-white text-rose-700 shadow-xs"
                       : "text-slate-600 hover:text-slate-900"
-                  }`}
+                    }`}
                 >
                   💸 Debit Wallet
                 </button>
@@ -1278,18 +1273,16 @@ export function PosPaymentIn() {
                       setAllocationMode('auto');
                       setManualAllocations({});
                     }}
-                    className={`px-2.5 py-1 rounded-md text-[11px] transition-all ${
-                      allocationMode === 'auto' ? "bg-white text-indigo-700 shadow-xs" : "text-slate-600 hover:text-slate-900"
-                    }`}
+                    className={`px-2.5 py-1 rounded-md text-[11px] transition-all ${allocationMode === 'auto' ? "bg-white text-indigo-700 shadow-xs" : "text-slate-600 hover:text-slate-900"
+                      }`}
                   >
                     Auto (FIFO)
                   </button>
                   <button
                     type="button"
                     onClick={() => setAllocationMode('manual')}
-                    className={`px-2.5 py-1 rounded-md text-[11px] transition-all ${
-                      allocationMode === 'manual' ? "bg-white text-indigo-700 shadow-xs" : "text-slate-600 hover:text-slate-900"
-                    }`}
+                    className={`px-2.5 py-1 rounded-md text-[11px] transition-all ${allocationMode === 'manual' ? "bg-white text-indigo-700 shadow-xs" : "text-slate-600 hover:text-slate-900"
+                      }`}
                   >
                     Manual Select
                   </button>
@@ -1426,35 +1419,34 @@ export function PosPaymentIn() {
           {/* Notes */}
           <div>
             <label className="text-xs font-bold text-slate-700 block mb-1">Notes / Remarks</label>
-            <textarea 
+            <textarea
               value={paymentNotes}
               onChange={(e) => setPaymentNotes(e.target.value)}
               placeholder="e.g. advance deposit, bill settlement, or cash payout reason"
               className="w-full border border-slate-300 rounded-xl p-3 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 min-h-[70px]"
             />
           </div>
-          
+
         </div>
 
         {/* Drawer Footer */}
         <div className="p-4 border-t border-slate-200 flex gap-3 bg-white">
-          <button 
+          <button
             onClick={() => setIsRecordingPayment(false)}
             disabled={isProcessing}
             className="flex-1 py-3 border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 text-sm disabled:opacity-50"
           >
             Cancel
           </button>
-          <button 
+          <button
             onClick={handleProcessPayment}
             disabled={isProcessing || (paymentPurpose === 'wallet_debit' && Number(paymentAmount) > walletBalance)}
-            className={`flex-1 py-3 font-bold rounded-xl text-sm shadow-sm disabled:opacity-50 flex items-center justify-center gap-2 transition-all ${
-              paymentPurpose === 'wallet_debit'
+            className={`flex-1 py-3 font-bold rounded-xl text-sm shadow-sm disabled:opacity-50 flex items-center justify-center gap-2 transition-all ${paymentPurpose === 'wallet_debit'
                 ? "bg-rose-600 hover:bg-rose-700 text-white"
                 : paymentPurpose === 'wallet_topup'
-                ? "bg-purple-600 hover:bg-purple-700 text-white"
-                : "bg-indigo-600 hover:bg-indigo-700 text-white"
-            }`}
+                  ? "bg-purple-600 hover:bg-purple-700 text-white"
+                  : "bg-indigo-600 hover:bg-indigo-700 text-white"
+              }`}
           >
             {isProcessing ? (
               <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span> Processing...</>
@@ -1482,13 +1474,12 @@ export function PosPaymentIn() {
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="text-lg font-black text-slate-900 font-mono">Invoice #{viewingInvoice.invoice_number}</h3>
-                    <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${
-                      viewingInvoice.status === "paid"
+                    <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${viewingInvoice.status === "paid"
                         ? "bg-emerald-100 text-emerald-800"
                         : viewingInvoice.status === "partially_paid"
-                        ? "bg-amber-100 text-amber-800"
-                        : "bg-rose-100 text-rose-800"
-                    }`}>
+                          ? "bg-amber-100 text-amber-800"
+                          : "bg-rose-100 text-rose-800"
+                      }`}>
                       {viewingInvoice.status?.replace("_", " ")}
                     </span>
                   </div>
@@ -1508,23 +1499,22 @@ export function PosPaymentIn() {
 
             {/* Modal Content */}
             <div className="flex-1 overflow-y-auto p-6 space-y-6 text-slate-800">
-              {/* Customer & Billing Info */}
+              {/* student & Billing Info */}
               <div className="grid grid-cols-2 gap-4 p-4 bg-slate-50 border border-slate-200/80 rounded-xl text-xs">
                 <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Customer / Billed To</span>
-                  <p className="font-bold text-slate-900 text-sm">{viewingInvoice.customer_name || "Walk-in Customer"}</p>
-                  {viewingInvoice.customer_phone && (
-                    <p className="text-slate-500 font-mono mt-0.5">📞 {viewingInvoice.customer_phone}</p>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">student / Billed To</span>
+                  <p className="font-bold text-slate-900 text-sm">{viewingInvoice.student_name || "Walk-in student"}</p>
+                  {viewingInvoice.student_phone && (
+                    <p className="text-slate-500 font-mono mt-0.5">📞 {viewingInvoice.student_phone}</p>
                   )}
-                  {viewingInvoice.customer_address && (
-                    <p className="text-slate-500 mt-0.5">{viewingInvoice.customer_address}</p>
+                  {viewingInvoice.student_address && (
+                    <p className="text-slate-500 mt-0.5">{viewingInvoice.student_address}</p>
                   )}
                 </div>
                 <div className="text-right">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Payment Status</span>
-                  <p className={`font-black text-sm ${
-                    Number(viewingInvoice.balance_due) <= 0 ? "text-emerald-600" : "text-amber-700"
-                  }`}>
+                  <p className={`font-black text-sm ${Number(viewingInvoice.balance_due) <= 0 ? "text-emerald-600" : "text-amber-700"
+                    }`}>
                     {Number(viewingInvoice.balance_due) <= 0 ? "Fully Paid" : `Pending Due: ${formatCurrency(Number(viewingInvoice.balance_due) || 0)}`}
                   </p>
                   <p className="text-slate-500 mt-0.5">Total Paid: {formatCurrency(Number(viewingInvoice.amount_paid) || 0)}</p>
@@ -1638,8 +1628,8 @@ export function PosPaymentIn() {
                   const billData = {
                     invoice_number: viewingInvoice.invoice_number || `INV-${viewingInvoice.id?.substring(0, 6)}`,
                     date: viewingInvoice.invoice_date || new Date().toISOString(),
-                    customerName: viewingInvoice.customer_name || "Customer",
-                    customerPhone: viewingInvoice.customer_phone || "",
+                    studentName: viewingInvoice.student_name || "student",
+                    studentPhone: viewingInvoice.student_phone || "",
                     total: Number(viewingInvoice.total_amount || viewingInvoice.grand_total || 0),
                     subtotal: Number(viewingInvoice.subtotal || 0),
                     tax: Number(viewingInvoice.tax_amount || 0),
@@ -1667,7 +1657,7 @@ export function PosPaymentIn() {
                   <button
                     type="button"
                     onClick={() => {
-                      const cust = parties.find(p => p.name === viewingInvoice.customer_name || p.id === viewingInvoice.customer_id);
+                      const cust = parties.find(p => p.name === viewingInvoice.student_name || p.id === viewingInvoice.student_id);
                       if (cust) {
                         handleSelectParty(cust);
                       }
@@ -1693,7 +1683,7 @@ export function PosPaymentIn() {
           </div>
         </div>
       )}
-      
+
     </div>
   );
 }

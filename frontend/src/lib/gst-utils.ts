@@ -123,13 +123,13 @@ export function extractGstState(
  */
 export function checkIsInterstate(
   seller: { gstin?: string | null; state?: string | null; address?: string | null },
-  customer: { gstin?: string | null; state?: string | null; address?: string | null }
-): { isInterState: boolean; sellerState: GstStateInfo; customerState: GstStateInfo } {
+  student: { gstin?: string | null; state?: string | null; address?: string | null }
+): { isInterState: boolean; sellerState: GstStateInfo; studentState: GstStateInfo } {
   const sellerState = extractGstState(seller.gstin, seller.address, seller.state);
-  const customerState = extractGstState(customer.gstin, customer.address, customer.state);
+  const studentState = extractGstState(student.gstin, student.address, student.state);
 
-  const isInterState = sellerState.code !== customerState.code;
-  return { isInterState, sellerState, customerState };
+  const isInterState = sellerState.code !== studentState.code;
+  return { isInterState, sellerState, studentState };
 }
 
 export interface GstTaxBreakdownItem {
@@ -162,7 +162,7 @@ export interface GstSlabBreakdown {
 export interface GstBreakdownResult {
   isInterState: boolean;
   sellerState: GstStateInfo;
-  customerState: GstStateInfo;
+  studentState: GstStateInfo;
   itemsBreakdown: GstTaxBreakdownItem[];
   slabsBreakdown: GstSlabBreakdown[];
   totalTaxable: number;
@@ -195,10 +195,10 @@ export function computeGstBreakdown(
   }>,
   isInterState: boolean,
   sellerState?: GstStateInfo,
-  customerState?: GstStateInfo
+  studentState?: GstStateInfo
 ): GstBreakdownResult & { bySlab: GstSlabBreakdown[]; byProduct: GstTaxBreakdownItem[] } {
   const resolvedSellerState = sellerState || { code: "37", name: "Andhra Pradesh" };
-  const resolvedCustomerState = customerState || (isInterState ? { code: "36", name: "Telangana" } : resolvedSellerState);
+  const resolvedstudentState = studentState || (isInterState ? { code: "36", name: "Telangana" } : resolvedSellerState);
 
   const itemsBreakdown: GstTaxBreakdownItem[] = [];
   const slabMap: Record<number, GstSlabBreakdown> = {};
@@ -297,7 +297,7 @@ export function computeGstBreakdown(
   return {
     isInterState,
     sellerState: resolvedSellerState,
-    customerState: resolvedCustomerState,
+    studentState: resolvedstudentState,
     itemsBreakdown,
     slabsBreakdown,
     bySlab: slabsBreakdown,

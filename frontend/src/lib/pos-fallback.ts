@@ -43,8 +43,8 @@ export const paymentMethods = [
     { id: "credit", label: "Store Credit", icon: "FileText" },
 ];
 
-export const posCustomers = [
-    { id: "walk-in", name: "Walk-in Customer", phone: "", email: "", points: 0, tier: "Guest", wallet: 0, totalSpent: 0, lastVisit: "Today" },
+export const posstudents = [
+    { id: "walk-in", name: "Walk-in student", phone: "", email: "", points: 0, tier: "Guest", wallet: 0, totalSpent: 0, lastVisit: "Today" },
     { id: "CUST0001", name: "James Smith", phone: "+1 (555) 123-4567", email: "james.smith@example.com", points: 980, tier: "Gold", wallet: 120.0, totalSpent: "$3,250.00", lastVisit: "2 days ago" },
     { id: "CUST0002", name: "Maria Garcia", phone: "+1 (555) 234-5678", email: "maria.garcia@example.com", points: 540, tier: "Silver", wallet: 80.0, totalSpent: "$1,480.00", lastVisit: "5 days ago" },
     { id: "CUST0003", name: "David Johnson", phone: "+1 (555) 345-6789", email: "david.johnson@example.com", points: 276, tier: "Bronze", wallet: 35.0, totalSpent: "$760.00", lastVisit: "1 week ago" },
@@ -61,10 +61,10 @@ export const posProducts = [
 ];
 
 export const posTransactions = [
-    { id: "TRX-20260715-00001", date: new Date().toISOString(), items: [{ name: "Apple AirPods Pro", barcode: "8901234567890", qty: 1, price: 249.99, total: 249.99 }], subtotal: 249.99, tax: 12.5, discount: 0, total: 262.49, customerId: "CUST0001", customerName: "James Smith", paymentMethod: "card", status: "Completed", cashier: "Sarah Jenkins", branch: "San Francisco Flagship", aiFraudScore: 18 },
-    { id: "TRX-20260715-00002", date: new Date(Date.now() - 3600000).toISOString(), items: [{ name: "L'Oreal Shampoo", barcode: "8901234567894", qty: 3, price: 14.99, total: 44.97 }], subtotal: 44.97, tax: 2.25, discount: 0, total: 47.22, customerId: "CUST0003", customerName: "David Johnson", paymentMethod: "cash", status: "Completed", cashier: "Sarah Jenkins", branch: "San Francisco Flagship", aiFraudScore: 5 },
-    { id: "TRX-20260714-00003", date: new Date(Date.now() - 86400000).toISOString(), items: [{ name: "Samsung Galaxy Buds2", barcode: "8901234567891", qty: 1, price: 149.99, total: 149.99 }], subtotal: 149.99, tax: 7.5, discount: 0, total: 157.49, customerId: "CUST0002", customerName: "Maria Garcia", paymentMethod: "upi", status: "Completed", cashier: "Sarah Jenkins", branch: "San Francisco Flagship", aiFraudScore: 11 },
-    { id: "TRX-20260713-00004", date: new Date(Date.now() - 172800000).toISOString(), items: [{ name: "Nike Running Shoes", barcode: "8901234567892", qty: 1, price: 99.99, total: 99.99 }], subtotal: 99.99, tax: 5.0, discount: 0, total: 104.99, customerId: "CUST0004", customerName: "Priya Patel", paymentMethod: "card", status: "Refunded", cashier: "Sarah Jenkins", branch: "San Francisco Flagship", aiFraudScore: 28 },
+    { id: "TRX-20260715-00001", date: new Date().toISOString(), items: [{ name: "Apple AirPods Pro", barcode: "8901234567890", qty: 1, price: 249.99, total: 249.99 }], subtotal: 249.99, tax: 12.5, discount: 0, total: 262.49, studentId: "CUST0001", studentName: "James Smith", paymentMethod: "card", status: "Completed", cashier: "Sarah Jenkins", branch: "San Francisco Flagship", aiFraudScore: 18 },
+    { id: "TRX-20260715-00002", date: new Date(Date.now() - 3600000).toISOString(), items: [{ name: "L'Oreal Shampoo", barcode: "8901234567894", qty: 3, price: 14.99, total: 44.97 }], subtotal: 44.97, tax: 2.25, discount: 0, total: 47.22, studentId: "CUST0003", studentName: "David Johnson", paymentMethod: "cash", status: "Completed", cashier: "Sarah Jenkins", branch: "San Francisco Flagship", aiFraudScore: 5 },
+    { id: "TRX-20260714-00003", date: new Date(Date.now() - 86400000).toISOString(), items: [{ name: "Samsung Galaxy Buds2", barcode: "8901234567891", qty: 1, price: 149.99, total: 149.99 }], subtotal: 149.99, tax: 7.5, discount: 0, total: 157.49, studentId: "CUST0002", studentName: "Maria Garcia", paymentMethod: "upi", status: "Completed", cashier: "Sarah Jenkins", branch: "San Francisco Flagship", aiFraudScore: 11 },
+    { id: "TRX-20260713-00004", date: new Date(Date.now() - 172800000).toISOString(), items: [{ name: "Nike Running Shoes", barcode: "8901234567892", qty: 1, price: 99.99, total: 99.99 }], subtotal: 99.99, tax: 5.0, discount: 0, total: 104.99, studentId: "CUST0004", studentName: "Priya Patel", paymentMethod: "card", status: "Refunded", cashier: "Sarah Jenkins", branch: "San Francisco Flagship", aiFraudScore: 28 },
 ];
 
 export const posDashboardStats = (() => {
@@ -77,7 +77,7 @@ export const posDashboardStats = (() => {
     return {
         todayRevenue: revenue,
         todayOrders: todayTxs.length,
-        todayCustomers: new Set(todayTxs.map((t) => t.customerId)).size,
+        todaystudents: new Set(todayTxs.map((t) => t.studentId)).size,
         avgBill,
         refunds,
         refundCount,

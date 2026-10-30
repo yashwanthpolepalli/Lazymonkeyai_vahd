@@ -81,7 +81,7 @@ export const biometricService = {
   },
 
   async enrollBiometrics(payload: {
-    customer_id: string;
+    student_id: string;
     face_image_base64?: string;
     fingerprint_template?: string;
     rfid_card_number?: string;
@@ -115,7 +115,7 @@ export const biometricService = {
     }
     try {
       const result = await apiClient.post<BiometricEnrollment>('/biometrics/enroll', {
-        customer_id: input.person_id,
+        student_id: input.person_id,
         person_type: input.person_type,
         biometric_type: input.biometric_type,
         target_device_ids: [input.device_id],
@@ -142,7 +142,7 @@ export const biometricService = {
     }
     try {
       const result = await apiClient.post<BiometricEnrollment>('/biometrics/enroll', {
-        customer_id: input.person_id,
+        student_id: input.person_id,
         person_type: input.person_type,
         biometric_type: input.biometric_type,
         target_device_ids: [input.device_id],

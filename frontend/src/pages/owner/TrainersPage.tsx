@@ -34,7 +34,7 @@ interface employeeRowData {
 
 export function employeesPage() {
   const [members, setMembers] = useState<Member[]>([]);
-  const [employees, setemployees] = useState<Array<Partial<employee> & { email?: string; full_name?: string; specialty?: string; base_monthly_salary?: number; pt_session_rate?: number; is_active?: boolean; created_at?: string; assigned_customers_count?: number }>>([]);
+  const [employees, setemployees] = useState<Array<Partial<employee> & { email?: string; full_name?: string; specialty?: string; base_monthly_salary?: number; pt_session_rate?: number; is_active?: boolean; created_at?: string; assigned_students_count?: number }>>([]);
   const [loading, setLoading] = useState(true);
   const [enrollOpen, setEnrollOpen] = useState(false);
   const [editingemployee, setEditingemployee] = useState<any>(null);
@@ -186,7 +186,7 @@ export function employeesPage() {
   const fetchemployeesData = () => {
     setLoading(true);
     Promise.all([
-      api.customers.list().catch(() => []),
+      api.students.list().catch(() => []),
       employeesApi.list().catch(() => []),
     ])
       .then(([mList, tList]) => {
@@ -252,8 +252,8 @@ export function employeesPage() {
         (m as any).employee_id === t.id
     );
 
-    const clientsCount = typeof t.assigned_customers_count === 'number'
-      ? t.assigned_customers_count
+    const clientsCount = typeof t.assigned_students_count === 'number'
+      ? t.assigned_students_count
       : assignedMembers.length;
 
     const theme = colorPalettes[idx % colorPalettes.length];
@@ -346,7 +346,7 @@ export function employeesPage() {
       const plan = employeePlans[selectedPlanIdx];
       for (const tId of selectedemployeeIds) {
         await apiClient.post('/courses/assign', {
-          customer_id: tId,
+          student_id: tId,
           plan_name: plan?.name || 'employee Subscription',
           amount: plan?.price || 0,
           payment_method: renewalPaymentMethod,

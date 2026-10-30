@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from src.models.user import User
 from src.utils.security import create_access_token, hash_password, verify_password
 from src.models.settings import Setting as vahdSetting, Branch as vahdBranch
-from src.models.customer import Customer
+from src.models.student import student
 
 
 from sqlalchemy import or_
@@ -37,11 +37,11 @@ def _fetch_vahd_context(db: Session, user: User = None) -> dict:
                     vahdBranch.owner_id == user.id
                 ).first()
 
-        # Check Customer primary vahd location mapping
+        # Check student primary vahd location mapping
         if not branch:
-            cust = db.query(Customer).filter(Customer.user_id == user.id).first()
+            cust = db.query(student).filter(student.user_id == user.id).first()
             if not cust:
-                cust = db.query(Customer).filter(Customer.email == user.email).first()
+                cust = db.query(student).filter(student.email == user.email).first()
             if cust and cust.primary_vahd_location:
                 loc = cust.primary_vahd_location.strip()
                 branch = db.query(vahdBranch).filter(
@@ -94,17 +94,17 @@ class AuthService:
         clean_email = email.strip().lower()
         user = db.query(User).filter(func.lower(User.email) == clean_email).first()
 
-        # If not found directly in User table, check Customer or employee profile tables
+        # If not found directly in User table, check student or employee profile tables
         if not user:
-            cust = db.query(Customer).filter(func.lower(Customer.email) == clean_email).first()
+            cust = db.query(student).filter(func.lower(student.email) == clean_email).first()
             if cust:
                 if cust.user_id:
                     user = db.query(User).filter(User.id == cust.user_id).first()
                 
-                # Dynamic User provisioning for Customer record
+                # Dynamic User provisioning for student record
                 if not user:
                     req_role = (role or "").strip().upper()
-                    target_role = "CUSTOMER" if req_role in ["CUSTOMER", "MEMBER", ""] else req_role
+                    target_role = "student" if req_role in ["student", "MEMBER", ""] else req_role
                     user_id = f"usr_{uuid.uuid4().hex[:8]}"
                     user = User(
                         id=user_id,
@@ -157,7 +157,7 @@ class AuthService:
             user_canonical_role = "OWNER"
         elif user_role_up in ["EMPLOYEE", "EMPLOYEES", "employee", "COACH", "STAFF", "EMP"]:
             user_canonical_role = "EMPLOYEE"
-        elif user_role_up in ["STUDENT", "STUDENTS", "CUSTOMER", "MEMBER"]:
+        elif user_role_up in ["STUDENT", "STUDENTS", "student", "MEMBER"]:
             user_canonical_role = "STUDENT"
         else:
             user_canonical_role = user_role_up
@@ -173,7 +173,7 @@ class AuthService:
                 req_canonical_role = "OWNER"
             elif r_up in ["EMPLOYEE", "EMPLOYEES", "employee", "COACH", "STAFF", "EMP"]:
                 req_canonical_role = "EMPLOYEE"
-            elif r_up in ["STUDENT", "STUDENTS", "CUSTOMER", "MEMBER"]:
+            elif r_up in ["STUDENT", "STUDENTS", "student", "MEMBER"]:
                 req_canonical_role = "STUDENT"
             else:
                 req_canonical_role = r_up
@@ -185,18 +185,18 @@ class AuthService:
         final_role = user_canonical_role
 
         vahd_ctx = _fetch_vahd_context(db, user=user)
-        customer_id = None
-        cust = db.query(Customer).filter(Customer.user_id == user.id).first()
+        student_id = None
+        cust = db.query(student).filter(student.user_id == user.id).first()
         if not cust:
-            cust = db.query(Customer).filter(Customer.email == user.email).first()
+            cust = db.query(student).filter(student.email == user.email).first()
         if cust:
-            customer_id = cust.id
+            student_id = cust.id
 
         token_payload = {
             "sub": user.id,
             "email": user.email,
             "role": final_role,
-            "customer_id": customer_id,
+            "student_id": student_id,
             "branch_id": vahd_ctx.get("vahd_id"),
         }
         token = create_access_token(token_payload)
@@ -205,7 +205,7 @@ class AuthService:
             "access_token": token,
             "token_type": "bearer",
             "user_id": user.id,
-            "customer_id": customer_id,
+            "student_id": student_id,
             "role": final_role,
             "full_name": user.full_name or (cust.full_name if cust else "") or "",
             "email": user.email,
@@ -284,7 +284,7 @@ class AuthService:
     @staticmethod
     def get_user_profile(db: Session, email: str = None, token_payload: dict = None) -> dict:
         user = None
-        customer_id = token_payload.get("customer_id") if token_payload else None
+        student_id = token_payload.get("student_id") if token_payload else None
 
         if token_payload and token_payload.get("sub"):
             user = db.query(User).filter(User.id == token_payload["sub"]).first()
@@ -297,12 +297,12 @@ class AuthService:
 
         cust = None
         if user:
-            cust = db.query(Customer).filter(Customer.user_id == user.id).first()
+            cust = db.query(student).filter(student.user_id == user.id).first()
             if not cust:
-                cust = db.query(Customer).filter(Customer.email == user.email).first()
+                cust = db.query(student).filter(student.email == user.email).first()
 
         if cust:
-            customer_id = cust.id
+            student_id = cust.id
 
         vahd_ctx = _fetch_vahd_context(db, user=user)
 
@@ -326,7 +326,7 @@ class AuthService:
 
         return {
             "user_id": user.id,
-            "customer_id": customer_id,
+            "student_id": student_id,
             "full_name": display_name,
             "email": user.email,
             "role": mapped_role,

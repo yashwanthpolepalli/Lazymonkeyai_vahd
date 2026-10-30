@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { useCurrency } from "@/hooks/use-currency";
 
 export function ReturnsRefunds() {
-    const { currency, formatCurrency } = useCurrency();
+  const { currency, formatCurrency } = useCurrency();
   const [receiptId, setReceiptId] = useState("");
   const [searchDone, setSearchDone] = useState(false);
   const [returnItems, setReturnItems] = useState([
@@ -58,7 +58,7 @@ export function ReturnsRefunds() {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-foreground">Returns & Refunds</h2>
-          <p className="text-sm text-muted-foreground mt-1">Process customer sales returns, restore items to inventory, and issue cash or credit refunds.</p>
+          <p className="text-sm text-muted-foreground mt-1">Process student sales returns, restore items to inventory, and issue cash or credit refunds.</p>
         </div>
         <div className="flex items-center gap-1.5 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 px-2.5 py-1 rounded-lg border border-amber-200 dark:border-amber-800 text-xs font-bold">
           <ShieldCheck className="size-3.5" />
@@ -70,7 +70,7 @@ export function ReturnsRefunds() {
         <Card className="p-12 flex flex-col items-center text-center border-dashed bg-muted/20">
           <ArrowRightLeft className="size-16 text-muted-foreground opacity-20 mb-4" />
           <h3 className="text-xl font-bold mb-2">Scan Receipt / Enter Invoice Barcode</h3>
-          <p className="text-muted-foreground max-w-md">To initiate a sales return, enter or scan the Receipt / Invoice ID from the customer's bill.</p>
+          <p className="text-muted-foreground max-w-md">To initiate a sales return, enter or scan the Receipt / Invoice ID from the student's bill.</p>
           <form onSubmit={handleSearch} className="mt-6 flex gap-2">
             <input
               value={receiptId}
@@ -168,7 +168,7 @@ export function ReturnsRefunds() {
                   className="w-full p-2.5 bg-background border rounded-lg text-sm"
                 >
                   <option value="Defective / Wrong Size">Defective / Wrong Size</option>
-                  <option value="Customer Mind Change">Customer Mind Change</option>
+                  <option value="student Mind Change">student Mind Change</option>
                   <option value="Incorrect Item Scanned">Incorrect Item Scanned</option>
                 </select>
               </div>
@@ -181,7 +181,7 @@ export function ReturnsRefunds() {
                   className="w-full p-2.5 bg-background border rounded-lg text-sm"
                 >
                   <option value="Cash Refund">Cash Refund</option>
-                  <option value="Customer Credit Note / Voucher">Customer Credit Note / Voucher</option>
+                  <option value="student Credit Note / Voucher">student Credit Note / Voucher</option>
                   <option value="Original UPI / Card Account">Original UPI / Card Account</option>
                 </select>
               </div>

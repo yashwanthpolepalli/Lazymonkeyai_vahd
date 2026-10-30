@@ -399,7 +399,7 @@ export function EnrollmentModal({
     // Real API call to FastAPI backend — only pass fields that have real values
     try {
       const enrollPayload: Record<string, unknown> = {
-        customer_id: personId,
+        student_id: personId,
         person_type: personType,
         biometric_type: biometricType,
         target_device_ids: [selectedDevice],
@@ -421,7 +421,7 @@ export function EnrollmentModal({
       if (initialMember?.id) {
         try {
           const targetDev = devices.find((d) => d.id === selectedDevice);
-          await apiClient.post(`/customers/${initialMember.id}/sync-biometric`, {
+          await apiClient.post(`/students/${initialMember.id}/sync-biometric`, {
             event_type: biometricType === 'face' ? 'FACE_SCAN' : biometricType === 'fingerprint' ? 'FINGERPRINT' : 'BIOMETRIC',
             device_id: selectedDevice,
             device_name: targetDev?.name || selectedDevice,
@@ -1003,8 +1003,8 @@ export function EnrollmentModal({
                 <div className="pt-2">
                   <PaymentTerminalSelector
                     totalAmount={total}
-                    customerName={form.name}
-                    customerPhone={form.phone}
+                    studentName={form.name}
+                    studentPhone={form.phone}
                     selectedMethod={paymentMethod || 'Cash'}
                     onMethodChange={(method, payload) => {
                       setPaymentMethod(method);

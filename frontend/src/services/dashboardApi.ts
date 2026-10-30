@@ -12,8 +12,8 @@ export const dashboardApi = {
       return {
         id: item.eventId || `act-${Math.random()}`,
         type: isLogout ? 'checkout' : 'checkin',
-        title: item.customerName || 'Student Member',
-        customerId: item.customerId || '',
+        title: item.studentName || 'Student Member',
+        studentId: item.studentId || '',
         userRole: item.userRole || 'Student',
         direction: item.direction || (isLogout ? 'CHECK_OUT' : 'CHECK_IN'),
         status: item.status || 'SUCCESS',

@@ -291,7 +291,7 @@ def get_staff_face_status(
     elif usr and (getattr(usr, 'avatar_url', None) or getattr(usr, 'avatar', None)) and len(getattr(usr, 'avatar_url', None) or getattr(usr, 'avatar', None)) > 50:
         face_img = getattr(usr, 'avatar_url', None) or getattr(usr, 'avatar', None)
 
-    # Fetch enroll logs by customer_id match or by scanning meta_data in Python
+    # Fetch enroll logs by student_id match or by scanning meta_data in Python
     # Avoid .astext (JSONB-only) on plain JSON columns
     enroll_log = None
     enroll_logs = db.query(BiometricLog).filter(
@@ -300,7 +300,7 @@ def get_staff_face_status(
     for _log in enroll_logs:
         meta = _log.meta_data or {}
         log_uid = meta.get("user_id") or meta.get("employee_id") or ""
-        if _log.customer_id == employee_id or log_uid == employee_id:
+        if _log.student_id == employee_id or log_uid == employee_id:
             enroll_log = _log
             break
 
@@ -336,7 +336,7 @@ def register_staff_face(payload: dict, db: Session = Depends(get_db)):
     from src.models.hrms import Employee
     from src.models.employee import employeeProfile
     from src.models.user import User
-    from src.models.customer import Customer
+    from src.models.student import student
     from src.models.biometric import BiometricLog
 
     raw_img = str(face_image).strip()
@@ -385,13 +385,13 @@ def register_staff_face(payload: dict, db: Session = Depends(get_db)):
     status = payload.get("status") or ("SUCCESS" if quality_score >= 0.90 else "FAILED")
     action_label = payload.get("action") or "FACE_ENROLLMENT"
 
-    # Only set customer_id if employee_id exists in customers table to avoid foreign key violations
-    cust_exists = db.query(Customer).filter(Customer.id == employee_id).first()
-    customer_id_val = cust_exists.id if cust_exists else None
+    # Only set student_id if employee_id exists in students table to avoid foreign key violations
+    cust_exists = db.query(student).filter(student.id == employee_id).first()
+    student_id_val = cust_exists.id if cust_exists else None
 
     bio_log = BiometricLog(
         id=f"bio_reg_{uuid.uuid4().hex[:8]}",
-        customer_id=customer_id_val,
+        student_id=student_id_val,
         user_role=role,
         event_type=event_type,
         device_type=device_type,
@@ -464,7 +464,7 @@ def verify_staff_face_punch(payload: dict, db: Session = Depends(get_db)):
         for _log in recent_logs:
             meta = _log.meta_data or {}
             log_uid = meta.get("user_id") or meta.get("employee_id") or ""
-            if (_log.customer_id == employee_id or log_uid == employee_id) and meta.get("face_image"):
+            if (_log.student_id == employee_id or log_uid == employee_id) and meta.get("face_image"):
                 stored_avatar = meta.get("face_image")
                 break
 

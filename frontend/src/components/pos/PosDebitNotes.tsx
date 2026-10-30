@@ -28,9 +28,9 @@ export interface PosDocumentRecord {
   id: string;
   invoice_number?: string;
   invoice_type?: string;
-  customer_name?: string;
-  customer_phone?: string;
-  customer_gstin?: string;
+  student_name?: string;
+  student_phone?: string;
+  student_gstin?: string;
   billing_address?: string;
   shipping_address?: string;
   reference_number?: string;
@@ -175,10 +175,10 @@ export function PosDebitNotes() {
 
             <div class="info-grid">
               <div>
-                <h4>Billed To (Customer)</h4>
-                <p><strong>${note.customer_name || "Valued Customer"}</strong></p>
-                <p>${note.customer_phone ? `Phone: ${note.customer_phone}` : ""}</p>
-                <p>${note.customer_gstin ? `GSTIN: ${note.customer_gstin}` : ""}</p>
+                <h4>Billed To (student)</h4>
+                <p><strong>${note.student_name || "Valued student"}</strong></p>
+                <p>${note.student_phone ? `Phone: ${note.student_phone}` : ""}</p>
+                <p>${note.student_gstin ? `GSTIN: ${note.student_gstin}` : ""}</p>
                 <p>${note.billing_address || ""}</p>
               </div>
               <div>
@@ -241,7 +241,7 @@ export function PosDebitNotes() {
 
             <div class="footer">
               <p>This is a computer-generated GST Debit Note issued in compliance with Section 34 of the CGST Act, 2017.</p>
-              <p>The above supplementary debit amount has been charged to the customer receivable account.</p>
+              <p>The above supplementary debit amount has been charged to the student receivable account.</p>
             </div>
           </div>
         </body>
@@ -258,9 +258,9 @@ export function PosDebitNotes() {
   };
 
   const handleSendWhatsApp = async (note: PosDocumentRecord | any) => {
-    const phone = note.customer_phone || "";
+    const phone = note.student_phone || "";
     if (!phone) {
-      toast.error("Customer has no phone number on record.");
+      toast.error("student has no phone number on record.");
       return;
     }
 
@@ -283,8 +283,8 @@ export function PosDebitNotes() {
     const q = searchTerm.toLowerCase();
     return (
       (n.invoice_number || "").toLowerCase().includes(q) ||
-      (n.customer_name || "").toLowerCase().includes(q) ||
-      (n.customer_phone || "").toLowerCase().includes(q) ||
+      (n.student_name || "").toLowerCase().includes(q) ||
+      (n.student_phone || "").toLowerCase().includes(q) ||
       (n.reference_number || "").toLowerCase().includes(q) ||
       (n.notes || "").toLowerCase().includes(q)
     );
@@ -299,8 +299,8 @@ export function PosDebitNotes() {
           <div className="flex items-center gap-2">
             <span className="p-1 bg-amber-600 text-white rounded-lg font-bold text-xs">DN</span>
             <div>
-              <h3 className="font-bold text-xs text-amber-900">New Customer Debit Note (Supplementary Invoice)</h3>
-              <p className="text-[11px] text-amber-700">Bill additional charges, freight, or rate differences to customer</p>
+              <h3 className="font-bold text-xs text-amber-900">New student Debit Note (Supplementary Invoice)</h3>
+              <p className="text-[11px] text-amber-700">Bill additional charges, freight, or rate differences to student</p>
             </div>
           </div>
           <button
@@ -329,10 +329,10 @@ export function PosDebitNotes() {
             <span className="p-1.5 rounded-xl bg-amber-50 text-amber-600 border border-amber-100">
               <FileText className="size-4" />
             </span>
-            Debit Notes (Customer Supplementary Charges)
+            Debit Notes (student Supplementary Charges)
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Manage supplementary customer billings, undercharged rate adjustments, and additional charges
+            Manage supplementary student billings, undercharged rate adjustments, and additional charges
           </p>
         </div>
 
@@ -397,7 +397,7 @@ export function PosDebitNotes() {
           <Search className="size-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Search Debit Note #, Customer Name, Phone, Original Inv Ref..."
+            placeholder="Search Debit Note #, student Name, Phone, Original Inv Ref..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:ring-1 focus:ring-amber-500"
@@ -416,7 +416,7 @@ export function PosDebitNotes() {
             </div>
             <p className="text-xs font-semibold text-slate-700">No Debit Notes Found</p>
             <p className="text-[11px] text-slate-400 max-w-sm mx-auto">
-              Issue a debit note when you need to bill extra items, freight, or price corrections to a customer.
+              Issue a debit note when you need to bill extra items, freight, or price corrections to a student.
             </p>
             <button
               type="button"
@@ -433,7 +433,7 @@ export function PosDebitNotes() {
                 <tr>
                   <th className="px-4 py-3">Note Number</th>
                   <th className="px-4 py-3">Issue Date</th>
-                  <th className="px-4 py-3">Customer Party</th>
+                  <th className="px-4 py-3">student Party</th>
                   <th className="px-4 py-3">Original Invoice Ref</th>
                   <th className="px-4 py-3">Reason for Note</th>
                   <th className="px-4 py-3 text-right">Debit Amount</th>
@@ -452,9 +452,9 @@ export function PosDebitNotes() {
                         {note.invoice_date || new Date().toISOString().slice(0, 10)}
                       </td>
                       <td className="px-4 py-3">
-                        <div className="font-bold text-slate-800">{note.customer_name || "Walk-in Customer"}</div>
-                        {note.customer_phone && (
-                          <div className="text-[11px] text-slate-400">{note.customer_phone}</div>
+                        <div className="font-bold text-slate-800">{note.student_name || "Walk-in student"}</div>
+                        {note.student_phone && (
+                          <div className="text-[11px] text-slate-400">{note.student_phone}</div>
                         )}
                       </td>
                       <td className="px-4 py-3 font-mono text-slate-600">

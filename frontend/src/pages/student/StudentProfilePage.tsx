@@ -4,20 +4,20 @@ import { Icon } from '@/components/ui/Icon';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { customerApi } from '@/services/customerApi';
-import { MemberCard } from '@/components/customer/MemberCard';
-import { MembershipCard } from '@/components/customer/MembershipCard';
-import { AttendanceSummary } from '@/components/customer/AttendanceSummary';
-import { BiometricStatus } from '@/components/customer/BiometricStatus';
+import { studentApi } from '@/services/studentApi';
+import { MemberCard } from '@/components/student/MemberCard';
+import { MembershipCard } from '@/components/student/MembershipCard';
+import { AttendanceSummary } from '@/components/student/AttendanceSummary';
+import { BiometricStatus } from '@/components/student/BiometricStatus';
 import type {
-  CustomerProfile,
-  CustomerAttendanceData,
-  CustomerBiometricStatus as BioStatusType,
-} from '@/types/customer';
+  studentProfile,
+  studentAttendanceData,
+  studentBiometricStatus as BioStatusType,
+} from '@/types/student';
 
-export function CustomerProfilePage() {
-  const [profile, setProfile] = useState<CustomerProfile | null>(null);
-  const [attendance, setAttendance] = useState<CustomerAttendanceData | null>(null);
+export function studentProfilePage() {
+  const [profile, setProfile] = useState<studentProfile | null>(null);
+  const [attendance, setAttendance] = useState<studentAttendanceData | null>(null);
   const [biometric, setBiometric] = useState<BioStatusType | null>(null);
 
   const [loading, setLoading] = useState(true);
@@ -37,9 +37,9 @@ export function CustomerProfilePage() {
     setLoading(true);
     setError(null);
     Promise.allSettled([
-      customerApi.getProfile(),
-      customerApi.getAttendance(),
-      customerApi.getBiometricStatus(),
+      studentApi.getProfile(),
+      studentApi.getAttendance(),
+      studentApi.getBiometricStatus(),
     ])
       .then(([pRes, aRes, bRes]) => {
         const p = pRes.status === 'fulfilled' ? pRes.value : null;
@@ -79,7 +79,7 @@ export function CustomerProfilePage() {
     e.preventDefault();
     setSaving(true);
     try {
-      await customerApi.updateProfile({
+      await studentApi.updateProfile({
         full_name: form.full_name,
         phone: form.phone,
         gender: form.gender,
@@ -98,7 +98,7 @@ export function CustomerProfilePage() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Profile" breadcrumb={['Customer', 'Profile']} />
+        <PageHeader title="Profile" breadcrumb={['student', 'Profile']} />
         <Skeleton className="h-44 w-full rounded-2xl" />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Skeleton className="h-60 w-full rounded-2xl" />
@@ -111,7 +111,7 @@ export function CustomerProfilePage() {
   if (error) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Profile" breadcrumb={['Customer', 'Profile']} />
+        <PageHeader title="Profile" breadcrumb={['student', 'Profile']} />
         <ErrorState message={error} onRetry={fetchData} />
       </div>
     );
@@ -120,7 +120,7 @@ export function CustomerProfilePage() {
   if (!profile) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Profile" breadcrumb={['Customer', 'Profile']} />
+        <PageHeader title="Profile" breadcrumb={['student', 'Profile']} />
         <EmptyState icon="user" title="Profile Unavailable" description="Please sign in to view your member profile." />
       </div>
     );
@@ -131,7 +131,7 @@ export function CustomerProfilePage() {
       <PageHeader
         title="My Profile"
         subtitle="Your member profile & account"
-        breadcrumb={['Customer', 'Profile']}
+        breadcrumb={['student', 'Profile']}
         actions={
           <button onClick={() => setEditing(!editing)} className="btn-primary flex items-center gap-2">
             <Icon name={editing ? 'x' : 'edit-3'} size={16} />

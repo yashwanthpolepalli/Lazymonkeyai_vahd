@@ -170,7 +170,7 @@ export function MembersPage() {
 
   const fetchMembers = () => {
     setLoading(true);
-    api.customers
+    api.students
       .list()
       .then((data) => {
         setMembers(data || []);
@@ -452,7 +452,7 @@ export function MembersPage() {
                   return (
                     <tr
                       key={m.id}
-                      onClick={() => navigate(`/owner/customers/${m.id}`)}
+                      onClick={() => navigate(`/owner/students/${m.id}`)}
                       className={cn(
                         'border-b border-navy-50 hover:bg-navy-50 cursor-pointer transition-colors',
                         isSelected && 'bg-brand-50/50'
@@ -807,8 +807,8 @@ export function MembersPage() {
                     {/* Dynamic POS Payment Terminal Selector */}
                     <PaymentTerminalSelector
                       totalAmount={totalAmount}
-                      customerName={selectedMembers[0]?.name || ''}
-                      customerPhone={selectedMembers[0]?.phone || ''}
+                      studentName={selectedMembers[0]?.name || ''}
+                      studentPhone={selectedMembers[0]?.phone || ''}
                       selectedMethod={renewalPaymentMethod}
                       onMethodChange={(method, payload) => {
                         setRenewalPaymentMethod(method);

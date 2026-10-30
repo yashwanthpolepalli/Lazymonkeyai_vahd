@@ -33,10 +33,10 @@ const MessagesPage = lazy(() => import('@/pages/employee/MessagesPage').then(m =
 const AiCoachPage = lazy(() => import('@/pages/employee/AiCoachPage').then(m => ({ default: m.AiCoachPage })));
 const EmployeeProfilePage = lazy(() => import('@/pages/employee/employeeProfilePage').then(m => ({ default: m.EmployeeProfilePage || m.employeeProfilePage })));
 
-// Customer pages
-const CustomerDashboard = lazy(() => import('@/pages/customer/CustomerDashboard').then(m => ({ default: m.CustomerDashboard })));
-const CustomerAttendancePage = lazy(() => import('@/pages/customer/CustomerAttendancePage').then(m => ({ default: m.CustomerAttendancePage })));
-const CustomerProfilePage = lazy(() => import('@/pages/customer/CustomerProfilePage').then(m => ({ default: m.CustomerProfilePage })));
+// student pages
+const StudentDashboard = lazy(() => import('@/pages/student/StudentDashboard').then(m => ({ default: m.studentDashboard || (m as any).StudentDashboard })));
+const StudentAttendancePage = lazy(() => import('@/pages/student/StudentAttendancePage').then(m => ({ default: m.studentAttendancePage || (m as any).StudentAttendancePage })));
+const StudentProfilePage = lazy(() => import('@/pages/student/StudentProfilePage').then(m => ({ default: m.studentProfilePage || (m as any).StudentProfilePage })));
 
 // SuperAdmin pages
 const SuperAdminDashboard = lazy(() => import('@/pages/superadmin/SuperAdminDashboard').then(m => ({ default: m.SuperAdminDashboard })));
@@ -95,8 +95,8 @@ function AppRoutes() {
         {/* OWNER ROUTES */}
         <Route path="/owner" element={<ProtectedRoute><RoleRedirect allowed={['owner']} /></ProtectedRoute>}>
           <Route index element={<OwnerDashboard />} />
-          <Route path="customers" element={<MembersPage />} />
-          <Route path="customers/:id" element={<Navigate to="/owner/customers" replace />} />
+          <Route path="students" element={<MembersPage />} />
+          <Route path="students/:id" element={<Navigate to="/owner/students" replace />} />
           <Route path="pos" element={<PosPage />} />
           <Route path="inventory" element={<Navigate to="/owner/pos?tab=inventory" replace />} />
           <Route path="purchase" element={<Navigate to="/owner/pos?tab=purchase" replace />} />
@@ -139,7 +139,7 @@ function AppRoutes() {
         {/* EMPLOYEE ROUTES */}
         <Route path="/employee" element={<ProtectedRoute><RoleRedirect allowed={['employee']} /></ProtectedRoute>}>
           <Route index element={<EmployeeDashboard />} />
-          <Route path="customers" element={<MembersPage />} />
+          <Route path="students" element={<MembersPage />} />
           <Route path="hrms" element={<EmployeeHrmsPage />} />
           <Route path="attendance" element={<Navigate to="/employee/hrms?tab=attendance" replace />} />
           <Route path="progress" element={<ProgressPage />} />
@@ -148,14 +148,14 @@ function AppRoutes() {
           <Route path="profile" element={<EmployeeProfilePage />} />
         </Route>
 
-        {/* STUDENT / CUSTOMER ROUTES */}
-        <Route path="/app" element={<ProtectedRoute><RoleRedirect allowed={['student', 'customer']} /></ProtectedRoute>}>
-          <Route index element={<CustomerDashboard />} />
-          <Route path="attendance" element={<CustomerAttendancePage />} />
+        {/* STUDENT / student ROUTES */}
+        <Route path="/app" element={<ProtectedRoute><RoleRedirect allowed={['student']} /></ProtectedRoute>}>
+          <Route index element={<StudentDashboard />} />
+          <Route path="attendance" element={<StudentAttendancePage />} />
           <Route path="progress" element={<ProgressPage />} />
           <Route path="ai-coach" element={<AiCoachPage />} />
           <Route path="history" element={<Navigate to="/app" replace />} />
-          <Route path="profile" element={<CustomerProfilePage />} />
+          <Route path="profile" element={<StudentProfilePage />} />
         </Route>
 
         {/* SUPER ADMIN ROUTES */}
@@ -170,6 +170,11 @@ function AppRoutes() {
           <Route path="support" element={<SupportDeskPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
+
+        {/* SUPER ADMIN ALIAS ROUTES (fallback for underscore path variants) */}
+        <Route path="/super_admin/settings" element={<Navigate to="/super-admin/settings" replace />} />
+        <Route path="/super_admin" element={<Navigate to="/super-admin" replace />} />
+        <Route path="/super_admin/*" element={<Navigate to="/super-admin" replace />} />
 
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>

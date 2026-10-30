@@ -13,7 +13,7 @@ from src.models.hrms import (
 )
 from src.models.employee import employeeProfile
 from src.models.payroll import PayrollInvoice
-from src.models.customer import Customer
+from src.models.student import student
 from src.models.user import User
 from src.models.biometric import BiometricLog
 from src.models.settings import Branch as vahdBranch, Setting as vahdSetting, MasterData
@@ -920,7 +920,7 @@ class HrmsService:
 
         for blog in bio_staff_logs:
             meta = blog.meta_data or {}
-            emp_id = blog.customer_id or meta.get("employee_id") or meta.get("user_id") or ""
+            emp_id = blog.student_id or meta.get("employee_id") or meta.get("user_id") or ""
             if not emp_id or emp_id in recorded_emp_ids:
                 continue
 
@@ -1039,26 +1039,26 @@ class HrmsService:
 
         user_role_upper = (user_role or "STAFF").upper()
         display_name = "User"
-        customer_id_val = None
+        student_id_val = None
 
-        if user_role_upper in ["CUSTOMER", "STUDENT", "MEMBER"]:
-            # Check Customer record
-            from src.models.customer import Customer
-            cust = db.query(Customer).filter(
-                (Customer.id == employee_id) | (Customer.user_id == employee_id) | (Customer.email.ilike(employee_id)) | (Customer.id == f"cust_{employee_id}")
+        if user_role_upper in ["student", "STUDENT", "MEMBER"]:
+            # Check student record
+            from src.models.student import student
+            cust = db.query(student).filter(
+                (student.id == employee_id) | (student.user_id == employee_id) | (student.email.ilike(employee_id)) | (student.id == f"cust_{employee_id}")
             ).first()
             if not cust:
                 user = db.query(User).filter((User.id == employee_id) | (User.email.ilike(employee_id))).first()
                 if user:
-                    cust = db.query(Customer).filter((Customer.user_id == user.id) | (Customer.email == user.email)).first()
+                    cust = db.query(student).filter((student.user_id == user.id) | (student.email == user.email)).first()
 
             if cust:
                 display_name = cust.full_name
-                customer_id_val = cust.id
+                student_id_val = cust.id
                 cust.status = "ACTIVE"
             else:
                 display_name = "Student Member"
-                customer_id_val = employee_id
+                student_id_val = employee_id
         else:
             # employee / Staff / Employee / Owner
             emp = db.query(Employee).filter(
@@ -1110,7 +1110,7 @@ class HrmsService:
                 db.flush()
 
             display_name = f"{emp.first_name} {emp.last_name or ''}".strip() or (employee.full_name if employee else emp.email)
-            customer_id_val = None
+            student_id_val = None
 
             # Record in EmployeeAttendance
             att = db.query(EmployeeAttendance).filter(
@@ -1169,7 +1169,7 @@ class HrmsService:
 
             bio_log = BiometricLog(
                 id=f"bio_{uuid.uuid4().hex[:8]}",
-                customer_id=customer_id_val,
+                student_id=student_id_val,
                 user_role=user_role_upper,
                 event_type=event_type,
                 device_type="GEOFENCE_ESS",
@@ -2072,7 +2072,7 @@ class HrmsService:
 
             for blog in bio_logs:
                 meta = blog.meta_data or {}
-                uid = str(blog.customer_id or meta.get("user_id") or meta.get("employee_id") or "")
+                uid = str(blog.student_id or meta.get("user_id") or meta.get("employee_id") or "")
                 if uid in search_ids or (blog.user_role in ["employee", "STAFF", "OWNER"] and meta.get("user_name") == full_name):
                     if blog.timestamp:
                         distinct_punch_days.add(blog.timestamp.date())

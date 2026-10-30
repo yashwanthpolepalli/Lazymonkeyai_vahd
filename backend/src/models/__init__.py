@@ -1,5 +1,5 @@
 from .user import User
-from .customer import Customer
+from .student import student
 from .membership import Membership
 from .biometric import BiometricLog
 from .biometric_device import BiometricDevice
@@ -22,7 +22,7 @@ from .super_admin import SaaSPlan, PlatformAuditLog, AiJobLog, PlatformSetting, 
 
 from .inventory import ProductCategory, Brand, UnitOfMeasure, Product, MasterCatalogProduct, StockMovement
 from .pos import PosTransaction, PosSession
-from .erp import Company, CustomerReview
+from .erp import Company, studentReview
 from .procurement import (
     Supplier, PurchaseRequest, PurchaseQuotation, PurchaseOrder,
     GoodsReceivedNote, PurchaseReturn, VendorBill, VendorPayment,
@@ -34,7 +34,7 @@ from .employee_report import EmployeeAttendanceReportLog
 __all__ = [
     "StudentAttendanceReportLog",
     "EmployeeAttendanceReportLog",
-    "User", "Customer", "Membership",
+    "User", "student", "Membership",
     "BiometricLog", "BiometricDevice",
     "employeeProfile", "EmployeeProfile", "PayrollInvoice", "MembershipPlan",
     "Branch", "Setting", "vahdBranch", "vahdSetting", "PaymentMethod", "FeatureControl", "MasterData",
@@ -48,7 +48,7 @@ __all__ = [
     "PlatformAlert", "AiModelRouting",
     "ProductCategory", "Brand", "UnitOfMeasure", "Product", "MasterCatalogProduct", "StockMovement",
     "PosTransaction", "PosSession",
-    "Company", "CustomerReview",
+    "Company", "studentReview",
     "Supplier", "PurchaseRequest", "PurchaseQuotation", "PurchaseOrder",
     "GoodsReceivedNote", "PurchaseReturn", "VendorBill", "VendorPayment",
     "DebitNote", "CreditNote"

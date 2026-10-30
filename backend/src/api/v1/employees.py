@@ -68,20 +68,20 @@ def delete_employee(employee_id: str, db: Session = Depends(get_db)):
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
-@router.get("/{employee_id}/customers")
-def get_employee_customers(employee_id: str, db: Session = Depends(get_db)):
+@router.get("/{employee_id}/students")
+def get_employee_students(employee_id: str, db: Session = Depends(get_db)):
     """
-    Returns all customers/members assigned to a specific employee.
+    Returns all students/members assigned to a specific employee.
     """
-    return PayrollService.get_employee_customers(db, employee_id)
+    return PayrollService.get_employee_students(db, employee_id)
 
-@router.post("/{employee_id}/assign-customer/{customer_id}")
-def assign_customer_to_employee(employee_id: str, customer_id: str, db: Session = Depends(get_db)):
+@router.post("/{employee_id}/assign-student/{student_id}")
+def assign_student_to_employee(employee_id: str, student_id: str, db: Session = Depends(get_db)):
     """
-    Assigns or reassigns a vahd customer to a specific employee.
+    Assigns or reassigns a vahd student to a specific employee.
     """
     try:
-        return PayrollService.assign_customer(db, employee_id, customer_id)
+        return PayrollService.assign_student(db, employee_id, student_id)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -93,7 +93,7 @@ def enroll_employee_biometrics(payload: BiometricEnrollmentRequest, db: Session 
     try:
         return BiometricService.enroll_biometrics(
             db=db,
-            customer_id=payload.customer_id,
+            student_id=payload.student_id,
             face_image_base64=payload.face_image_base64,
             fingerprint_template=payload.fingerprint_template,
             rfid_card_number=payload.rfid_card_number,

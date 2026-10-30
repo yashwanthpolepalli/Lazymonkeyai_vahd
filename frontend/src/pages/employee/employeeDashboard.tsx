@@ -19,7 +19,7 @@ export function EmployeeDashboard() {
   useEffect(() => {
     Promise.all([
       api.dashboard.employeeKpis().catch(() => []),
-      api.customers.list().catch(() => []),
+      api.students.list().catch(() => []),
       api.aiCoach.recommendations().catch(() => []),
     ]).then(([k, m, recs]) => {
       setKpis(k);
@@ -56,7 +56,7 @@ export function EmployeeDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           <div className="card p-5">
-            <h3 className="text-base font-bold text-navy-900 mb-4">Customer Attendance & Progress</h3>
+            <h3 className="text-base font-bold text-navy-900 mb-4">student Attendance & Progress</h3>
             {loading ? <Skeleton className="h-48 w-full" /> : (() => {
               const progressData = members.length > 0
                 ? members.map((m) => Number(m.attendance) || 0)
@@ -78,9 +78,9 @@ export function EmployeeDashboard() {
 
         <div className="space-y-6">
           <div className="card p-5">
-            <h3 className="text-base font-bold text-navy-900 mb-4">Assigned Customers</h3>
+            <h3 className="text-base font-bold text-navy-900 mb-4">Assigned students</h3>
             {loading ? <Skeleton className="h-48 w-full" /> : members.length === 0 ? (
-              <EmptyState title="No Assigned Customers" description="Customers assigned to your employee profile will appear here." icon="users" />
+              <EmptyState title="No Assigned students" description="students assigned to your employee profile will appear here." icon="users" />
             ) : (
               <div className="space-y-2">
                 {members.map((m) => (

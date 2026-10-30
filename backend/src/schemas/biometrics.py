@@ -25,7 +25,7 @@ class BiometricDeviceCreate(BaseModel):
 
 
 class BiometricCheckinCreate(BaseModel):
-    customer_id: str = Field(..., min_length=1)
+    student_id: str = Field(..., min_length=1)
     event_type: str = Field(..., min_length=1)
     device_id: str = Field(..., min_length=1)
     direction: str = Field(default="CHECK_IN")

@@ -4,7 +4,7 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from src.models.settings import vahdBranch, vahdSetting, PaymentMethod, MasterData
 from src.models.hrms import Department, Designation
-from src.models.customer import Customer
+from src.models.student import student
 from src.models.biometric_device import BiometricDevice
 
 class SettingsService:
@@ -31,7 +31,7 @@ class SettingsService:
                 if current_user.branch_id:
                     branch_conditions.append(vahdBranch.id == current_user.branch_id)
                 query = query.filter(or_(*branch_conditions))
-            elif role in ["employee", "STAFF", "CUSTOMER", "MEMBER"]:
+            elif role in ["employee", "STAFF", "student", "MEMBER"]:
                 if current_user.branch_id:
                     query = query.filter(vahdBranch.id == current_user.branch_id)
 
@@ -39,8 +39,8 @@ class SettingsService:
 
         if not branches and not current_user:
             distinct_locs = (
-                db.query(Customer.primary_vahd_location)
-                .filter(Customer.primary_vahd_location.isnot(None))
+                db.query(student.primary_vahd_location)
+                .filter(student.primary_vahd_location.isnot(None))
                 .distinct()
                 .all()
             )
@@ -58,9 +58,9 @@ class SettingsService:
 
         result = []
         for b in branches:
-            member_count = db.query(Customer).filter(
-                (Customer.branch_id == b.id) | 
-                (Customer.primary_vahd_location.ilike(f"%{b.branch_name}%"))
+            member_count = db.query(student).filter(
+                (student.branch_id == b.id) | 
+                (student.primary_vahd_location.ilike(f"%{b.branch_name}%"))
             ).count()
             device_count = db.query(BiometricDevice).filter(BiometricDevice.location.ilike(f"%{b.branch_name}%")).count()
 

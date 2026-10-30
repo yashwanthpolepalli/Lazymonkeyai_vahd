@@ -1,40 +1,40 @@
 import { apiClient } from './apiClient';
 import type {
-  CustomerProfile,
-  CustomerDashboardData,
-  CustomerAttendanceData,
-  CustomerBiometricStatus,
+  studentProfile,
+  studentDashboardData,
+  studentAttendanceData,
+  studentBiometricStatus,
   AICoachRecommendation,
-} from '@/types/customer';
+} from '@/types/student';
 
-export const customerApi = {
-  getProfile: (): Promise<CustomerProfile> =>
-    apiClient.get<CustomerProfile>('/customer/me'),
+export const studentApi = {
+  getProfile: (): Promise<studentProfile> =>
+    apiClient.get<studentProfile>('/student/me'),
 
-  updateProfile: (data: Partial<CustomerProfile>): Promise<{ status: string; message: string }> =>
-    apiClient.patch<{ status: string; message: string }>('/customer/me', data),
+  updateProfile: (data: Partial<studentProfile>): Promise<{ status: string; message: string }> =>
+    apiClient.patch<{ status: string; message: string }>('/student/me', data),
 
-  getDashboard: (): Promise<CustomerDashboardData> =>
-    apiClient.get<CustomerDashboardData>('/customer/dashboard'),
+  getDashboard: (): Promise<studentDashboardData> =>
+    apiClient.get<studentDashboardData>('/student/dashboard'),
 
-  getAttendance: (): Promise<CustomerAttendanceData> =>
-    apiClient.get<CustomerAttendanceData>('/customer/attendance'),
+  getAttendance: (): Promise<studentAttendanceData> =>
+    apiClient.get<studentAttendanceData>('/student/attendance'),
 
   clearAttendanceLogs: (): Promise<{ status: string; message: string }> =>
-    apiClient.delete<{ status: string; message: string }>('/customer/attendance/logs'),
+    apiClient.delete<{ status: string; message: string }>('/student/attendance/logs'),
 
-  getBiometricStatus: (): Promise<CustomerBiometricStatus> =>
-    apiClient.get<CustomerBiometricStatus>('/customer/biometric-status'),
+  getBiometricStatus: (): Promise<studentBiometricStatus> =>
+    apiClient.get<studentBiometricStatus>('/student/biometric-status'),
 
   getAICoachRecommendation: (): Promise<AICoachRecommendation> =>
-    apiClient.get<AICoachRecommendation>('/customer/ai/recommendation'),
+    apiClient.get<AICoachRecommendation>('/student/ai/recommendation'),
 
   // Face ID Biometric Methods
-  getFaceStatus: (): Promise<{ customer_id: string; is_enrolled: boolean; face_image?: string | null; full_name?: string; enrolled_at?: string | null }> =>
-    apiClient.get('/customer/face/status'),
+  getFaceStatus: (): Promise<{ student_id: string; is_enrolled: boolean; face_image?: string | null; full_name?: string; enrolled_at?: string | null }> =>
+    apiClient.get('/student/face/status'),
 
   registerFace: (payload: { face_image_base64: string }): Promise<{ status: string; message: string; is_enrolled: boolean; face_image?: string }> =>
-    apiClient.post('/customer/face/register', payload),
+    apiClient.post('/student/face/register', payload),
 
   verifyFace: (payload: {
     live_image_base64: string;
@@ -47,5 +47,5 @@ export const customerApi = {
     confidence_score?: number;
     [key: string]: any;
   }): Promise<{ status: string; match: boolean; confidence: number; confidence_percentage: string; message: string; action: string; time: string; punch?: any }> =>
-    apiClient.post('/customer/face/verify', payload),
+    apiClient.post('/student/face/verify', payload),
 };

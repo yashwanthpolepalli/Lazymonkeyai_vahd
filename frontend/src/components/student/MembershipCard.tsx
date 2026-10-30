@@ -1,8 +1,8 @@
 import { Icon } from '@/components/ui/Icon';
 import { Badge } from '@/components/ui/Badge';
-import type { CustomerMembership } from '@/types/customer';
+import type { studentMembership } from '@/types/student';
 
-export function MembershipCard({ membership }: { membership?: CustomerMembership | null }) {
+export function MembershipCard({ membership }: { membership?: studentMembership | null }) {
   const status = (membership?.status || 'Inactive').toLowerCase();
   const isActive = status === 'active';
   const planName = membership?.plan_name || 'No Active Plan';

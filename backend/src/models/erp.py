@@ -44,14 +44,14 @@ class Company(Base):
     updated_at = Column(DateTime, default=now_ist_naive, onupdate=now_ist_naive)
 
 
-class CustomerReview(Base):
-    __tablename__ = "customer_reviews"
+class studentReview(Base):
+    __tablename__ = "student_reviews"
 
     id = Column(String, primary_key=True, index=True, default=lambda: f"rev_{uuid.uuid4().hex[:8]}")
     company_id = Column(String, nullable=True, index=True)
-    customer_id = Column(String, nullable=True, index=True)
-    customer_name = Column(String, nullable=False)
-    customer_phone = Column(String, nullable=True)
+    student_id = Column(String, nullable=True, index=True)
+    student_name = Column(String, nullable=False)
+    student_phone = Column(String, nullable=True)
     rating = Column(Integer, default=5)
     review_text = Column(Text, nullable=False)
     sentiment = Column(String, default="Positive")  # Positive, Neutral, Negative

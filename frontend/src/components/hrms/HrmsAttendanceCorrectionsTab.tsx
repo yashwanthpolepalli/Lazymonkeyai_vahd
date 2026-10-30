@@ -7,7 +7,7 @@ import {
   type AttendanceCorrectionStats,
   type EmployeeItem,
 } from '@/services/hrmsApi';
-import { membersApi, type CustomerView } from '@/services/membersApi';
+import { membersApi, type studentView } from '@/services/membersApi';
 
 interface HrmsAttendanceCorrectionsTabProps {
   onSuccessToast?: (msg: string) => void;
@@ -45,7 +45,7 @@ export function HrmsAttendanceCorrectionsTab({ onSuccessToast }: HrmsAttendanceC
 
   // Directory for quick selection in modal
   const [employees, setEmployees] = useState<EmployeeItem[]>([]);
-  const [students, setStudents] = useState<CustomerView[]>([]);
+  const [students, setStudents] = useState<studentView[]>([]);
 
   // Modals
   const [showAddModal, setShowAddModal] = useState<boolean>(false);
@@ -82,7 +82,7 @@ export function HrmsAttendanceCorrectionsTab({ onSuccessToast }: HrmsAttendanceC
   // Fetch real employees and students for dropdown selection
   useEffect(() => {
     hrmsApi.getEmployees().then(setEmployees).catch(() => setEmployees([]));
-    membersApi.getCustomers().then(setStudents).catch(() => setStudents([]));
+    membersApi.getstudents().then(setStudents).catch(() => setStudents([]));
   }, []);
 
   // Fetch correction records & statistics

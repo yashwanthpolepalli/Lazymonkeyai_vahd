@@ -46,24 +46,43 @@ export const PERMISSION_MATRIX_CONFIG: MatrixGroup[] = [
     id: 'dashboard',
     title: 'Dashboard',
     rows: [
-      { key: 'dashboard', label: 'Dashboard', actions: ['view'] },
+      { key: 'dashboard', label: 'Dashboard Overview', actions: ['view'] },
       { key: 'dashboard_analytics', label: 'Financial & Ops KPIs', actions: ['view'] },
       { key: 'dashboard_attendance_stream', label: 'Live Attendance Stream', actions: ['view'] },
     ],
   },
   {
-    id: 'hrms',
-    title: 'HRMS',
+    id: 'hrms_employees',
+    title: 'HRMS · Employee Management',
     rows: [
       { key: 'hrms_section', label: 'HRMS section (nav)', actions: ['view'] },
-      { key: 'hrms_overview', label: 'HRMS Overview', actions: ['view'] },
-      { key: 'employee_details', label: 'Employee details', actions: ['view', 'add', 'edit', 'delete'] },
-      { key: 'attendance', label: 'Attendance', actions: ['view', 'add', 'edit', 'delete'] },
-      { key: 'attendance_approve', label: 'Attendance Approve', actions: ['view', 'add', 'edit', 'delete'] },
-      { key: 'absent_employees', label: 'Absent Employees', actions: ['view', 'add', 'edit', 'delete'] },
-      { key: 'attendance_report', label: 'Attendance report', actions: ['view'] },
-      { key: 'leave_management', label: 'Leave management', actions: ['view', 'add', 'edit', 'delete'] },
+      { key: 'employee_details', label: 'Employee Directory & Profiles', actions: ['view', 'add', 'edit', 'delete', 'import'] },
+      { key: 'hrms_departments', label: 'HRMS Departments', actions: ['view', 'add', 'edit', 'delete'] },
+      { key: 'hrms_designations', label: 'HRMS Designations', actions: ['view', 'add', 'edit', 'delete'] },
+      { key: 'hrms_teams', label: 'Functional Teams', actions: ['view', 'add', 'edit', 'delete'] },
+      { key: 'hrms_documents', label: 'Employee Documents & KYC', actions: ['view', 'add', 'delete'] },
+    ],
+  },
+  {
+    id: 'hrms_attendance',
+    title: 'HRMS · Attendance & Biometrics',
+    rows: [
+      { key: 'attendance', label: 'Daily Attendance', actions: ['view', 'add', 'edit', 'delete'] },
+      { key: 'geofence_portal', label: 'Attendance & Geofence Portal', actions: ['view', 'edit'] },
+      { key: 'biometrics', label: 'Biometric Turnstile Logs', actions: ['view'] },
+      { key: 'face_recognition', label: 'Face Recognition Logs', actions: ['view'] },
+      { key: 'gps_attendance', label: 'GPS Field Attendance', actions: ['view'] },
+      { key: 'shift_attendance', label: 'Shift & Timetable Attendance', actions: ['view', 'add', 'edit'] },
+      { key: 'attendance_corrections', label: 'Attendance Corrections & Approvals', actions: ['view', 'add', 'edit', 'delete'] },
+    ],
+  },
+  {
+    id: 'hrms_lifecycle',
+    title: 'HRMS · Leave, Payroll & Exit',
+    rows: [
+      { key: 'leave_management', label: 'Leave Management & Balances', actions: ['view', 'add', 'edit', 'delete'] },
       { key: 'payroll', label: 'Payroll & Salary Slips', actions: ['view', 'add', 'edit'] },
+      { key: 'exit_management', label: 'Resignation & Exit Management', actions: ['view', 'add', 'edit'] },
     ],
   },
   {
@@ -71,28 +90,45 @@ export const PERMISSION_MATRIX_CONFIG: MatrixGroup[] = [
     title: 'Students & Enrollment',
     rows: [
       { key: 'students_section', label: 'Students section (nav)', actions: ['view'] },
-      { key: 'student_details', label: 'Student details & list', actions: ['view', 'add', 'edit', 'delete'] },
-      { key: 'student_enrollment', label: 'Student Enrollment', actions: ['view', 'add'] },
-      { key: 'student_attendance', label: 'Student Attendance', actions: ['view', 'add', 'edit'] },
+      { key: 'student_details', label: 'Student Directory & Records', actions: ['view', 'add', 'edit', 'delete', 'import'] },
+      { key: 'student_enrollment', label: 'Student Enrollment Form', actions: ['view', 'add'] },
+      { key: 'student_attendance', label: 'Student Attendance Records', actions: ['view', 'add', 'edit'] },
     ],
   },
   {
-    id: 'pos',
-    title: 'POS & Billing / Inventory',
+    id: 'settings_locations',
+    title: 'Settings · Locations & Demographics Master',
     rows: [
-      { key: 'pos_billing', label: 'POS Billing Terminal', actions: ['view', 'add'] },
-      { key: 'invoices', label: 'Invoices & Receipts', actions: ['view', 'add', 'delete'] },
-      { key: 'inventory', label: 'Inventory & Stock', actions: ['view', 'add', 'edit', 'delete', 'import'] },
-      { key: 'procurement', label: 'Procurement & Indents', actions: ['view', 'add', 'edit'] },
+      { key: 'districts', label: 'Districts Master', actions: ['view', 'add', 'edit', 'delete', 'import'] },
+      { key: 'mandals', label: 'Mandals Master', actions: ['view', 'add', 'edit', 'delete', 'import'] },
+      { key: 'towns', label: 'Villages / Towns Master', actions: ['view', 'add', 'edit', 'delete', 'import'] },
+      { key: 'gender_types', label: 'Gender Types', actions: ['view', 'add', 'edit', 'delete'] },
+      { key: 'blood_groups', label: 'Blood Groups', actions: ['view', 'add', 'edit', 'delete'] },
+      { key: 'castes', label: 'Castes & Categories', actions: ['view', 'add', 'edit', 'delete'] },
     ],
   },
   {
-    id: 'payments',
-    title: 'Payments & Fee Collection',
+    id: 'settings_academic',
+    title: 'Settings · Academic & Organization Masters',
     rows: [
-      { key: 'payments_section', label: 'Payments section (nav)', actions: ['view'] },
-      { key: 'fee_collection', label: 'Fee Collection', actions: ['view', 'add'] },
-      { key: 'transactions', label: 'Transaction History', actions: ['view'] },
+      { key: 'institution_types', label: 'Type of Institution', actions: ['view', 'add', 'edit', 'delete'] },
+      { key: 'departments', label: 'Departments Master', actions: ['view', 'add', 'edit', 'delete', 'import'] },
+      { key: 'designations', label: 'Designations Master', actions: ['view', 'add', 'edit', 'delete', 'import'] },
+      { key: 'roles', label: 'System Roles Master', actions: ['view', 'add', 'edit', 'delete'] },
+      { key: 'qualifications', label: 'Qualifications Master', actions: ['view', 'add', 'edit', 'delete'] },
+      { key: 'specializations', label: 'Specializations Master', actions: ['view', 'add', 'edit', 'delete'] },
+      { key: 'leave_reasons', label: 'Leave Reasons Master', actions: ['view', 'add', 'edit', 'delete'] },
+    ],
+  },
+  {
+    id: 'settings_general',
+    title: 'Settings · Configurations & Feature Controls',
+    rows: [
+      { key: 'settings_section', label: 'Settings section (nav)', actions: ['view'] },
+      { key: 'courses', label: 'Courses & Academic Plans', actions: ['view', 'add', 'edit', 'delete'] },
+      { key: 'general', label: 'General Branch / Institution Profile', actions: ['view', 'edit'] },
+      { key: 'erp', label: 'ERP & Google Reviews Sync', actions: ['view', 'edit'] },
+      { key: 'permissions', label: 'Owner Permissions Management', actions: ['view', 'edit'] },
     ],
   },
   {
@@ -103,16 +139,6 @@ export const PERMISSION_MATRIX_CONFIG: MatrixGroup[] = [
       { key: 'reports_attendance', label: 'Attendance & Operational Reports', actions: ['view', 'import'] },
       { key: 'reports_financial', label: 'Financial Reports & Exports', actions: ['view', 'import'] },
       { key: 'audit_logs', label: 'Audit Logs & Security', actions: ['view'] },
-    ],
-  },
-  {
-    id: 'settings',
-    title: 'Settings & Masters',
-    rows: [
-      { key: 'settings_section', label: 'Settings section (nav)', actions: ['view'] },
-      { key: 'branch_profile', label: 'Branch Profile', actions: ['view', 'edit'] },
-      { key: 'courses', label: 'Courses & Academic Plans', actions: ['view', 'add', 'edit', 'delete'] },
-      { key: 'master_data', label: 'Master Data (Districts, Mandals, Roles)', actions: ['view', 'add', 'edit', 'delete', 'import'] },
     ],
   },
 ];
@@ -391,8 +417,6 @@ export function OwnerPermissionsTab({ onBack }: Props) {
         updated[rowKey] = nextVal;
         if (rowKey === 'hrms_section') updated['hrms.view'] = nextVal;
         if (rowKey === 'students_section') updated['students.view'] = nextVal;
-        if (rowKey === 'pos_billing') updated['pos.view'] = nextVal;
-        if (rowKey === 'payments_section') updated['payments.view'] = nextVal;
         if (rowKey === 'reports_section') updated['reports.view'] = nextVal;
         if (rowKey === 'settings_section') updated['settings.view'] = nextVal;
       }

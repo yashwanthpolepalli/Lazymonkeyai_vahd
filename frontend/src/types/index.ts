@@ -30,7 +30,7 @@ export interface AttentionItem {
   severity: 'high' | 'medium' | 'low';
 }
 
-export interface CustomerRadar {
+export interface studentRadar {
   highRisk: number;
   attention: number;
   healthy: number;
@@ -44,7 +44,7 @@ export interface RevenueData {
   membershipSales: number[];
   posRevenue: number[];
   renewals: number[];
-  newCustomers: number[];
+  newstudents: number[];
   churn: number[];
 }
 

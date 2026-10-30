@@ -14,7 +14,7 @@ import { formatDateDDMMYY } from '@/utils/date';
 
 const tabs = ['Overview', 'Attendance', 'Membership', 'Payments', 'Progress', 'Notes'];
 
-export function Customer360Page() {
+export function student360Page() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [member, setMember] = useState<Member | null>(null);
@@ -24,14 +24,14 @@ export function Customer360Page() {
 
   useEffect(() => {
     if (!id) return;
-    api.customers.get(id).then((data) => {
+    api.students.get(id).then((data) => {
       if (!data) setNotFound(true);
       else setMember(data);
       setLoading(false);
     });
   }, [id]);
 
-  if (notFound) return <ErrorState title="Member not found" description="This member may have been removed." onRetry={() => navigate('/owner/customers')} />;
+  if (notFound) return <ErrorState title="Member not found" description="This member may have been removed." onRetry={() => navigate('/owner/students')} />;
   if (loading) return <div className="space-y-4"><Skeleton className="h-32 w-full" /><Skeleton className="h-64 w-full" /></div>;
   if (!member) return null;
 
@@ -40,11 +40,11 @@ export function Customer360Page() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Customer 360"
-        breadcrumb={['Owner', 'Customers', member.name]}
+        title="student 360"
+        breadcrumb={['Owner', 'students', member.name]}
         actions={
           <div className="flex items-center gap-3">
-            <button onClick={() => navigate('/owner/customers')} className="btn-secondary">
+            <button onClick={() => navigate('/owner/students')} className="btn-secondary">
               <Icon name="chevron-left" size={16} /> Back
             </button>
           </div>

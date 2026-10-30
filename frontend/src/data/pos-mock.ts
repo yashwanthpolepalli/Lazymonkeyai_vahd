@@ -1,6 +1,6 @@
-import { 
-  Monitor, ShoppingCart, TrendingUp, Users, CreditCard, Store, 
-  Settings, Bot, Tag, Smartphone, Coffee, ShoppingBag, Heart, 
+import {
+  Monitor, ShoppingCart, TrendingUp, Users, CreditCard, Store,
+  Settings, Bot, Tag, Smartphone, Coffee, ShoppingBag, Heart,
   Home, Wrench, Gift, Package, RefreshCw
 } from "lucide-react";
 import { useCurrency } from "@/hooks/use-currency";
@@ -24,7 +24,7 @@ export const posSession = {
   registerId: "REG-04-FRONT",
   openedAt: new Date(new Date().setHours(8, 0, 0, 0)).toISOString(),
   openingFloat: 500.00,
-  expectedCash: 0, 
+  expectedCash: 0,
   productivity: { itemsScannedPerMin: 14, avgCheckoutTime: "1m 12s" }
 };
 
@@ -99,7 +99,7 @@ const generateProducts = (count: number) => {
     const sellingPrice = parseFloat((purchasePrice * (1 + marginPercent / 100)).toFixed(2));
     const hasDiscount = Math.random() > 0.7;
     const discount = hasDiscount ? parseFloat((mrp - sellingPrice).toFixed(2)) : 0;
-    
+
     products.push({
       id: `P${i.toString().padStart(5, '0')}`,
       name: `${brand} Premium ${cat.name.split(' ')[0]} ${i}`,
@@ -109,7 +109,7 @@ const generateProducts = (count: number) => {
       shortDesc: `High quality ${cat.name.toLowerCase()} product for enterprise retail.`,
       longDesc: `This is a premium ${cat.name.toLowerCase()} item sourced directly from ${suppliers[i % suppliers.length]}. It features top-of-the-line specifications and a reliable warranty.`,
       barcode: `890${i.toString().padStart(9, '0')}`,
-      sku: `${cat.name.substring(0,3).toUpperCase()}-${brand.substring(0,3).toUpperCase()}-${i}`,
+      sku: `${cat.name.substring(0, 3).toUpperCase()}-${brand.substring(0, 3).toUpperCase()}-${i}`,
       batch: `BTH-${new Date().getFullYear()}-${Math.floor(Math.random() * 12) + 1}`,
       expiry: Math.random() > 0.5 ? new Date(new Date().getTime() + Math.random() * 31536000000).toISOString().split('T')[0] : null,
       warranty: `${Math.floor(Math.random() * 3) + 1} Years`,
@@ -137,12 +137,12 @@ const generateProducts = (count: number) => {
 
 export const posProducts = generateProducts(300);
 
-// --- CUSTOMERS ---
-const generateCustomers = (count: number) => {
-  const customers: any[] = [
-    { id: "walk-in", name: "Walk-in Customer", phone: "", points: 0, tier: "None", wallet: 0, creditLimit: 0, aiChurnRisk: "Low" }
+// --- studentS ---
+const generatestudents = (count: number) => {
+  const students: any[] = [
+    { id: "walk-in", name: "Walk-in student", phone: "", points: 0, tier: "None", wallet: 0, creditLimit: 0, aiChurnRisk: "Low" }
   ];
-  
+
   const firstNames = ["James", "Mary", "Robert", "Patricia", "John", "Jennifer", "Michael", "Linda", "William", "Elizabeth", "David", "Barbara", "Richard", "Susan", "Joseph", "Jessica", "Thomas", "Sarah", "Charles", "Karen"];
   const lastNames = ["Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller", "Davis", "Rodriguez", "Martinez", "Hernandez", "Lopez", "Gonzalez", "Wilson", "Anderson", "Thomas", "Taylor", "Moore", "Jackson", "Martin"];
   const tiers = ["Bronze", "Silver", "Gold", "Platinum"];
@@ -150,7 +150,7 @@ const generateCustomers = (count: number) => {
   for (let i = 1; i <= count; i++) {
     const fname = firstNames[Math.floor(Math.random() * firstNames.length)];
     const lname = lastNames[Math.floor(Math.random() * lastNames.length)];
-    customers.push({
+    students.push({
       id: `CUST${i.toString().padStart(5, '0')}`,
       name: `${fname} ${lname}`,
       phone: `+1 (555) ${Math.floor(Math.random() * 900) + 100}-${Math.floor(Math.random() * 9000) + 1000}`,
@@ -165,10 +165,10 @@ const generateCustomers = (count: number) => {
       lastVisit: new Date(new Date().getTime() - Math.random() * 30 * 86400000).toISOString()
     });
   }
-  return customers;
+  return students;
 };
 
-export const posCustomers = generateCustomers(500);
+export const posstudents = generatestudents(500);
 
 // --- PAYMENT METHODS ---
 export const paymentMethods = [
@@ -185,9 +185,9 @@ export const paymentMethods = [
 export const generateTransactions = (count: number) => {
   const transactions = [];
   const now = new Date();
-  
+
   for (let i = 0; i < count; i++) {
-    const isRecent = i < (count * 0.2); 
+    const isRecent = i < (count * 0.2);
     const isToday = i < (count * 0.05);
     let timeOffset;
     if (isToday) timeOffset = Math.random() * 12 * 3600000;
@@ -195,17 +195,17 @@ export const generateTransactions = (count: number) => {
     else timeOffset = Math.random() * 365 * 86400000;
 
     const date = new Date(now.getTime() - timeOffset);
-    
+
     const itemCount = Math.floor(Math.random() * 6) + 1;
     const items = [];
     let subtotal = 0;
     let totalDiscount = 0;
-    
+
     for (let j = 0; j < itemCount; j++) {
       const product = posProducts[Math.floor(Math.random() * posProducts.length)];
       const qty = Math.floor(Math.random() * 3) + 1;
       const lineDiscount = Math.random() > 0.8 ? product.discount * qty : 0;
-      
+
       items.push({
         productId: product.id,
         name: product.name,
@@ -218,24 +218,24 @@ export const generateTransactions = (count: number) => {
       subtotal += product.sellingPrice * qty;
       totalDiscount += lineDiscount;
     }
-    
+
     const tax = (subtotal - totalDiscount) * 0.05;
     const grandTotal = subtotal - totalDiscount + tax;
-    const customer = Math.random() > 0.4 ? posCustomers[Math.floor(Math.random() * posCustomers.length)] : posCustomers[0];
+    const student = Math.random() > 0.4 ? posstudents[Math.floor(Math.random() * posstudents.length)] : posstudents[0];
     const paymentMethod = paymentMethods[Math.floor(Math.random() * paymentMethods.length)];
-    
+
     const isRefund = Math.random() > 0.95;
 
     transactions.push({
-      id: `TRX-${date.getFullYear()}${(date.getMonth()+1).toString().padStart(2,'0')}${date.getDate().toString().padStart(2,'0')}-${i.toString().padStart(5, '0')}`,
+      id: `TRX-${date.getFullYear()}${(date.getMonth() + 1).toString().padStart(2, '0')}${date.getDate().toString().padStart(2, '0')}-${i.toString().padStart(5, '0')}`,
       date: date.toISOString(),
       items,
       subtotal: parseFloat(subtotal.toFixed(2)),
       tax: parseFloat(tax.toFixed(2)),
       discount: parseFloat(totalDiscount.toFixed(2)),
       total: parseFloat(grandTotal.toFixed(2)),
-      customerId: customer.id,
-      customerName: customer.name,
+      studentId: student.id,
+      studentName: student.name,
       paymentMethod: paymentMethod.id,
       status: isRefund ? "Refunded" : "Completed",
       cashier: posSession.cashier,
@@ -243,7 +243,7 @@ export const generateTransactions = (count: number) => {
       aiFraudScore: Math.floor(Math.random() * 100)
     });
   }
-  
+
   return transactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 };
 
@@ -254,12 +254,12 @@ export const posDashboardStats = (() => {
   const today = new Date().toDateString();
   const todayTxs = posTransactions.filter(t => new Date(t.date).toDateString() === today);
   const completedTxs = todayTxs.filter(t => t.status === "Completed");
-  
+
   const stats = {
     todayRevenue: completedTxs.reduce((sum, t) => sum + t.total, 0),
     todayOrders: completedTxs.length,
-    todayCustomers: new Set(completedTxs.map(t => t.customerId)).size,
-    avgBill: 0, 
+    todaystudents: new Set(completedTxs.map(t => t.studentId)).size,
+    avgBill: 0,
     refunds: todayTxs.filter(t => t.status === "Refunded").reduce((sum, t) => sum + t.total, 0),
     refundCount: todayTxs.filter(t => t.status === "Refunded").length,
     taxCollected: completedTxs.reduce((sum, t) => sum + t.tax, 0),

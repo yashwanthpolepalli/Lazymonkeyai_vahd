@@ -1,8 +1,8 @@
 import { Icon } from '@/components/ui/Icon';
 import { Badge } from '@/components/ui/Badge';
-import type { CustomerBiometricStatus } from '@/types/customer';
+import type { studentBiometricStatus } from '@/types/student';
 
-export function BiometricStatus({ biometric }: { biometric: CustomerBiometricStatus }) {
+export function BiometricStatus({ biometric }: { biometric: studentBiometricStatus }) {
   if (!biometric) return null;
 
   const faceStatus = biometric.face_recognition?.status;

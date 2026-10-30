@@ -11,9 +11,9 @@ class PosTransaction(Base):
     id = Column(String, primary_key=True, index=True, default=lambda: f"pos_{uuid.uuid4().hex[:8]}")
     invoice_number = Column(String(100), unique=True, index=True, nullable=False)
     session_id = Column(String(100), nullable=True)
-    customer_id = Column(String, nullable=True, index=True)
-    customer_name = Column(String(255), default="Walk-in Customer")
-    customer_phone = Column(String(50), nullable=True)
+    student_id = Column(String, nullable=True, index=True)
+    student_name = Column(String(255), default="Walk-in student")
+    student_phone = Column(String(50), nullable=True)
 
     subtotal = Column(Float, default=0.0)
     tax_total = Column(Float, default=0.0)

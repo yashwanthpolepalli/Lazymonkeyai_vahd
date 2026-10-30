@@ -3,6 +3,7 @@ import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/utils/cn';
 import { hrmsApi } from '@/services/hrmsApi';
 import { masterDataApi } from '@/services/masterDataApi';
+import { useAuth } from '@/context/AuthContext';
 
 export interface MasterDataItem {
   id: string;
@@ -86,6 +87,10 @@ export interface MasterDataSettingsProps {
 }
 
 export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }: MasterDataSettingsProps = {}) {
+  const { user } = useAuth();
+  const isHo = user?.role === 'ho';
+  const perms = user?.permissions;
+
   const [selectedCatId, setSelectedCatId] = useState<string | null>(propSelectedCatId || null);
 
   useEffect(() => {
@@ -220,6 +225,30 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
   const selectedCategory = useMemo(() => {
     return MASTER_CATEGORIES.find((c) => c.id === selectedCatId) || null;
   }, [selectedCatId]);
+
+  const canAdd = useMemo(() => {
+    if (isHo || !perms || Object.keys(perms).length === 0) return true;
+    if (!selectedCategory) return true;
+    return !!(perms[`${selectedCategory.id}.add`] || perms['master_data.add'] || perms['master_data.edit']);
+  }, [isHo, perms, selectedCategory]);
+
+  const canEdit = useMemo(() => {
+    if (isHo || !perms || Object.keys(perms).length === 0) return true;
+    if (!selectedCategory) return true;
+    return !!(perms[`${selectedCategory.id}.edit`] || perms['master_data.edit']);
+  }, [isHo, perms, selectedCategory]);
+
+  const canDelete = useMemo(() => {
+    if (isHo || !perms || Object.keys(perms).length === 0) return true;
+    if (!selectedCategory) return true;
+    return !!(perms[`${selectedCategory.id}.delete`] || perms['master_data.delete']);
+  }, [isHo, perms, selectedCategory]);
+
+  const canImport = useMemo(() => {
+    if (isHo || !perms || Object.keys(perms).length === 0) return true;
+    if (!selectedCategory) return true;
+    return !!(perms[`${selectedCategory.id}.import`] || perms['master_data.import'] || perms['master_data.add']);
+  }, [isHo, perms, selectedCategory]);
 
   const categoryItems = useMemo(() => {
     if (!selectedCatId) return [];
@@ -876,85 +905,99 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
             </button>
 
             {/* Import Button */}
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="px-3.5 py-1.5 rounded-xl border border-blue-200 bg-blue-50/70 hover:bg-blue-100/80 text-blue-700 dark:text-blue-400 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
-            >
-              <Icon name="upload" size={13} />
-              <span>Import Excel / CSV</span>
-            </button>
+            {canImport && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="px-3.5 py-1.5 rounded-xl border border-blue-200 bg-blue-50/70 hover:bg-blue-100/80 text-blue-700 dark:text-blue-400 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                >
+                  <Icon name="upload" size={13} />
+                  <span>Import Excel / CSV</span>
+                </button>
 
-            {/* Sample Files */}
-            <button
-              type="button"
-              onClick={handleDownloadSampleCsv}
-              className="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline px-1 cursor-pointer"
-            >
-              Sample .xlsx
-            </button>
-            <button
-              type="button"
-              onClick={handleDownloadSampleCsv}
-              className="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline px-1 cursor-pointer"
-            >
-              Sample .csv
-            </button>
+                {/* Sample Files */}
+                <button
+                  type="button"
+                  onClick={handleDownloadSampleCsv}
+                  className="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline px-1 cursor-pointer"
+                >
+                  Sample .xlsx
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDownloadSampleCsv}
+                  className="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline px-1 cursor-pointer"
+                >
+                  Sample .csv
+                </button>
+              </>
+            )}
 
             {/* Dynamic Bulk Status & Delete Actions */}
             {selectedItemIds.length > 0 ? (
               <div className="flex items-center gap-1.5">
+                {canEdit && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => handleBulkSetStatus(true)}
+                      className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                      title="Mark selected records as Active"
+                    >
+                      <Icon name="check-circle" size={13} />
+                      <span>Mark Active ({selectedItemIds.length})</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleBulkSetStatus(false)}
+                      className="px-3 py-1.5 rounded-xl bg-slate-600 hover:bg-slate-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                      title="Mark selected records as Inactive"
+                    >
+                      <Icon name="x-circle" size={13} />
+                      <span>Mark Inactive ({selectedItemIds.length})</span>
+                    </button>
+                  </>
+                )}
+                {canDelete && (
+                  <button
+                    type="button"
+                    onClick={handleDeleteSelected}
+                    className="px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                  >
+                    <Icon name="trash-2" size={13} />
+                    <span>Delete ({selectedItemIds.length})</span>
+                  </button>
+                )}
+              </div>
+            ) : (
+              canDelete && (
                 <button
                   type="button"
-                  onClick={() => handleBulkSetStatus(true)}
-                  className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
-                  title="Mark selected records as Active"
-                >
-                  <Icon name="check-circle" size={13} />
-                  <span>Mark Active ({selectedItemIds.length})</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleBulkSetStatus(false)}
-                  className="px-3 py-1.5 rounded-xl bg-slate-600 hover:bg-slate-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
-                  title="Mark selected records as Inactive"
-                >
-                  <Icon name="x-circle" size={13} />
-                  <span>Mark Inactive ({selectedItemIds.length})</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={handleDeleteSelected}
+                  onClick={handleDeleteAll}
                   className="px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
                 >
                   <Icon name="trash-2" size={13} />
-                  <span>Delete ({selectedItemIds.length})</span>
+                  <span>Delete All</span>
                 </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={handleDeleteAll}
-                className="px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
-              >
-                <Icon name="trash-2" size={13} />
-                <span>Delete All</span>
-              </button>
+              )
             )}
 
             {/* + Add Button */}
-            <button
-              type="button"
-              onClick={handleOpenAdd}
-              className="px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
-            >
-              <Icon name="plus" size={14} />
-              <span>
-                {selectedCategory.id === 'departments'
-                  ? `+ Add ${deptTab === 'students' ? 'Student' : deptTab === 'employees' ? 'Employee' : ''} Department`
-                  : `+ Add ${selectedCategory.title}`}
-              </span>
-            </button>
+            {canAdd && (
+              <button
+                type="button"
+                onClick={handleOpenAdd}
+                className="px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+              >
+                <Icon name="plus" size={14} />
+                <span>
+                  {selectedCategory.id === 'departments'
+                    ? `+ Add ${deptTab === 'students' ? 'Student' : deptTab === 'employees' ? 'Employee' : ''} Department`
+                    : `+ Add ${selectedCategory.title}`}
+                </span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -1449,24 +1492,28 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                             </button>
 
                             {/* Edit Button */}
-                            <button
-                              type="button"
-                              onClick={() => handleOpenEdit(item)}
-                              className="px-2.5 py-1 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] flex items-center gap-1 shadow-2xs transition-all cursor-pointer"
-                            >
-                              <Icon name="edit-3" size={12} />
-                              <span>Edit</span>
-                            </button>
+                            {canEdit && (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEdit(item)}
+                                className="px-2.5 py-1 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] flex items-center gap-1 shadow-2xs transition-all cursor-pointer"
+                              >
+                                <Icon name="edit-3" size={12} />
+                                <span>Edit</span>
+                              </button>
+                            )}
 
                             {/* Delete Button */}
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteItem(item.id, item.name)}
-                              className="p-1 rounded-md bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors cursor-pointer"
-                              title="Delete Record"
-                            >
-                              <Icon name="x" size={13} />
-                            </button>
+                            {canDelete && (
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteItem(item.id, item.name)}
+                                className="p-1 rounded-md bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors cursor-pointer"
+                                title="Delete Record"
+                              >
+                                <Icon name="x" size={13} />
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>

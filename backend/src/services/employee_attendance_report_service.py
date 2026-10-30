@@ -107,10 +107,10 @@ class EmployeeAttendanceReportService:
                 leave_days.add(cur.day)
                 cur += timedelta(days=1)
 
-        # 3. Fetch BiometricLogs (check both customer_id=emp.id and employee_id / code)
+        # 3. Fetch BiometricLogs (check both student_id=emp.id and employee_id / code)
         bio_logs = db.query(BiometricLog).filter(
             or_(
-                BiometricLog.customer_id == emp.id,
+                BiometricLog.student_id == emp.id,
                 func.cast(BiometricLog.meta_data, String).ilike(f"%{emp.code}%")
             ),
             BiometricLog.timestamp >= start_dt,

@@ -4,15 +4,15 @@ import { Icon } from '@/components/ui/Icon';
 import { SkeletonCard, Skeleton } from '@/components/ui/Skeleton';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { useAuth } from '@/context/AuthContext';
-import { customerApi } from '@/services/customerApi';
-import { CustomerGeofenceCheckinWidget } from '@/components/customer/CustomerGeofenceCheckinWidget';
-import type { CustomerAttendanceData, CustomerBiometricStatus, CustomerAttendanceHistory } from '@/types/customer';
+import { studentApi } from '@/services/studentApi';
+import { StudentGeofenceCheckinWidget } from '@/components/student/studentGeofenceCheckinWidget';
+import type { studentAttendanceData, studentBiometricStatus, studentAttendanceHistory } from '@/types/student';
 import { cn } from '@/utils/cn';
 
-export function CustomerAttendancePage() {
+export function studentAttendancePage() {
   const { user } = useAuth();
-  const [attendance, setAttendance] = useState<CustomerAttendanceData | null>(null);
-  const [biometricStatus, setBiometricStatus] = useState<CustomerBiometricStatus | null>(null);
+  const [attendance, setAttendance] = useState<studentAttendanceData | null>(null);
+  const [biometricStatus, setBiometricStatus] = useState<studentBiometricStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,8 +28,8 @@ export function CustomerAttendancePage() {
 
     try {
       const [attData, bioData] = await Promise.all([
-        customerApi.getAttendance().catch(() => null),
-        customerApi.getBiometricStatus().catch(() => null),
+        studentApi.getAttendance().catch(() => null),
+        studentApi.getBiometricStatus().catch(() => null),
       ]);
 
       if (attData) {
@@ -46,7 +46,7 @@ export function CustomerAttendancePage() {
       }
       setBiometricStatus(bioData);
     } catch (err: any) {
-      console.error('Failed to load customer attendance:', err);
+      console.error('Failed to load student attendance:', err);
       setError('Unable to load attendance records. Please try again.');
     } finally {
       setLoading(false);
@@ -127,7 +127,7 @@ export function CustomerAttendancePage() {
     return days;
   }, [attendance?.history]);
 
-  const getMethodBadge = (item: CustomerAttendanceHistory) => {
+  const getMethodBadge = (item: studentAttendanceHistory) => {
     const rawType = (item.type || item.event_type || item.verification_type || '').toUpperCase();
     const dev = (item.device_name || '').toLowerCase();
 
@@ -171,7 +171,7 @@ export function CustomerAttendancePage() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <PageHeader title="vahd Attendance" breadcrumb={['Customer', 'Attendance']} />
+        <PageHeader title="vahd Attendance" breadcrumb={['student', 'Attendance']} />
         <Skeleton className="h-48 w-full rounded-3xl" />
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
@@ -185,7 +185,7 @@ export function CustomerAttendancePage() {
   if (error) {
     return (
       <div className="space-y-6">
-        <PageHeader title="vahd Attendance" breadcrumb={['Customer', 'Attendance']} />
+        <PageHeader title="vahd Attendance" breadcrumb={['student', 'Attendance']} />
         <ErrorState message={error} onRetry={() => fetchAttendanceData(true)} />
       </div>
     );
@@ -197,11 +197,11 @@ export function CustomerAttendancePage() {
       <PageHeader
         title="vahd Attendance & Access"
         subtitle="Live Face ID, hardware biometric turnstile sync & consistency logs"
-        breadcrumb={['Customer', 'Attendance']}
+        breadcrumb={['student', 'Attendance']}
       />
 
       {/* 1. Interactive Geofence & Face ID Punch Widget */}
-      <CustomerGeofenceCheckinWidget onCheckinSuccess={() => fetchAttendanceData(false)} />
+      <StudentGeofenceCheckinWidget onCheckinSuccess={() => fetchAttendanceData(false)} />
 
       {/* 2. Key Metrics Row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

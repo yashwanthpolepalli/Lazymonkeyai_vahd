@@ -9,17 +9,17 @@ from src.database.session import get_db
 from src.utils.security import verify_token
 from src.utils.timezone import now_ist_naive
 from src.models.user import User
-from src.models.customer import Customer
+from src.models.student import student
 from src.models.membership import Membership
 from src.models.biometric import BiometricLog
 
-router = APIRouter(prefix="/customer", tags=["Customer Portal"])
+router = APIRouter(prefix="/student", tags=["student Portal"])
 
 
-def get_current_customer(authorization: str = Header(None), db: Session = Depends(get_db)) -> Customer:
+def get_current_student(authorization: str = Header(None), db: Session = Depends(get_db)) -> student:
     """
-    Extracts Bearer token from Authorization header and returns authenticated Customer model.
-    Strictly derives customer identity from JWT claims / DB lookup.
+    Extracts Bearer token from Authorization header and returns authenticated student model.
+    Strictly derives student identity from JWT claims / DB lookup.
     """
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Authentication token missing")
@@ -30,13 +30,13 @@ def get_current_customer(authorization: str = Header(None), db: Session = Depend
         raise HTTPException(status_code=401, detail="Invalid or expired authentication token")
 
     user_id = payload.get("sub")
-    cust_id = payload.get("customer_id")
+    cust_id = payload.get("student_id")
 
-    customer = None
+    student = None
     if cust_id:
-        customer = db.query(Customer).filter(Customer.id == cust_id).first()
+        student = db.query(student).filter(student.id == cust_id).first()
 
-    if not customer and (user_id or payload.get("email")):
+    if not student and (user_id or payload.get("email")):
         user = None
         if user_id:
             user = db.query(User).filter(User.id == user_id).first()
@@ -44,34 +44,34 @@ def get_current_customer(authorization: str = Header(None), db: Session = Depend
             user = db.query(User).filter(User.email == payload.get("email").strip().lower()).first()
 
         if user:
-            customer = db.query(Customer).filter(
-                (Customer.user_id == user.id) |
-                (Customer.email == user.email)
+            student = db.query(student).filter(
+                (student.user_id == user.id) |
+                (student.email == user.email)
             ).first()
 
-    if not customer and cust_id:
-        customer = db.query(Customer).filter(Customer.id == cust_id).first()
+    if not student and cust_id:
+        student = db.query(student).filter(student.id == cust_id).first()
 
-    if not customer:
+    if not student:
         raise HTTPException(
             status_code=404,
-            detail="Customer record not found. Please enroll the student via Student Management."
+            detail="student record not found. Please enroll the student via Student Management."
         )
 
-    return customer
+    return student
 
 
-# ── 1. CUSTOMER PROFILE ───────────────────────────────────────────────────────
+# ── 1. student PROFILE ───────────────────────────────────────────────────────
 
 @router.get("/me")
-def get_customer_profile(
-    cust: Customer = Depends(get_current_customer),
+def get_student_profile(
+    cust: student = Depends(get_current_student),
     db: Session = Depends(get_db),
 ):
-    """Returns authenticated customer's full profile directly from PostgreSQL database."""
+    """Returns authenticated student's full profile directly from PostgreSQL database."""
     mem = (
         db.query(Membership)
-        .filter(Membership.customer_id == cust.id)
+        .filter(Membership.student_id == cust.id)
         .order_by(Membership.created_at.desc())
         .first()
     )
@@ -99,12 +99,12 @@ def get_customer_profile(
 
 
 @router.patch("/me")
-def update_customer_profile(
+def update_student_profile(
     payload: Dict[str, Any] = Body(...),
-    cust: Customer = Depends(get_current_customer),
+    cust: student = Depends(get_current_student),
     db: Session = Depends(get_db),
 ):
-    """Updates customer's editable profile fields directly in PostgreSQL database."""
+    """Updates student's editable profile fields directly in PostgreSQL database."""
     allowed_fields = [
         "full_name", "phone", "gender", "age",
         "profile_image",
@@ -124,14 +124,14 @@ def update_customer_profile(
 # ── 2. DASHBOARD & ATTENDANCE ────────────────────────────────────────────────
 
 @router.get("/dashboard")
-def get_customer_dashboard(
-    cust: Customer = Depends(get_current_customer),
+def get_student_dashboard(
+    cust: student = Depends(get_current_student),
     db: Session = Depends(get_db),
 ):
-    """Returns dynamic Customer Dashboard metrics calculated strictly from PostgreSQL DB."""
+    """Returns dynamic student Dashboard metrics calculated strictly from PostgreSQL DB."""
     visits_count = (
         db.query(func.count(func.distinct(func.date(BiometricLog.timestamp))))
-        .filter(BiometricLog.customer_id == cust.id)
+        .filter(BiometricLog.student_id == cust.id)
         .scalar()
         or 0
     )
@@ -152,8 +152,8 @@ def get_customer_dashboard(
 
 
 @router.get("/attendance")
-def get_customer_attendance(
-    cust: Customer = Depends(get_current_customer),
+def get_student_attendance(
+    cust: student = Depends(get_current_student),
     db: Session = Depends(get_db),
 ):
     """Returns dynamic attendance logs strictly from PostgreSQL biometric_logs table."""
@@ -163,7 +163,7 @@ def get_customer_attendance(
 
     logs = (
         db.query(BiometricLog)
-        .filter(BiometricLog.customer_id == cust.id)
+        .filter(BiometricLog.student_id == cust.id)
         .order_by(BiometricLog.timestamp.desc())
         .limit(100)
         .all()
@@ -171,7 +171,7 @@ def get_customer_attendance(
 
     total_visits = (
         db.query(func.count(func.distinct(func.date(BiometricLog.timestamp))))
-        .filter(BiometricLog.customer_id == cust.id)
+        .filter(BiometricLog.student_id == cust.id)
         .scalar()
         or 0
     )
@@ -179,7 +179,7 @@ def get_customer_attendance(
     monthly_visits = (
         db.query(func.count(func.distinct(func.date(BiometricLog.timestamp))))
         .filter(
-            BiometricLog.customer_id == cust.id,
+            BiometricLog.student_id == cust.id,
             BiometricLog.timestamp >= month_start,
         )
         .scalar()
@@ -225,28 +225,28 @@ def get_customer_attendance(
 
 
 @router.delete("/attendance/logs")
-def clear_customer_attendance_logs(
-    cust: Customer = Depends(get_current_customer),
+def clear_student_attendance_logs(
+    cust: student = Depends(get_current_student),
     db: Session = Depends(get_db),
 ):
-    """Deletes all attendance/biometric check-in logs for the authenticated customer."""
-    deleted_count = db.query(BiometricLog).filter(BiometricLog.customer_id == cust.id).delete(synchronize_session=False)
+    """Deletes all attendance/biometric check-in logs for the authenticated student."""
+    deleted_count = db.query(BiometricLog).filter(BiometricLog.student_id == cust.id).delete(synchronize_session=False)
     db.commit()
     return {
         "status": "SUCCESS",
-        "message": f"Successfully deleted {deleted_count} attendance log(s) for customer {cust.full_name}."
+        "message": f"Successfully deleted {deleted_count} attendance log(s) for student {cust.full_name}."
     }
 
 
 @router.get("/biometric-status")
 def get_biometric_status(
-    cust: Customer = Depends(get_current_customer),
+    cust: student = Depends(get_current_student),
     db: Session = Depends(get_db),
 ):
-    """Returns hardware biometric enrollment and live sync status for the customer."""
+    """Returns hardware biometric enrollment and live sync status for the student."""
     last_log = (
         db.query(BiometricLog)
-        .filter(BiometricLog.customer_id == cust.id)
+        .filter(BiometricLog.student_id == cust.id)
         .order_by(BiometricLog.timestamp.desc())
         .first()
     )
@@ -280,12 +280,12 @@ def get_biometric_status(
 
 @router.get("/face/status")
 def get_face_status(
-    cust: Customer = Depends(get_current_customer),
+    cust: student = Depends(get_current_student),
     db: Session = Depends(get_db),
 ):
-    """Returns whether the authenticated customer has Face ID biometric template enrolled."""
+    """Returns whether the authenticated student has Face ID biometric template enrolled."""
     return {
-        "customer_id": cust.id,
+        "student_id": cust.id,
         "full_name": cust.full_name,
         "is_enrolled": bool(cust.face_registered),
         "face_image": getattr(cust, "face_image", None) or cust.profile_image,
@@ -296,10 +296,10 @@ def get_face_status(
 @router.post("/face/register")
 def register_face(
     payload: Dict[str, Any] = Body(...),
-    cust: Customer = Depends(get_current_customer),
+    cust: student = Depends(get_current_student),
     db: Session = Depends(get_db),
 ):
-    """Registers Customer Face template in PostgreSQL database."""
+    """Registers student Face template in PostgreSQL database."""
     face_b64 = payload.get("face_image_base64")
     if not face_b64:
         raise HTTPException(status_code=400, detail="face_image_base64 is required for registration.")
@@ -319,7 +319,7 @@ def register_face(
 @router.post("/face/verify")
 def verify_face(
     payload: Dict[str, Any] = Body(...),
-    cust: Customer = Depends(get_current_customer),
+    cust: student = Depends(get_current_student),
     db: Session = Depends(get_db),
 ):
     """Verifies live face capture and creates dynamic punch log."""
@@ -345,7 +345,7 @@ def verify_face(
     device_id = payload.get("device_id") or f"PORTAL_{cust.id}"
     device_name = payload.get("device_name") or cust.primary_vahd_location or "Live Portal Scanner"
     device_type = payload.get("device_type") or ("FACE_RECOGNITION" if "FACE" in str(verification_type).upper() else "BIOMETRIC")
-    user_role = (getattr(cust.user, "role", None) or payload.get("user_role") or "CUSTOMER").upper() if getattr(cust, "user", None) else "CUSTOMER"
+    user_role = (getattr(cust.user, "role", None) or payload.get("user_role") or "student").upper() if getattr(cust, "user", None) else "student"
     punch_status = payload.get("status") or "SUCCESS"
 
     direction = "IN" if action in ["CHECK_IN", "IN"] else "OUT"
@@ -354,8 +354,8 @@ def verify_face(
     dynamic_meta = {
         "verification_type": verification_type,
         "action": action,
-        "customer_name": cust.full_name,
-        "customer_code": getattr(cust, "member_code", None),
+        "student_name": cust.full_name,
+        "student_code": getattr(cust, "member_code", None),
         "branch": cust.primary_vahd_location,
         "confidence": confidence_score,
         "confidence_percentage": f"{confidence_score}%",
@@ -365,7 +365,7 @@ def verify_face(
 
     log = BiometricLog(
         id=punch_id,
-        customer_id=cust.id,
+        student_id=cust.id,
         user_role=user_role,
         timestamp=now,
         device_id=device_id,
@@ -391,7 +391,7 @@ def verify_face(
         "punch": {
             "id": punch_id,
             "timestamp": now.isoformat(),
-            "customer_name": cust.full_name,
+            "student_name": cust.full_name,
             "direction": direction,
             "action": action,
             "confidence": confidence_score,
@@ -407,13 +407,13 @@ def get_ai_coach_recommendation(
     db: Session = Depends(get_db),
 ):
     """
-    Builds AI recommendation context from customer, employee, or user records.
-    Safely resolves identity from JWT claims without throwing a 404 for non-customers.
+    Builds AI recommendation context from student, employee, or user records.
+    Safely resolves identity from JWT claims without throwing a 404 for non-students.
     """
     from src.models.hrms import Employee
     from sqlalchemy import or_
 
-    customer = None
+    student = None
     user = None
     visits = 0
 
@@ -422,31 +422,31 @@ def get_ai_coach_recommendation(
         payload = verify_token(token)
         if payload:
             user_id = payload.get("sub")
-            cust_id = payload.get("customer_id")
+            cust_id = payload.get("student_id")
             email = (payload.get("email") or "").strip().lower()
 
             if cust_id:
-                customer = db.query(Customer).filter(Customer.id == cust_id).first()
-            if not customer and user_id:
-                customer = db.query(Customer).filter(Customer.user_id == user_id).first()
-            if not customer and email:
-                customer = db.query(Customer).filter(func.lower(Customer.email) == email).first()
+                student = db.query(student).filter(student.id == cust_id).first()
+            if not student and user_id:
+                student = db.query(student).filter(student.user_id == user_id).first()
+            if not student and email:
+                student = db.query(student).filter(func.lower(student.email) == email).first()
 
             if user_id:
                 user = db.query(User).filter(User.id == user_id).first()
             if not user and email:
                 user = db.query(User).filter(func.lower(User.email) == email).first()
 
-    if customer:
+    if student:
         visits = (
             db.query(func.count(BiometricLog.id))
-            .filter(BiometricLog.customer_id == customer.id)
+            .filter(BiometricLog.student_id == student.id)
             .scalar()
             or 0
         )
         score = 92 if visits > 5 else 75
         title = "Membership Active"
-        insight = f"Welcome back, {customer.full_name}! You have {visits} verified check-in session{'s' if visits != 1 else ''}."
+        insight = f"Welcome back, {student.full_name}! You have {visits} verified check-in session{'s' if visits != 1 else ''}."
         suggested_action = "View Attendance"
     elif user:
         emp = db.query(Employee).filter(

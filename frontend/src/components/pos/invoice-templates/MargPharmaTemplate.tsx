@@ -129,28 +129,28 @@ export function MargPharmaTemplate({
           </table>
         </div>
 
-        {/* Right Box: Customer */}
+        {/* Right Box: student */}
         <div className="col-span-4 p-2.5 flex flex-col justify-between">
           <div>
             <span className="text-[10px] font-bold underline block mb-0.5">Party Name :</span>
             <h3 className="font-bold text-xs uppercase text-blue-950">
-              {invoice.customerName || invoice.customerCompany || 'CASH CUSTOMER'}
+              {invoice.studentName || invoice.studentCompany || 'CASH student'}
             </h3>
             <p className="text-[10px] text-gray-800 leading-snug mt-0.5">
-              <span className="font-bold text-gray-900">Bill To: </span>{invoice.customerBillingAddress || invoice.customerAddress || 'Local Market, Hyderabad'}
+              <span className="font-bold text-gray-900">Bill To: </span>{invoice.studentBillingAddress || invoice.studentAddress || 'Local Market, Hyderabad'}
             </p>
             <p className="text-[9.5px] text-indigo-900 leading-snug mt-0.5 font-medium">
-              <span className="font-bold text-indigo-950">Ship To: </span>{invoice.customerShippingAddress || invoice.customerBillingAddress || invoice.customerAddress || 'Same as Bill To'}
+              <span className="font-bold text-indigo-950">Ship To: </span>{invoice.studentShippingAddress || invoice.studentBillingAddress || invoice.studentAddress || 'Same as Bill To'}
             </p>
-            {invoice.customerPhone && (
+            {invoice.studentPhone && (
               <p className="text-[10px] text-gray-800 mt-0.5">
-                PHONE. : <span className="font-mono">{invoice.customerPhone}</span>
+                PHONE. : <span className="font-mono">{invoice.studentPhone}</span>
               </p>
             )}
           </div>
-          {invoice.customerGST && (
+          {invoice.studentGST && (
             <p className="text-[10px] font-bold mt-1">
-              PARTY GSTIN : <span className="font-mono">{invoice.customerGST}</span>
+              PARTY GSTIN : <span className="font-mono">{invoice.studentGST}</span>
             </p>
           )}
         </div>
@@ -273,7 +273,7 @@ export function MargPharmaTemplate({
 
           <div className="mt-2 text-[10px]">
             <p className="font-bold text-blue-950 font-sans">{numberToIndianWords(grandTotal)}</p>
-            <p className="text-[9px] text-gray-600 uppercase font-sans mt-0.5">MSG: THANKS CUSTOMER</p>
+            <p className="text-[9px] text-gray-600 uppercase font-sans mt-0.5">MSG: THANKS student</p>
           </div>
         </div>
 

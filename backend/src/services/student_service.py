@@ -5,7 +5,7 @@ from sqlalchemy import or_, and_, func
 from sqlalchemy.orm import Session
 from src.utils.timezone import now_ist_naive, today_ist_start, today_ist_end, to_ist_str
 from src.models.user import User
-from src.models.customer import Customer
+from src.models.student import student
 from src.models.membership import Membership
 from src.models.biometric import BiometricLog
 from src.utils.email import generate_enrollment_password, send_enrollment_email
@@ -14,10 +14,10 @@ from src.models.settings import Branch as vahdBranch
 
 from src.models.biometric_device import BiometricDevice
 
-class CustomerService:
+class studentService:
 
     @staticmethod
-    def _format_customer(c: Customer, db: Session) -> dict:
+    def _format_student(c: student, db: Session) -> dict:
         now = now_ist_naive()
 
         # employee Name Lookup from DB
@@ -29,14 +29,14 @@ class CustomerService:
 
         # Last Visit & Attendance Calculation from Biometric DB Log
         last_log = db.query(BiometricLog).filter(
-            (BiometricLog.customer_id == c.id) | (BiometricLog.customer_id == c.user_id)
+            (BiometricLog.student_id == c.id) | (BiometricLog.student_id == c.user_id)
         ).order_by(BiometricLog.timestamp.desc()).first()
         last_visit = to_ist_str(last_log.timestamp) if (last_log and last_log.timestamp) else None
 
         # Calculate 30-day attendance percentage from DB logs
         month_ago = now - datetime.timedelta(days=30)
         logs_count = db.query(BiometricLog).filter(
-            (BiometricLog.customer_id == c.id) | (BiometricLog.customer_id == c.user_id),
+            (BiometricLog.student_id == c.id) | (BiometricLog.student_id == c.user_id),
             BiometricLog.timestamp >= month_ago
         ).count()
         attendance_pct = min(100, int((logs_count / 30.0) * 100)) if logs_count > 0 else 0
@@ -55,9 +55,9 @@ class CustomerService:
             cust_match_ids.add(f"cust_{c.id}")
 
         today_logs = db.query(BiometricLog).filter(
-            (BiometricLog.customer_id.in_(list(cust_match_ids))) |
-            (BiometricLog.customer_id == c.id) |
-            (BiometricLog.customer_id == c.user_id),
+            (BiometricLog.student_id.in_(list(cust_match_ids))) |
+            (BiometricLog.student_id == c.id) |
+            (BiometricLog.student_id == c.user_id),
             BiometricLog.timestamp >= today_start,
             BiometricLog.timestamp <= today_end
         ).order_by(BiometricLog.timestamp.asc()).all()
@@ -99,7 +99,7 @@ class CustomerService:
                 today_punch_status = "Present"
 
         # Dynamic Biometric Sync Detection (Strict DB check)
-        biometric_count = db.query(BiometricLog).filter(BiometricLog.customer_id == c.id).count()
+        biometric_count = db.query(BiometricLog).filter(BiometricLog.student_id == c.id).count()
         is_completed = bool(biometric_count > 0)
         biometric_status = "Completed" if is_completed else "Pending"
 
@@ -110,7 +110,7 @@ class CustomerService:
         kyc_status = "Verified & Ready" if kyc_percent >= 80 else f"{kyc_percent}% Complete"
 
         # Membership DB details
-        mem = db.query(Membership).filter(Membership.customer_id == c.id).order_by(Membership.created_at.desc()).first()
+        mem = db.query(Membership).filter(Membership.student_id == c.id).order_by(Membership.created_at.desc()).first()
         mem_dict = None
         calculated_status = c.status if c.status else "ACTIVE"
         if mem:
@@ -192,7 +192,7 @@ class CustomerService:
         }
 
     @staticmethod
-    def get_all_customers(
+    def get_all_students(
         db: Session,
         current_user: Optional[User] = None,
         branch: Optional[str] = None,
@@ -202,41 +202,54 @@ class CustomerService:
         from sqlalchemy import or_, func
         from src.models.settings import Branch as vahdBranch
 
-        query = db.query(Customer)
+        query = db.query(student)
 
         # Multi-tenant vahd owner & branch isolation
         if current_user:
             user_role = (current_user.role or "").strip().upper()
             if user_role in ["SUPER_ADMIN", "ADMIN"] or current_user.is_platform_admin:
                 # Super Admin can view all or filter by query parameters
-                if owner_id:
-                    query = query.filter(Customer.owner_id == owner_id)
-                if branch_id:
-                    query = query.filter(Customer.branch_id == branch_id)
-                if branch:
-                    query = query.filter(Customer.primary_vahd_location.ilike(f"%{branch}%"))
+                if owner_id and str(owner_id).lower() not in ["all", "", "none", "undefined", "null"]:
+                    query = query.filter(student.owner_id == owner_id)
+                if branch_id and str(branch_id).lower() not in ["all", "", "none", "undefined", "null"]:
+                    query = query.filter(student.branch_id == branch_id)
+                if branch and str(branch).lower() not in ["all", "", "none", "undefined", "null"]:
+                    query = query.filter(student.primary_vahd_location.ilike(f"%{branch}%"))
             elif user_role in ["HEAD_OFFICE", "HO"]:
-                # Head Office can view all customers/students across organizations under their Head Office
-                ho_target = current_user.ho_id or current_user.id
+                # Head Office can view all students across organizations under their Head Office
+                possible_ho_ids = [x for x in [current_user.ho_id, current_user.id] if x]
                 ho_branches = db.query(vahdBranch).filter(
                     or_(
-                        vahdBranch.ho_id == ho_target,
+                        vahdBranch.ho_id.in_(possible_ho_ids),
                         vahdBranch.owner_id == current_user.id,
                         vahdBranch.id == current_user.branch_id
                     )
                 ).all()
                 ho_branch_ids = [b.id for b in ho_branches if b.id]
+                ho_branch_names = [b.branch_name for b in ho_branches if b.branch_name] + [b.vahd_name for b in ho_branches if b.vahd_name]
 
-                conditions = [Customer.ho_id == ho_target, Customer.owner_id == current_user.id]
+                conditions = [student.ho_id.in_(possible_ho_ids), student.owner_id == current_user.id]
                 if ho_branch_ids:
-                    conditions.append(Customer.branch_id.in_(ho_branch_ids))
+                    conditions.append(student.branch_id.in_(ho_branch_ids))
+                if ho_branch_names:
+                    conditions.append(student.primary_vahd_location.in_(ho_branch_names))
+
+                # Also match if the student's linked User record has ho_id in possible_ho_ids or owner_id == current_user.id
+                user_matches = db.query(User.id).filter(
+                    or_(
+                        User.ho_id.in_(possible_ho_ids),
+                        User.owner_id == current_user.id,
+                        User.branch_id.in_(ho_branch_ids) if ho_branch_ids else False
+                    )
+                ).subquery()
+                conditions.append(student.user_id.in_(user_matches))
 
                 query = query.filter(or_(*conditions))
 
                 # Sub-filter by specific organisation if selected by HO
                 if branch_id or branch:
                     target_b = branch_id or branch
-                    if str(target_b).lower() not in ["all", ""]:
+                    if str(target_b).lower() not in ["all", "", "none", "undefined", "null"]:
                         matched_b = db.query(vahdBranch).filter(
                             or_(vahdBranch.id == target_b, vahdBranch.branch_name == target_b, vahdBranch.vahd_name == target_b)
                         ).first()
@@ -249,12 +262,12 @@ class CustomerService:
                             if matched_b.vahd_name:
                                 b_filter_names.append(matched_b.vahd_name)
 
-                        conds = [Customer.branch_id.in_(b_filter_ids)]
+                        conds = [student.branch_id.in_(b_filter_ids), student.ho_id == target_b]
                         for nm in b_filter_names:
-                            conds.append(Customer.primary_vahd_location.ilike(f"%{nm}%"))
+                            conds.append(student.primary_vahd_location.ilike(f"%{nm}%"))
                         query = query.filter(or_(*conds))
             elif user_role in ["OWNER"]:
-                # vahd Owner views customers strictly belonging to their owner_id or owned branches
+                # vahd Owner views students strictly belonging to their owner_id or owned branches
                 owner_branches = db.query(vahdBranch).filter(
                     or_(
                         vahdBranch.owner_id == current_user.id,
@@ -264,11 +277,11 @@ class CustomerService:
                 owner_branch_ids = [b.id for b in owner_branches if b.id]
                 owner_branch_names = [b.branch_name for b in owner_branches if b.branch_name] + [b.vahd_name for b in owner_branches if b.vahd_name]
 
-                conditions = [Customer.owner_id == current_user.id]
+                conditions = [student.owner_id == current_user.id]
                 if owner_branch_ids:
-                    conditions.append(Customer.branch_id.in_(owner_branch_ids))
+                    conditions.append(student.branch_id.in_(owner_branch_ids))
                 if owner_branch_names:
-                    conditions.append(Customer.primary_vahd_location.in_(owner_branch_names))
+                    conditions.append(student.primary_vahd_location.in_(owner_branch_names))
 
                 query = query.filter(or_(*conditions))
 
@@ -277,48 +290,48 @@ class CustomerService:
                     target_b = branch_id or branch
                     query = query.filter(
                         or_(
-                            Customer.branch_id == target_b,
-                            Customer.primary_vahd_location.ilike(f"%{target_b}%")
+                            student.branch_id == target_b,
+                            student.primary_vahd_location.ilike(f"%{target_b}%")
                         )
                     )
             elif user_role in ["employee", "COACH", "STAFF", "MANAGER"]:
-                # Staff/employee scoped to their assigned customers or branch
-                conditions = [Customer.employee_id == current_user.id]
+                # Staff/employee scoped to their assigned students or branch
+                conditions = [student.employee_id == current_user.id]
                 if current_user.branch_id:
-                    conditions.append(Customer.branch_id == current_user.branch_id)
-                    conditions.append(Customer.primary_vahd_location.ilike(f"%{current_user.branch_id}%"))
+                    conditions.append(student.branch_id == current_user.branch_id)
+                    conditions.append(student.primary_vahd_location.ilike(f"%{current_user.branch_id}%"))
                 if current_user.owner_id:
-                    conditions.append(Customer.owner_id == current_user.owner_id)
+                    conditions.append(student.owner_id == current_user.owner_id)
                 query = query.filter(or_(*conditions))
-            elif user_role in ["CUSTOMER", "MEMBER"]:
-                # Customer can only view their own record
+            elif user_role in ["student", "MEMBER"]:
+                # student can only view their own record
                 query = query.filter(
                     or_(
-                        Customer.user_id == current_user.id,
-                        func.lower(Customer.email) == current_user.email.strip().lower()
+                        student.user_id == current_user.id,
+                        func.lower(student.email) == current_user.email.strip().lower()
                     )
                 )
         else:
             # Unauthenticated or direct filtering via query params
             if owner_id:
-                query = query.filter(Customer.owner_id == owner_id)
+                query = query.filter(student.owner_id == owner_id)
             if branch_id:
-                query = query.filter(Customer.branch_id == branch_id)
+                query = query.filter(student.branch_id == branch_id)
             if branch:
-                query = query.filter(Customer.primary_vahd_location.ilike(f"%{branch}%"))
+                query = query.filter(student.primary_vahd_location.ilike(f"%{branch}%"))
 
-        customers = query.order_by(Customer.created_at.desc()).all()
-        return [CustomerService._format_customer(c, db) for c in customers]
+        students = query.order_by(student.created_at.desc()).all()
+        return [studentService._format_student(c, db) for c in students]
 
     @staticmethod
-    def sync_customer_biometric(db: Session, customer_id: str, data: Optional[dict] = None) -> dict:
+    def sync_student_biometric(db: Session, student_id: str, data: Optional[dict] = None) -> dict:
         """
-        Dynamically registers biometric credentials for a customer.
-        Strictly utilizes provided hardware data or customer database attributes without hardcoded values.
+        Dynamically registers biometric credentials for a student.
+        Strictly utilizes provided hardware data or student database attributes without hardcoded values.
         """
-        cust = db.query(Customer).filter(Customer.id == customer_id).first()
+        cust = db.query(student).filter(student.id == student_id).first()
         if not cust:
-            raise ValueError("Customer not found")
+            raise ValueError("student not found")
 
         data = data or {}
 
@@ -398,8 +411,8 @@ class CustomerService:
 
             bio_log = BiometricLog(
                 id=f"bio_{uuid.uuid4().hex[:8]}",
-                customer_id=customer_id,
-                user_role="CUSTOMER",
+                student_id=student_id,
+                user_role="student",
                 event_type=event_type,
                 device_id=device_id,
                 device_name=device_name,
@@ -413,14 +426,14 @@ class CustomerService:
         db.commit()
         db.refresh(cust)
 
-        return CustomerService._format_customer(cust, db)
+        return studentService._format_student(cust, db)
 
 
     @staticmethod
-    def create_customer(db: Session, data: dict) -> dict:
+    def create_student(db: Session, data: dict) -> dict:
         """
-        Onboards a new customer/employee/member with user credentials and membership plan.
-        Role is dynamic (CUSTOMER or employee) from caller.
+        Onboards a new student/employee/member with user credentials and membership plan.
+        Role is dynamic (student or employee) from caller.
         Plan duration and price are fetched directly from DB MembershipPlan — no hardcoded strings.
         """
         full_name = data.get("full_name") or data.get("name")
@@ -430,8 +443,8 @@ class CustomerService:
         profile_image = data.get("profile_image")
         membership_plan = data.get("membership_plan") or data.get("membership")
 
-        # Role is dynamic — CUSTOMER or employee as passed by the owner
-        role = (data.get("role") or "CUSTOMER").strip().upper()
+        # Role is dynamic — student or employee as passed by the owner
+        role = (data.get("role") or "student").strip().upper()
 
         if not full_name or not clean_email or not phone:
             raise ValueError("full_name, email, and phone are required fields")
@@ -467,6 +480,17 @@ class CustomerService:
         resolved_branch_name = (matched_branch.branch_name if matched_branch else branch_ref) or None
         resolved_owner_id = data.get("owner_id") or (matched_branch.owner_id if matched_branch else None)
         resolved_ho_id = data.get("ho_id") or (matched_branch.ho_id if matched_branch else None)
+
+        if resolved_branch_id and (not resolved_ho_id or not resolved_owner_id or not resolved_branch_name):
+            b_lookup = db.query(vahdBranch).filter(vahdBranch.id == resolved_branch_id).first()
+            if b_lookup:
+                if not resolved_ho_id and b_lookup.ho_id:
+                    resolved_ho_id = b_lookup.ho_id
+                if not resolved_owner_id and b_lookup.owner_id:
+                    resolved_owner_id = b_lookup.owner_id
+                if not resolved_branch_name:
+                    resolved_branch_name = b_lookup.branch_name or b_lookup.vahd_name
+
         if not resolved_ho_id and resolved_owner_id:
             owner_u = db.query(User).filter(User.id == resolved_owner_id).first()
             if owner_u and owner_u.ho_id:
@@ -529,7 +553,7 @@ class CustomerService:
             or ""
         ).strip()
 
-        existing_cust = db.query(Customer).filter(Customer.user_id == user.id).first()
+        existing_cust = db.query(student).filter(student.user_id == user.id).first()
         if existing_cust:
             cust = existing_cust
             cust.full_name = full_name
@@ -558,7 +582,7 @@ class CustomerService:
             if resolved_ho_id:
                 cust.ho_id = resolved_ho_id
         else:
-            cust = Customer(
+            cust = student(
                 id=f"cust_{uuid.uuid4().hex[:8]}",
                 user_id=user.id,
                 full_name=full_name,
@@ -622,7 +646,7 @@ class CustomerService:
 
             mem = Membership(
                 id=mem_id,
-                customer_id=cust.id,
+                student_id=cust.id,
                 plan_name=membership_plan,
                 plan_type=plan_type,
                 status="ACTIVE",
@@ -651,19 +675,19 @@ class CustomerService:
         except Exception:
             pass
 
-        return CustomerService._format_customer(cust, db)
+        return studentService._format_student(cust, db)
 
 
     @staticmethod
-    def get_customer_by_id(db: Session, customer_id: str) -> Optional[dict]:
-        c = db.query(Customer).filter(Customer.id == customer_id).first()
-        return CustomerService._format_customer(c, db) if c else None
+    def get_student_by_id(db: Session, student_id: str) -> Optional[dict]:
+        c = db.query(student).filter(student.id == student_id).first()
+        return studentService._format_student(c, db) if c else None
 
     @staticmethod
-    def update_customer(db: Session, customer_id: str, data: dict) -> dict:
-        cust = db.query(Customer).filter(Customer.id == customer_id).first()
+    def update_student(db: Session, student_id: str, data: dict) -> dict:
+        cust = db.query(student).filter(student.id == student_id).first()
         if not cust:
-            raise ValueError("Customer not found")
+            raise ValueError("student not found")
         if "full_name" in data or "fullName" in data or "name" in data:
             cust.full_name = data.get("full_name") or data.get("fullName") or data.get("name")
         if "phone" in data:
@@ -708,37 +732,37 @@ class CustomerService:
             cust.face_registered = bool(data.get("face_registered") if "face_registered" in data else data.get("faceRegistered"))
         db.commit()
         db.refresh(cust)
-        return CustomerService._format_customer(cust, db)
+        return studentService._format_student(cust, db)
 
     @staticmethod
-    def delete_customer(db: Session, customer_id: str) -> bool:
-        cust = db.query(Customer).filter(Customer.id == customer_id).first()
+    def delete_student(db: Session, student_id: str) -> bool:
+        cust = db.query(student).filter(student.id == student_id).first()
         if not cust:
             return False
         
         # 1. Clean up related courses & student enrollment mappings
         try:
             from src.models.course import StudentCourse
-            db.query(StudentCourse).filter(StudentCourse.customer_id == customer_id).delete(synchronize_session=False)
+            db.query(StudentCourse).filter(StudentCourse.student_id == student_id).delete(synchronize_session=False)
         except Exception:
             pass
 
         # 2. Clean up biometric logs
         try:
             from src.models.biometric import BiometricLog
-            db.query(BiometricLog).filter(BiometricLog.customer_id == customer_id).delete(synchronize_session=False)
+            db.query(BiometricLog).filter(BiometricLog.student_id == student_id).delete(synchronize_session=False)
         except Exception:
             pass
 
         # 3. Clean up memberships
         try:
-            db.query(Membership).filter(Membership.customer_id == customer_id).delete(synchronize_session=False)
+            db.query(Membership).filter(Membership.student_id == student_id).delete(synchronize_session=False)
         except Exception:
             pass
         
         user_id = cust.user_id
 
-        # 4. Delete customer record and flush so foreign keys on users table are removed
+        # 4. Delete student record and flush so foreign keys on users table are removed
         db.delete(cust)
         db.flush()
         
@@ -756,5 +780,5 @@ class CustomerService:
         return True
 
     @staticmethod
-    def onboard_customer(db: Session, data: dict) -> dict:
-        return CustomerService.create_customer(db, data)
+    def onboard_student(db: Session, data: dict) -> dict:
+        return studentService.create_student(db, data)

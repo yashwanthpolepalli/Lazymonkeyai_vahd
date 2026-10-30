@@ -26,7 +26,7 @@ interface employeeProfileData {
   bank_account_no?: string;
   bank_ifsc?: string;
   upi_id?: string;
-  assigned_customers_count?: number;
+  assigned_students_count?: number;
 }
 
 export function EmployeeHrmsPage() {
@@ -47,7 +47,7 @@ export function EmployeeHrmsPage() {
   const [eligibleLeaveTypes, setEligibleLeaveTypes] = useState<EligibleLeaveType[]>([]);
   const [payrollRecords, setPayrollRecords] = useState<PayrollItem[]>([]);
   const [attendanceLogs, setAttendanceLogs] = useState<any[]>([]);
-  const [customerCheckins, setCustomerCheckins] = useState<any[]>([]);
+  const [studentCheckins, setstudentCheckins] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Apply Leave Modal State
@@ -130,12 +130,12 @@ export function EmployeeHrmsPage() {
   const fetchemployeeData = async () => {
     setLoading(true);
     try {
-      const [employeesRes, leavesRes, payrollRes, biometricsRes, customersRes] = await Promise.all([
+      const [employeesRes, leavesRes, payrollRes, biometricsRes, studentsRes] = await Promise.all([
         apiClient.get<employeeProfileData[]>('/payroll/employees').catch(() => []),
         hrmsApi.getLeaves().catch(() => []),
         hrmsApi.getPayroll().catch(() => []),
         api.biometrics.recent(50).catch(() => []),
-        api.customers.list().catch(() => []),
+        api.students.list().catch(() => []),
       ]);
 
       // Match current logged in employee
@@ -226,18 +226,18 @@ export function EmployeeHrmsPage() {
         const myAttendance = biometricsRes.filter((log: any) => {
           if (!matchedemployee && !user) return true;
           return (
-            log.customer_id === tid ||
-            log.customer_id === `emp_${tid}` ||
+            log.student_id === tid ||
+            log.student_id === `emp_${tid}` ||
             (log.meta_data?.user_id && log.meta_data.user_id === tid) ||
-            (log.customer_name && tname && log.customer_name.toLowerCase() === tname.toLowerCase())
+            (log.student_name && tname && log.student_name.toLowerCase() === tname.toLowerCase())
           );
         });
         setAttendanceLogs(myAttendance);
       }
 
-      // Customers assigned to this employee
-      if (customersRes && Array.isArray(customersRes)) {
-        const myCustomers = customersRes.filter((c: any) => {
+      // students assigned to this employee
+      if (studentsRes && Array.isArray(studentsRes)) {
+        const mystudents = studentsRes.filter((c: any) => {
           if (!matchedemployee && !user) return false;
           return (
             c.assigned_employee_id === tid ||
@@ -245,14 +245,14 @@ export function EmployeeHrmsPage() {
             (c.assigned_employee && tname && c.assigned_employee.toLowerCase() === tname.toLowerCase())
           );
         });
-        const assignedCustIds = new Set(myCustomers.map((c: any) => c.id));
+        const assignedCustIds = new Set(mystudents.map((c: any) => c.id));
         const custLogs = (biometricsRes || []).filter(
           (log: any) =>
-            log.customer_id &&
-            assignedCustIds.has(log.customer_id) &&
+            log.student_id &&
+            assignedCustIds.has(log.student_id) &&
             log.event_type !== 'FACE_ENROLLMENT'
         );
-        setCustomerCheckins(custLogs);
+        setstudentCheckins(custLogs);
       }
     } catch (err) {
       console.error('Error loading employee HRMS data:', err);
@@ -398,7 +398,7 @@ export function EmployeeHrmsPage() {
                 </div>
               </div>
               <div className="text-2xl font-black text-navy-900">
-                {employeeProfile?.assigned_customers_count || 4} Members
+                {employeeProfile?.assigned_students_count || 4} Members
               </div>
               <div className="text-[11px] text-blue-600 font-bold mt-1">Assigned for training</div>
             </div>

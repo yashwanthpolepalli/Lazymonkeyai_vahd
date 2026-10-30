@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import desc
 
 from src.models.crm import WhatsAppSessionModel, WhatsAppMessageModel
-from src.models.customer import Customer
+from src.models.student import student
 from src.utils.timezone import now_ist_naive
 
 logger = logging.getLogger(__name__)
@@ -195,10 +195,10 @@ class WhatsAppService:
         except Exception:
             pass
 
-        # Return registered customers / students as contacts
-        customers = db.query(Customer).filter(Customer.phone.isnot(None)).limit(50).all()
+        # Return registered students / students as contacts
+        students = db.query(student).filter(student.phone.isnot(None)).limit(50).all()
         chats = []
-        for c in customers:
+        for c in students:
             if c.phone:
                 chats.append({
                     "id": _clean_digits(c.phone),
@@ -343,14 +343,14 @@ class WhatsAppService:
         except Exception:
             pass
 
-        customers = db.query(Customer).filter(Customer.phone.isnot(None)).limit(50).all()
+        students = db.query(student).filter(student.phone.isnot(None)).limit(50).all()
         return [
             {
                 "number": _clean_digits(c.phone),
                 "name": c.full_name,
                 "isMyContact": True
             }
-            for c in customers if c.phone
+            for c in students if c.phone
         ]
 
     @staticmethod

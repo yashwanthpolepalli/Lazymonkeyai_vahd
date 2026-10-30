@@ -14,12 +14,12 @@ export interface ReceiptTemplate {
   gstin: string;
   cin: string;
   logoUrl?: string;
-  
+
   // Toggle Options
   showLogo: boolean;
   showStoreAddress: boolean;
   showTaxId: boolean;
-  showCustomerDetails: boolean;
+  showstudentDetails: boolean;
   showItemHSN: boolean;
   showItemDiscount: boolean;
   showTaxBreakdown: boolean;
@@ -53,11 +53,11 @@ export const DEFAULT_RECEIPT_TEMPLATE: ReceiptTemplate = {
   gstin: '36AAAAA0000A1Z5',
   cin: 'U74999MH2026PTC123456',
   logoUrl: '/lazymonkey-logo.png',
-  
+
   showLogo: true,
   showStoreAddress: true,
   showTaxId: true,
-  showCustomerDetails: true,
+  showstudentDetails: true,
   showItemHSN: true,
   showItemDiscount: true,
   showTaxBreakdown: true,
@@ -177,7 +177,7 @@ export function getTenantIdFromStorage(): string {
       const parsed = JSON.parse(raw);
       if (parsed?.id) return parsed.id;
     }
-  } catch {}
+  } catch { }
   return 'default';
 }
 
@@ -190,7 +190,7 @@ export function getActiveBillingGst(tenantId?: string): ActiveGstDetails | null 
     let activeComp: any = null;
     const activeCompanyRaw = localStorage.getItem(`bos_active_company_${tid}`) || localStorage.getItem('bos_active_company');
     if (activeCompanyRaw) {
-      try { activeComp = JSON.parse(activeCompanyRaw); } catch {}
+      try { activeComp = JSON.parse(activeCompanyRaw); } catch { }
     }
 
     // 1. Scoped Active Billing GST details for this specific tenant/workspace
@@ -294,8 +294,8 @@ export function getActiveReceiptTemplate(): ReceiptTemplate {
 
         if (!matched) {
           matched = invTemplates.find((t: any) => t.category === 'thermal' && t.isDefault) ||
-                    invTemplates.find((t: any) => t.category === 'thermal') ||
-                    invTemplates.find((t: any) => t.isDefault);
+            invTemplates.find((t: any) => t.category === 'thermal') ||
+            invTemplates.find((t: any) => t.isDefault);
         }
 
         if (matched) {
@@ -320,7 +320,7 @@ export function getActiveReceiptTemplate(): ReceiptTemplate {
             showLogo: fields.showLogo !== false,
             showStoreAddress: fields.showStoreAddress !== false,
             showTaxId: fields.showTaxSplit !== false,
-            showCustomerDetails: fields.showCustomerDetails !== false,
+            showstudentDetails: fields.showstudentDetails !== false,
             showItemHSN: fields.showHSN !== false,
             showItemDiscount: fields.showItemDescription !== false,
             showTaxBreakdown: fields.showTaxSplit !== false,
@@ -372,7 +372,7 @@ export function getTenantTemplatesKey(tenantId?: string): string {
         const parsed = JSON.parse(raw);
         tid = parsed?.id;
       }
-    } catch {}
+    } catch { }
   }
   return `businessos_print_templates_v1_${tid || 'default'}`;
 }
@@ -387,7 +387,7 @@ export function getTenantDefaultsKey(tenantId?: string): string {
         const parsed = JSON.parse(raw);
         tid = parsed?.id;
       }
-    } catch {}
+    } catch { }
   }
   return `user_active_print_templates_v1_${tid || 'default'}`;
 }
@@ -586,7 +586,7 @@ export function getAllBarcodeTemplates(): any[] {
           storedTemplates = parsed.filter((t: any) => t.category === "barcodes");
         }
       }
-    } catch {}
+    } catch { }
   }
 
   // Combine custom saved templates with default presets
@@ -623,9 +623,9 @@ export function getActiveBarcodeTemplate(): any {
 
         if (!matched) {
           matched = invTemplates.find((t: any) => t.category === 'barcodes' && t.isDefault) ||
-                    invTemplates.find((t: any) => t.category === 'barcodes') ||
-                    DEFAULT_BARCODE_TEMPLATES.find((t) => t.id === activeBarcodeId) ||
-                    DEFAULT_BARCODE_TEMPLATES[0];
+            invTemplates.find((t: any) => t.category === 'barcodes') ||
+            DEFAULT_BARCODE_TEMPLATES.find((t) => t.id === activeBarcodeId) ||
+            DEFAULT_BARCODE_TEMPLATES[0];
         }
 
         if (matched) {
@@ -679,8 +679,8 @@ export function getActiveInvoicePrintTemplate(): any {
 
         if (!matched) {
           matched = invTemplates.find((t: any) => t.category === 'invoices' && t.isDefault) ||
-                    invTemplates.find((t: any) => t.category === 'invoices') ||
-                    invTemplates.find((t: any) => t.id === 'tpl-inv-stylish');
+            invTemplates.find((t: any) => t.category === 'invoices') ||
+            invTemplates.find((t: any) => t.id === 'tpl-inv-stylish');
         }
 
         if (matched) {
@@ -727,7 +727,7 @@ export function getActiveInvoicePrintTemplate(): any {
       showTaxSplit: true,
       showBankDetails: false,
       showSignature: true,
-      showCustomerDetails: true,
+      showstudentDetails: true,
       showProductName: true,
       showPrice: true,
       showMRP: true,
@@ -753,7 +753,7 @@ export function saveReceiptTemplates(templates: ReceiptTemplate[]): void {
 export function saveActiveReceiptTemplate(updated: ReceiptTemplate): void {
   const templates = getStoredReceiptTemplates();
   const index = templates.findIndex((t) => t.id === updated.id);
-  
+
   let newTemplates: ReceiptTemplate[];
   if (index >= 0) {
     newTemplates = templates.map((t) => (t.id === updated.id ? { ...updated, isDefault: true } : { ...t, isDefault: false }));
@@ -796,7 +796,7 @@ export function saveActiveReceiptTemplate(updated: ReceiptTemplate): void {
           showLogo: updated.showLogo,
           showStoreAddress: updated.showStoreAddress,
           showTaxSplit: updated.showTaxBreakdown,
-          showCustomerDetails: updated.showCustomerDetails,
+          showstudentDetails: updated.showstudentDetails,
           showProductName: true,
           showPrice: true,
           showMRP: true,

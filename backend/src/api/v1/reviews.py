@@ -20,16 +20,16 @@ def generate_ai_reviews(
     payload: Dict[str, Any] = Body(default_factory=dict),
     db: Session = Depends(get_db)
 ):
-    customer_id = payload.get("customer_id") if isinstance(payload, dict) else None
+    student_id = payload.get("student_id") if isinstance(payload, dict) else None
     vahd_name = payload.get("vahd_name") if isinstance(payload, dict) else None
-    suggestions = ReviewService.generate_ai_reviews(db, customer_id=customer_id, vahd_name=vahd_name)
+    suggestions = ReviewService.generate_ai_reviews(db, student_id=student_id, vahd_name=vahd_name)
     return {
         "suggestions": suggestions,
-        "customer_id": customer_id
+        "student_id": student_id
     }
 
 @router.post("/submit")
-def submit_customer_review(
+def submit_student_review(
     payload: Dict[str, Any] = Body(...),
     db: Session = Depends(get_db)
 ):
@@ -38,7 +38,7 @@ def submit_customer_review(
     review = ReviewService.submit_review(db, payload)
     return {
         "id": review.id,
-        "customer_name": review.customer_name,
+        "student_name": review.student_name,
         "rating": review.rating,
         "review_text": review.review_text,
         "posted_to_google": review.posted_to_google,
@@ -57,9 +57,9 @@ def get_reviews(
             {
                 "id": r.id,
                 "company_id": r.company_id,
-                "customer_id": r.customer_id,
-                "customer_name": r.customer_name,
-                "customer_phone": r.customer_phone,
+                "student_id": r.student_id,
+                "student_name": r.student_name,
+                "student_phone": r.student_phone,
                 "rating": r.rating,
                 "review_text": r.review_text,
                 "sentiment": r.sentiment,

@@ -42,8 +42,8 @@ export interface PaymentDetailsPayload {
 interface PaymentTerminalSelectorProps {
   totalAmount: number;
   billNumber?: string;
-  customerName?: string;
-  customerPhone?: string;
+  studentName?: string;
+  studentPhone?: string;
   selectedMethod: PaymentMethodType;
   onMethodChange: (method: PaymentMethodType, payload: PaymentDetailsPayload) => void;
   className?: string;
@@ -52,8 +52,8 @@ interface PaymentTerminalSelectorProps {
 export function PaymentTerminalSelector({
   totalAmount,
   billNumber = `BILL-${Math.floor(100000 + Math.random() * 900000)}`,
-  customerName = '',
-  customerPhone = '',
+  studentName = '',
+  studentPhone = '',
   selectedMethod,
   onMethodChange,
   className = '',
@@ -256,8 +256,8 @@ export function PaymentTerminalSelector({
               type="button"
               onClick={() => handleSelect(opt.id)}
               className={`p-3 rounded-2xl border text-left transition-all relative flex flex-col justify-between cursor-pointer ${isSelected
-                  ? opt.activeBorder
-                  : 'border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50/60'
+                ? opt.activeBorder
+                : 'border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50/60'
                 }`}
             >
               <div>
@@ -419,7 +419,7 @@ export function PaymentTerminalSelector({
         isOpen={isPineLabsModalOpen}
         amount={totalAmount}
         billNumber={billNumber}
-        customerMobile={customerPhone}
+        studentMobile={studentPhone}
         onClose={() => setIsPineLabsModalOpen(false)}
         onSuccess={(data) => {
           setGatewayTxId(data.rrn || data.authCode);
@@ -439,8 +439,8 @@ export function PaymentTerminalSelector({
         isOpen={isRazorpayModalOpen}
         amount={totalAmount}
         billNumber={billNumber}
-        customerMobile={customerPhone}
-        customerName={customerName}
+        studentMobile={studentPhone}
+        studentName={studentName}
         onClose={() => setIsRazorpayModalOpen(false)}
         onSuccess={(data) => {
           setGatewayTxId(data.paymentId || data.orderId);

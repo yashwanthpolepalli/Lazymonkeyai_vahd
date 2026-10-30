@@ -3,8 +3,8 @@ vahd — Super Admin Router Endpoints
 Serves platform overview, vahd management, device monitoring, AI engine telemetry,
 and DB-driven feature control matrix endpoints.
 """
-from typing import Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, Body
+from typing import Dict, Any, Optional
+from fastapi import APIRouter, Depends, HTTPException, Body, Query
 from sqlalchemy.orm import Session
 from src.database.session import get_db
 from src.services.super_admin_service import SuperAdminService
@@ -15,15 +15,30 @@ router = APIRouter(prefix="/superadmin", tags=["Super Admin"])
 
 @router.get("/overview")
 @router.get("/super-admin/overview")
-def get_super_admin_overview(db: Session = Depends(get_db)):
-    return SuperAdminService.get_platform_overview(db)
+def get_super_admin_overview(
+    ho_id: Optional[str] = Query(None),
+    db: Session = Depends(get_db)
+):
+    return SuperAdminService.get_platform_overview(db, ho_id_filter=ho_id)
 
 
 @router.get("/vahds")
 @router.get("/organizations")
-def list_organizations(db: Session = Depends(get_db)):
+def list_organizations(
+    ho_id: Optional[str] = Query(None),
+    search: Optional[str] = Query(None),
+    status: Optional[str] = Query(None),
+    plan: Optional[str] = Query(None),
+    db: Session = Depends(get_db)
+):
     """Fetch all vahd branches and owners dynamically from PostgreSQL DB."""
-    return SuperAdminService.get_organizations(db)
+    return SuperAdminService.get_organizations(
+        db,
+        status_filter=status,
+        plan_filter=plan,
+        search=search,
+        ho_id_filter=ho_id
+    )
 
 
 @router.get("/organizations/{org_id}")

@@ -1053,7 +1053,7 @@ function CompanyFormModal({
                     </div>
                     <div>
                       <h3 className="font-bold text-sm text-navy-900">Google Business Reviews & QR Automation</h3>
-                      <p className="text-[11px] text-navy-500">Automate 5-star customer ratings across Thermal POS Receipts & CRM</p>
+                      <p className="text-[11px] text-navy-500">Automate 5-star student ratings across Thermal POS Receipts & CRM</p>
                     </div>
                   </div>
                   <label className="flex items-center gap-2 font-bold cursor-pointer text-navy-800">
@@ -1468,7 +1468,7 @@ export function CompanyManagement() {
                             {activeCompany.google_review_url ? "Active Review Link Configured" : "Review Link Not Set"}
                           </div>
                           <p className="text-xs text-navy-600 mt-0.5 max-w-2xl">
-                            QR code is automatically stamped at the bottom of thermal receipts and shared with customers through WhatsApp CRM after completed orders.
+                            QR code is automatically stamped at the bottom of thermal receipts and shared with students through WhatsApp CRM after completed orders.
                           </p>
                         </div>
                       </div>

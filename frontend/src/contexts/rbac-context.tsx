@@ -153,7 +153,7 @@ export function RbacProvider({ children }: { children: React.ReactNode }) {
       perm.includes("deal") ||
       perm.includes("quotation") ||
       perm.includes("ticket") ||
-      perm.includes("customer")
+      perm.includes("student")
     )
       return "crm";
     if (
@@ -331,7 +331,7 @@ export function RbacProvider({ children }: { children: React.ReactNode }) {
           p.includes("lead") ||
           p.includes("deal") ||
           p.includes("quotation") ||
-          p.includes("customer")
+          p.includes("student")
       );
     }
     if (permission === "view:pos") {
@@ -428,7 +428,7 @@ export function useRbac() {
   if (context === undefined) {
     return {
       activeRole: { id: "role_admin", name: "owner", permissions: ["*"] } as any,
-      setActiveRole: () => {},
+      setActiveRole: () => { },
       hasPermission: () => true,
       isModuleAllowed: () => true,
       isTabAllowed: () => true,

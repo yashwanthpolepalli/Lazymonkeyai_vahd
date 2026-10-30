@@ -10,7 +10,7 @@ class Token(BaseModel):
     role: str
     full_name: str
     email: Optional[str] = None
-    customer_id: Optional[str] = None
+    student_id: Optional[str] = None
     phone: Optional[str] = None
     avatar_url: Optional[str] = None
     vahd_id: Optional[str] = None

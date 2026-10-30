@@ -2,8 +2,8 @@ import json
 import logging
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
-from src.models.erp import Company, CustomerReview
-from src.models.customer import Customer
+from src.models.erp import Company, studentReview
+from src.models.student import student
 from src.models.membership import Membership
 from src.utils.timezone import now_ist_naive
 from src.utils.gemini_config import get_gemini_key, build_gemini_fallback_list
@@ -12,22 +12,22 @@ logger = logging.getLogger(__name__)
 
 class ReviewService:
     @staticmethod
-    def generate_ai_reviews(db: Session, customer_id: Optional[str] = None, vahd_name: Optional[str] = None) -> List[Dict[str, Any]]:
+    def generate_ai_reviews(db: Session, student_id: Optional[str] = None, vahd_name: Optional[str] = None) -> List[Dict[str, Any]]:
         """
-        Dynamically analyzes customer profile, attendance history, goals,
+        Dynamically analyzes student profile, attendance history, goals,
         and generates 3 compelling, realistic 5-star Google review suggestions.
         """
-        customer_name = ""
+        student_name = ""
         membership_plan = ""
         goal = ""
         employee = ""
         attendance_count = 0
 
         # Dynamic lookup from DB
-        if customer_id:
-            cust = db.query(Customer).filter((Customer.id == customer_id) | (Customer.user_id == customer_id)).first()
+        if student_id:
+            cust = db.query(student).filter((student.id == student_id) | (student.user_id == student_id)).first()
             if cust:
-                customer_name = cust.full_name or ""
+                student_name = cust.full_name or ""
                 goal = getattr(cust, "specialization", "") or getattr(cust, "qualification", "") or ""
                 if cust.employee_id:
                     from src.models.user import User
@@ -35,7 +35,7 @@ class ReviewService:
                     if employee_user and employee_user.name:
                         employee = employee_user.name
 
-                mem = db.query(Membership).filter(Membership.customer_id == cust.id).order_by(Membership.created_at.desc()).first()
+                mem = db.query(Membership).filter(Membership.student_id == cust.id).order_by(Membership.created_at.desc()).first()
                 if mem and mem.plan_name:
                     membership_plan = mem.plan_name
 
@@ -53,8 +53,8 @@ class ReviewService:
         models = build_gemini_fallback_list()
 
         context_lines = [f"- Facility Name: {vahd_name}"]
-        if customer_name:
-            context_lines.append(f"- Member Name: {customer_name}")
+        if student_name:
+            context_lines.append(f"- Member Name: {student_name}")
         if membership_plan:
             context_lines.append(f"- Membership Tier / Plan: {membership_plan}")
         if goal:
@@ -67,8 +67,8 @@ class ReviewService:
         context_str = "\n".join(context_lines)
 
         prompt = f"""
-You are an expert customer experience assistant. Generate 3 unique, highly authentic 5-star Google Business review suggestions for a member at "{vahd_name}".
-Customer Real Data:
+You are an expert student experience assistant. Generate 3 unique, highly authentic 5-star Google Business review suggestions for a member at "{vahd_name}".
+student Real Data:
 {context_str}
 
 Requirements for the 3 reviews:
@@ -111,7 +111,7 @@ JSON only without markdown fences:
             except Exception as e:
                 logger.error(f"Error configuring Gemini for review suggestions: {e}")
 
-        # Dynamic fallback templates incorporating customer's real vahd name and goals
+        # Dynamic fallback templates incorporating student's real vahd name and goals
         if not generated_data or not isinstance(generated_data, list):
             goal_desc = f" on my {goal.lower()} goals" if goal else ""
             employee_desc = f" with {employee}" if employee else " with the employees"
@@ -148,12 +148,12 @@ JSON only without markdown fences:
 
 
     @staticmethod
-    def submit_review(db: Session, data: Dict[str, Any]) -> CustomerReview:
-        review = CustomerReview(
+    def submit_review(db: Session, data: Dict[str, Any]) -> studentReview:
+        review = studentReview(
             company_id=data.get("company_id"),
-            customer_id=data.get("customer_id"),
-            customer_name=data.get("customer_name", "Anonymous Member"),
-            customer_phone=data.get("customer_phone"),
+            student_id=data.get("student_id"),
+            student_name=data.get("student_name", "Anonymous Member"),
+            student_phone=data.get("student_phone"),
             rating=data.get("rating", 5),
             review_text=data.get("review_text", ""),
             sentiment=data.get("sentiment", "Positive"),
@@ -167,11 +167,11 @@ JSON only without markdown fences:
         return review
 
     @staticmethod
-    def get_reviews(db: Session, company_id: Optional[str] = None) -> List[CustomerReview]:
-        query = db.query(CustomerReview)
+    def get_reviews(db: Session, company_id: Optional[str] = None) -> List[studentReview]:
+        query = db.query(studentReview)
         if company_id:
-            query = query.filter(CustomerReview.company_id == company_id)
-        return query.order_by(CustomerReview.created_at.desc()).all()
+            query = query.filter(studentReview.company_id == company_id)
+        return query.order_by(studentReview.created_at.desc()).all()
 
     @staticmethod
     def get_review_settings(db: Session, company_id: Optional[str] = None) -> Dict[str, Any]:

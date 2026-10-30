@@ -148,10 +148,24 @@ export function VahdsPage() {
     vahdNames: [],
   });
 
+  // Action Menu Dropdown State
+  const [openActionDropdownId, setOpenActionDropdownId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleGlobalClick = (e: MouseEvent) => {
+      if (!(e.target as HTMLElement).closest('.owner-action-dropdown-container')) {
+        setOpenActionDropdownId(null);
+      }
+    };
+    document.addEventListener('click', handleGlobalClick);
+    return () => document.removeEventListener('click', handleGlobalClick);
+  }, []);
+
   // Fetch vahds from DB
-  const fetchvahds = () => {
+  const fetchvahds = (hoId?: string) => {
     setLoading(true);
-    api.superAdmin.vahds()
+    const activeHo = hoId !== undefined ? hoId : (localStorage.getItem('vahd_selected_org_id') || 'all');
+    api.superAdmin.vahds(activeHo)
       .then((data) => {
         setvahds(data || []);
         setLoading(false);
@@ -219,6 +233,11 @@ export function VahdsPage() {
   useEffect(() => {
     fetchvahds();
     loadSaaSMetadata();
+    const handleOrgChanged = (e: any) => {
+      fetchvahds(e.detail?.id);
+    };
+    window.addEventListener('vahd:org_changed', handleOrgChanged);
+    return () => window.removeEventListener('vahd:org_changed', handleOrgChanged);
   }, []);
 
   // Copy helper
@@ -277,7 +296,6 @@ export function VahdsPage() {
   }, [taxableAmount, discountTiming, discountAmount, totalTax, additionalCharge, basePlanPrice]);
 
   const handleOpenOnboard = () => {
-    loadSaaSMetadata();
     setOnboardForm({
       vahd_name: '',
       branch_name: '',
@@ -286,29 +304,70 @@ export function VahdsPage() {
       owner_name: '',
       owner_email: '',
       phone: '',
-      password: generateSecurePassword(),
+      password: '',
     });
-    setWizardStep(1);
-    setDiscountPercent(0);
-    setCustomDiscountPercent('');
-    setAdditionalCharge(0);
-    setAdditionalChargeInput('');
-    setShowAddChargeInput(false);
-    setPaymentMethod('Cash');
     setOnboardError('');
-    setShowPassword(false);
     setOnboardOpen(true);
   };
 
+  const handleOnboardvahdSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setOnboardError('');
+    if (!onboardForm.vahd_name.trim()) {
+      setOnboardError('Organization Name is required.');
+      return;
+    }
+    if (!onboardForm.owner_email.trim()) {
+      setOnboardError('Owner Email is required.');
+      return;
+    }
+    setOnboarding(true);
+    try {
+      const payload = {
+        ...onboardForm,
+        vahd_name: onboardForm.vahd_name.trim(),
+        branch_name: onboardForm.branch_name.trim() || onboardForm.vahd_name.trim(),
+        owner_email: onboardForm.owner_email.trim().toLowerCase(),
+        password: onboardForm.password.trim() || `vahd@${Math.floor(1000 + Math.random() * 9000)}`,
+      };
+      const res = await api.superAdmin.onboardvahd(payload);
+      if (res && (res.success === true || (res.success === undefined && (res.vahd_id || res.id)))) {
+        setOnboardOpen(false);
+        setOnboardForm({
+          vahd_name: '',
+          branch_name: '',
+          city: '',
+          address: '',
+          owner_name: '',
+          owner_email: '',
+          phone: '',
+          password: '',
+        });
+        setOnboardError('');
+        fetchvahds();
+      } else {
+        setOnboardError(res?.message || 'Failed to onboard organization. Please try again.');
+      }
+    } catch (err: any) {
+      setOnboardError(err?.response?.data?.detail || err?.response?.data?.message || err?.message || 'Failed to onboard organization.');
+    } finally {
+      setOnboarding(false);
+    }
+  };
+
   const handleStatusChange = async (vahdId: string, newStatus: string) => {
+    const isActive = newStatus.toLowerCase() === 'active';
+    setvahds((prev) =>
+      prev.map((v) => (v.id === vahdId ? { ...v, is_active: isActive, status: isActive ? 'active' : 'inactive' } : v))
+    );
+    if (selected && selected.id === vahdId) {
+      setSelected((prev: any) => (prev ? { ...prev, status: newStatus, is_active: isActive } : null));
+    }
     try {
       await api.superAdmin.updatevahdStatus(vahdId, newStatus);
-      if (selected && selected.id === vahdId) {
-        setSelected((prev: any) => prev ? { ...prev, status: newStatus, is_active: newStatus === 'active' } : null);
-      }
       fetchvahds();
     } catch (_err) {
-      /* ignore */
+      fetchvahds();
     }
   };
 
@@ -475,7 +534,7 @@ export function VahdsPage() {
         actions={
           <button
             onClick={handleOpenOnboard}
-            className="btn-primary flex items-center gap-2 shadow-lg shadow-blue-600/20"
+            className="btn-primary flex items-center gap-2"
           >
             <Icon name="plus" size={16} /> Onboard HO's
           </button>
@@ -499,7 +558,7 @@ export function VahdsPage() {
           <div className="text-xs text-slate-500 font-semibold bg-white border border-slate-200 px-3 py-1.5 rounded-xl shadow-xs">
             Total Head Offices: <span className="text-blue-600 font-bold">{vahds.length}</span>
           </div>
-          <button onClick={fetchvahds} className="btn-secondary flex items-center gap-1.5 text-xs font-bold py-2 px-3">
+          <button onClick={() => fetchvahds()} className="btn-secondary flex items-center gap-1.5 text-xs font-bold py-2 px-3">
             <Icon name="refresh-cw" size={14} /> Refresh
           </button>
         </div>
@@ -549,9 +608,9 @@ export function VahdsPage() {
       {/* Head Offices Table */}
       <div className="card p-4">
         {loading ? (
-          <SkeletonTable rows={6} cols={9} />
+          <SkeletonTable rows={6} cols={7} />
         ) : filteredvahds.length > 0 ? (
-          <div className="overflow-x-auto -mx-4 px-4">
+          <div className="overflow-x-auto -mx-4 px-4 min-h-[340px] pb-32">
             <table className="w-full min-w-[1000px] text-xs">
               <thead>
                 <tr className="border-b border-navy-100 text-navy-400 text-left font-semibold uppercase tracking-wider">
@@ -566,10 +625,11 @@ export function VahdsPage() {
                   </th>
                   <th className="px-3 py-3">Head Office &amp; Branch</th>
                   <th className="px-3 py-3">HO Credentials</th>
-                  <th className="px-3 py-3">City / Location</th>
-                  <th className="px-3 py-3">Members</th>
-                  <th className="px-3 py-3">SaaS Plan</th>
-                  <th className="px-3 py-3">Billing &amp; Payment</th>
+                  <th className="px-3 py-3">Location</th>
+                  <th className="px-3 py-3 text-center">Institutions</th>
+                  <th className="px-3 py-3 text-center">Owners</th>
+                  <th className="px-3 py-3 text-center">Emp</th>
+                  <th className="px-3 py-3 text-center">Students</th>
                   <th className="px-3 py-3">Status</th>
                   <th className="px-3 py-3 text-right">Owner Actions</th>
                 </tr>
@@ -592,14 +652,16 @@ export function VahdsPage() {
                       />
                     </td>
 
-                    <td className="px-3 py-3">
+                    <td className="px-3 py-3 cursor-pointer" onClick={() => setSelected(g)}>
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white shrink-0 shadow-sm">
                           <Icon name="building-2" size={16} />
                         </div>
                         <div>
-                          <div className="text-sm font-bold text-slate-900">{g.name || '—'}</div>
-                          <div className="text-[11px] text-slate-400 font-medium">{g.branch_name || '—'}</div>
+                          <div className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                            {g.name || '—'}
+                          </div>
+                          <div className="text-[11px] text-slate-400 font-medium">{g.branch_name || 'Main HQ'}</div>
                         </div>
                       </div>
                     </td>
@@ -619,75 +681,179 @@ export function VahdsPage() {
                       </div>
                     </td>
 
-                    <td className="px-3 py-3 font-bold text-slate-700">
-                      {g.members ? g.members.toLocaleString() : 0}
+                    <td className="px-3 py-3 text-center">
+                      <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-lg text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-100/80 shadow-2xs">
+                        {g.branches_count || 1}
+                      </span>
                     </td>
 
-                    <td className="px-3 py-3">
-                      <Badge variant="brand">{g.plan || '—'}</Badge>
+                    <td className="px-3 py-3 text-center">
+                      <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-lg text-xs font-bold bg-purple-50 text-purple-700 border border-purple-100/80 shadow-2xs">
+                        {g.owners_count || 0}
+                      </span>
                     </td>
 
-                    <td className="px-3 py-3">
-                      <div>
-                        <span className="text-xs font-bold text-slate-900">{g.payment_method || 'Cash'}</span>
-                        <div className="text-[10px] text-slate-400 font-semibold capitalize">
-                          {g.billing_cycle || 'monthly'} • ₹{(g.paid_amount || 0).toLocaleString()}
-                        </div>
+                    <td className="px-3 py-3 text-center">
+                      <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-50 text-amber-700 border border-amber-100/80 shadow-2xs">
+                        {g.employees_count || 0}
+                      </span>
+                    </td>
+
+                    <td className="px-3 py-3 text-center">
+                      <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-100/80 shadow-2xs">
+                        {g.students_count || g.members || 0}
+                      </span>
+                    </td>
+
+                    <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                      <div className="relative inline-flex items-center">
+                        <select
+                          value={g.is_active ? 'active' : 'inactive'}
+                          onChange={(e) => handleStatusChange(g.id, e.target.value)}
+                          aria-label="Change status"
+                          className={cn(
+                            'text-xs font-bold rounded-xl pl-6 pr-6 py-1 border transition-all cursor-pointer outline-none focus:ring-2 appearance-none text-left shadow-2xs',
+                            g.is_active
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100/80 focus:ring-emerald-400'
+                              : 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100/80 focus:ring-rose-400'
+                          )}
+                          style={{
+                            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23475569' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
+                            backgroundRepeat: 'no-repeat',
+                            backgroundPosition: 'right 6px center',
+                            backgroundSize: '12px',
+                          }}
+                        >
+                          <option value="active" className="text-emerald-700 bg-white font-bold">Active</option>
+                          <option value="inactive" className="text-rose-700 bg-white font-bold">Inactive</option>
+                        </select>
+                        <span
+                          className={cn(
+                            'w-2 h-2 rounded-full absolute left-2.5 pointer-events-none',
+                            g.is_active ? 'bg-emerald-500' : 'bg-rose-500'
+                          )}
+                        />
                       </div>
                     </td>
 
-                    <td className="px-3 py-3">
-                      <Badge variant={g.is_active ? 'success' : 'danger'} dot>
-                        {g.is_active ? 'Active' : 'Suspended'}
-                      </Badge>
-                    </td>
-
-                    <td className="px-3 py-3 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
+                    <td className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                      <div className="relative inline-block text-left owner-action-dropdown-container">
                         <button
-                          onClick={() => handleOpenResetModal(g)}
-                          title="Reset Owner Password"
-                          className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs flex items-center gap-1 transition-all"
+                          type="button"
+                          onClick={() => setOpenActionDropdownId((prev) => (prev === g.id ? null : g.id))}
+                          className={cn(
+                            'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all shadow-2xs cursor-pointer outline-none select-none',
+                            openActionDropdownId === g.id
+                              ? 'bg-blue-50 text-blue-700 border-blue-300 ring-2 ring-blue-500/20'
+                              : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-300'
+                          )}
+                          title="Actions menu"
                         >
-                          <Icon name="key" size={13} className="text-amber-600" />
-                          <span>Reset Creds</span>
+                          <Icon name="more-horizontal" size={14} className="text-slate-500" />
+                          <span>Actions</span>
+                          <Icon
+                            name="chevron-down"
+                            size={12}
+                            className={cn('text-slate-400 transition-transform duration-200', openActionDropdownId === g.id && 'rotate-180')}
+                          />
                         </button>
 
-                        {g.is_active ? (
-                          <button
-                            onClick={() => handleStatusChange(g.id, 'suspended')}
-                            title="Suspend Organization & Owner"
-                            className="px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold text-xs flex items-center gap-1 transition-all"
-                          >
-                            <Icon name="shield-alert" size={13} />
-                            <span>Suspend</span>
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => handleStatusChange(g.id, 'active')}
-                            title="Activate Organization & Owner"
-                            className="px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold text-xs flex items-center gap-1 transition-all"
-                          >
-                            <Icon name="check" size={13} />
-                            <span>Activate</span>
-                          </button>
+                        {openActionDropdownId === g.id && (
+                          <div className="absolute right-0 mt-1.5 w-52 bg-white rounded-2xl shadow-xl border border-slate-200/90 z-50 py-1.5 animate-scale-in max-h-60 overflow-y-auto">
+                            <div className="px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-400 border-b border-slate-100 mb-1">
+                              Owner Actions
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenActionDropdownId(null);
+                                setSelected(g);
+                              }}
+                              className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 hover:text-indigo-600 hover:bg-indigo-50/80 flex items-center gap-2.5 transition-colors cursor-pointer"
+                            >
+                              <div className="w-6 h-6 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                                <Icon name="eye" size={13} />
+                              </div>
+                              <div className="flex flex-col">
+                                <span>360 Breakdown</span>
+                                <span className="text-[10px] text-slate-400 font-normal">View stats & metrics</span>
+                              </div>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenActionDropdownId(null);
+                                handleOpenResetModal(g);
+                              }}
+                              className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 hover:text-amber-700 hover:bg-amber-50/80 flex items-center gap-2.5 transition-colors cursor-pointer"
+                            >
+                              <div className="w-6 h-6 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                                <Icon name="key" size={13} />
+                              </div>
+                              <div className="flex flex-col">
+                                <span>Reset Credentials</span>
+                                <span className="text-[10px] text-slate-400 font-normal">Change password</span>
+                              </div>
+                            </button>
+
+                            {g.is_active ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setOpenActionDropdownId(null);
+                                  handleStatusChange(g.id, 'suspended');
+                                }}
+                                className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 hover:text-rose-600 hover:bg-rose-50/80 flex items-center gap-2.5 transition-colors cursor-pointer"
+                              >
+                                <div className="w-6 h-6 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+                                  <Icon name="shield-alert" size={13} />
+                                </div>
+                                <div className="flex flex-col">
+                                  <span>Suspend Head Office</span>
+                                  <span className="text-[10px] text-slate-400 font-normal">Deactivate access</span>
+                                </div>
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setOpenActionDropdownId(null);
+                                  handleStatusChange(g.id, 'active');
+                                }}
+                                className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 hover:text-emerald-600 hover:bg-emerald-50/80 flex items-center gap-2.5 transition-colors cursor-pointer"
+                              >
+                                <div className="w-6 h-6 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                                  <Icon name="check" size={13} />
+                                </div>
+                                <div className="flex flex-col">
+                                  <span>Activate Head Office</span>
+                                  <span className="text-[10px] text-slate-400 font-normal">Restore full access</span>
+                                </div>
+                              </button>
+                            )}
+
+                            <div className="my-1 border-t border-slate-100" />
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenActionDropdownId(null);
+                                handleOpenDeleteSingle(g);
+                              }}
+                              className="w-full text-left px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 flex items-center gap-2.5 transition-colors cursor-pointer"
+                            >
+                              <div className="w-6 h-6 rounded-lg bg-rose-100/70 text-rose-600 flex items-center justify-center shrink-0">
+                                <Icon name="trash-2" size={13} />
+                              </div>
+                              <div className="flex flex-col">
+                                <span>Delete Head Office</span>
+                                <span className="text-[10px] text-rose-400 font-normal">Permanent deletion</span>
+                              </div>
+                            </button>
+                          </div>
                         )}
-
-                        <button
-                          onClick={() => handleOpenDeleteSingle(g)}
-                          title="Delete Organization"
-                          className="px-2 py-1.5 rounded-lg bg-slate-100 hover:bg-rose-50 text-slate-400 hover:text-rose-600 font-semibold text-xs flex items-center gap-1 transition-all"
-                        >
-                          <Icon name="trash-2" size={13} />
-                        </button>
-
-                        <button
-                          onClick={() => setSelected(g)}
-                          title="View Organization 360 Overview"
-                          className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700"
-                        >
-                          <Icon name="chevron-right" size={16} />
-                        </button>
                       </div>
                     </td>
                   </tr>
@@ -703,695 +869,115 @@ export function VahdsPage() {
       </div>
 
 
-      {/* ───────────────────────────────────────────────────────────── */}
-      {/* 3-STEP ONBOARDING WIZARD MODAL                                */}
-      {/* ───────────────────────────────────────────────────────────── */}
+      {/* Onboard Organization Modal */}
       {onboardOpen && (
-        <div className="fixed inset-0 bg-slate-950/75 backdrop-blur-md z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-[32px] p-6 sm:p-7 w-full max-w-2xl space-y-5 shadow-2xl border border-slate-100 animate-scale-in max-h-[94vh] overflow-y-auto">
-
-            {/* Modal Top Header & Stepper */}
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-              <div>
-                <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
-                    <Icon name="building-2" size={18} />
-                  </div>
-                  <span>Onboard Head Office (HO) &amp; Organisation</span>
-                </h3>
-                <p className="text-xs font-medium text-slate-400 mt-0.5">
-                  Tenant provisioning: Head Office profile setup, multi-organisation access, and SaaS packaging.
-                </p>
-              </div>
-              <button
-                onClick={() => setOnboardOpen(false)}
-                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center"
-              >
-                <Icon name="x" size={16} />
+        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-lg space-y-4 shadow-2xl border border-slate-100 animate-scale-in">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <Icon name="building-2" size={18} className="text-brand-600" /> Onboard New Organization Branch
+              </h3>
+              <button onClick={() => setOnboardOpen(false)} className="text-slate-400 hover:text-slate-600">
+                <Icon name="x" size={18} />
               </button>
             </div>
 
-            {/* Stepper Progress Indicator (3 Steps) */}
-            <div className="grid grid-cols-3 gap-2 bg-slate-50 p-2 rounded-2xl border border-slate-100">
-              {[
-                { step: 1, label: '1. Profile', icon: 'building-2' },
-                { step: 2, label: '2. SaaS Plan', icon: 'credit-card' },
-                { step: 3, label: '3. POS Billing', icon: 'receipt' },
-              ].map((s) => (
-                <button
-                  key={s.step}
-                  type="button"
-                  onClick={() => {
-                    if (s.step === 1 || (onboardForm.vahd_name && onboardForm.owner_email)) {
-                      setWizardStep(s.step as any);
-                    }
-                  }}
-                  className={cn(
-                    'flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl text-xs font-bold transition-all',
-                    wizardStep === s.step
-                      ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
-                      : wizardStep > s.step
-                        ? 'bg-emerald-100 text-emerald-800'
-                        : 'text-slate-400 hover:text-slate-600'
-                  )}
-                >
-                  <Icon name={s.icon as any} size={14} />
-                  <span>{s.label}</span>
-                </button>
-              ))}
-            </div>
-
             {onboardError && (
-              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold flex items-center gap-2">
-                <Icon name="alert-triangle" size={16} className="shrink-0" />
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs font-semibold flex items-center gap-2 animate-fade-in">
+                <Icon name="alert-circle" size={16} className="text-rose-600 shrink-0" />
                 <span>{onboardError}</span>
               </div>
             )}
 
-            {/* ── STEP 1: HEAD OFFICE PROFILE & HO CREDENTIALS ────── */}
-            {wizardStep === 1 && (
-              <div className="space-y-4 animate-fade-in">
-                {/* Head Office Details */}
+            <form onSubmit={handleOnboardvahdSubmit} className="space-y-3">
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">Organization Name *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Acme Enterprise"
+                  value={onboardForm.vahd_name}
+                  onChange={(e) => setOnboardForm((p) => ({ ...p, vahd_name: e.target.value }))}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-brand-500"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <div className="text-[11px] font-bold text-blue-600 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
-                    <Icon name="building-2" size={13} /> Head Office &amp; Location Details
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="sm:col-span-2">
-                      <label className="text-xs font-bold text-slate-700 block mb-1">Head Office / Business Name *</label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="e.g. Acme Corporation"
-                        value={onboardForm.vahd_name}
-                        onChange={(e) => setOnboardForm((p) => ({ ...p, vahd_name: e.target.value }))}
-                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-blue-500 outline-none"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-xs font-bold text-slate-700 block mb-1">Branch Name</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Main Branch / Downtown"
-                        value={onboardForm.branch_name}
-                        onChange={(e) => setOnboardForm((p) => ({ ...p, branch_name: e.target.value }))}
-                        className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-blue-500 outline-none"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-xs font-bold text-slate-700 block mb-1">City</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Hyderabad"
-                        value={onboardForm.city}
-                        onChange={(e) => setOnboardForm((p) => ({ ...p, city: e.target.value }))}
-                        className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-blue-500 outline-none"
-                      />
-                    </div>
-
-                    <div className="sm:col-span-2">
-                      <label className="text-xs font-bold text-slate-700 block mb-1">Address / Street</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Plot 45, Road No 36, Jubilee Hills"
-                        value={onboardForm.address}
-                        onChange={(e) => setOnboardForm((p) => ({ ...p, address: e.target.value }))}
-                        className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-blue-500 outline-none"
-                      />
-                    </div>
-                  </div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">Branch Name</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Main Branch"
+                    value={onboardForm.branch_name}
+                    onChange={(e) => setOnboardForm((p) => ({ ...p, branch_name: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-medium"
+                  />
                 </div>
-
-                {/* Head Office (HO) Credentials */}
-                <div className="pt-3 border-t border-slate-100">
-                  <div className="text-[11px] font-bold text-indigo-600 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
-                    <Icon name="key" size={13} /> Head Office (HO) Administrator Credentials
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs font-bold text-slate-700 block mb-1">Head Office Admin Name *</label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="e.g. Head Office Admin"
-                        value={onboardForm.owner_name}
-                        onChange={(e) => setOnboardForm((p) => ({ ...p, owner_name: e.target.value }))}
-                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-xs font-bold text-slate-700 block mb-1">HO Admin Email (Login ID) *</label>
-                      <input
-                        type="email"
-                        required
-                        placeholder="e.g. ho@enterprise.com"
-                        value={onboardForm.owner_email}
-                        onChange={(e) => setOnboardForm((p) => ({ ...p, owner_email: e.target.value }))}
-                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-xs font-bold text-slate-700 block mb-1">Phone Number</label>
-                      <input
-                        type="tel"
-                        placeholder="e.g. 9876543210"
-                        value={onboardForm.phone}
-                        onChange={(e) => setOnboardForm((p) => ({ ...p, phone: e.target.value }))}
-                        className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"
-                      />
-                    </div>
-
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <label className="text-xs font-bold text-slate-700">Initial Password *</label>
-                        <button
-                          type="button"
-                          onClick={() => setOnboardForm((p) => ({ ...p, password: generateSecurePassword() }))}
-                          className="text-[11px] text-indigo-600 hover:text-indigo-700 font-bold flex items-center gap-1"
-                        >
-                          <Icon name="refresh-cw" size={11} /> Generate
-                        </button>
-                      </div>
-                      <div className="relative flex items-center">
-                        <input
-                          type={showPassword ? 'text' : 'password'}
-                          required
-                          value={onboardForm.password}
-                          onChange={(e) => setOnboardForm((p) => ({ ...p, password: e.target.value }))}
-                          className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-indigo-500 pr-9 outline-none font-mono"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-2.5 text-slate-400 hover:text-slate-600"
-                        >
-                          <Icon name={showPassword ? 'eye-off' : 'eye'} size={15} />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="pt-3 flex justify-end gap-2 border-t border-slate-100">
-                  <button type="button" onClick={() => setOnboardOpen(false)} className="btn-secondary py-2.5 px-4 text-xs font-bold">
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!onboardForm.vahd_name.trim() || !onboardForm.owner_email.trim()) {
-                        setOnboardError('Please fill in Organisation Name and Head Office Email before continuing.');
-                        return;
-                      }
-                      setOnboardError('');
-                      setWizardStep(2);
-                    }}
-                    className="btn-primary py-2.5 px-5 text-xs font-bold flex items-center gap-1.5"
-                  >
-                    <span>Continue to SaaS Plan</span>
-                    <Icon name="chevron-right" size={15} />
-                  </button>
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">City</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. City Name"
+                    value={onboardForm.city}
+                    onChange={(e) => setOnboardForm((p) => ({ ...p, city: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-medium"
+                  />
                 </div>
               </div>
-            )}
-
-            {/* ── STEP 2: SAAS SUBSCRIPTION PLAN SELECTION ───────────── */}
-            {wizardStep === 2 && (
-              <div className="space-y-4 animate-fade-in">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div>
-                    <div className="text-[11px] font-bold text-blue-600 uppercase tracking-wider flex items-center gap-1.5">
-                      <Icon name="credit-card" size={13} /> Select SaaS Subscription Tier
-                    </div>
-                    <p className="text-xs text-slate-400">Choose the platform tier and billing frequency. Modules are governed by the platform feature matrix.</p>
-                  </div>
-
-                  {/* Billing Frequency Switch */}
-                  <div className="bg-slate-100 p-1 rounded-2xl flex items-center gap-1 border border-slate-200 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => setBillingCycle('monthly')}
-                      className={cn(
-                        'px-3 py-1 rounded-xl text-xs font-bold transition-all',
-                        billingCycle === 'monthly' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'
-                      )}
-                    >
-                      Monthly
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setBillingCycle('annual')}
-                      className={cn(
-                        'px-3 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1',
-                        billingCycle === 'annual' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'
-                      )}
-                    >
-                      Annual
-                      <span className="bg-emerald-100 text-emerald-700 text-[9px] px-1 rounded font-extrabold">
-                        -20%
-                      </span>
-                    </button>
-                  </div>
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">Address</label>
+                <input
+                  type="text"
+                  placeholder="Street / Area Address"
+                  value={onboardForm.address}
+                  onChange={(e) => setOnboardForm((p) => ({ ...p, address: e.target.value }))}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-medium"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">Owner Name</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Owner Name"
+                    value={onboardForm.owner_name}
+                    onChange={(e) => setOnboardForm((p) => ({ ...p, owner_name: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-medium"
+                  />
                 </div>
-
-                {/* SaaS Plan Cards Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 max-h-[50vh] overflow-y-auto pr-1">
-                  {saasPlans.map((p) => {
-                    const price = billingCycle === 'monthly' ? p.price_monthly : p.price_annual;
-                    const isSelected = selectedPlan?.id === p.id || selectedPlan?.code === p.code;
-
-                    return (
-                      <div
-                        key={p.id}
-                        onClick={() => setSelectedPlan(p)}
-                        className={cn(
-                          'p-4 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between space-y-3 relative',
-                          isSelected
-                            ? 'border-blue-600 bg-blue-50/30 ring-2 ring-blue-600/20 shadow-md'
-                            : 'border-slate-200 hover:border-slate-300 bg-white'
-                        )}
-                      >
-                        {p.is_popular && (
-                          <span className="absolute top-3 right-3 bg-indigo-600 text-white text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full">
-                            Popular
-                          </span>
-                        )}
-
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <div className={cn('w-4 h-4 rounded-full border flex items-center justify-center', isSelected ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300')}>
-                              {isSelected && <Icon name="check" size={10} />}
-                            </div>
-                            <h4 className="text-sm font-black text-slate-900">{p.name}</h4>
-                          </div>
-
-                          <p className="text-[11px] text-slate-500 mt-1 min-h-[30px] line-clamp-2">
-                            {p.description}
-                          </p>
-
-                          <div className="mt-2.5 pb-2.5 border-b border-slate-100 flex items-baseline gap-1">
-                            <span className="text-xl font-black text-slate-900">₹{(price || 0).toLocaleString()}</span>
-                            <span className="text-[10px] text-slate-400 font-semibold">/{billingCycle === 'monthly' ? 'month' : 'year'}</span>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-2 mt-2 text-[11px] bg-slate-50 p-2 rounded-xl border border-slate-100">
-                            <div className="text-slate-600">
-                              Branches: <span className="font-bold text-slate-900">{p.max_branches ?? 'Unlimited'}</span>
-                            </div>
-                            <div className="text-slate-600">
-                              Members: <span className="font-bold text-slate-900">{p.max_members ? p.max_members.toLocaleString() : 'Unlimited'}</span>
-                            </div>
-                            <div className="text-slate-600">
-                              AI Credits: <span className="font-bold text-slate-900">{p.ai_credits_monthly ? p.ai_credits_monthly.toLocaleString() : '1,000'}</span>
-                            </div>
-                            <div className="text-slate-600">
-                              Storage: <span className="font-bold text-slate-900">{p.storage_gb || 10} GB</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Top Feature Bullets */}
-                        <div className="space-y-1">
-                          {(p.features || []).slice(0, 3).map((f, i) => (
-                            <div key={i} className="flex items-center gap-1.5 text-[10px] text-slate-600">
-                              <Icon name="check" size={11} className="text-emerald-500 shrink-0" />
-                              <span className="truncate">{f}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div className="pt-3 flex justify-between gap-2 border-t border-slate-100">
-                  <button type="button" onClick={() => setWizardStep(1)} className="btn-secondary py-2.5 px-4 text-xs font-bold flex items-center gap-1">
-                    <Icon name="chevron-left" size={15} />
-                    <span>Back to Profile</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setWizardStep(3)}
-                    className="btn-primary py-2.5 px-5 text-xs font-bold flex items-center gap-1.5"
-                  >
-                    <span>Proceed to POS Billing</span>
-                    <Icon name="chevron-right" size={15} />
-                  </button>
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">Owner Email *</label>
+                  <input
+                    type="email"
+                    required
+                    placeholder="owner@example.com"
+                    value={onboardForm.owner_email}
+                    onChange={(e) => setOnboardForm((p) => ({ ...p, owner_email: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-medium"
+                  />
                 </div>
               </div>
-            )}
-
-            {/* ── STEP 3: POS TERMINAL BILLING & PAYMENT CHECKOUT ────── */}
-            {wizardStep === 3 && (
-              <div className="space-y-4 animate-fade-in">
-                <div className="text-[11px] font-bold text-blue-600 uppercase tracking-wider flex items-center gap-1.5">
-                  <Icon name="receipt" size={13} /> POS Subscription Checkout &amp; Billing
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
-
-                  {/* Left: Summary Box */}
-                  <div className="md:col-span-5 bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3">
-                    <div className="flex items-center gap-2.5 pb-3 border-b border-slate-200">
-                      <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black">
-                        <Icon name="building-2" size={20} />
-                      </div>
-                      <div>
-                        <div className="text-xs font-black text-slate-900">{onboardForm.vahd_name}</div>
-                        <div className="text-[10px] text-slate-400 font-semibold">{onboardForm.owner_name} • {onboardForm.city || 'HQ'}</div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-1.5 text-xs">
-                      <div className="flex justify-between text-slate-600">
-                        <span>Selected Tier:</span>
-                        <span className="font-bold text-slate-900">{selectedPlan?.name}</span>
-                      </div>
-                      <div className="flex justify-between text-slate-600">
-                        <span>Billing Cycle:</span>
-                        <span className="font-bold text-blue-600 capitalize">{billingCycle}</span>
-                      </div>
-                      <div className="flex justify-between text-slate-600">
-                        <span>Member Capacity:</span>
-                        <span className="font-bold text-slate-900">{selectedPlan?.max_members ? selectedPlan.max_members.toLocaleString() : 'Unlimited'}</span>
-                      </div>
-                      <div className="flex justify-between text-slate-600">
-                        <span>AI Tokens / Mo:</span>
-                        <span className="font-bold text-slate-900">{selectedPlan?.ai_credits_monthly ? selectedPlan.ai_credits_monthly.toLocaleString() : '1,000'}</span>
-                      </div>
-                    </div>
-
-                    {/* Included Modules from Plan */}
-                    <div className="pt-2 border-t border-slate-200">
-                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Package Modules</div>
-                      <div className="space-y-1">
-                        {(selectedPlan?.features || []).slice(0, 4).map((f, idx) => (
-                          <div key={idx} className="flex items-center gap-1.5 text-[11px] text-slate-600">
-                            <Icon name="check" size={12} className="text-emerald-500 shrink-0" />
-                            <span className="truncate">{f}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Right: Dynamic Calculation Box matching Screenshot 3 POS */}
-                  <div className="md:col-span-7 bg-white border border-slate-200 rounded-2xl p-4 space-y-3 shadow-xs">
-
-                    {/* Subtotal */}
-                    <div className="flex justify-between items-center text-xs text-slate-600 pb-2 border-b border-slate-100">
-                      <span className="font-bold">Plan Base Subtotal</span>
-                      <span className="font-black text-slate-900">₹{basePlanPrice.toLocaleString()}</span>
-                    </div>
-
-                    {/* Dynamic Cart Discount */}
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between text-[10px] font-black uppercase text-slate-500 tracking-wider">
-                        <span className="flex items-center gap-1 text-blue-600">
-                          <Icon name="percent" size={12} /> Dynamic Discount
-                        </span>
-                        <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg">
-                          <button
-                            type="button"
-                            onClick={() => setDiscountTiming('before_tax')}
-                            className={cn('px-1.5 py-0.5 rounded text-[9px] font-bold cursor-pointer', discountTiming === 'before_tax' ? 'bg-blue-600 text-white' : 'text-slate-500')}
-                          >
-                            Before Tax
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setDiscountTiming('after_tax')}
-                            className={cn('px-1.5 py-0.5 rounded text-[9px] font-bold cursor-pointer', discountTiming === 'after_tax' ? 'bg-blue-600 text-white' : 'text-slate-500')}
-                          >
-                            After Tax
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-1 flex-wrap">
-                        {discountPresets.map((d) => (
-                          <button
-                            key={d}
-                            type="button"
-                            onClick={() => {
-                              setDiscountPercent(d);
-                              setCustomDiscountPercent('');
-                            }}
-                            className={cn(
-                              'px-2 py-1 rounded-xl text-xs font-bold border transition cursor-pointer',
-                              discountPercent === d && customDiscountPercent === ''
-                                ? 'bg-blue-600 text-white border-blue-600'
-                                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-                            )}
-                          >
-                            {d === 0 ? 'Off' : `${d}%`}
-                          </button>
-                        ))}
-                        <div className="flex items-center gap-1 ml-auto">
-                          <span className="text-[10px] font-bold text-slate-400">Custom</span>
-                          <input
-                            type="number"
-                            placeholder="%"
-                            value={customDiscountPercent}
-                            onChange={(e) => setCustomDiscountPercent(e.target.value)}
-                            className="w-12 px-1.5 py-1 text-xs border border-slate-200 rounded-xl text-center font-bold outline-none focus:ring-1 focus:ring-blue-500"
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Additional Charges */}
-                    <div className="flex items-center justify-between text-xs font-bold pt-1 border-t border-slate-100">
-                      <span className="text-slate-600">Onboarding / Setup Fee:</span>
-                      {showAddChargeInput ? (
-                        <div className="flex items-center gap-1">
-                          <input
-                            type="number"
-                            placeholder="₹"
-                            value={additionalChargeInput}
-                            onChange={(e) => {
-                              setAdditionalChargeInput(e.target.value);
-                              setAdditionalCharge(Number(e.target.value) || 0);
-                            }}
-                            className="w-20 px-2 py-0.5 text-xs border border-slate-200 rounded-lg text-right font-bold"
-                          />
-                          <button type="button" onClick={() => setShowAddChargeInput(false)} className="text-[10px] text-slate-400 hover:text-slate-600">Done</button>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => setShowAddChargeInput(true)}
-                          className="px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold"
-                        >
-                          {additionalCharge > 0 ? `+ ₹${additionalCharge}` : '+ Add Setup Fee'}
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Tax Breakdown */}
-                    <div className="space-y-1 pt-1 border-t border-slate-100 text-xs">
-                      <div className="flex justify-between items-center text-slate-500">
-                        <span>GST Tax Mode</span>
-                        {isGstActive ? (
-                          <div className="flex gap-1 text-[10px]">
-                            <button
-                              type="button"
-                              onClick={() => setTaxMode('CGST_SGST')}
-                              className={cn('px-1.5 py-0.5 rounded font-bold cursor-pointer', taxMode === 'CGST_SGST' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600')}
-                            >
-                              CGST+SGST
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setTaxMode('IGST')}
-                              className={cn('px-1.5 py-0.5 rounded font-bold cursor-pointer', taxMode === 'IGST' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600')}
-                            >
-                              IGST
-                            </button>
-                          </div>
-                        ) : (
-                          <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
-                            GST Disabled (0%)
-                          </span>
-                        )}
-                      </div>
-
-                      {isGstActive ? (
-                        taxMode === 'CGST_SGST' ? (
-                          <>
-                            <div className="flex justify-between text-slate-500 text-[11px] pl-2">
-                              <span>• CGST ({cgstRate}%)</span>
-                              <span>+₹{cgst.toLocaleString()}</span>
-                            </div>
-                            <div className="flex justify-between text-slate-500 text-[11px] pl-2">
-                              <span>• SGST ({sgstRate}%)</span>
-                              <span>+₹{sgst.toLocaleString()}</span>
-                            </div>
-                          </>
-                        ) : (
-                          <div className="flex justify-between text-slate-500 text-[11px] pl-2">
-                            <span>• IGST ({igstRate}%)</span>
-                            <span>+₹{totalTax.toLocaleString()}</span>
-                          </div>
-                        )
-                      ) : (
-                        <div className="flex justify-between text-slate-400 text-[11px] pl-2 italic">
-                          <span>• Tax (GST 0% Exempt / Disabled)</span>
-                          <span>+₹0</span>
-                        </div>
-                      )}
-
-                      {billingSettings.gstin && (
-                        <div className="flex justify-between text-[10px] text-slate-400 pl-2">
-                          <span>GSTIN / SAC:</span>
-                          <span className="font-mono">{billingSettings.gstin} {billingSettings.sac_code ? `(${billingSettings.sac_code})` : ''}</span>
-                        </div>
-                      )}
-
-                      {discountAmount > 0 && (
-                        <div className="flex justify-between text-emerald-600 text-[11px]">
-                          <span>Discount Applied ({activeDiscountRate}%)</span>
-                          <span>-₹{discountAmount.toLocaleString()}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Grand Total */}
-                    <div className="pt-2 border-t border-slate-200 flex items-center justify-between">
-                      <span className="text-xs font-black uppercase text-slate-500">GRAND TOTAL</span>
-                      <span className="text-2xl font-black text-slate-900">₹{grandTotal.toLocaleString()}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Bottom Payment Methods Bar matching Screenshot 2 POS */}
-                <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
-                  <div className="text-[10px] font-black uppercase text-slate-500 tracking-wider">
-                    Select Payment Method
-                  </div>
-
-                  <div className="flex items-center gap-2 overflow-x-auto pb-1">
-                    {/* CASH */}
-                    <button
-                      type="button"
-                      onClick={() => setPaymentMethod('Cash')}
-                      className={cn(
-                        'flex items-center gap-2 px-3 py-2 rounded-xl border transition-all whitespace-nowrap cursor-pointer',
-                        paymentMethod === 'Cash'
-                          ? 'border-emerald-500 bg-emerald-50 text-emerald-800 ring-2 ring-emerald-500/20 shadow-sm'
-                          : 'border-emerald-200 bg-white hover:bg-emerald-50 text-emerald-700'
-                      )}
-                    >
-                      <Icon name="banknote" size={15} className="text-emerald-600" />
-                      <span className="text-xs font-black uppercase">CASH</span>
-                    </button>
-
-                    {/* CARD / PINELABS */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPaymentMethod('Card / PineLabs');
-                        setPineLabsModalOpen(true);
-                      }}
-                      className={cn(
-                        'flex items-center gap-2 px-3 py-2 rounded-xl border transition-all whitespace-nowrap cursor-pointer text-left',
-                        paymentMethod === 'Card / PineLabs'
-                          ? 'border-blue-500 bg-blue-50 text-blue-900 ring-2 ring-blue-500/20 shadow-sm'
-                          : 'border-blue-200 bg-white hover:bg-blue-50 text-blue-800'
-                      )}
-                    >
-                      <Icon name="credit-card" size={15} className="text-blue-600" />
-                      <div>
-                        <span className="text-xs font-black uppercase block leading-tight">CARD / PINELABS</span>
-                        <span className="text-[9px] text-blue-500 font-medium block">EDC Swiper &amp; POS</span>
-                      </div>
-                    </button>
-
-                    {/* RAZORPAY UPI */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPaymentMethod('Razorpay UPI');
-                        setRazorpayModalOpen(true);
-                      }}
-                      className={cn(
-                        'flex items-center gap-2 px-3 py-2 rounded-xl border transition-all whitespace-nowrap cursor-pointer text-left',
-                        paymentMethod === 'Razorpay UPI'
-                          ? 'border-purple-500 bg-purple-50 text-purple-900 ring-2 ring-purple-500/20 shadow-sm'
-                          : 'border-purple-200 bg-white hover:bg-purple-50 text-purple-800'
-                      )}
-                    >
-                      <Icon name="qr-code" size={15} className="text-purple-600" />
-                      <div>
-                        <span className="text-xs font-black uppercase block leading-tight">RAZORPAY UPI</span>
-                        <span className="text-[9px] text-purple-500 font-medium block">Smart QR &amp; Link</span>
-                      </div>
-                    </button>
-
-                    {/* WALLET */}
-                    <button
-                      type="button"
-                      onClick={() => setPaymentMethod('Wallet')}
-                      className={cn(
-                        'flex items-center gap-2 px-3 py-2 rounded-xl border transition-all whitespace-nowrap cursor-pointer',
-                        paymentMethod === 'Wallet'
-                          ? 'border-amber-500 bg-amber-50 text-amber-900 ring-2 ring-amber-500/20 shadow-sm'
-                          : 'border-amber-200 bg-white hover:bg-amber-50 text-amber-800'
-                      )}
-                    >
-                      <Icon name="wallet" size={15} className="text-amber-600" />
-                      <span className="text-xs font-black uppercase">WALLET</span>
-                    </button>
-
-                    {/* PAY LATER */}
-                    <button
-                      type="button"
-                      onClick={() => setPaymentMethod('Pay Later')}
-                      className={cn(
-                        'flex items-center gap-2 px-3 py-2 rounded-xl border transition-all whitespace-nowrap cursor-pointer',
-                        paymentMethod === 'Pay Later'
-                          ? 'border-indigo-500 bg-indigo-50 text-indigo-900 ring-2 ring-indigo-500/20 shadow-sm'
-                          : 'border-indigo-200 bg-white hover:bg-indigo-50 text-indigo-800'
-                      )}
-                    >
-                      <Icon name="clock" size={15} className="text-indigo-600" />
-                      <span className="text-xs font-black uppercase">PAY LATER</span>
-                    </button>
-                  </div>
-                </div>
-
-                <div className="pt-3 flex justify-between gap-2 border-t border-slate-100">
-                  <button type="button" onClick={() => setWizardStep(2)} className="btn-secondary py-2.5 px-4 text-xs font-bold flex items-center gap-1">
-                    <Icon name="chevron-left" size={15} />
-                    <span>Back to Plans</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleCompleteOnboard}
-                    disabled={onboarding}
-                    className="btn-primary py-2.5 px-6 text-xs font-bold flex items-center gap-2 shadow-lg shadow-blue-600/30"
-                  >
-                    {onboarding ? (
-                      <>
-                        <Icon name="refresh-cw" size={14} className="animate-spin" />
-                        <span>Provisioning Tenant &amp; Billing...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Icon name="check-circle" size={15} />
-                        <span>Complete Onboarding (₹{grandTotal.toLocaleString()})</span>
-                      </>
-                    )}
-                  </button>
-                </div>
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">
+                  Owner Password <span className="text-slate-400 font-normal">(Leave blank to auto-generate)</span>
+                </label>
+                <input
+                  type="password"
+                  placeholder="Set custom password or leave blank for auto-generated"
+                  value={onboardForm.password}
+                  onChange={(e) => setOnboardForm((p) => ({ ...p, password: e.target.value }))}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-medium"
+                />
               </div>
-            )}
 
+              <div className="pt-2 flex justify-end gap-2">
+                <button type="button" onClick={() => setOnboardOpen(false)} className="btn-secondary py-2 px-4 text-xs font-bold">
+                  Cancel
+                </button>
+                <button type="submit" disabled={onboarding} className="btn-primary py-2 px-4 text-xs font-bold">
+                  {onboarding ? 'Onboarding...' : "Save & Onboard HO's"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
@@ -1629,8 +1215,10 @@ export function VahdsPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 {[
-                  { label: 'Members', value: selected.members || 0, icon: 'users' },
-                  { label: 'employees', value: selected.employees || 0, icon: 'user-cog' },
+                  { label: 'Institutions', value: selected.branches_count || 1, icon: 'building' },
+                  { label: 'Owners', value: selected.owners_count || 0, icon: 'shield' },
+                  { label: 'Emp', value: selected.employees_count || selected.employees || 0, icon: 'user-check' },
+                  { label: 'Students', value: selected.students_count || selected.members || 0, icon: 'users' },
                   { label: 'Revenue', value: `₹${(selected.revenue || 0).toLocaleString()}`, icon: 'indian-rupee' },
                   { label: 'Status', value: selected.is_active ? 'Active' : 'Suspended', icon: 'shield' },
                 ].map((s) => (
@@ -1668,7 +1256,7 @@ export function VahdsPage() {
         isOpen={pineLabsModalOpen}
         amount={grandTotal}
         billNumber={`ONB-${Date.now().toString().slice(-6)}`}
-        customerMobile={onboardForm.phone}
+        studentMobile={onboardForm.phone}
         terminalId="TID-882194"
         onClose={() => setPineLabsModalOpen(false)}
         onSuccess={(paymentData) => {
@@ -1684,8 +1272,8 @@ export function VahdsPage() {
         isOpen={razorpayModalOpen}
         amount={grandTotal}
         billNumber={`ONB-${Date.now().toString().slice(-6)}`}
-        customerMobile={onboardForm.phone}
-        customerName={onboardForm.owner_name || onboardForm.vahd_name}
+        studentMobile={onboardForm.phone}
+        studentName={onboardForm.owner_name || onboardForm.vahd_name}
         onClose={() => setRazorpayModalOpen(false)}
         onSuccess={(paymentData) => {
           setRazorpayModalOpen(false);

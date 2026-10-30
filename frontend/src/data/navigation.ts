@@ -274,7 +274,7 @@ export const nav: NavGroup[] = [
   {
     group: "POS", theme: "violet", icon: ScanLine, permission: "view:pos", items: [
       { to: "/pos?tab=sales_history", label: "Invoices History", icon: History },
-      { to: "/pos?tab=customers", label: "Customers", icon: Users },
+      { to: "/pos?tab=students", label: "students", icon: Users },
       { to: "/pos?tab=quotations", label: "Quotations", icon: FileCheck },
       { to: "/pos?tab=credit_notes", label: "Credit Notes", icon: FileCheck },
       { to: "/pos?tab=debit_notes", label: "Debit Notes", icon: FileText },
@@ -401,11 +401,11 @@ export const nav: NavGroup[] = [
         ]
       },
       {
-        to: "/accounting?tab=customers",
+        to: "/accounting?tab=students",
         label: "Receivables",
         icon: CreditCard,
         subItems: [
-          { to: "/accounting?tab=customers", label: "Customers", icon: UsersRound },
+          { to: "/accounting?tab=students", label: "students", icon: UsersRound },
           { to: "/accounting?tab=invoices", label: "Invoices", icon: ClipboardList },
           { to: "/accounting?tab=payments", label: "Payments", icon: Wallet },
           { to: "/accounting?tab=outstanding", label: "Outstanding", icon: Clock },
@@ -755,11 +755,11 @@ export const nav: NavGroup[] = [
         ]
       },
       {
-        to: "/reports?tab=customer_reports",
+        to: "/reports?tab=student_reports",
         label: "CRM",
         icon: Users,
         subItems: [
-          { to: "/reports?tab=customer_reports", label: "Customer Reports", icon: Users },
+          { to: "/reports?tab=student_reports", label: "student Reports", icon: Users },
           { to: "/reports?tab=lead_reports", label: "Lead Reports", icon: UserCog },
           { to: "/reports?tab=loyalty_reports", label: "Loyalty Reports", icon: Tags },
           { to: "/reports?tab=campaign_reports", label: "Campaign Reports", icon: Radio },
@@ -807,7 +807,7 @@ export const nav: NavGroup[] = [
           { to: "/reports?tab=revenue_prediction", label: "Revenue Prediction", icon: TrendingUp },
           { to: "/reports?tab=demand_forecast_reports", label: "Demand Forecast", icon: TrendingUp },
           { to: "/reports?tab=inventory_forecast", label: "Inventory Forecast", icon: Boxes },
-          { to: "/reports?tab=customer_prediction", label: "Customer Prediction", icon: Users },
+          { to: "/reports?tab=student_prediction", label: "student Prediction", icon: Users },
           { to: "/reports?tab=attrition_prediction_reports", label: "Attrition Prediction", icon: Skull },
           { to: "/reports?tab=fraud_detection_reports", label: "Fraud Detection", icon: ShieldCheck },
         ]

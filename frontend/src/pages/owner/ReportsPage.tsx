@@ -340,7 +340,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
     try {
       const branchParam = b && b !== 'all' ? `&branch_id=${encodeURIComponent(b)}` : '';
       const [studRes, empRes, hoRes] = await Promise.all([
-        apiClient.get<any>(`/customers/attendance-reports/overview?year=${y}&month=${m}${branchParam}`).catch(() => null),
+        apiClient.get<any>(`/students/attendance-reports/overview?year=${y}&month=${m}${branchParam}`).catch(() => null),
         apiClient.get<any>(`/hrms/attendance-reports/overview?year=${y}&month=${m}${branchParam}`).catch(() => null),
         apiClient.get<any>(`/ho/attendance-reports/branches?year=${y}&month=${m}${branchParam}`).catch(() => null),
       ]);
@@ -910,7 +910,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                         <td className="py-3 px-3 text-right">
                           <div className="inline-flex items-center gap-1.5">
                             <a
-                              href={`/api/v1/customers/${s.student_id}/attendance-report/csv?year=${targetYear}&month=${targetMonth}${authParam}`}
+                              href={`/api/v1/students/${s.student_id}/attendance-report/csv?year=${targetYear}&month=${targetMonth}${authParam}`}
                               download
                               className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-bold flex items-center gap-1 transition"
                               title="Download Student CSV Statement"
@@ -919,7 +919,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                               <span>CSV</span>
                             </a>
                             <a
-                              href={`/api/v1/customers/${s.student_id}/attendance-report/pdf?year=${targetYear}&month=${targetMonth}${authParam}`}
+                              href={`/api/v1/students/${s.student_id}/attendance-report/pdf?year=${targetYear}&month=${targetMonth}${authParam}`}
                               target="_blank"
                               rel="noreferrer"
                               className="px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-bold flex items-center gap-1 transition"

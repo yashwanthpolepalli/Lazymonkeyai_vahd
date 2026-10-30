@@ -2,15 +2,15 @@ from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Query, Body, status
 from sqlalchemy.orm import Session
 from src.database.session import get_db
-from src.schemas.customer import CustomerResponse, CustomerCreate
-from src.services.customer_service import CustomerService
+from src.schemas.student import studentResponse, studentCreate
+from src.services.student_service import studentService
 from src.api.deps import get_current_user
 from src.models.user import User
 
-router = APIRouter(prefix="/customers", tags=["Customers"])
+router = APIRouter(prefix="/students", tags=["students"])
 
 @router.get("")
-def get_customers(
+def get_students(
     branch: Optional[str] = Query(None),
     branch_id: Optional[str] = Query(None),
     owner_id: Optional[str] = Query(None),
@@ -18,7 +18,7 @@ def get_customers(
     current_user: Optional[User] = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    custs = CustomerService.get_all_customers(
+    custs = studentService.get_all_students(
         db,
         current_user=current_user,
         branch=branch,
@@ -31,25 +31,25 @@ def get_customers(
     return custs
 
 @router.get("/slot-bookings")
-def get_customer_slot_bookings(
+def get_student_slot_bookings(
     branch: Optional[str] = None,
     date: Optional[str] = None,
-    customer_id: Optional[str] = None,
+    student_id: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
     from src.services.slot_booking_service import SlotBookingService
-    return SlotBookingService.get_all_bookings(db, branch=branch, date=date, customer_id=customer_id)
+    return SlotBookingService.get_all_bookings(db, branch=branch, date=date, student_id=student_id)
 
-@router.get("/{customer_id}")
-def get_customer(customer_id: str, db: Session = Depends(get_db)):
-    cust = CustomerService.get_customer_by_id(db, customer_id)
+@router.get("/{student_id}")
+def get_student(student_id: str, db: Session = Depends(get_db)):
+    cust = studentService.get_student_by_id(db, student_id)
     if not cust:
-        raise HTTPException(status_code=404, detail="Customer not found")
+        raise HTTPException(status_code=404, detail="student not found")
     return cust
 
 @router.post("", status_code=status.HTTP_201_CREATED)
 @router.post("/onboard")
-def onboard_customer(
+def onboard_student(
     payload: Dict[str, Any] = Body(...),
     current_user: Optional[User] = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -90,21 +90,33 @@ def onboard_customer(
                 data["owner_id"] = b_obj.owner_id
             if not data.get("ho_id") and b_obj.ho_id:
                 data["ho_id"] = b_obj.ho_id
-    return CustomerService.onboard_customer(db, data)
-
-@router.put("/{customer_id}")
-@router.patch("/{customer_id}")
-def update_customer(customer_id: str, payload: dict = Body(...), db: Session = Depends(get_db)):
     try:
-        return CustomerService.update_customer(db, customer_id, payload)
+        created = studentService.onboard_student(db, data)
+        return {
+            "success": True,
+            "message": "Student enrolled successfully",
+            "student": created,
+            **created
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to enroll student: {str(e)}")
+
+@router.put("/{student_id}")
+@router.patch("/{student_id}")
+def update_student(student_id: str, payload: dict = Body(...), db: Session = Depends(get_db)):
+    try:
+        return studentService.update_student(db, student_id, payload)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
 
-@router.post("/{customer_id}/sync-biometric")
-def sync_customer_biometric(customer_id: str, payload: dict = None, db: Session = Depends(get_db)):
+@router.post("/{student_id}/sync-biometric")
+def sync_student_biometric(student_id: str, payload: dict = None, db: Session = Depends(get_db)):
     try:
-        return CustomerService.sync_customer_biometric(db, customer_id, data=payload)
+        return studentService.sync_student_biometric(db, student_id, data=payload)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -153,9 +165,9 @@ def dispatch_all_monthly_attendance_reports(
         db, year=year, month=month, branch_id=branch_id, dispatch_type=payload.get("dispatch_type", "MANUAL_DISPATCH")
     )
 
-@router.get("/{customer_id}/attendance-report")
-def get_customer_monthly_attendance_report(
-    customer_id: str,
+@router.get("/{student_id}/attendance-report")
+def get_student_monthly_attendance_report(
+    student_id: str,
     year: Optional[int] = Query(None),
     month: Optional[int] = Query(None),
     db: Session = Depends(get_db)
@@ -163,14 +175,14 @@ def get_customer_monthly_attendance_report(
     """Calculates and returns student monthly biometric attendance report with dynamic day-wise records."""
     try:
         return StudentAttendanceReportService.compute_student_monthly_attendance(
-            db, customer_id=customer_id, year=year, month=month
+            db, student_id=student_id, year=year, month=month
         )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
-@router.get("/{customer_id}/attendance-report/csv")
-def get_customer_attendance_report_csv(
-    customer_id: str,
+@router.get("/{student_id}/attendance-report/csv")
+def get_student_attendance_report_csv(
+    student_id: str,
     year: Optional[int] = Query(None),
     month: Optional[int] = Query(None),
     db: Session = Depends(get_db)
@@ -178,10 +190,10 @@ def get_customer_attendance_report_csv(
     """Downloads dynamic day-wise attendance CSV for the student."""
     try:
         rep = StudentAttendanceReportService.compute_student_monthly_attendance(
-            db, customer_id=customer_id, year=year, month=month
+            db, student_id=student_id, year=year, month=month
         )
         csv_data = StudentAttendanceReportService.generate_student_day_wise_csv(rep)
-        filename = f"attendance_report_{customer_id}_{rep.get('month')}_{rep.get('year')}.csv"
+        filename = f"attendance_report_{student_id}_{rep.get('month')}_{rep.get('year')}.csv"
         return Response(
             content=csv_data,
             media_type="text/csv",
@@ -190,9 +202,9 @@ def get_customer_attendance_report_csv(
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
-@router.get("/{customer_id}/attendance-report/pdf")
-def get_customer_attendance_report_printable_html(
-    customer_id: str,
+@router.get("/{student_id}/attendance-report/pdf")
+def get_student_attendance_report_printable_html(
+    student_id: str,
     year: Optional[int] = Query(None),
     month: Optional[int] = Query(None),
     db: Session = Depends(get_db)
@@ -200,16 +212,16 @@ def get_customer_attendance_report_printable_html(
     """Renders printable official A4 attendance report sheet with day-wise matrix."""
     try:
         rep = StudentAttendanceReportService.compute_student_monthly_attendance(
-            db, customer_id=customer_id, year=year, month=month
+            db, student_id=student_id, year=year, month=month
         )
         html_data = StudentAttendanceReportService.generate_student_attendance_html_printable(rep)
         return HTMLResponse(content=html_data)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
-@router.post("/{customer_id}/attendance-report/send-whatsapp")
-def send_customer_monthly_attendance_whatsapp(
-    customer_id: str,
+@router.post("/{student_id}/attendance-report/send-whatsapp")
+def send_student_monthly_attendance_whatsapp(
+    student_id: str,
     payload: Dict[str, Any] = Body(default={}),
     db: Session = Depends(get_db)
 ):
@@ -217,18 +229,18 @@ def send_customer_monthly_attendance_whatsapp(
     year = payload.get("year")
     month = payload.get("month")
     res = StudentAttendanceReportService.send_report_to_parent(
-        db, customer_id=customer_id, year=year, month=month, dispatch_type=payload.get("dispatch_type", "MANUAL_DISPATCH")
+        db, student_id=student_id, year=year, month=month, dispatch_type=payload.get("dispatch_type", "MANUAL_DISPATCH")
     )
     if not res.get("success"):
         raise HTTPException(status_code=400, detail=res.get("message"))
     return res
 
-@router.delete("/{customer_id}")
-def delete_customer(customer_id: str, db: Session = Depends(get_db)):
-    success = CustomerService.delete_customer(db, customer_id)
+@router.delete("/{student_id}")
+def delete_student(student_id: str, db: Session = Depends(get_db)):
+    success = studentService.delete_student(db, student_id)
     if not success:
-        raise HTTPException(status_code=404, detail="Customer not found")
-    return {"message": "Customer deleted successfully", "deleted_id": customer_id}
+        raise HTTPException(status_code=404, detail="student not found")
+    return {"message": "student deleted successfully", "deleted_id": student_id}
 
 
 # Alias router for /students
@@ -248,19 +260,19 @@ def dispatch_students_monthly_attendance(payload: Dict[str, Any] = Body(default=
 
 @students_router.get("/{student_id}/attendance-report")
 def get_student_monthly_attendance(student_id: str, year: Optional[int] = Query(None), month: Optional[int] = Query(None), db: Session = Depends(get_db)):
-    return get_customer_monthly_attendance_report(student_id, year=year, month=month, db=db)
+    return get_student_monthly_attendance_report(student_id, year=year, month=month, db=db)
 
 @students_router.get("/{student_id}/attendance-report/csv")
 def get_student_attendance_csv(student_id: str, year: Optional[int] = Query(None), month: Optional[int] = Query(None), db: Session = Depends(get_db)):
-    return get_customer_attendance_report_csv(student_id, year=year, month=month, db=db)
+    return get_student_attendance_report_csv(student_id, year=year, month=month, db=db)
 
 @students_router.get("/{student_id}/attendance-report/pdf")
 def get_student_attendance_pdf(student_id: str, year: Optional[int] = Query(None), month: Optional[int] = Query(None), db: Session = Depends(get_db)):
-    return get_customer_attendance_report_printable_html(student_id, year=year, month=month, db=db)
+    return get_student_attendance_report_printable_html(student_id, year=year, month=month, db=db)
 
 @students_router.post("/{student_id}/attendance-report/send-whatsapp")
 def send_student_monthly_attendance(student_id: str, payload: Dict[str, Any] = Body(default={}), db: Session = Depends(get_db)):
-    return send_customer_monthly_attendance_whatsapp(student_id, payload=payload, db=db)
+    return send_student_monthly_attendance_whatsapp(student_id, payload=payload, db=db)
 
 
 # Alias router for /members
@@ -274,7 +286,7 @@ def get_all_members(
     current_user: Optional[User] = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    return CustomerService.get_all_customers(
+    return studentService.get_all_students(
         db,
         current_user=current_user,
         branch=branch,
@@ -284,25 +296,25 @@ def get_all_members(
 
 @members_router.get("/{member_id}")
 def get_member_by_id(member_id: str, db: Session = Depends(get_db)):
-    cust = CustomerService.get_customer_by_id(db, member_id)
+    cust = studentService.get_student_by_id(db, member_id)
     if not cust:
         raise HTTPException(status_code=404, detail="Member not found")
     return cust
 
 
-# Dedicated router for /crm/customers
-crm_customers_router = APIRouter(prefix="/crm/customers", tags=["CRM Customers"])
+# Dedicated router for /crm/students
+crm_students_router = APIRouter(prefix="/crm/students", tags=["CRM students"])
 
-@crm_customers_router.get("")
-def get_crm_customers(
+@crm_students_router.get("")
+def get_crm_students(
     page: int = Query(1, ge=1),
     page_size: int = Query(100, ge=1, le=500),
     search: Optional[str] = Query(None),
-    customer_type: Optional[str] = Query(None),
+    student_type: Optional[str] = Query(None),
     current_user: Optional[User] = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    custs = CustomerService.get_all_customers(db, current_user=current_user)
+    custs = studentService.get_all_students(db, current_user=current_user)
     if search:
         s = search.lower()
         custs = [c for c in custs if s in (c.get("full_name") or c.get("name") or "").lower() or s in (c.get("phone") or "").lower() or s in (c.get("email") or "").lower()]
@@ -316,8 +328,8 @@ def get_crm_customers(
         "page_size": page_size,
     }
 
-@crm_customers_router.post("", status_code=status.HTTP_201_CREATED)
-def create_crm_customer(
+@crm_students_router.post("", status_code=status.HTTP_201_CREATED)
+def create_crm_student(
     payload: Dict[str, Any] = Body(...),
     current_user: Optional[User] = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -325,26 +337,26 @@ def create_crm_customer(
     data = dict(payload)
     if not data.get("full_name") and data.get("name"):
         data["full_name"] = data["name"]
-    return CustomerService.onboard_customer(db, data)
+    return studentService.onboard_student(db, data)
 
-@crm_customers_router.get("/{customer_id}")
-def get_single_crm_customer(customer_id: str, db: Session = Depends(get_db)):
-    cust = CustomerService.get_customer_by_id(db, customer_id)
+@crm_students_router.get("/{student_id}")
+def get_single_crm_student(student_id: str, db: Session = Depends(get_db)):
+    cust = studentService.get_student_by_id(db, student_id)
     if not cust:
-        raise HTTPException(status_code=404, detail="Customer not found")
+        raise HTTPException(status_code=404, detail="student not found")
     return cust
 
-@crm_customers_router.patch("/{customer_id}")
-@crm_customers_router.put("/{customer_id}")
-def update_crm_customer(customer_id: str, payload: dict = Body(...), db: Session = Depends(get_db)):
+@crm_students_router.patch("/{student_id}")
+@crm_students_router.put("/{student_id}")
+def update_crm_student(student_id: str, payload: dict = Body(...), db: Session = Depends(get_db)):
     try:
-        return CustomerService.update_customer(db, customer_id, payload)
+        return studentService.update_student(db, student_id, payload)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
-@crm_customers_router.delete("/{customer_id}")
-def delete_crm_customer(customer_id: str, db: Session = Depends(get_db)):
-    success = CustomerService.delete_customer(db, customer_id)
+@crm_students_router.delete("/{student_id}")
+def delete_crm_student(student_id: str, db: Session = Depends(get_db)):
+    success = studentService.delete_student(db, student_id)
     if not success:
-        raise HTTPException(status_code=404, detail="Customer not found")
-    return {"status": "success", "message": "Customer deleted successfully", "deleted_id": customer_id}
+        raise HTTPException(status_code=404, detail="student not found")
+    return {"status": "success", "message": "student deleted successfully", "deleted_id": student_id}

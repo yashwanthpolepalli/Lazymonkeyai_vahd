@@ -79,11 +79,11 @@ export class ESCPOSPrinter {
     const billNo = bill.invoice_number || bill.id || '#90412';
     const dateStr = formatDisplayDate(bill.date || new Date());
     const timeStr = bill.date ? new Date(bill.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const custName = bill.customerName || 'Walk-in Guest';
+    const custName = bill.studentName || 'Walk-in Guest';
 
     writeText(`Bill No: ${billNo.padEnd(20)} Date: ${dateStr}\n`);
     writeText(`Time: ${timeStr.padEnd(23)} Cashier: POS-01\n`);
-    writeText(`Customer: ${custName}\n`);
+    writeText(`student: ${custName}\n`);
     writeText('------------------------------------------------\n');
 
     // 5. Item Table Header

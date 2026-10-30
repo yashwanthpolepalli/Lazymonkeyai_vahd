@@ -89,7 +89,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
     setViewMode(mode);
     try {
       localStorage.setItem('courses_display_view_mode', mode);
-    } catch {}
+    } catch { }
   };
 
   // Dynamic Classifications State (Editable & Database Driven)
@@ -108,7 +108,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       }
-    } catch {}
+    } catch { }
     return DEFAULT_DURATION_TIERS;
   });
 
@@ -120,7 +120,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) return parsed;
       }
-    } catch {}
+    } catch { }
     return [];
   });
 
@@ -279,7 +279,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
     setLoading(true);
     try {
       const [membersRes, plansRes, deptsRes, langsRes, classRes] = await Promise.all([
-        api.customers.list().catch(() => []),
+        api.students.list().catch(() => []),
         apiClient.get<MembershipPlanItem[]>('/courses/plans').catch(() => []),
         hrmsApi.getDepartments().catch(() => []),
         apiClient.get<string[]>('/courses/languages').catch(() => []),
@@ -316,7 +316,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
         }
         window.dispatchEvent(new Event('vahd_courses_updated'));
         window.dispatchEvent(new Event('vahd_master_data_updated'));
-      } catch {}
+      } catch { }
 
       // Merge departments from HRMS into branch categories if not already present and not deleted
       let deletedBranchCodes = new Set<string>();
@@ -328,7 +328,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
             deletedBranchCodes = new Set(parsed.map((s: string) => String(s).toUpperCase()));
           }
         }
-      } catch {}
+      } catch { }
 
       const existingCodes = new Set(categories.map((c) => c.code.toUpperCase()));
       const newFromDepts: CategoryBranchItem[] = [];
@@ -382,7 +382,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
           const merged = [...prevTiers, ...newTiers].sort((a, b) => a.days - b.days);
           try {
             localStorage.setItem(STORAGE_TIERS_KEY, JSON.stringify(merged));
-          } catch {}
+          } catch { }
           return merged;
         }
         return prevTiers;
@@ -502,7 +502,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
       // If backed by backend department, sync with backend
       if (editingBranch.id.includes('cat_dept_')) {
         const deptId = editingBranch.id.replace(/^(cat_dept_)+/, '');
-        await apiClient.put(`/hrms/departments/${deptId}`, { code, name }).catch(() => {});
+        await apiClient.put(`/hrms/departments/${deptId}`, { code, name }).catch(() => { });
       }
     } else {
       const existing = categories.find((c) => c.code.toUpperCase() === code);
@@ -517,7 +517,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
         saveCategories(updated);
 
         // Also post to backend departments so HRMS stays in sync
-        apiClient.post('/hrms/departments', { code, name, description: `Academic stream ${code}` }).catch(() => {});
+        apiClient.post('/hrms/departments', { code, name, description: `Academic stream ${code}` }).catch(() => { });
       }
     }
 
@@ -542,7 +542,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
         parsed.push(branch.code);
         localStorage.setItem('course_deleted_branches_v1', JSON.stringify(parsed));
       }
-    } catch {}
+    } catch { }
 
     // 3. Remove from raw plans
     setRawPlans((prev) =>
@@ -562,7 +562,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
     // 5. If backed by backend department, delete from backend
     if (branch.id.includes('cat_dept_')) {
       const deptId = branch.id.replace(/^(cat_dept_)+/, '');
-      await apiClient.delete(`/hrms/departments/${deptId}`).catch(() => {});
+      await apiClient.delete(`/hrms/departments/${deptId}`).catch(() => { });
     }
   };
 
@@ -585,7 +585,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
         if (!parsed.includes(code)) parsed.push(code);
       });
       localStorage.setItem('course_deleted_branches_v1', JSON.stringify(parsed));
-    } catch {}
+    } catch { }
 
     // 3. Update raw plans
     setRawPlans((prev) =>
@@ -603,7 +603,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
     for (const b of toDeleteBranches) {
       if (b.id.includes('cat_dept_')) {
         const deptId = b.id.replace(/^(cat_dept_)+/, '');
-        await apiClient.delete(`/hrms/departments/${deptId}`).catch(() => {});
+        await apiClient.delete(`/hrms/departments/${deptId}`).catch(() => { });
       }
     }
 
@@ -803,12 +803,12 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
       const updated = durationTiers.map((t) =>
         t.id === editingTier.id
           ? {
-              ...t,
-              name,
-              days,
-              suffix,
-              multiplier: Number(tierForm.multiplier) || Number((days / 30).toFixed(1)),
-            }
+            ...t,
+            name,
+            days,
+            suffix,
+            multiplier: Number(tierForm.multiplier) || Number((days / 30).toFixed(1)),
+          }
           : t
       );
       saveDurationTiers(updated);
@@ -903,9 +903,9 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
 
         const existingDbId = programForm.tierPlanIds[tier.days];
         if (existingDbId) {
-          await apiClient.put(`/courses/plans/${existingDbId}`, payload).catch(() => {});
+          await apiClient.put(`/courses/plans/${existingDbId}`, payload).catch(() => { });
         } else {
-          await apiClient.post('/courses/plans', payload).catch(() => {});
+          await apiClient.post('/courses/plans', payload).catch(() => { });
         }
       }
 
@@ -924,7 +924,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
         idsToDelete.push(prog.id);
       }
       for (const id of idsToDelete) {
-        await apiClient.delete(`/courses/plans/${id}`).catch(() => {});
+        await apiClient.delete(`/courses/plans/${id}`).catch(() => { });
       }
       if (editingProgramId === prog.id) {
         setModalOpen(false);

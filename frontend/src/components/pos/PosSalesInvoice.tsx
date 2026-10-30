@@ -56,7 +56,7 @@ import {
   Printer,
   Pencil,
 } from "lucide-react";
-import { posApi, crmApi, crmCustomersApi, type CustomerAddressItem, invoicesApi, employeesApi, fetchSalesEmployees, inventoryApi, procurementApi, crmWalletApi, bankApi, BankAccountRecord, crmQuotationsApi, companiesApi, numberSeriesApi } from "../../lib/api-client";
+import { posApi, crmApi, crmstudentsApi, type studentAddressItem, invoicesApi, employeesApi, fetchSalesEmployees, inventoryApi, procurementApi, crmWalletApi, bankApi, BankAccountRecord, crmQuotationsApi, companiesApi, numberSeriesApi } from "../../lib/api-client";
 import { toast } from "sonner";
 import { ThermalReceiptPrinter } from "./ThermalReceiptPrinter";
 import { FullInvoicePrinter, FullInvoiceData } from "./FullInvoicePrinter";
@@ -90,7 +90,7 @@ export const getDocTitle = (type: DocumentType) => {
     case "DEBIT_NOTE": return "Debit Note";
     case "PROFORMA": return "Proforma Invoice";
     case "ESTIMATE_NON_GST": return "Estimate";
-    case "QUOTATION": return "Customer Sales Quotation";
+    case "QUOTATION": return "student Sales Quotation";
     case "TAX_INVOICE":
     default:
       return "Tax Invoice";
@@ -279,7 +279,7 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
           }
         }
       }
-    } catch (e) {}
+    } catch (e) { }
     return null;
   });
   const [isRecreatingInvoice, setIsRecreatingInvoice] = useState<boolean>(() => {
@@ -292,17 +292,17 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get("recreate_number")) return true;
       }
-    } catch (e) {}
+    } catch (e) { }
     return false;
   });
   const [items, setItems] = useState<InvoiceItem[]>([]);
-  const [customers, setCustomers] = useState<any[]>([]);
+  const [students, setstudents] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState<boolean>(false);
-  const [selectedCustomer, setSelectedCustomer] = useState<string>("");
-  const [customerSearchQuery, setCustomerSearchQuery] = useState<string>("");
-  const [isCustomerDropdownOpen, setIsCustomerDropdownOpen] = useState<boolean>(false);
-  const customerDropdownRef = useRef<HTMLDivElement>(null);
+  const [selectedstudent, setSelectedstudent] = useState<string>("");
+  const [studentSearchQuery, setstudentSearchQuery] = useState<string>("");
+  const [isstudentDropdownOpen, setIsstudentDropdownOpen] = useState<boolean>(false);
+  const studentDropdownRef = useRef<HTMLDivElement>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [barcodeInput, setBarcodeInput] = useState("");
   // Fixed-position dropdown anchor for product search (avoids overflow-x-auto clipping)
@@ -397,7 +397,7 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
           }
         }
       }
-    } catch (e) {}
+    } catch (e) { }
     return getNextSequentialInvoiceNumber(initialDocType);
   });
   const [invoiceDate, setInvoiceDate] = useState(getTodayDateString());
@@ -445,7 +445,7 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
       if (peek?.formatted_number && peek?.configured && peek?.current_number > 0) {
         return peek.formatted_number;
       }
-    } catch (e) {}
+    } catch (e) { }
 
     return localSeqNum;
   }, [currentCompanyId, getNextSequentialInvoiceNumber, invoiceSettings, tenant?.id]);
@@ -460,7 +460,7 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
   const handleInvoiceTypeChange = useCallback((newType: DocumentType) => {
     const prevType = invoiceType;
     setInvoiceType(newType);
-    
+
     if ((prevType === "QUOTATION" || invoiceNumber.toUpperCase().startsWith("QT")) && newType === "TAX_INVOICE") {
       const oldQuoteNum = invoiceNumber;
       const nextNum = getNextSequentialInvoiceNumber("TAX_INVOICE");
@@ -503,7 +503,7 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
   // GST Type: intra-state (CGST + SGST) or inter-state (IGST)
   const [gstType, setGstType] = useState<"cgst_sgst" | "igst">("cgst_sgst");
 
-  const getIsInterstate = useCallback((customerState?: string, customerGst?: string, customerAddress?: string) => {
+  const getIsInterstate = useCallback((studentState?: string, studentGst?: string, studentAddress?: string) => {
     const activeBillingGst = getActiveBillingGst(tenant?.id);
     const companyGst = (activeBillingGst?.gstin || (tenant as any)?.gstin || (tenant as any)?.tax_id || (tenant as any)?.raw?.tax_id || (tenant as any)?.raw?.gst_number || "").trim().toUpperCase();
     const companyState = (activeBillingGst?.state_name || (tenant as any)?.state || (tenant as any)?.raw?.state || "");
@@ -511,7 +511,7 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
 
     const { isInterState } = checkIsInterstate(
       { gstin: companyGst, state: companyState, address: companyAddress },
-      { gstin: customerGst, state: customerState, address: customerAddress }
+      { gstin: studentGst, state: studentState, address: studentAddress }
     );
     return isInterState;
   }, [tenant]);
@@ -541,7 +541,7 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
       const activeStoredCompRaw = localStorage.getItem(`bos_active_company_${tid}`) || localStorage.getItem('bos_active_company');
       let activeId = "";
       if (activeStoredCompRaw) {
-        try { activeId = JSON.parse(activeStoredCompRaw)?.id; } catch {}
+        try { activeId = JSON.parse(activeStoredCompRaw)?.id; } catch { }
       }
       const matchedCompany = (activeId ? res.items.find(c => c.id === activeId) : null) || res.items[0];
       if (matchedCompany) {
@@ -606,7 +606,7 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
     cardLast4?: string;
     batchNumber?: string;
   } | null>(null);
-  const [customerWalletBalance, setCustomerWalletBalance] = useState<number>(0);
+  const [studentWalletBalance, setstudentWalletBalance] = useState<number>(0);
   const [bankAccounts, setBankAccounts] = useState<BankAccountRecord[]>([]);
   const [selectedBankAccountId, setSelectedBankAccountId] = useState<string>("");
 
@@ -684,7 +684,7 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
   const [newPartyGST, setNewPartyGST] = useState("");
   const [isVerifyingGstin, setIsVerifyingGstin] = useState(false);
 
-  // Multi-Address List for the single customer phone/account
+  // Multi-Address List for the single student phone/account
   const [newPartyAddresses, setNewPartyAddresses] = useState<Array<{
     id: string;
     tag: "Home" | "Office" | "Warehouse" | "Branch" | "Other";
@@ -710,18 +710,18 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
   const [selectedDeliveryAddress, setSelectedDeliveryAddress] = useState<any | null>(null);
   const [selectedBillingAddress, setSelectedBillingAddress] = useState<any | null>(null);
   const [isEditAddressesModalOpen, setIsEditAddressesModalOpen] = useState(false);
-  const [editingCustomerAddresses, setEditingCustomerAddresses] = useState<Array<CustomerAddressItem>>([]);
+  const [editingstudentAddresses, setEditingstudentAddresses] = useState<Array<studentAddressItem>>([]);
   const [activeEditingAddrIndex, setActiveEditingAddrIndex] = useState(0);
-  const [isSavingCustomerAddresses, setIsSavingCustomerAddresses] = useState(false);
+  const [isSavingstudentAddresses, setIsSavingstudentAddresses] = useState(false);
 
-  // Auto-sync selected addresses and Tax Type when customer changes
+  // Auto-sync selected addresses and Tax Type when student changes
   useEffect(() => {
-    if (!selectedCustomer) {
+    if (!selectedstudent) {
       setSelectedBillingAddress(null);
       setSelectedDeliveryAddress(null);
       return;
     }
-    const cust = customers.find(c => c.id === selectedCustomer);
+    const cust = students.find(c => c.id === selectedstudent);
     if (!cust) return;
 
     let defBilling: any = null;
@@ -764,12 +764,12 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
     } else {
       setGstType("cgst_sgst");
     }
-  }, [selectedCustomer, customers, getIsInterstate]);
+  }, [selectedstudent, students, getIsInterstate]);
 
   // Whenever selected billing or delivery address is explicitly changed by user, auto-detect interstate tax
   useEffect(() => {
-    if (!selectedCustomer) return;
-    const cust = customers.find(c => c.id === selectedCustomer);
+    if (!selectedstudent) return;
+    const cust = students.find(c => c.id === selectedstudent);
     const custGst = selectedBillingAddress?.gst_number || cust?.gst_number || "";
     const custState = selectedDeliveryAddress?.state || selectedBillingAddress?.state || cust?.state || "";
     const custAddr = [
@@ -783,7 +783,7 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
     } else {
       setGstType("cgst_sgst");
     }
-  }, [selectedBillingAddress, selectedDeliveryAddress, selectedCustomer, customers, getIsInterstate]);
+  }, [selectedBillingAddress, selectedDeliveryAddress, selectedstudent, students, getIsInterstate]);
 
   // Autofill and preload all details when editing an existing Quotation/Invoice
   useEffect(() => {
@@ -832,8 +832,8 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
     if (inv.location) {
       setSelectedLocation(inv.location);
     }
-    if (inv.notes || inv.customer_notes) {
-      setNotes(inv.notes || inv.customer_notes);
+    if (inv.notes || inv.student_notes) {
+      setNotes(inv.notes || inv.student_notes);
     }
     if (inv.terms || inv.terms_and_conditions) {
       setTermsAndConditions(inv.terms || inv.terms_and_conditions);
@@ -866,41 +866,41 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
       setShowDispatchSection(true);
     }
 
-    // 2. Customer & Address Information
-    const custId = inv.customer_id;
-    const custName = inv.customer_name || inv.customer?.name || "";
-    const custPhone = inv.customer_phone || inv.customer?.phone || "";
-    const custEmail = inv.customer_email || inv.customer?.email || "";
-    const custGst = inv.customer_gstin || inv.customer?.gst_number || inv.customer?.gstin || "";
-    const custAddr = inv.customer_address || inv.customer_billing_address || inv.billing_address || inv.customer?.address || "";
-    const custShip = inv.customer_shipping_address || inv.shipping_address || inv.delivery_address || custAddr;
+    // 2. student & Address Information
+    const custId = inv.student_id;
+    const custName = inv.student_name || inv.student?.name || "";
+    const custPhone = inv.student_phone || inv.student?.phone || "";
+    const custEmail = inv.student_email || inv.student?.email || "";
+    const custGst = inv.student_gstin || inv.student?.gst_number || inv.student?.gstin || "";
+    const custAddr = inv.student_address || inv.student_billing_address || inv.billing_address || inv.student?.address || "";
+    const custShip = inv.student_shipping_address || inv.shipping_address || inv.delivery_address || custAddr;
 
     if (custId || custName) {
       const syntheticId = custId || `cust-temp-${inv.id || inv.invoice_number || Date.now()}`;
-      const synthCustomer = {
+      const synthstudent = {
         id: syntheticId,
-        name: custName || "Walk-in Customer",
+        name: custName || "Walk-in student",
         phone: custPhone,
         email: custEmail,
         gst_number: custGst,
         address: custAddr,
         billing_address: custAddr,
         shipping_address: custShip,
-        type: inv.customer_type || inv.customer?.type || inv.customer?.customer_type || inv.pricing_mode || "Retail",
-        customer_type: inv.customer_type || inv.customer?.type || inv.customer?.customer_type || inv.pricing_mode || "Retail",
+        type: inv.student_type || inv.student?.type || inv.student?.student_type || inv.pricing_mode || "Retail",
+        student_type: inv.student_type || inv.student?.type || inv.student?.student_type || inv.pricing_mode || "Retail",
       };
-      setCustomers((prev) => {
+      setstudents((prev) => {
         const foundIdx = prev.findIndex(
           (c) => (custId && c.id === custId) || c.id === syntheticId || (custName && c.name && c.name.toLowerCase() === custName.toLowerCase())
         );
         if (foundIdx >= 0) {
           const updated = [...prev];
-          updated[foundIdx] = { ...updated[foundIdx], ...synthCustomer, id: updated[foundIdx].id };
+          updated[foundIdx] = { ...updated[foundIdx], ...synthstudent, id: updated[foundIdx].id };
           return updated;
         }
-        return [synthCustomer, ...prev];
+        return [synthstudent, ...prev];
       });
-      setSelectedCustomer(syntheticId);
+      setSelectedstudent(syntheticId);
     }
 
     if (custAddr) {
@@ -1007,24 +1007,24 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
     }
   }, [activeEditingInvoice, editingInvoice, getIsInterstate]);
 
-  // Handle clicking outside customer dropdown to auto-close
+  // Handle clicking outside student dropdown to auto-close
   useEffect(() => {
-    function handleClickOutsideCustomerDropdown(event: MouseEvent) {
-      if (customerDropdownRef.current && !customerDropdownRef.current.contains(event.target as Node)) {
-        setIsCustomerDropdownOpen(false);
+    function handleClickOutsidestudentDropdown(event: MouseEvent) {
+      if (studentDropdownRef.current && !studentDropdownRef.current.contains(event.target as Node)) {
+        setIsstudentDropdownOpen(false);
       }
     }
-    document.addEventListener("mousedown", handleClickOutsideCustomerDropdown);
+    document.addEventListener("mousedown", handleClickOutsidestudentDropdown);
     return () => {
-      document.removeEventListener("mousedown", handleClickOutsideCustomerDropdown);
+      document.removeEventListener("mousedown", handleClickOutsidestudentDropdown);
     };
   }, []);
 
-  // Filtered customer list for instant search matching name, phone, company, GSTIN, email, city
-  const filteredCustomers = React.useMemo(() => {
-    if (!customerSearchQuery.trim()) return customers;
-    const q = customerSearchQuery.toLowerCase().trim();
-    return customers.filter((c) => {
+  // Filtered student list for instant search matching name, phone, company, GSTIN, email, city
+  const filteredstudents = React.useMemo(() => {
+    if (!studentSearchQuery.trim()) return students;
+    const q = studentSearchQuery.toLowerCase().trim();
+    return students.filter((c) => {
       const nameMatch = (c.name || "").toLowerCase().includes(q);
       const phoneMatch = (c.phone || "").toLowerCase().includes(q);
       const companyMatch = (c.company || "").toLowerCase().includes(q);
@@ -1033,15 +1033,15 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
       const cityMatch = (c.city || "").toLowerCase().includes(q);
       return nameMatch || phoneMatch || companyMatch || gstinMatch || emailMatch || cityMatch;
     });
-  }, [customers, customerSearchQuery]);
+  }, [students, studentSearchQuery]);
 
-  const handleOpenEditCustomerAddresses = () => {
-    const cust = customers.find(c => c.id === selectedCustomer);
+  const handleOpenEditstudentAddresses = () => {
+    const cust = students.find(c => c.id === selectedstudent);
     if (!cust) {
-      toast.error("Please select a customer first to manage addresses");
+      toast.error("Please select a student first to manage addresses");
       return;
     }
-    let addrs: CustomerAddressItem[] = [];
+    let addrs: studentAddressItem[] = [];
     if (Array.isArray(cust.addresses) && cust.addresses.length > 0) {
       addrs = JSON.parse(JSON.stringify(cust.addresses));
     } else {
@@ -1080,20 +1080,20 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
         });
       }
     }
-    setEditingCustomerAddresses(addrs);
+    setEditingstudentAddresses(addrs);
     setActiveEditingAddrIndex(0);
     setIsEditAddressesModalOpen(true);
   };
 
   const handleAddNewEditingAddress = (tag: string = "Branch") => {
-    const newIdx = editingCustomerAddresses.length + 1;
-    const newSlot: CustomerAddressItem = {
+    const newIdx = editingstudentAddresses.length + 1;
+    const newSlot: studentAddressItem = {
       id: `addr-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       tag: `${tag} ${newIdx}`,
       type: "shipping",
       street: "",
-      city: editingCustomerAddresses[0]?.city || "",
-      state: editingCustomerAddresses[0]?.state || "Andhra Pradesh",
+      city: editingstudentAddresses[0]?.city || "",
+      state: editingstudentAddresses[0]?.state || "Andhra Pradesh",
       pincode: "",
       country: "India",
       gst_number: "",
@@ -1102,26 +1102,26 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
       is_default_billing: false,
       is_default_shipping: false,
     };
-    setEditingCustomerAddresses([...editingCustomerAddresses, newSlot]);
-    setActiveEditingAddrIndex(editingCustomerAddresses.length);
+    setEditingstudentAddresses([...editingstudentAddresses, newSlot]);
+    setActiveEditingAddrIndex(editingstudentAddresses.length);
   };
 
   const handleRemoveEditingAddress = (idx: number) => {
-    if (editingCustomerAddresses.length <= 1) {
-      toast.error("Customer must have at least one address");
+    if (editingstudentAddresses.length <= 1) {
+      toast.error("student must have at least one address");
       return;
     }
-    const filtered = editingCustomerAddresses.filter((_, i) => i !== idx);
+    const filtered = editingstudentAddresses.filter((_, i) => i !== idx);
     if (!filtered.some(a => a.is_default_billing)) filtered[0].is_default_billing = true;
     if (!filtered.some(a => a.is_default_shipping)) filtered[0].is_default_shipping = true;
-    setEditingCustomerAddresses(filtered);
+    setEditingstudentAddresses(filtered);
     setActiveEditingAddrIndex(Math.max(0, idx - 1));
   };
 
-  const handleUpdateEditingAddressField = (idx: number, field: keyof CustomerAddressItem, val: any) => {
-    const updated = [...editingCustomerAddresses];
+  const handleUpdateEditingAddressField = (idx: number, field: keyof studentAddressItem, val: any) => {
+    const updated = [...editingstudentAddresses];
     updated[idx] = { ...updated[idx], [field]: val };
-    setEditingCustomerAddresses(updated);
+    setEditingstudentAddresses(updated);
   };
 
   const handleEditingAddrPincodeChange = async (val: string) => {
@@ -1130,7 +1130,7 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
     if (clean.length === 6) {
       const res = await lookupPincode(clean);
       if (res) {
-        const updated = [...editingCustomerAddresses];
+        const updated = [...editingstudentAddresses];
         const curr = { ...updated[activeEditingAddrIndex] };
         curr.pincode = clean;
         if (res.city) curr.city = res.city;
@@ -1140,24 +1140,24 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
         }
         if (!curr.street && res.area) curr.street = res.area;
         updated[activeEditingAddrIndex] = curr;
-        setEditingCustomerAddresses(updated);
+        setEditingstudentAddresses(updated);
       }
     }
   };
 
-  const handleSaveCustomerAddresses = async () => {
-    const cust = customers.find(c => c.id === selectedCustomer);
+  const handleSavestudentAddresses = async () => {
+    const cust = students.find(c => c.id === selectedstudent);
     if (!cust) return;
-    setIsSavingCustomerAddresses(true);
+    setIsSavingstudentAddresses(true);
     try {
-      const defaultBilling = editingCustomerAddresses.find(a => a.is_default_billing) || editingCustomerAddresses[0];
-      const defaultShipping = editingCustomerAddresses.find(a => a.is_default_shipping) || editingCustomerAddresses.find(a => a.type === "shipping" || a.type === "both") || editingCustomerAddresses[0];
+      const defaultBilling = editingstudentAddresses.find(a => a.is_default_billing) || editingstudentAddresses[0];
+      const defaultShipping = editingstudentAddresses.find(a => a.is_default_shipping) || editingstudentAddresses.find(a => a.type === "shipping" || a.type === "both") || editingstudentAddresses[0];
 
       const fullBilling = [defaultBilling?.street, defaultBilling?.city, defaultBilling?.state, defaultBilling?.pincode].filter(Boolean).join(", ");
       const fullShipping = [defaultShipping?.street, defaultShipping?.city, defaultShipping?.state, defaultShipping?.pincode].filter(Boolean).join(", ");
 
       const updatePayload = {
-        addresses: editingCustomerAddresses,
+        addresses: editingstudentAddresses,
         address: defaultBilling?.street || fullBilling || cust.address,
         billing_address: defaultBilling?.street || fullBilling || cust.billing_address,
         shipping_address: defaultShipping?.street || fullShipping || cust.shipping_address,
@@ -1166,14 +1166,14 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
         postal_code: defaultBilling?.pincode || cust.postal_code,
       };
 
-      const res = await crmCustomersApi.update(cust.id, updatePayload);
+      const res = await crmstudentsApi.update(cust.id, updatePayload);
       const updatedCust = {
         ...cust,
         ...updatePayload,
         ...(res || {}),
       };
 
-      setCustomers((prev) => prev.map((c) => (c.id === cust.id ? updatedCust : c)));
+      setstudents((prev) => prev.map((c) => (c.id === cust.id ? updatedCust : c)));
       setSelectedBillingAddress(defaultBilling);
       setSelectedDeliveryAddress(defaultShipping);
 
@@ -1186,12 +1186,12 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
         setGstType("cgst_sgst");
       }
 
-      toast.success("Customer address book updated & applied to current bill!");
+      toast.success("student address book updated & applied to current bill!");
       setIsEditAddressesModalOpen(false);
     } catch (err: any) {
-      toast.error(err?.detail || err?.message || "Failed to update customer addresses");
+      toast.error(err?.detail || err?.message || "Failed to update student addresses");
     } finally {
-      setIsSavingCustomerAddresses(false);
+      setIsSavingstudentAddresses(false);
     }
   };
 
@@ -1285,7 +1285,7 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
 
   const handleRemoveAddressSlot = (idx: number) => {
     if (newPartyAddresses.length <= 1) {
-      toast.error("Customer must have at least one address");
+      toast.error("student must have at least one address");
       return;
     }
     const filtered = newPartyAddresses.filter((_, i) => i !== idx);
@@ -1293,8 +1293,8 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
     setActiveAddrIndex(Math.max(0, idx - 1));
   };
 
-  // Customer History & Pending Due Tracking
-  const [customerSummary, setCustomerSummary] = useState<{
+  // student History & Pending Due Tracking
+  const [studentSummary, setstudentSummary] = useState<{
     total_invoices: number;
     total_spent: number;
     total_pending_due: number;
@@ -1303,7 +1303,7 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
   } | null>(null);
   const [includePreviousDueInBill, setIncludePreviousDueInBill] = useState(false);
   const [showPendingDueAlert, setShowPendingDueAlert] = useState(false);
-  const [showCustomerLedger, setShowCustomerLedger] = useState(false);
+  const [showstudentLedger, setShowstudentLedger] = useState(false);
   const [batches, setBatches] = useState<any[]>([]);
   const [aiFetchingHsnId, setAiFetchingHsnId] = useState<string | null>(null);
 
@@ -1337,9 +1337,9 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
           .map((inv: any) => ({
             id: inv.id,
             invoice_number: inv.invoice_number || `INV-${inv.id.slice(0, 6).toUpperCase()}`,
-            customer_name: inv.customer_name || inv.customer?.name || "Walk-in Customer",
-            customer_id: inv.customer_id,
-            customer_phone: inv.customer?.phone || "",
+            student_name: inv.student_name || inv.student?.name || "Walk-in student",
+            student_id: inv.student_id,
+            student_phone: inv.student?.phone || "",
             grand_total: inv.total_amount || 0,
             amount_received: Number(inv.amount_paid) || 0,
             payment_status: "Unpaid",
@@ -1393,34 +1393,34 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
       { id: "2", name: "Packing Charge", amount: 0, tax_rate: 0 }
     ]);
 
-    // Ensure customer is properly selected and in dropdown
-    const custId = inv.customer_id || (inv.customer && inv.customer.id);
-    const custName = inv.customer_name || (inv.customer && inv.customer.name) || "Customer";
-    const custPhone = inv.customer_phone || (inv.customer && inv.customer.phone) || "";
-    const custGst = inv.customer_gstin || (inv.customer && inv.customer.gst_number) || "";
+    // Ensure student is properly selected and in dropdown
+    const custId = inv.student_id || (inv.student && inv.student.id);
+    const custName = inv.student_name || (inv.student && inv.student.name) || "student";
+    const custPhone = inv.student_phone || (inv.student && inv.student.phone) || "";
+    const custGst = inv.student_gstin || (inv.student && inv.student.gst_number) || "";
 
     if (custId) {
-      setSelectedCustomer(custId);
+      setSelectedstudent(custId);
     }
 
     if (custName) {
-      const found = customers.find((c) =>
+      const found = students.find((c) =>
         (custId && c.id === custId) ||
         c.name?.toLowerCase() === custName.toLowerCase()
       );
       if (found) {
-        setSelectedCustomer(found.id);
+        setSelectedstudent(found.id);
       } else {
         const syntheticId = custId || `cust-temp-${Date.now()}`;
-        const synthCustomer = {
+        const synthstudent = {
           id: syntheticId,
           name: custName,
           phone: custPhone,
           gst_number: custGst,
           type: "Retail",
         };
-        setCustomers((prev) => [synthCustomer, ...prev.filter((c) => c.id !== syntheticId)]);
-        setSelectedCustomer(syntheticId);
+        setstudents((prev) => [synthstudent, ...prev.filter((c) => c.id !== syntheticId)]);
+        setSelectedstudent(syntheticId);
       }
     }
 
@@ -1599,15 +1599,15 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
           p.wholesale_price && Number(p.wholesale_price) > 0
             ? p.wholesale_price
             : (specs.wholesale_price && Number(specs.wholesale_price) > 0
-                ? specs.wholesale_price
-                : 0)
+              ? specs.wholesale_price
+              : 0)
         );
         const rawB2B = Number(
           p.b2b_price && Number(p.b2b_price) > 0
             ? p.b2b_price
             : (specs.b2b_price && Number(specs.b2b_price) > 0
-                ? specs.b2b_price
-                : 0)
+              ? specs.b2b_price
+              : 0)
         );
 
         const primaryUom = p.uom || p.uom_name || specs.primary_uom || specs.uom || p.unit || "Pcs";
@@ -1680,7 +1680,7 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
           sessionStorage.removeItem("pos_collect_invoice");
           try {
             parsed = JSON.parse(storedCollect);
-          } catch (e) {}
+          } catch (e) { }
         }
 
         if (!parsed) {
@@ -1713,7 +1713,7 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
           sessionStorage.removeItem("pos_edit_invoice");
           try {
             editTarget = JSON.parse(storedEdit);
-          } catch (e) {}
+          } catch (e) { }
         }
         if (!editTarget) {
           const storedRecreate = sessionStorage.getItem("pos_recreate_invoice");
@@ -1722,7 +1722,7 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
             try {
               editTarget = JSON.parse(storedRecreate);
               setIsRecreatingInvoice(true);
-            } catch (e) {}
+            } catch (e) { }
           }
         }
         if (!editTarget) {
@@ -1737,7 +1737,7 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
                 const found = list.find((x: any) => x.id === editId || x.invoice_number === editId);
                 if (found) editTarget = found;
               }
-            } catch (e) {}
+            } catch (e) { }
           } else if (recreateNum) {
             setIsRecreatingInvoice(true);
             setInvoiceNumber(recreateNum);
@@ -1782,10 +1782,10 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
       .then((bList: any) => setBatches(bList?.items || (Array.isArray(bList) ? bList : [])))
       .catch(() => setBatches([]));
     crmApi
-      .getCustomers(1, 100)
+      .getstudents(1, 100)
       .then((data: any) => {
         const custList = data?.items || (Array.isArray(data) ? data : []);
-        setCustomers((prev) => {
+        setstudents((prev) => {
           const map = new Map();
           custList.forEach((c: any) => map.set(c.id, c));
           prev.forEach((c: any) => {
@@ -1851,15 +1851,15 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
       prod.wholesale_price && Number(prod.wholesale_price) > 0
         ? prod.wholesale_price
         : (specs.wholesale_price && Number(specs.wholesale_price) > 0
-            ? specs.wholesale_price
-            : (basePrice > 0 ? Number((basePrice * 0.85).toFixed(2)) : 0))
+          ? specs.wholesale_price
+          : (basePrice > 0 ? Number((basePrice * 0.85).toFixed(2)) : 0))
     );
     const b2bPrice = Number(
       prod.b2b_price && Number(prod.b2b_price) > 0
         ? prod.b2b_price
         : (specs.b2b_price && Number(specs.b2b_price) > 0
-            ? specs.b2b_price
-            : (basePrice > 0 ? Number((basePrice * 0.70).toFixed(2)) : 0))
+          ? specs.b2b_price
+          : (basePrice > 0 ? Number((basePrice * 0.70).toFixed(2)) : 0))
     );
 
     // If explicit tier mode is chosen, return set tier price (or tier-calculated price)
@@ -1905,25 +1905,25 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
   };
 
   useEffect(() => {
-    if (!selectedCustomer) {
-      setCustomerSummary(null);
-      setCustomerWalletBalance(0);
+    if (!selectedstudent) {
+      setstudentSummary(null);
+      setstudentWalletBalance(0);
       setIncludePreviousDueInBill(false);
       setShowPendingDueAlert(false);
       return;
     }
-    const cust = customers.find((c: any) => c.id === selectedCustomer);
+    const cust = students.find((c: any) => c.id === selectedstudent);
     if (!cust) return;
 
     const fetchSummary = async () => {
       try {
         const [summary, walletRes] = await Promise.all([
-          invoicesApi.getCustomerSummary(cust.id || cust.name).catch(() => null),
+          invoicesApi.getstudentSummary(cust.id || cust.name).catch(() => null),
           cust.id ? crmWalletApi.getBalance(cust.id).catch(() => null) : null
         ]);
 
         if (walletRes) {
-          setCustomerWalletBalance(Number(walletRes?.balance) || 0);
+          setstudentWalletBalance(Number(walletRes?.balance) || 0);
         }
 
         let localInvoices: any[] = [];
@@ -1932,7 +1932,7 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
           if (stored) {
             localInvoices = JSON.parse(stored);
           }
-        } catch (e) {}
+        } catch (e) { }
 
         const backendUnpaid = (summary?.unpaid_invoices || []).filter((inv: any) => {
           const rawStatus = String(inv.status || "").toLowerCase();
@@ -1942,9 +1942,9 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
 
         const localUnpaidForCust = localInvoices
           .filter((inv: any) => {
-            const isMatch = (inv.customer_id && cust.id && inv.customer_id === cust.id) ||
-              (inv.customer_name && cust.name && inv.customer_name.toLowerCase() === cust.name.toLowerCase()) ||
-              (inv.customer_phone && cust.phone && inv.customer_phone === cust.phone);
+            const isMatch = (inv.student_id && cust.id && inv.student_id === cust.id) ||
+              (inv.student_name && cust.name && inv.student_name.toLowerCase() === cust.name.toLowerCase()) ||
+              (inv.student_phone && cust.phone && inv.student_phone === cust.phone);
             if (!isMatch) return false;
 
             const isPaid = inv.payment_status === "Paid" || (Number(inv.amount_received || 0) >= Number(inv.grand_total || 0) - 0.05);
@@ -1973,7 +1973,7 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
         const finalUnpaid = Array.from(mergedMap.values()).filter((inv: any) => Number(inv.balance_due) > 0.05);
         const totalPending = finalUnpaid.reduce((sum, inv) => sum + Number(inv.balance_due || 0), 0);
 
-        setCustomerSummary({
+        setstudentSummary({
           total_invoices: summary?.total_invoices || localInvoices.length,
           total_spent: summary?.total_spent || 0,
           total_pending_due: totalPending,
@@ -1988,14 +1988,14 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
           setIncludePreviousDueInBill(false);
         }
       } catch (err) {
-        setCustomerSummary(null);
+        setstudentSummary(null);
         setShowPendingDueAlert(false);
         setIncludePreviousDueInBill(false);
       }
     };
 
     fetchSummary();
-  }, [selectedCustomer, customers, posStorageKey]);
+  }, [selectedstudent, students, posStorageKey]);
 
   const handlePricingModeChange = (mode: "Retail" | "Wholesale" | "B2B") => {
     handleSwitchPricingTier(mode);
@@ -2431,13 +2431,13 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
   }
 
   const totalDiscount = itemDiscountTotal + beforeTaxDiscount + afterTaxDiscount;
-  const previousDueAmount = (!settlingInvoice && includePreviousDueInBill && customerSummary?.total_pending_due) ? Number(customerSummary.total_pending_due) : 0;
+  const previousDueAmount = (!settlingInvoice && includePreviousDueInBill && studentSummary?.total_pending_due) ? Number(studentSummary.total_pending_due) : 0;
   const baseRawTotal = Math.max(0, grossBillAmount - afterTaxDiscount);
   const rawTotal = baseRawTotal + previousDueAmount;
   const roundOff = autoRoundOff ? Math.round(rawTotal) - rawTotal : 0;
   const grandTotal = autoRoundOff ? Math.round(rawTotal) : rawTotal;
 
-  const activeCustomerObj = customers.find((c) => c.id === selectedCustomer);
+  const activestudentObj = students.find((c) => c.id === selectedstudent);
 
   const handleCreateNewParty = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -2451,12 +2451,12 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
     const fullShippingAddress = [primaryShipping?.street, primaryShipping?.city, primaryShipping?.state, primaryShipping?.pincode].filter(Boolean).join(", ");
 
     try {
-      const created = await crmApi.createCustomer({
+      const created = await crmApi.createstudent({
         name: newPartyName.trim(),
         phone: newPartyPhone.trim() || undefined,
         email: newPartyEmail.trim() || undefined,
         company_name: newPartyCompany.trim() || undefined,
-        customer_type: newPartyType || "Retail",
+        student_type: newPartyType || "Retail",
         gst_number: newPartyGST.trim().toUpperCase() || undefined,
         address: fullBillingAddress || undefined,
         billing_address: fullBillingAddress || undefined,
@@ -2479,24 +2479,24 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
           addresses: newPartyAddresses,
         },
       });
-      const customerObj = created.data || created;
-      customerObj.state = primaryBilling?.state || "Andhra Pradesh";
-      customerObj.billing_address = fullBillingAddress;
-      customerObj.shipping_address = fullShippingAddress;
-      customerObj.addresses = newPartyAddresses;
-      customerObj.selectedDeliveryAddress = primaryShipping;
+      const studentObj = created.data || created;
+      studentObj.state = primaryBilling?.state || "Andhra Pradesh";
+      studentObj.billing_address = fullBillingAddress;
+      studentObj.shipping_address = fullShippingAddress;
+      studentObj.addresses = newPartyAddresses;
+      studentObj.selectedDeliveryAddress = primaryShipping;
 
-      // Update in local customer state (replace if existing, or prepend if new)
-      const existingIdx = customers.findIndex(c => c.id === customerObj.id || (customerObj.phone && c.phone && c.phone === customerObj.phone));
+      // Update in local student state (replace if existing, or prepend if new)
+      const existingIdx = students.findIndex(c => c.id === studentObj.id || (studentObj.phone && c.phone && c.phone === studentObj.phone));
       if (existingIdx >= 0) {
-        const updatedCusts = [...customers];
-        updatedCusts[existingIdx] = { ...updatedCusts[existingIdx], ...customerObj };
-        setCustomers(updatedCusts);
+        const updatedCusts = [...students];
+        updatedCusts[existingIdx] = { ...updatedCusts[existingIdx], ...studentObj };
+        setstudents(updatedCusts);
       } else {
-        setCustomers([customerObj, ...customers]);
+        setstudents([studentObj, ...students]);
       }
 
-      setSelectedCustomer(customerObj.id);
+      setSelectedstudent(studentObj.id);
       setSelectedDeliveryAddress(primaryShipping);
 
       // Check Inter-State vs Intra-State
@@ -2504,7 +2504,7 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
       const cleanGst = newPartyGST.trim().toUpperCase();
       if (getIsInterstate(primaryState, cleanGst)) {
         setGstType("igst");
-        toast.info(`Inter-State Customer Selected (${primaryState || "Inter-State"}). Tax switched to IGST.`);
+        toast.info(`Inter-State student Selected (${primaryState || "Inter-State"}). Tax switched to IGST.`);
       } else {
         setGstType("cgst_sgst");
       }
@@ -2529,13 +2529,13 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
       ]);
       setActiveAddrIndex(0);
       setNewPartyType("Retail");
-      toast.success(`Party "${customerObj.name}" selected with ${newPartyAddresses.length} address location(s)!`);
+      toast.success(`Party "${studentObj.name}" selected with ${newPartyAddresses.length} address location(s)!`);
     } catch (err: any) {
       toast.error(err?.detail || err?.message || "Failed to create party");
     }
   };
 
-  // Party Details Quick Edit Modal State (Edit customer mobile, address, GSTIN, name on this bill)
+  // Party Details Quick Edit Modal State (Edit student mobile, address, GSTIN, name on this bill)
   const [isEditPartyDetailsModalOpen, setIsEditPartyDetailsModalOpen] = useState(false);
   const [editPartyForm, setEditPartyForm] = useState({
     name: "",
@@ -2556,9 +2556,9 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
   const [isLookingUpEditPin, setIsLookingUpEditPin] = useState(false);
 
   const handleOpenEditPartyDetails = () => {
-    const cust = customers.find((c) => c.id === selectedCustomer);
+    const cust = students.find((c) => c.id === selectedstudent);
     if (!cust) {
-      toast.error("Please select a customer first to edit details");
+      toast.error("Please select a student first to edit details");
       return;
     }
     const bStreet = selectedBillingAddress?.street || cust.billing_address || cust.address || "";
@@ -2644,7 +2644,7 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
   const handleSavePartyDetailsEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editPartyForm.name.trim()) {
-      toast.error("Customer / Party name is required");
+      toast.error("student / Party name is required");
       return;
     }
 
@@ -2660,13 +2660,13 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
     const fullShippingStr = editPartyForm.same_as_billing
       ? fullBillingStr
       : [
-          editPartyForm.shipping_street,
-          editPartyForm.shipping_city,
-          editPartyForm.shipping_state,
-          editPartyForm.shipping_pincode,
-        ]
-          .filter(Boolean)
-          .join(", ");
+        editPartyForm.shipping_street,
+        editPartyForm.shipping_city,
+        editPartyForm.shipping_state,
+        editPartyForm.shipping_pincode,
+      ]
+        .filter(Boolean)
+        .join(", ");
 
     const cleanGst = editPartyForm.gst_number.trim().toUpperCase();
 
@@ -2684,23 +2684,23 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
     const updatedDeliveryAddr = editPartyForm.same_as_billing
       ? updatedBillingAddr
       : {
-          id: selectedDeliveryAddress?.id || "addr-ship-custom",
-          tag: "Delivery Address",
-          street: editPartyForm.shipping_street,
-          city: editPartyForm.shipping_city,
-          state: editPartyForm.shipping_state,
-          pincode: editPartyForm.shipping_pincode,
-          gst_number: cleanGst,
-          is_default_shipping: true,
-        };
+        id: selectedDeliveryAddress?.id || "addr-ship-custom",
+        tag: "Delivery Address",
+        street: editPartyForm.shipping_street,
+        city: editPartyForm.shipping_city,
+        state: editPartyForm.shipping_state,
+        pincode: editPartyForm.shipping_pincode,
+        gst_number: cleanGst,
+        is_default_shipping: true,
+      };
 
     setSelectedBillingAddress(updatedBillingAddr);
     setSelectedDeliveryAddress(updatedDeliveryAddr);
 
-    // Update customers list in local state
-    setCustomers((prev) =>
+    // Update students list in local state
+    setstudents((prev) =>
       prev.map((c) => {
-        if (c.id === selectedCustomer) {
+        if (c.id === selectedstudent) {
           return {
             ...c,
             name: editPartyForm.name.trim(),
@@ -2729,10 +2729,10 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
       setGstType("cgst_sgst");
     }
 
-    // Optionally update CRM customer directory if checked and valid UUID
-    if (editPartyForm.update_in_crm && selectedCustomer && isValidUUID(selectedCustomer)) {
-      crmCustomersApi
-        .update(selectedCustomer, {
+    // Optionally update CRM student directory if checked and valid UUID
+    if (editPartyForm.update_in_crm && selectedstudent && isValidUUID(selectedstudent)) {
+      crmstudentsApi
+        .update(selectedstudent, {
           name: editPartyForm.name.trim(),
           phone: editPartyForm.phone.trim() || undefined,
           email: editPartyForm.email.trim() || undefined,
@@ -2744,11 +2744,11 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
           state: editPartyForm.billing_state || undefined,
           postal_code: editPartyForm.billing_pincode || undefined,
         })
-        .catch((err: any) => console.warn("CRM customer update note:", err));
+        .catch((err: any) => console.warn("CRM student update note:", err));
     }
 
     setIsEditPartyDetailsModalOpen(false);
-    toast.success("Customer details updated for this invoice!");
+    toast.success("student details updated for this invoice!");
   };
 
   const handleCreateNewProduct = async (e: React.FormEvent) => {
@@ -2836,7 +2836,7 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
   };
 
   const constructFullInvoicePayload = (): FullInvoiceData => {
-    const customerObj = customers.find((c) => c.id === selectedCustomer);
+    const studentObj = students.find((c) => c.id === selectedstudent);
     return {
       invoice_number: invoiceNumber,
       invoice_type: invoiceType,
@@ -2855,15 +2855,15 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
       dispatch_mode: dispatchMode || undefined,
       invoice_date: invoiceDate,
       due_date: dueDate,
-      customerName: customerObj?.name || 'Walk-in Customer',
-      customerPhone: customerObj?.phone || '',
-      customerEmail: customerObj?.email || '',
-      customerCompany: customerObj?.company || '',
-      customerGST: selectedBillingAddress?.gst_number || customerObj?.gst_number || '',
-      customerAddress: selectedBillingAddress ? [selectedBillingAddress.street, selectedBillingAddress.city, selectedBillingAddress.state, selectedBillingAddress.pincode].filter(Boolean).join(", ") : (customerObj?.address || ''),
-      customerBillingAddress: selectedBillingAddress ? [selectedBillingAddress.street, selectedBillingAddress.city, selectedBillingAddress.state, selectedBillingAddress.pincode].filter(Boolean).join(", ") : (customerObj?.billing_address || customerObj?.address || ''),
-      customerShippingAddress: selectedDeliveryAddress ? [selectedDeliveryAddress.street, selectedDeliveryAddress.city, selectedDeliveryAddress.state, selectedDeliveryAddress.pincode].filter(Boolean).join(", ") : (customerObj?.shipping_address || ''),
-      customerType: pricingMode === "B2B" ? "B2B Contract" : (pricingMode === "Wholesale" ? "Wholesale" : (customerObj?.customer_type || customerObj?.type || customerObj?.category || 'Retail')),
+      studentName: studentObj?.name || 'Walk-in student',
+      studentPhone: studentObj?.phone || '',
+      studentEmail: studentObj?.email || '',
+      studentCompany: studentObj?.company || '',
+      studentGST: selectedBillingAddress?.gst_number || studentObj?.gst_number || '',
+      studentAddress: selectedBillingAddress ? [selectedBillingAddress.street, selectedBillingAddress.city, selectedBillingAddress.state, selectedBillingAddress.pincode].filter(Boolean).join(", ") : (studentObj?.address || ''),
+      studentBillingAddress: selectedBillingAddress ? [selectedBillingAddress.street, selectedBillingAddress.city, selectedBillingAddress.state, selectedBillingAddress.pincode].filter(Boolean).join(", ") : (studentObj?.billing_address || studentObj?.address || ''),
+      studentShippingAddress: selectedDeliveryAddress ? [selectedDeliveryAddress.street, selectedDeliveryAddress.city, selectedDeliveryAddress.state, selectedDeliveryAddress.pincode].filter(Boolean).join(", ") : (studentObj?.shipping_address || ''),
+      studentType: pricingMode === "B2B" ? "B2B Contract" : (pricingMode === "Wholesale" ? "Wholesale" : (studentObj?.student_type || studentObj?.type || studentObj?.category || 'Retail')),
       pricing_mode: pricingMode,
       pricing_tier: pricingMode,
       items: items.map(it => ({
@@ -2915,12 +2915,12 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
 
   const handlePrintThermal = () => {
     if (items.length === 0) return toast.error("Please add items to invoice before printing receipt.");
-    const customerObj = customers.find((c) => c.id === selectedCustomer);
+    const studentObj = students.find((c) => c.id === selectedstudent);
     const billData = {
       invoice_number: invoiceNumber,
       date: invoiceDate,
-      customerName: customerObj?.name || 'Walk-in Customer',
-      customerPhone: customerObj?.phone || '',
+      studentName: studentObj?.name || 'Walk-in student',
+      studentPhone: studentObj?.phone || '',
       gst_type: gstType,
       is_interstate: gstType === 'igst',
       items: items.map(it => ({
@@ -2959,7 +2959,7 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
           window.history.replaceState({}, "", url.pathname + url.search);
         }
       }
-    } catch (e) {}
+    } catch (e) { }
     setItems([{
       id: `item-${Date.now()}-1`,
       product_id: "",
@@ -2976,7 +2976,7 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
       discount_value: 0,
     }]);
     setFreeItems([]);
-    setSelectedCustomer("");
+    setSelectedstudent("");
     setSelectedDeliveryAddress(null);
     setSelectedBillingAddress(null);
     setAmountReceived("");
@@ -3023,13 +3023,13 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
     if (invoiceType === "QUOTATION") {
       return handleSaveQuotation("Issued", printMode);
     }
-    if (!selectedCustomer) return toast.error("Please select a customer or party first.");
+    if (!selectedstudent) return toast.error("Please select a student or party first.");
     if (items.length === 0) return toast.error("Please add at least one item.");
     try {
       setIsSaving(true);
       const isEditMode = Boolean(activeEditingInvoice || editingInvoice);
       const isRecreateMode = Boolean(isRecreatingInvoice);
-      const customer = customers.find((c) => c.id === selectedCustomer);
+      const student = students.find((c) => c.id === selectedstudent);
       const isCredit = paymentMode === "Credit";
       const calculatedPaymentStatus = isCredit
         ? "UNPAID"
@@ -3055,18 +3055,18 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
 
       const formattedBillingAddress = selectedBillingAddress
         ? [selectedBillingAddress.street, selectedBillingAddress.city, selectedBillingAddress.state, selectedBillingAddress.pincode].filter(Boolean).join(", ")
-        : (customer?.billing_address || customer?.address || "");
+        : (student?.billing_address || student?.address || "");
 
       const formattedShippingAddress = selectedDeliveryAddress
         ? [selectedDeliveryAddress.street, selectedDeliveryAddress.city, selectedDeliveryAddress.state, selectedDeliveryAddress.pincode].filter(Boolean).join(", ")
-        : (customer?.shipping_address || formattedBillingAddress);
+        : (student?.shipping_address || formattedBillingAddress);
 
       const apiInvoiceType =
         invoiceType === "TAX_INVOICE" ? "tax_invoice" :
-        invoiceType === "ESTIMATE_NON_GST" ? "estimate" :
-        invoiceType === "PROFORMA" ? "proforma" :
-        invoiceType === "CREDIT_NOTE" ? "credit_note" :
-        invoiceType === "DEBIT_NOTE" ? "debit_note" : "tax_invoice";
+          invoiceType === "ESTIMATE_NON_GST" ? "estimate" :
+            invoiceType === "PROFORMA" ? "proforma" :
+              invoiceType === "CREDIT_NOTE" ? "credit_note" :
+                invoiceType === "DEBIT_NOTE" ? "debit_note" : "tax_invoice";
 
       const finalNotes = [
         notes,
@@ -3090,11 +3090,11 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
         transporter_name: transporterName || undefined,
         eway_bill_number: ewayBillNumber || undefined,
         eway_bill_date: ewayBillDate || undefined,
-        customer_id: customer?.id && isValidUUID(customer.id) ? customer.id : null,
-        customer_name: customer?.name || "Walk-in Customer",
-        customer_phone: customer?.phone || null,
-        customer_email: customer?.email || null,
-        customer_gstin: selectedBillingAddress?.gst_number || customer?.gst_number || null,
+        student_id: student?.id && isValidUUID(student.id) ? student.id : null,
+        student_name: student?.name || "Walk-in student",
+        student_phone: student?.phone || null,
+        student_email: student?.email || null,
+        student_gstin: selectedBillingAddress?.gst_number || student?.gst_number || null,
         billing_address: formattedBillingAddress,
         shipping_address: formattedShippingAddress,
         invoice_date: invoiceDate,
@@ -3166,14 +3166,14 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
         transporter_name: transporterName || undefined,
         eway_bill_number: ewayBillNumber || undefined,
         eway_bill_date: ewayBillDate || undefined,
-        customer_name: customer?.name || "Walk-in Customer",
-        customer_phone: customer?.phone || "",
-        customer_email: customer?.email || "",
-        customer_company: customer?.company || "",
-        customer_gstin: customer?.gst_number || "",
-        customer_type: customer?.customer_type || customer?.type || customer?.category || (pricingMode !== 'Retail' ? pricingMode : undefined),
-        customer_billing_address: formattedBillingAddress,
-        customer_shipping_address: formattedShippingAddress,
+        student_name: student?.name || "Walk-in student",
+        student_phone: student?.phone || "",
+        student_email: student?.email || "",
+        student_company: student?.company || "",
+        student_gstin: student?.gst_number || "",
+        student_type: student?.student_type || student?.type || student?.category || (pricingMode !== 'Retail' ? pricingMode : undefined),
+        student_billing_address: formattedBillingAddress,
+        student_shipping_address: formattedShippingAddress,
         sales_executive: salesExecutive || "Sales Executive",
         sales_points_earned: earnedPts,
         invoice_date: invoiceDate,
@@ -3344,18 +3344,18 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
     }
     const isEditQuote = Boolean(activeEditingInvoice || editingInvoice);
     const editQuoteId = activeEditingInvoice?.id || editingInvoice?.id;
-    const customer = customers.find((c) => c.id === selectedCustomer);
+    const student = students.find((c) => c.id === selectedstudent);
 
     setIsSaving(true);
     try {
       const quotationPayload = {
         quote_number: invoiceNumber,
-        customer_id: customer?.id && isValidUUID(customer.id) ? customer.id : null,
-        customer_name: customer?.name || "Walk-in Client",
-        customer_phone: customer?.phone || "",
-        customer_email: customer?.email || "",
-        customer_address: selectedBillingAddress ? [selectedBillingAddress.street, selectedBillingAddress.city, selectedBillingAddress.state].filter(Boolean).join(", ") : (customer?.billing_address || customer?.address || ""),
-        customer_gstin: selectedBillingAddress?.gst_number || customer?.gst_number || "",
+        student_id: student?.id && isValidUUID(student.id) ? student.id : null,
+        student_name: student?.name || "Walk-in Client",
+        student_phone: student?.phone || "",
+        student_email: student?.email || "",
+        student_address: selectedBillingAddress ? [selectedBillingAddress.street, selectedBillingAddress.city, selectedBillingAddress.state].filter(Boolean).join(", ") : (student?.billing_address || student?.address || ""),
+        student_gstin: selectedBillingAddress?.gst_number || student?.gst_number || "",
         status: status === "Draft" ? "Draft" : status === "Converted" ? "Accepted" : "Issued",
         total: grandTotal,
         subtotal: subtotal,
@@ -3389,17 +3389,17 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
       }
 
       // 2. Also save to invoicesApi with invoice_type: "quotation"
-      const formattedBillingAddress = selectedBillingAddress ? [selectedBillingAddress.street, selectedBillingAddress.city, selectedBillingAddress.state, selectedBillingAddress.pincode].filter(Boolean).join(", ") : (customer?.billing_address || customer?.address || "");
-      const formattedShippingAddress = selectedDeliveryAddress ? [selectedDeliveryAddress.street, selectedDeliveryAddress.city, selectedDeliveryAddress.state, selectedDeliveryAddress.pincode].filter(Boolean).join(", ") : (customer?.shipping_address || formattedBillingAddress);
+      const formattedBillingAddress = selectedBillingAddress ? [selectedBillingAddress.street, selectedBillingAddress.city, selectedBillingAddress.state, selectedBillingAddress.pincode].filter(Boolean).join(", ") : (student?.billing_address || student?.address || "");
+      const formattedShippingAddress = selectedDeliveryAddress ? [selectedDeliveryAddress.street, selectedDeliveryAddress.city, selectedDeliveryAddress.state, selectedDeliveryAddress.pincode].filter(Boolean).join(", ") : (student?.shipping_address || formattedBillingAddress);
 
       await invoicesApi.createInvoice({
         invoice_number: invoiceNumber.trim(),
         invoice_type: "quotation",
-        customer_id: customer?.id && isValidUUID(customer.id) ? customer.id : null,
-        customer_name: customer?.name || "Walk-in Client",
-        customer_phone: customer?.phone || null,
-        customer_email: customer?.email || null,
-        customer_gstin: selectedBillingAddress?.gst_number || customer?.gst_number || null,
+        student_id: student?.id && isValidUUID(student.id) ? student.id : null,
+        student_name: student?.name || "Walk-in Client",
+        student_phone: student?.phone || null,
+        student_email: student?.email || null,
+        student_gstin: selectedBillingAddress?.gst_number || student?.gst_number || null,
         billing_address: formattedBillingAddress,
         shipping_address: formattedShippingAddress,
         invoice_date: invoiceDate,
@@ -3430,10 +3430,10 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
         id: editQuoteId || `qt-${Date.now()}`,
         invoice_number: invoiceNumber,
         invoice_type: "QUOTATION",
-        customer_name: customer?.name || "Walk-in Client",
-        customer_phone: customer?.phone || "",
-        customer_email: customer?.email || "",
-        customer_gstin: customer?.gst_number || "",
+        student_name: student?.name || "Walk-in Client",
+        student_phone: student?.phone || "",
+        student_email: student?.email || "",
+        student_gstin: student?.gst_number || "",
         sales_executive: salesExecutive || "Sales Rep",
         invoice_date: invoiceDate,
         due_date: dueDate,
@@ -3487,7 +3487,7 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
       }
 
       if (onSaved) onSaved(newInvoiceRecord);
-      
+
       if (isEditQuote) {
         const currentSettings = invoiceSettings || loadStoredInvoiceSettings();
         resetInvoiceForm(currentSettings);
@@ -3512,29 +3512,29 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
   };
 
   const handleSendWhatsAppQuote = () => {
-    const customer = customers.find((c) => c.id === selectedCustomer);
-    const phone = (customer?.phone || "").replace(/\D/g, "");
+    const student = students.find((c) => c.id === selectedstudent);
+    const phone = (student?.phone || "").replace(/\D/g, "");
     if (!phone) {
-      toast.error("Please select a customer with a valid phone number.");
+      toast.error("Please select a student with a valid phone number.");
       return;
     }
     const text = encodeURIComponent(
-      `Hello ${customer?.name || "Valued Client"},\n\nHere is your official quotation *#${invoiceNumber}* from *${tenant?.name || "BusinessOS AI"}* for total amount *${currency.symbol}${grandTotal.toLocaleString()}*.\n\nDate: ${invoiceDate}\nValid Until: ${dueDate}\n\nPlease let us know if you approve this quotation!`
+      `Hello ${student?.name || "Valued Client"},\n\nHere is your official quotation *#${invoiceNumber}* from *${tenant?.name || "BusinessOS AI"}* for total amount *${currency.symbol}${grandTotal.toLocaleString()}*.\n\nDate: ${invoiceDate}\nValid Until: ${dueDate}\n\nPlease let us know if you approve this quotation!`
     );
     window.open(`https://wa.me/${phone}?text=${text}`, "_blank");
     toast.success(`Opened WhatsApp to send Quotation #${invoiceNumber} to ${phone}!`);
   };
 
   const handleSendEmailQuote = () => {
-    const customer = customers.find((c) => c.id === selectedCustomer);
-    const email = customer?.email || "";
+    const student = students.find((c) => c.id === selectedstudent);
+    const email = student?.email || "";
     if (!email) {
-      toast.error("Please select a customer with an email address.");
+      toast.error("Please select a student with an email address.");
       return;
     }
     const subject = encodeURIComponent(`Official Sales Quotation #${invoiceNumber} - ${tenant?.name || "BusinessOS AI"}`);
     const body = encodeURIComponent(
-      `Dear ${customer?.name || "Valued Client"},\n\nPlease find attached our official price quotation #${invoiceNumber}:\n\n` +
+      `Dear ${student?.name || "Valued Client"},\n\nPlease find attached our official price quotation #${invoiceNumber}:\n\n` +
       `Total Value: ${currency.symbol}${grandTotal.toLocaleString()}\n` +
       `Date: ${invoiceDate}\n` +
       `Valid Until: ${dueDate}\n\n` +
@@ -3552,11 +3552,10 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
 
       {/* Editing or Recreating Status Notification Banner */}
       {(activeEditingInvoice || isRecreatingInvoice) && (
-        <div className={`flex items-center justify-between px-3 py-2 rounded-xl border shadow-xs ${
-          isRecreatingInvoice 
-            ? "bg-amber-50 border-amber-200 text-amber-900" 
+        <div className={`flex items-center justify-between px-3 py-2 rounded-xl border shadow-xs ${isRecreatingInvoice
+            ? "bg-amber-50 border-amber-200 text-amber-900"
             : "bg-indigo-50 border-indigo-200 text-indigo-900"
-        }`}>
+          }`}>
           <div className="flex items-center gap-2 text-xs font-bold">
             <span className={`w-2 h-2 rounded-full animate-pulse ${isRecreatingInvoice ? "bg-amber-600" : "bg-indigo-600"}`} />
             {isRecreatingInvoice ? (
@@ -3773,7 +3772,7 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
           <div className="bg-white p-1.5 sm:p-2 rounded-2xl border border-slate-200/80 shadow-2xs space-y-2">
             <div className="flex items-center justify-between pb-0.5">
               <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                <User className="size-4 text-indigo-600" /> BILL TO / CUSTOMER PARTY
+                <User className="size-4 text-indigo-600" /> BILL TO / student PARTY
               </span>
               <button
                 type="button"
@@ -3785,52 +3784,52 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
             </div>
 
             <div className="space-y-3">
-              {/* Searchable Customer Tab (Same Old Style, Same Tab) */}
-              <div className="relative" ref={customerDropdownRef}>
+              {/* Searchable student Tab (Same Old Style, Same Tab) */}
+              <div className="relative" ref={studentDropdownRef}>
                 <div className="relative flex items-center">
                   <input
                     type="text"
-                    placeholder="-- Select Customer / Party --"
+                    placeholder="-- Select student / Party --"
                     value={
-                      isCustomerDropdownOpen
-                        ? customerSearchQuery
-                        : activeCustomerObj
-                        ? `${activeCustomerObj.name}${activeCustomerObj.phone ? ` (${activeCustomerObj.phone})` : ""}`
-                        : customerSearchQuery
+                      isstudentDropdownOpen
+                        ? studentSearchQuery
+                        : activestudentObj
+                          ? `${activestudentObj.name}${activestudentObj.phone ? ` (${activestudentObj.phone})` : ""}`
+                          : studentSearchQuery
                     }
                     onFocus={() => {
-                      setIsCustomerDropdownOpen(true);
-                      if (activeCustomerObj) {
-                        setCustomerSearchQuery(activeCustomerObj.name || "");
+                      setIsstudentDropdownOpen(true);
+                      if (activestudentObj) {
+                        setstudentSearchQuery(activestudentObj.name || "");
                       }
                     }}
                     onChange={(e) => {
-                      setCustomerSearchQuery(e.target.value);
-                      setIsCustomerDropdownOpen(true);
+                      setstudentSearchQuery(e.target.value);
+                      setIsstudentDropdownOpen(true);
                       if (!e.target.value) {
-                        setSelectedCustomer("");
+                        setSelectedstudent("");
                       }
                     }}
                     onKeyDown={(e) => {
                       if (e.key === "Escape") {
-                        setIsCustomerDropdownOpen(false);
+                        setIsstudentDropdownOpen(false);
                       }
                     }}
                     className="w-full h-10 bg-white border border-slate-200 rounded-2xl pl-4 pr-14 text-xs font-medium text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors cursor-text shadow-2xs"
                   />
-                  
+
                   <div className="absolute right-3 flex items-center gap-1.5">
-                    {(selectedCustomer || customerSearchQuery) && (
+                    {(selectedstudent || studentSearchQuery) && (
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setSelectedCustomer("");
-                          setCustomerSearchQuery("");
-                          setIsCustomerDropdownOpen(false);
+                          setSelectedstudent("");
+                          setstudentSearchQuery("");
+                          setIsstudentDropdownOpen(false);
                         }}
                         className="size-5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 flex items-center justify-center transition-colors cursor-pointer"
-                        title="Clear customer selection"
+                        title="Clear student selection"
                       >
                         <X className="size-3" />
                       </button>
@@ -3840,54 +3839,51 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
                       tabIndex={-1}
                       onClick={(e) => {
                         e.stopPropagation();
-                        setIsCustomerDropdownOpen((prev) => !prev);
+                        setIsstudentDropdownOpen((prev) => !prev);
                       }}
                       className="text-slate-400 hover:text-slate-600 cursor-pointer flex items-center justify-center"
                     >
                       <ChevronDown
-                        className={`size-4 transition-transform duration-150 ${
-                          isCustomerDropdownOpen ? "rotate-180 text-indigo-600" : ""
-                        }`}
+                        className={`size-4 transition-transform duration-150 ${isstudentDropdownOpen ? "rotate-180 text-indigo-600" : ""
+                          }`}
                       />
                     </button>
                   </div>
                 </div>
 
                 {/* Compact Clean Dropdown Options (Matching Original List Style) */}
-                {isCustomerDropdownOpen && (
+                {isstudentDropdownOpen && (
                   <div className="absolute top-full left-0 right-0 mt-0.5 bg-white border border-slate-200 shadow-lg rounded-lg py-0.5 z-50 max-h-60 overflow-y-auto">
                     <button
                       type="button"
                       onClick={() => {
-                        setSelectedCustomer("");
-                        setCustomerSearchQuery("");
-                        setIsCustomerDropdownOpen(false);
+                        setSelectedstudent("");
+                        setstudentSearchQuery("");
+                        setIsstudentDropdownOpen(false);
                       }}
-                      className={`w-full px-3 py-1.5 text-left text-xs font-normal transition-colors cursor-pointer leading-snug ${
-                        !selectedCustomer ? "bg-indigo-600 text-white font-medium" : "text-slate-700 hover:bg-slate-100"
-                      }`}
+                      className={`w-full px-3 py-1.5 text-left text-xs font-normal transition-colors cursor-pointer leading-snug ${!selectedstudent ? "bg-indigo-600 text-white font-medium" : "text-slate-700 hover:bg-slate-100"
+                        }`}
                     >
-                      -- Select Customer / Party --
+                      -- Select student / Party --
                     </button>
 
-                    {filteredCustomers.length > 0 ? (
-                      filteredCustomers.map((c) => {
-                        const isSelected = selectedCustomer === c.id;
+                    {filteredstudents.length > 0 ? (
+                      filteredstudents.map((c) => {
+                        const isSelected = selectedstudent === c.id;
                         const label = `${c.name}${c.phone ? ` (${c.phone})` : ""}`;
                         return (
                           <button
                             key={c.id}
                             type="button"
                             onClick={() => {
-                              setSelectedCustomer(c.id);
-                              setCustomerSearchQuery(label);
-                              setIsCustomerDropdownOpen(false);
+                              setSelectedstudent(c.id);
+                              setstudentSearchQuery(label);
+                              setIsstudentDropdownOpen(false);
                             }}
-                            className={`w-full px-3 py-1.5 text-left text-xs transition-colors cursor-pointer truncate leading-snug ${
-                              isSelected
+                            className={`w-full px-3 py-1.5 text-left text-xs transition-colors cursor-pointer truncate leading-snug ${isSelected
                                 ? "bg-indigo-600 text-white font-medium"
                                 : "text-slate-700 hover:bg-indigo-50 hover:text-indigo-700"
-                            }`}
+                              }`}
                           >
                             {label}
                           </button>
@@ -3895,39 +3891,39 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
                       })
                     ) : (
                       <div className="px-3 py-2 text-xs text-slate-400 text-center">
-                        No customers match "{customerSearchQuery}"
+                        No students match "{studentSearchQuery}"
                       </div>
                     )}
                   </div>
                 )}
               </div>
 
-              {activeCustomerObj ? (
+              {activestudentObj ? (
                 <div className="space-y-3 transition-all">
                   {/* Party Header */}
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2.5">
                       <div className="size-9 rounded-xl bg-indigo-600 text-white font-bold text-xs flex items-center justify-center shadow-2xs shrink-0">
-                        {activeCustomerObj.name.charAt(0).toUpperCase()}
+                        {activestudentObj.name.charAt(0).toUpperCase()}
                       </div>
                       <div>
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-bold text-slate-900 text-xs sm:text-sm">
-                            {activeCustomerObj.name}
+                            {activestudentObj.name}
                           </span>
                           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">
                             Active Party
                           </span>
                         </div>
                         <div className="text-slate-500 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] mt-0.5">
-                          {activeCustomerObj.phone && (
+                          {activestudentObj.phone && (
                             <span className="inline-flex items-center gap-1 font-medium">
-                              <Phone className="size-3 text-slate-400" /> {activeCustomerObj.phone}
+                              <Phone className="size-3 text-slate-400" /> {activestudentObj.phone}
                             </span>
                           )}
-                          {activeCustomerObj.email && (
+                          {activestudentObj.email && (
                             <span className="inline-flex items-center gap-1 font-medium">
-                              <Mail className="size-3 text-slate-400" /> {activeCustomerObj.email}
+                              <Mail className="size-3 text-slate-400" /> {activestudentObj.email}
                             </span>
                           )}
                         </div>
@@ -3939,21 +3935,21 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
                         type="button"
                         onClick={handleOpenEditPartyDetails}
                         className="px-2.5 py-1 text-xs font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 rounded-lg border border-amber-200 transition-colors cursor-pointer flex items-center gap-1 shrink-0 shadow-2xs"
-                        title="Edit Customer Details (Phone, Address, GSTIN, Name) for this bill"
+                        title="Edit student Details (Phone, Address, GSTIN, Name) for this bill"
                       >
                         <Pencil className="size-3 text-amber-600" /> Edit Details
                       </button>
                       <button
                         type="button"
-                        onClick={handleOpenEditCustomerAddresses}
+                        onClick={handleOpenEditstudentAddresses}
                         className="px-2.5 py-1 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg border border-indigo-200 transition-colors cursor-pointer flex items-center gap-1 shrink-0"
-                        title="Manage and edit addresses for this customer"
+                        title="Manage and edit addresses for this student"
                       >
                         <MapPin className="size-3" /> Addresses
                       </button>
                       <button
                         type="button"
-                        onClick={() => setSelectedCustomer("")}
+                        onClick={() => setSelectedstudent("")}
                         className="px-2 py-1 text-xs font-bold text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg border border-slate-200/80 transition-colors cursor-pointer shrink-0"
                       >
                         Change
@@ -3972,20 +3968,19 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
                       </span>
                     </div>
 
-                    {activeCustomerObj.addresses && activeCustomerObj.addresses.length > 1 ? (
+                    {activestudentObj.addresses && activestudentObj.addresses.length > 1 ? (
                       <div className="flex flex-wrap gap-1.5">
-                        {activeCustomerObj.addresses.filter((a: any) => a.type === "billing" || a.type === "both" || !a.type).map((addr: any, idx: number) => {
+                        {activestudentObj.addresses.filter((a: any) => a.type === "billing" || a.type === "both" || !a.type).map((addr: any, idx: number) => {
                           const isSel = selectedBillingAddress?.id === addr.id || (!selectedBillingAddress && (addr.is_default_billing || idx === 0));
                           return (
                             <button
                               key={addr.id || idx}
                               type="button"
                               onClick={() => setSelectedBillingAddress(addr)}
-                              className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
-                                isSel
+                              className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition-all cursor-pointer ${isSel
                                   ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
                                   : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
-                              }`}
+                                }`}
                             >
                               {addr.tag || `Branch ${idx + 1}`}
                             </button>
@@ -3995,12 +3990,12 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
                     ) : null}
 
                     <p className="text-[11px] text-slate-600 leading-snug">
-                      {selectedBillingAddress ? [selectedBillingAddress.street, selectedBillingAddress.city, selectedBillingAddress.state, selectedBillingAddress.pincode].filter(Boolean).join(", ") : (activeCustomerObj.billing_address || activeCustomerObj.address || "Standard Billing Address")}
+                      {selectedBillingAddress ? [selectedBillingAddress.street, selectedBillingAddress.city, selectedBillingAddress.state, selectedBillingAddress.pincode].filter(Boolean).join(", ") : (activestudentObj.billing_address || activestudentObj.address || "Standard Billing Address")}
                     </p>
                   </div>
 
                   {/* Unified Purchase History & Financial Summary */}
-                  {customerSummary && (
+                  {studentSummary && (
                     <div className="flex flex-wrap items-center justify-between pt-2 border-t border-slate-100 gap-2">
                       <div className="flex items-center gap-3 text-[11px]">
                         <div className="flex items-center gap-1 font-bold text-indigo-700">
@@ -4009,25 +4004,25 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
                         </div>
                         <div className="flex items-center gap-1.5">
                           <span className="text-slate-500">
-                            Orders: <strong className="text-slate-900 font-bold">{customerSummary.total_invoices}</strong>
+                            Orders: <strong className="text-slate-900 font-bold">{studentSummary.total_invoices}</strong>
                           </span>
                           <span className="text-slate-300">•</span>
                           <span className="text-slate-500">
-                            Spent: <strong className="text-emerald-600 font-bold">{currency.symbol}{Number(customerSummary.total_spent || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+                            Spent: <strong className="text-emerald-600 font-bold">{currency.symbol}{Number(studentSummary.total_spent || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
                           </span>
                           <span className="text-slate-300">•</span>
                           <span className="text-slate-500 flex items-center gap-1">
-                            Due: <strong className={`font-bold ${Number(customerSummary.total_pending_due || 0) > 0 ? "text-amber-600" : "text-emerald-600"}`}>{currency.symbol}{Number(customerSummary.total_pending_due || 0).toFixed(2)}</strong>
+                            Due: <strong className={`font-bold ${Number(studentSummary.total_pending_due || 0) > 0 ? "text-amber-600" : "text-emerald-600"}`}>{currency.symbol}{Number(studentSummary.total_pending_due || 0).toFixed(2)}</strong>
                           </span>
                         </div>
                       </div>
-                      
+
                       <div className="flex items-center gap-1.5 shrink-0">
-                        {customerSummary.total_pending_due > 0 ? (
+                        {studentSummary.total_pending_due > 0 ? (
                           <>
                             <button
                               type="button"
-                              onClick={() => setShowCustomerLedger(true)}
+                              onClick={() => setShowstudentLedger(true)}
                               className="px-2 py-0.5 rounded-md text-[10px] font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition-colors cursor-pointer"
                             >
                               Ledger
@@ -4035,11 +4030,10 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
                             <button
                               type="button"
                               onClick={() => setIncludePreviousDueInBill(!includePreviousDueInBill)}
-                              className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-all flex items-center gap-1 cursor-pointer ${
-                                includePreviousDueInBill
+                              className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-all flex items-center gap-1 cursor-pointer ${includePreviousDueInBill
                                   ? "bg-amber-500 text-white shadow-xs"
                                   : "bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200"
-                              }`}
+                                }`}
                             >
                               {includePreviousDueInBill ? "✓ Added" : `+ Add Due`}
                             </button>
@@ -4078,15 +4072,15 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
                   type="button"
                   onClick={handleOpenEditPartyDetails}
                   className="px-2.5 py-1 text-[10px] font-bold text-amber-800 hover:text-amber-900 bg-amber-50 hover:bg-amber-100 rounded-lg border border-amber-200 transition-colors cursor-pointer shrink-0 flex items-center gap-1 shadow-2xs"
-                  title="Quick edit destination & customer details for this bill"
+                  title="Quick edit destination & student details for this bill"
                 >
                   <Pencil className="size-3 text-amber-600" /> Edit on Bill
                 </button>
                 <button
                   type="button"
-                  onClick={handleOpenEditCustomerAddresses}
+                  onClick={handleOpenEditstudentAddresses}
                   className="px-2.5 py-1 text-[10px] font-bold text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded-lg border border-indigo-200 transition-colors cursor-pointer shrink-0 flex items-center gap-1"
-                  title="Edit or add shipping locations in customer address book"
+                  title="Edit or add shipping locations in student address book"
                 >
                   <Plus className="size-3" /> Address Book
                 </button>
@@ -4094,20 +4088,20 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
             </div>
 
             <div className="flex-1">
-              {activeCustomerObj ? (
+              {activestudentObj ? (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-[11px]">
                     <span className="font-bold text-slate-700 flex items-center gap-1">
                       Delivery Location:
                     </span>
                     <span className="text-[10px] text-indigo-600 font-semibold">
-                      {activeCustomerObj.addresses?.length ? `${activeCustomerObj.addresses.length} Location(s) Available` : "Default Address"}
+                      {activestudentObj.addresses?.length ? `${activestudentObj.addresses.length} Location(s) Available` : "Default Address"}
                     </span>
                   </div>
-                  
-                  {activeCustomerObj.addresses && activeCustomerObj.addresses.length > 0 ? (
+
+                  {activestudentObj.addresses && activestudentObj.addresses.length > 0 ? (
                     <div className="flex flex-wrap gap-2">
-                      {activeCustomerObj.addresses.map((addr: any, idx: number) => {
+                      {activestudentObj.addresses.map((addr: any, idx: number) => {
                         const isSel = selectedDeliveryAddress?.id === addr.id || (!selectedDeliveryAddress && (addr.is_default_shipping || idx === 0));
                         return (
                           <button
@@ -4115,7 +4109,7 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
                             type="button"
                             onClick={() => {
                               setSelectedDeliveryAddress(addr);
-                              const custGst = addr.gst_number || selectedBillingAddress?.gst_number || activeCustomerObj?.gst_number;
+                              const custGst = addr.gst_number || selectedBillingAddress?.gst_number || activestudentObj?.gst_number;
                               if (getIsInterstate(addr.state, custGst)) {
                                 setGstType("igst");
                                 toast.info(`Switched destination to ${addr.tag || `Location ${idx + 1}`} (${addr.state}). Tax: IGST.`);
@@ -4124,11 +4118,10 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
                                 toast.info(`Switched destination to ${addr.tag || `Location ${idx + 1}`} (${addr.state || "Same State"}). Tax: CGST+SGST.`);
                               }
                             }}
-                            className={`px-3 py-2 rounded-xl text-xs font-bold border flex items-center gap-1.5 transition-all cursor-pointer ${
-                              isSel
+                            className={`px-3 py-2 rounded-xl text-xs font-bold border flex items-center gap-1.5 transition-all cursor-pointer ${isSel
                                 ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
                                 : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:border-slate-300"
-                            }`}
+                              }`}
                           >
                             <span className="text-sm">{addr.tag?.toLowerCase().includes("home") ? "🏠" : addr.tag?.toLowerCase().includes("warehouse") ? "🏭" : addr.tag?.toLowerCase().includes("branch") ? "🏬" : "🏢"}</span>
                             <span className="truncate max-w-[140px] text-left">
@@ -4146,7 +4139,7 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider bg-white px-2 py-0.5 rounded border border-slate-100">Primary</span>
                       </div>
                       <span className="text-[11px] leading-relaxed">
-                        {activeCustomerObj.shipping_address || activeCustomerObj.billing_address || activeCustomerObj.address || "No detailed address provided."}
+                        {activestudentObj.shipping_address || activestudentObj.billing_address || activestudentObj.address || "No detailed address provided."}
                       </span>
                     </div>
                   )}
@@ -5236,7 +5229,7 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
 
         {/* Invoice Footer: Terms/Notes & Complete Financial Summary */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 lg:gap-4 items-start">
-          {/* Left Column: Terms & Conditions + Customer Notes */}
+          {/* Left Column: Terms & Conditions + student Notes */}
           <div className="space-y-2.5">
             {/* Terms and Conditions Card */}
             <div className="bg-white p-3 sm:p-3.5 rounded-xl border border-slate-200/80 shadow-2xs space-y-2">
@@ -5253,10 +5246,10 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
               />
             </div>
 
-            {/* Customer Notes & Payment Options Card */}
+            {/* student Notes & Payment Options Card */}
             <div className="bg-white p-3 sm:p-3.5 rounded-xl border border-slate-200/80 shadow-2xs space-y-2">
               <div className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                CUSTOMER NOTES & PAYMENT OPTIONS
+                student NOTES & PAYMENT OPTIONS
               </div>
               <input
                 type="text"
@@ -5366,7 +5359,7 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
                     </div>
                     <div>
                       <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
-                        Customer PO / Order Ref & Date
+                        student PO / Order Ref & Date
                       </label>
                       <div className="grid grid-cols-2 gap-1.5">
                         <input
@@ -5444,7 +5437,7 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
                     {vehicleNumber ? (
                       <span className="font-mono font-bold text-slate-800">Vehicle: {vehicleNumber} {transporterName ? `• ${transporterName}` : ''} {ewayBillNumber ? `• EWB: ${ewayBillNumber}` : ''}</span>
                     ) : (
-                      <span>Click to add Vehicle No, Transporter, Driver or Customer PO details...</span>
+                      <span>Click to add Vehicle No, Transporter, Driver or student PO details...</span>
                     )}
                   </span>
                   <span className="text-[10px] font-bold text-indigo-600 shrink-0">
@@ -5605,9 +5598,8 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
                   <span className="text-slate-700 font-bold">Total Tax / GST</span>
-                  <span className={`text-[9px] px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider ${
-                    gstType === "cgst_sgst" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-indigo-50 text-indigo-700 border border-indigo-200"
-                  }`}>
+                  <span className={`text-[9px] px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider ${gstType === "cgst_sgst" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-indigo-50 text-indigo-700 border border-indigo-200"
+                    }`}>
                     {gstType === "cgst_sgst" ? "Intra-State" : "Inter-State"}
                   </span>
                 </div>
@@ -5619,11 +5611,10 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
                       setGstType("cgst_sgst");
                       toast.success("Switched Tax to CGST + SGST (Intra-State)");
                     }}
-                    className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold transition-all cursor-pointer ${
-                      gstType === "cgst_sgst"
+                    className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold transition-all cursor-pointer ${gstType === "cgst_sgst"
                         ? "bg-white text-indigo-700 shadow-xs border border-slate-200/60"
                         : "text-slate-500 hover:text-slate-800"
-                    }`}
+                      }`}
                   >
                     CGST+SGST
                   </button>
@@ -5633,11 +5624,10 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
                       setGstType("igst");
                       toast.success("Switched Tax to IGST (Inter-State)");
                     }}
-                    className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold transition-all cursor-pointer ${
-                      gstType === "igst"
+                    className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold transition-all cursor-pointer ${gstType === "igst"
                         ? "bg-white text-indigo-700 shadow-xs border border-slate-200/60"
                         : "text-slate-500 hover:text-slate-800"
-                    }`}
+                      }`}
                   >
                     IGST
                   </button>
@@ -5797,7 +5787,7 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
                         setSplitCash(val);
                         const parsed = parseFloat(val) || 0;
                         if (parsed <= grandTotal) {
-                           setSplitOnline((grandTotal - parsed).toFixed(2));
+                          setSplitOnline((grandTotal - parsed).toFixed(2));
                         }
                       }}
                       className="w-full h-9 bg-slate-50 border border-slate-200 rounded-xl px-2.5 text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500"
@@ -5815,7 +5805,7 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
                         setSplitOnline(val);
                         const parsed = parseFloat(val) || 0;
                         if (parsed <= grandTotal) {
-                           setSplitCash((grandTotal - parsed).toFixed(2));
+                          setSplitCash((grandTotal - parsed).toFixed(2));
                         }
                       }}
                       className="w-full h-9 bg-slate-50 border border-slate-200 rounded-xl px-2.5 text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500"
@@ -5826,13 +5816,12 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-[11px] font-semibold text-slate-500 block">Amount Received</label>
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                      amountReceived === "" || Number(amountReceived) >= grandTotal
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${amountReceived === "" || Number(amountReceived) >= grandTotal
                         ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                         : Number(amountReceived) > 0
-                        ? "bg-amber-50 text-amber-700 border border-amber-200"
-                        : "bg-purple-50 text-purple-700 border border-purple-200"
-                    }`}>
+                          ? "bg-amber-50 text-amber-700 border border-amber-200"
+                          : "bg-purple-50 text-purple-700 border border-purple-200"
+                      }`}>
                       {amountReceived === "" || Number(amountReceived) >= grandTotal ? "Full Paid" : Number(amountReceived) > 0 ? "Partial" : "Pay Later"}
                     </span>
                   </div>
@@ -5940,11 +5929,10 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
                       setPaymentMode("Cash");
                     }
                   }}
-                  className={`py-1 text-[10px] font-bold rounded-lg border transition-all cursor-pointer ${
-                    Number(amountReceived) === btn.val
+                  className={`py-1 text-[10px] font-bold rounded-lg border transition-all cursor-pointer ${Number(amountReceived) === btn.val
                       ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
                       : "bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200"
-                  }`}
+                    }`}
                 >
                   {btn.label}
                 </button>
@@ -6207,10 +6195,10 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
                 </div>
                 <div>
                   <h3 className="font-bold text-base md:text-lg text-slate-900 leading-tight">
-                    Create New Customer / Party
+                    Create New student / Party
                   </h3>
                   <p className="text-xs text-slate-500">
-                    Single customer account with multiple delivery & billing address locations (Home, Office, Warehouse).
+                    Single student account with multiple delivery & billing address locations (Home, Office, Warehouse).
                   </p>
                 </div>
               </div>
@@ -6225,16 +6213,16 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
 
             <form onSubmit={handleCreateNewParty} className="space-y-4 overflow-y-auto pr-1 flex-1">
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-                
-                {/* ── Left Column (5 Cols): Primary Customer Profile & Tax ── */}
+
+                {/* ── Left Column (5 Cols): Primary student Profile & Tax ── */}
                 <div className="lg:col-span-5 space-y-3.5">
                   <div className="bg-slate-50/80 border border-slate-200/80 rounded-2xl p-3.5 space-y-3">
                     <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                      <User className="size-3.5 text-indigo-600" /> Primary Customer Identity
+                      <User className="size-3.5 text-indigo-600" /> Primary student Identity
                     </span>
 
                     <div>
-                      <label className="text-xs font-bold text-slate-700 block mb-1">Party / Customer Name *</label>
+                      <label className="text-xs font-bold text-slate-700 block mb-1">Party / student Name *</label>
                       <input
                         type="text"
                         placeholder="e.g. Acme Corp / John Doe"
@@ -6281,13 +6269,13 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
                         />
                       </div>
                       <div>
-                        <label className="text-xs font-bold text-slate-700 block mb-1">Customer Type</label>
+                        <label className="text-xs font-bold text-slate-700 block mb-1">student Type</label>
                         <select
                           value={newPartyType}
                           onChange={(e) => setNewPartyType(e.target.value)}
                           className="w-full h-9.5 bg-white border border-slate-300 rounded-xl px-2.5 text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
                         >
-                          <option value="Retail">Retail Customer</option>
+                          <option value="Retail">Retail student</option>
                           <option value="Wholesale">Wholesale Client</option>
                           <option value="B2B">B2B Business Party</option>
                         </select>
@@ -6344,7 +6332,7 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
                           <MapPin className="size-3.5 text-indigo-600" /> Multi-Address Book ({newPartyAddresses.length})
                         </span>
                         <p className="text-[10px] text-slate-500 mt-0.5">
-                          Save multiple locations for this customer (Home, Office, Warehouse).
+                          Save multiple locations for this student (Home, Office, Warehouse).
                         </p>
                       </div>
                       <button
@@ -6362,11 +6350,10 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
                         <div
                           key={addr.id || idx}
                           onClick={() => setActiveAddrIndex(idx)}
-                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition-all border ${
-                            activeAddrIndex === idx
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition-all border ${activeAddrIndex === idx
                               ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
                               : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
-                          }`}
+                            }`}
                         >
                           <span>
                             {addr.tag === "Home" ? "🏠" : addr.tag === "Office" ? "🏢" : addr.tag === "Warehouse" ? "🏭" : addr.tag === "Branch" ? "🏬" : "📍"} {addr.tag} #{idx + 1}
@@ -6403,11 +6390,10 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
                                     updated[activeAddrIndex].tag = t;
                                     setNewPartyAddresses(updated);
                                   }}
-                                  className={`px-2 py-0.5 rounded-md text-[10px] font-bold border transition-colors cursor-pointer ${
-                                    newPartyAddresses[activeAddrIndex].tag === t
+                                  className={`px-2 py-0.5 rounded-md text-[10px] font-bold border transition-colors cursor-pointer ${newPartyAddresses[activeAddrIndex].tag === t
                                       ? "bg-indigo-100 text-indigo-700 border-indigo-300"
                                       : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
-                                  }`}
+                                    }`}
                                 >
                                   {t === "Home" ? "🏠 Home" : t === "Office" ? "🏢 Office" : t === "Warehouse" ? "🏭 Warehouse" : t === "Branch" ? "🏬 Branch" : "📍 Other"}
                                 </button>
@@ -6557,7 +6543,7 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
               </div>
               <h2 className="text-xl font-black text-slate-800 mb-2">Pending Dues Alert</h2>
               <p className="text-sm text-slate-600 mb-6">
-                This customer has an outstanding balance of <span className="font-bold text-rose-600">{currency.symbol}{(customerSummary?.total_pending_due || 0).toFixed(2)}</span>.
+                This student has an outstanding balance of <span className="font-bold text-rose-600">{currency.symbol}{(studentSummary?.total_pending_due || 0).toFixed(2)}</span>.
               </p>
               <div className="flex w-full gap-3">
                 <button
@@ -6569,7 +6555,7 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
                 <button
                   onClick={() => {
                     setShowPendingDueAlert(false);
-                    setShowCustomerLedger(true);
+                    setShowstudentLedger(true);
                   }}
                   className="flex-1 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 shadow-md shadow-blue-200"
                 >
@@ -6581,16 +6567,16 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
         </div>
       )}
 
-      {/* Customer Ledger Modal */}
-      {showCustomerLedger && (
+      {/* student Ledger Modal */}
+      {showstudentLedger && (
         <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center z-[100] backdrop-blur-sm">
           <div className="bg-white w-[700px] rounded-2xl shadow-2xl flex flex-col overflow-hidden max-h-[85vh]">
             <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
               <div>
-                <h2 className="text-lg font-black text-slate-800">Customer Ledger</h2>
+                <h2 className="text-lg font-black text-slate-800">student Ledger</h2>
                 <p className="text-xs text-slate-500 mt-1">Pending invoices and payment history</p>
               </div>
-              <button onClick={() => setShowCustomerLedger(false)} className="w-8 h-8 flex items-center justify-center bg-white rounded-full border border-slate-200 text-slate-500 hover:text-slate-700 hover:bg-slate-50">
+              <button onClick={() => setShowstudentLedger(false)} className="w-8 h-8 flex items-center justify-center bg-white rounded-full border border-slate-200 text-slate-500 hover:text-slate-700 hover:bg-slate-50">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -6598,12 +6584,12 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
               <div className="bg-rose-50 border border-rose-100 p-4 rounded-xl mb-6 flex justify-between items-center">
                 <div>
                   <p className="text-xs font-bold text-rose-700 uppercase">Total Outstanding</p>
-                  <p className="text-3xl font-black text-rose-600">{currency.symbol}{(customerSummary?.total_pending_due || 0).toFixed(2)}</p>
+                  <p className="text-3xl font-black text-rose-600">{currency.symbol}{(studentSummary?.total_pending_due || 0).toFixed(2)}</p>
                 </div>
                 <button
                   onClick={() => {
                     setIncludePreviousDueInBill(true);
-                    setShowCustomerLedger(false);
+                    setShowstudentLedger(false);
                     toast.success("Previous dues added to current bill");
                   }}
                   className="px-4 py-2 bg-rose-600 text-white font-bold rounded-lg hover:bg-rose-700 text-sm shadow-md"
@@ -7023,7 +7009,7 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
               <Search className="w-4 h-4 text-slate-400 shrink-0" />
               <input
                 type="text"
-                placeholder="Search by invoice number or customer name..."
+                placeholder="Search by invoice number or student name..."
                 value={unpaidSearchQuery}
                 onChange={(e) => setUnpaidSearchQuery(e.target.value)}
                 className="w-full bg-transparent text-xs font-semibold text-slate-800 outline-none placeholder:text-slate-400"
@@ -7043,8 +7029,8 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
                   const q = unpaidSearchQuery.toLowerCase();
                   return (
                     u.invoice_number?.toLowerCase().includes(q) ||
-                    u.customer_name?.toLowerCase().includes(q) ||
-                    u.customer_phone?.includes(q)
+                    u.student_name?.toLowerCase().includes(q) ||
+                    u.student_phone?.includes(q)
                   );
                 })
                 .map((u) => {
@@ -7066,8 +7052,8 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
                         </div>
                         <div className="text-xs text-slate-700 font-semibold flex items-center gap-1.5">
                           <User className="w-3.5 h-3.5 text-slate-400" />
-                          <span>{u.customer_name}</span>
-                          {u.customer_phone && <span className="text-slate-400">({u.customer_phone})</span>}
+                          <span>{u.student_name}</span>
+                          {u.student_phone && <span className="text-slate-400">({u.student_phone})</span>}
                         </div>
                         {u.items && u.items.length > 0 && (
                           <div className="text-[11px] text-slate-500 truncate max-w-sm">
@@ -7205,8 +7191,8 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
           cgst_amount: gstType === 'cgst_sgst' ? totalTax / 2 : 0,
           sgst_amount: gstType === 'cgst_sgst' ? totalTax / 2 : 0,
           igst_amount: gstType === 'igst' ? totalTax : 0,
-          to_customer_name: customers.find((c) => c.id === selectedCustomer)?.name || 'Walk-in Customer',
-          to_gstin: customers.find((c) => c.id === selectedCustomer)?.gst_number || 'URP',
+          to_student_name: students.find((c) => c.id === selectedstudent)?.name || 'Walk-in student',
+          to_gstin: students.find((c) => c.id === selectedstudent)?.gst_number || 'URP',
           vehicle_number: vehicleNumber || undefined,
           transporter_name: transporterName || undefined,
           items: items.map(it => ({
@@ -7219,7 +7205,7 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
         }}
       />
 
-      {/* Inline Customer Address Book Manager Modal */}
+      {/* Inline student Address Book Manager Modal */}
       {isEditAddressesModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-3xl border border-slate-200 max-w-3xl w-full p-6 shadow-2xl space-y-4 animate-in zoom-in-95 duration-150 max-h-[90vh] flex flex-col">
@@ -7231,10 +7217,10 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
                 </div>
                 <div>
                   <h3 className="font-bold text-base md:text-lg text-slate-900 leading-tight">
-                    Manage Addresses — {customers.find(c => c.id === selectedCustomer)?.name || "Customer"}
+                    Manage Addresses — {students.find(c => c.id === selectedstudent)?.name || "student"}
                   </h3>
                   <p className="text-xs text-slate-500">
-                    Add or update multiple branch, warehouse, or billing destinations for this customer.
+                    Add or update multiple branch, warehouse, or billing destinations for this student.
                   </p>
                 </div>
               </div>
@@ -7250,20 +7236,19 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
             {/* Address Tabs & Add Button */}
             <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5 shrink-0 flex-wrap">
               <div className="flex flex-wrap gap-1.5 items-center">
-                {editingCustomerAddresses.map((addr, idx) => (
+                {editingstudentAddresses.map((addr, idx) => (
                   <div
                     key={addr.id || idx}
                     onClick={() => setActiveEditingAddrIndex(idx)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition-all border ${
-                      activeEditingAddrIndex === idx
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition-all border ${activeEditingAddrIndex === idx
                         ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
                         : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
-                    }`}
+                      }`}
                   >
                     <span>{addr.tag || `Location ${idx + 1}`}</span>
                     {addr.is_default_billing && <span className="text-[9px] bg-white/20 px-1 rounded">Bill</span>}
                     {addr.is_default_shipping && <span className="text-[9px] bg-white/20 px-1 rounded">Ship</span>}
-                    {editingCustomerAddresses.length > 1 && (
+                    {editingstudentAddresses.length > 1 && (
                       <button
                         type="button"
                         onClick={(e) => {
@@ -7290,7 +7275,7 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
             </div>
 
             {/* Active Address Form */}
-            {editingCustomerAddresses[activeEditingAddrIndex] && (
+            {editingstudentAddresses[activeEditingAddrIndex] && (
               <div className="space-y-3.5 overflow-y-auto pr-1 flex-1 py-1">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div>
@@ -7298,7 +7283,7 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
                     <input
                       type="text"
                       placeholder="e.g. Head Office, Warehouse 1"
-                      value={editingCustomerAddresses[activeEditingAddrIndex].tag || ""}
+                      value={editingstudentAddresses[activeEditingAddrIndex].tag || ""}
                       onChange={(e) => handleUpdateEditingAddressField(activeEditingAddrIndex, "tag", e.target.value)}
                       className="w-full h-9 bg-white border border-slate-300 rounded-xl px-3 text-xs outline-none focus:ring-2 focus:ring-indigo-500 font-bold"
                     />
@@ -7306,7 +7291,7 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
                   <div>
                     <label className="text-xs font-bold text-slate-700 block mb-1">Address Usage</label>
                     <select
-                      value={editingCustomerAddresses[activeEditingAddrIndex].type || "both"}
+                      value={editingstudentAddresses[activeEditingAddrIndex].type || "both"}
                       onChange={(e) => handleUpdateEditingAddressField(activeEditingAddrIndex, "type", e.target.value as any)}
                       className="w-full h-9 bg-white border border-slate-300 rounded-xl px-2.5 text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500"
                     >
@@ -7320,7 +7305,7 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
                     <input
                       type="text"
                       placeholder="Optional branch GSTIN"
-                      value={editingCustomerAddresses[activeEditingAddrIndex].gst_number || ""}
+                      value={editingstudentAddresses[activeEditingAddrIndex].gst_number || ""}
                       onChange={(e) => handleUpdateEditingAddressField(activeEditingAddrIndex, "gst_number", e.target.value.toUpperCase())}
                       className="w-full h-9 bg-white border border-slate-300 rounded-xl px-3 text-xs outline-none focus:ring-2 focus:ring-indigo-500 uppercase font-mono font-bold"
                     />
@@ -7333,7 +7318,7 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
                     <input
                       type="text"
                       placeholder="Door / Plot no., Street name, Area..."
-                      value={editingCustomerAddresses[activeEditingAddrIndex].street || ""}
+                      value={editingstudentAddresses[activeEditingAddrIndex].street || ""}
                       onChange={(e) => handleUpdateEditingAddressField(activeEditingAddrIndex, "street", e.target.value)}
                       className="w-full h-9 bg-white border border-slate-300 rounded-xl px-3 text-xs outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
                     />
@@ -7345,7 +7330,7 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
                     <input
                       type="text"
                       placeholder="e.g. 500081"
-                      value={editingCustomerAddresses[activeEditingAddrIndex].pincode || ""}
+                      value={editingstudentAddresses[activeEditingAddrIndex].pincode || ""}
                       onChange={(e) => void handleEditingAddrPincodeChange(e.target.value)}
                       className="w-full h-9 bg-white border border-slate-300 rounded-xl px-3 text-xs outline-none focus:ring-2 focus:ring-indigo-500 font-bold"
                     />
@@ -7358,7 +7343,7 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
                     <input
                       type="text"
                       placeholder="City"
-                      value={editingCustomerAddresses[activeEditingAddrIndex].city || ""}
+                      value={editingstudentAddresses[activeEditingAddrIndex].city || ""}
                       onChange={(e) => handleUpdateEditingAddressField(activeEditingAddrIndex, "city", e.target.value)}
                       className="w-full h-9 bg-white border border-slate-300 rounded-xl px-3 text-xs outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
                     />
@@ -7368,7 +7353,7 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
                     <input
                       type="text"
                       placeholder="State"
-                      value={editingCustomerAddresses[activeEditingAddrIndex].state || ""}
+                      value={editingstudentAddresses[activeEditingAddrIndex].state || ""}
                       onChange={(e) => handleUpdateEditingAddressField(activeEditingAddrIndex, "state", e.target.value)}
                       className="w-full h-9 bg-white border border-slate-300 rounded-xl px-3 text-xs outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
                     />
@@ -7378,7 +7363,7 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
                     <input
                       type="text"
                       placeholder="Country"
-                      value={editingCustomerAddresses[activeEditingAddrIndex].country || "India"}
+                      value={editingstudentAddresses[activeEditingAddrIndex].country || "India"}
                       onChange={(e) => handleUpdateEditingAddressField(activeEditingAddrIndex, "country", e.target.value)}
                       className="w-full h-9 bg-white border border-slate-300 rounded-xl px-3 text-xs outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
                     />
@@ -7391,7 +7376,7 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
                     <input
                       type="text"
                       placeholder="Site Manager name"
-                      value={editingCustomerAddresses[activeEditingAddrIndex].contact_person || ""}
+                      value={editingstudentAddresses[activeEditingAddrIndex].contact_person || ""}
                       onChange={(e) => handleUpdateEditingAddressField(activeEditingAddrIndex, "contact_person", e.target.value)}
                       className="w-full h-9 bg-white border border-slate-300 rounded-xl px-3 text-xs outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
                     />
@@ -7401,7 +7386,7 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
                     <input
                       type="text"
                       placeholder="Site Phone"
-                      value={editingCustomerAddresses[activeEditingAddrIndex].contact_phone || ""}
+                      value={editingstudentAddresses[activeEditingAddrIndex].contact_phone || ""}
                       onChange={(e) => handleUpdateEditingAddressField(activeEditingAddrIndex, "contact_phone", e.target.value)}
                       className="w-full h-9 bg-white border border-slate-300 rounded-xl px-3 text-xs outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
                     />
@@ -7412,13 +7397,13 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
                   <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-700">
                     <input
                       type="checkbox"
-                      checked={Boolean(editingCustomerAddresses[activeEditingAddrIndex].is_default_billing)}
+                      checked={Boolean(editingstudentAddresses[activeEditingAddrIndex].is_default_billing)}
                       onChange={(e) => {
-                        const updated = editingCustomerAddresses.map((a, i) => ({
+                        const updated = editingstudentAddresses.map((a, i) => ({
                           ...a,
                           is_default_billing: i === activeEditingAddrIndex ? e.target.checked : false,
                         }));
-                        setEditingCustomerAddresses(updated);
+                        setEditingstudentAddresses(updated);
                       }}
                       className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 size-4"
                     />
@@ -7428,13 +7413,13 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
                   <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-700">
                     <input
                       type="checkbox"
-                      checked={Boolean(editingCustomerAddresses[activeEditingAddrIndex].is_default_shipping)}
+                      checked={Boolean(editingstudentAddresses[activeEditingAddrIndex].is_default_shipping)}
                       onChange={(e) => {
-                        const updated = editingCustomerAddresses.map((a, i) => ({
+                        const updated = editingstudentAddresses.map((a, i) => ({
                           ...a,
                           is_default_shipping: i === activeEditingAddrIndex ? e.target.checked : false,
                         }));
-                        setEditingCustomerAddresses(updated);
+                        setEditingstudentAddresses(updated);
                       }}
                       className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 size-4"
                     />
@@ -7448,10 +7433,10 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
             <div className="p-3 bg-slate-50 border-t border-slate-200 rounded-2xl flex items-center justify-between gap-3 shrink-0">
               <button
                 type="button"
-                onClick={() => window.open('/crm?tab=customers', '_blank')}
+                onClick={() => window.open('/crm?tab=students', '_blank')}
                 className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1.5"
               >
-                <Building className="size-3.5" /> Open Full Profile in CRM Customers
+                <Building className="size-3.5" /> Open Full Profile in CRM students
               </button>
 
               <div className="flex items-center gap-2">
@@ -7464,11 +7449,11 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
                 </button>
                 <button
                   type="button"
-                  disabled={isSavingCustomerAddresses}
-                  onClick={handleSaveCustomerAddresses}
+                  disabled={isSavingstudentAddresses}
+                  onClick={handleSavestudentAddresses}
                   className="px-5 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-xl shadow-md transition-all flex items-center gap-1.5"
                 >
-                  {isSavingCustomerAddresses ? "Saving..." : "Save & Apply to Current Bill"}
+                  {isSavingstudentAddresses ? "Saving..." : "Save & Apply to Current Bill"}
                 </button>
               </div>
             </div>
@@ -7481,7 +7466,7 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
         isOpen={isPineLabsModalOpen}
         amount={Number(amountReceived) > 0 ? Number(amountReceived) : grandTotal}
         billNumber={invoiceNumber || `INV-${Date.now().toString().slice(-6)}`}
-        customerMobile={activeCustomerObj?.phone || activeCustomerObj?.mobile || ""}
+        studentMobile={activestudentObj?.phone || activestudentObj?.mobile || ""}
         onClose={() => setIsPineLabsModalOpen(false)}
         onSuccess={(payData) => {
           setPaymentMode("PineLabs");
@@ -7503,8 +7488,8 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
         isOpen={isRazorpayModalOpen}
         amount={Number(amountReceived) > 0 ? Number(amountReceived) : grandTotal}
         billNumber={invoiceNumber || `INV-${Date.now().toString().slice(-6)}`}
-        customerMobile={activeCustomerObj?.phone || activeCustomerObj?.mobile || ""}
-        customerName={activeCustomerObj?.name || ""}
+        studentMobile={activestudentObj?.phone || activestudentObj?.mobile || ""}
+        studentName={activestudentObj?.name || ""}
         onClose={() => setIsRazorpayModalOpen(false)}
         onSuccess={(payData) => {
           setPaymentMode("Razorpay");
@@ -7518,7 +7503,7 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
         }}
       />
 
-      {/* Edit Customer Details for this Bill Modal */}
+      {/* Edit student Details for this Bill Modal */}
       {isEditPartyDetailsModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-3xl border border-slate-200 max-w-2xl w-full p-6 shadow-2xl space-y-4 animate-in zoom-in-95 duration-150 max-h-[92vh] flex flex-col">
@@ -7530,10 +7515,10 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
                 </div>
                 <div>
                   <h3 className="font-bold text-base md:text-lg text-slate-900 leading-tight">
-                    Edit Customer Details for this Invoice
+                    Edit student Details for this Invoice
                   </h3>
                   <p className="text-xs text-slate-500">
-                    Modify customer name, mobile number, GSTIN, and billing/shipping address for this bill.
+                    Modify student name, mobile number, GSTIN, and billing/shipping address for this bill.
                   </p>
                 </div>
               </div>
@@ -7552,7 +7537,7 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 bg-slate-50/70 p-3.5 rounded-2xl border border-slate-200/80">
                 <div>
                   <label className="text-xs font-bold text-slate-700 block mb-1">
-                    Customer / Party Name <span className="text-rose-500">*</span>
+                    student / Party Name <span className="text-rose-500">*</span>
                   </label>
                   <div className="relative">
                     <User className="size-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -7591,7 +7576,7 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
                     <Mail className="size-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                     <input
                       type="email"
-                      placeholder="e.g. customer@example.com"
+                      placeholder="e.g. student@example.com"
                       value={editPartyForm.email}
                       onChange={(e) => setEditPartyForm({ ...editPartyForm, email: e.target.value })}
                       className="w-full h-9 bg-white border border-slate-300 rounded-xl pl-9 pr-3 text-xs outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-slate-800"
@@ -7777,7 +7762,7 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
                     onChange={(e) => setEditPartyForm({ ...editPartyForm, update_in_crm: e.target.checked })}
                     className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 size-4"
                   />
-                  <span>Also update customer profile in CRM directory</span>
+                  <span>Also update student profile in CRM directory</span>
                 </label>
                 <span className="text-[10px] text-slate-400">Keeps CRM in sync</span>
               </div>

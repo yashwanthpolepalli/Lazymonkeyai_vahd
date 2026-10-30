@@ -10,7 +10,7 @@ class User(Base):
     id = Column(String, primary_key=True, index=True)
     email = Column(String, unique=True, index=True, nullable=False)
     password_hash = Column(String, nullable=False)
-    role = Column(String, nullable=False)  # 'SUPER_ADMIN', 'OWNER', 'MANAGER', 'employee', 'STAFF', 'CUSTOMER'
+    role = Column(String, nullable=False)  # 'SUPER_ADMIN', 'OWNER', 'MANAGER', 'employee', 'STAFF', 'student'
     full_name = Column(String, nullable=False)
     phone = Column(String)
     avatar_url = Column(String)
@@ -26,4 +26,4 @@ class User(Base):
     updated_at = Column(DateTime, default=now_ist_naive, onupdate=now_ist_naive)
 
     # Relationships
-    customer_profile = relationship("Customer", foreign_keys="[Customer.user_id]", back_populates="user", uselist=False)
+    student_profile = relationship("student", foreign_keys="[student.user_id]", back_populates="user", uselist=False)

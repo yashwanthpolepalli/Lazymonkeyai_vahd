@@ -1,4 +1,4 @@
-export interface CustomerMembership {
+export interface studentMembership {
   plan_name: string;
   status: string;
   start_date: string | null;
@@ -6,7 +6,7 @@ export interface CustomerMembership {
   days_remaining: number;
 }
 
-export interface CustomerProfile {
+export interface studentProfile {
   id: string;
   member_code: string;
   full_name: string;
@@ -16,10 +16,10 @@ export interface CustomerProfile {
   age: number;
   profile_image: string;
   status: string;
-  membership: CustomerMembership;
+  membership: studentMembership;
 }
 
-export interface CustomerDashboardKpi {
+export interface studentDashboardKpi {
   id: string;
   label: string;
   value: string;
@@ -28,16 +28,16 @@ export interface CustomerDashboardKpi {
   icon: string;
 }
 
-export interface CustomerDashboardData {
+export interface studentDashboardData {
   greeting?: string;
   subtitle?: string;
   attendance?: {
     total_visits: number;
   };
-  kpis?: CustomerDashboardKpi[];
+  kpis?: studentDashboardKpi[];
 }
 
-export interface CustomerAttendanceHistory {
+export interface studentAttendanceHistory {
   id: string;
   date?: string;
   time?: string;
@@ -55,7 +55,7 @@ export interface CustomerAttendanceHistory {
   is_active?: boolean;
 }
 
-export interface CustomerAttendanceData {
+export interface studentAttendanceData {
   total_visits: number;
   current_streak: number;
   monthly_visits: number;
@@ -64,10 +64,10 @@ export interface CustomerAttendanceData {
   today_check_in?: string | null;
   today_check_out?: string | null;
   last_visit: string | null;
-  history: CustomerAttendanceHistory[];
+  history: studentAttendanceHistory[];
 }
 
-export interface CustomerBiometricStatus {
+export interface studentBiometricStatus {
   face_recognition: { status: string; active?: boolean; enrolled?: boolean };
   fingerprint: { status: string; active?: boolean; enrolled?: boolean };
   rfid_card: { status: string; card_number: string; active?: boolean; assigned?: boolean };

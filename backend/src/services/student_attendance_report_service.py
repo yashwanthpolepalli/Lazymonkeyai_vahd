@@ -7,7 +7,7 @@ from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc, or_
 
-from src.models.student import student
+from src.models.student import student, Student
 from src.models.settings import vahdBranch
 from src.models.biometric import BiometricLog
 from src.models.crm import WhatsAppSessionModel
@@ -70,7 +70,7 @@ class StudentAttendanceReportService:
             target_year, target_month, up_to_day=up_to_day
         )
 
-        student = db.query(student).filter(student.id == student_id).first()
+        student = db.query(Student).filter(Student.id == student_id).first()
         if not student:
             raise ValueError(f"Student with ID '{student_id}' not found.")
 

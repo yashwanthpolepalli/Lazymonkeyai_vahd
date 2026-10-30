@@ -17,7 +17,7 @@ import google.generativeai as genai
 from dotenv import load_dotenv
 
 from src.database.session import get_db
-from src.models.student import student
+from src.models.student import student, Student
 from src.utils.timezone import now_ist_naive, today_ist_start, today_ist_end, to_ist_str
 from src.utils.gemini_config import get_gemini_key, get_primary_model, build_gemini_fallback_list, is_valid_gemini_key
 
@@ -44,8 +44,8 @@ def coach_chat(req: CoachChatRequest, db: Session = Depends(get_db)):
     user_msg = req.message.strip()
 
     # Fetch student Context
-    student = db.query(student).filter(student.id == student_id).first()
-    student_name = student.full_name if student else "Member"
+    student_rec = db.query(Student).filter(Student.id == student_id).first()
+    student_name = student_rec.full_name if student_rec else "Member"
 
     # Always read fresh from .env at request-time
     current_key = get_gemini_key()
@@ -65,8 +65,8 @@ def coach_chat(req: CoachChatRequest, db: Session = Depends(get_db)):
         system_context = f"""You are the elite vahd AI Assistant for member '{student_name}'.
 student Live Context:
 - Full Name: {student_name}
-- Status: {student.status if student else 'ACTIVE'}
-- Qualification / Specialization: {getattr(student, 'specialization', '') or getattr(student, 'qualification', '') or 'Enrolled'}
+- Status: {student_rec.status if student_rec else 'ACTIVE'}
+- Qualification / Specialization: {getattr(student_rec, 'specialization', '') or getattr(student_rec, 'qualification', '') or 'Enrolled'}
 - Attendance / Activity: Active
 
 Guidelines:

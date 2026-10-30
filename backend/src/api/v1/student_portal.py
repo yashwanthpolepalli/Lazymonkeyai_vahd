@@ -9,14 +9,14 @@ from src.database.session import get_db
 from src.utils.security import verify_token
 from src.utils.timezone import now_ist_naive
 from src.models.user import User
-from src.models.student import student
+from src.models.student import student, Student
 from src.models.membership import Membership
 from src.models.biometric import BiometricLog
 
 router = APIRouter(prefix="/student", tags=["student Portal"])
 
 
-def get_current_student(authorization: str = Header(None), db: Session = Depends(get_db)) -> student:
+def get_current_student(authorization: str = Header(None), db: Session = Depends(get_db)) -> Student:
     """
     Extracts Bearer token from Authorization header and returns authenticated student model.
     Strictly derives student identity from JWT claims / DB lookup.
@@ -31,34 +31,61 @@ def get_current_student(authorization: str = Header(None), db: Session = Depends
 
     user_id = payload.get("sub")
     cust_id = payload.get("student_id")
+    email = (payload.get("email") or "").strip().lower()
 
-    student = None
+    current_student = None
     if cust_id:
-        student = db.query(student).filter(student.id == cust_id).first()
+        current_student = db.query(Student).filter(Student.id == cust_id).first()
 
-    if not student and (user_id or payload.get("email")):
+    if not current_student and user_id:
+        current_student = db.query(Student).filter(Student.user_id == user_id).first()
+
+    if not current_student and email:
+        current_student = db.query(Student).filter(func.lower(Student.email) == email).first()
+
+    if not current_student and (user_id or email):
         user = None
         if user_id:
             user = db.query(User).filter(User.id == user_id).first()
-        if not user and payload.get("email"):
-            user = db.query(User).filter(User.email == payload.get("email").strip().lower()).first()
+        if not user and email:
+            user = db.query(User).filter(func.lower(User.email) == email).first()
 
         if user:
-            student = db.query(student).filter(
-                (student.user_id == user.id) |
-                (student.email == user.email)
+            current_student = db.query(Student).filter(
+                (Student.user_id == user.id) |
+                (func.lower(Student.email) == user.email.lower())
             ).first()
 
-    if not student and cust_id:
-        student = db.query(student).filter(student.id == cust_id).first()
+            if not current_student:
+                # Only auto-provision if we have the minimum required fields
+                resolved_name = user.full_name
+                resolved_email = user.email or email
+                if not resolved_name or not resolved_email:
+                    raise HTTPException(
+                        status_code=404,
+                        detail="Student record not found. Please enroll the student via Student Management."
+                    )
+                current_student = Student(
+                    id=f"cust_{uuid.uuid4().hex[:8]}",
+                    user_id=user.id,
+                    full_name=resolved_name,
+                    email=resolved_email,
+                    phone=user.phone,
+                    owner_id=user.owner_id,
+                    branch_id=user.branch_id,
+                    ho_id=user.ho_id,
+                )
+                db.add(current_student)
+                db.commit()
+                db.refresh(current_student)
 
-    if not student:
+    if not current_student:
         raise HTTPException(
             status_code=404,
-            detail="student record not found. Please enroll the student via Student Management."
+            detail="Student record not found. Please enroll the student via Student Management."
         )
 
-    return student
+    return current_student
 
 
 # ── 1. student PROFILE ───────────────────────────────────────────────────────
@@ -86,14 +113,14 @@ def get_student_profile(
 
     return {
         "id": cust.id,
-        "member_code": cust.member_code or f"MEM-{cust.id[:6].upper()}",
+        "member_code": cust.member_code,
         "full_name": cust.full_name,
         "email": cust.email,
         "phone": cust.phone,
-        "gender": cust.gender or "unspecified",
-        "age": cust.age or 25,
-        "profile_image": cust.profile_image or "",
-        "status": cust.status or "ACTIVE",
+        "gender": cust.gender,
+        "age": cust.age,
+        "profile_image": cust.profile_image,
+        "status": cust.status,
         "membership": mem_data,
     }
 
@@ -413,7 +440,7 @@ def get_ai_coach_recommendation(
     from src.models.hrms import Employee
     from sqlalchemy import or_
 
-    student = None
+    student_rec = None
     user = None
     visits = 0
 
@@ -426,27 +453,27 @@ def get_ai_coach_recommendation(
             email = (payload.get("email") or "").strip().lower()
 
             if cust_id:
-                student = db.query(student).filter(student.id == cust_id).first()
-            if not student and user_id:
-                student = db.query(student).filter(student.user_id == user_id).first()
-            if not student and email:
-                student = db.query(student).filter(func.lower(student.email) == email).first()
+                student_rec = db.query(Student).filter(Student.id == cust_id).first()
+            if not student_rec and user_id:
+                student_rec = db.query(Student).filter(Student.user_id == user_id).first()
+            if not student_rec and email:
+                student_rec = db.query(Student).filter(func.lower(Student.email) == email).first()
 
             if user_id:
                 user = db.query(User).filter(User.id == user_id).first()
             if not user and email:
                 user = db.query(User).filter(func.lower(User.email) == email).first()
 
-    if student:
+    if student_rec:
         visits = (
             db.query(func.count(BiometricLog.id))
-            .filter(BiometricLog.student_id == student.id)
+            .filter(BiometricLog.student_id == student_rec.id)
             .scalar()
             or 0
         )
         score = 92 if visits > 5 else 75
         title = "Membership Active"
-        insight = f"Welcome back, {student.full_name}! You have {visits} verified check-in session{'s' if visits != 1 else ''}."
+        insight = f"Welcome back, {student_rec.full_name}! You have {visits} verified check-in session{'s' if visits != 1 else ''}."
         suggested_action = "View Attendance"
     elif user:
         emp = db.query(Employee).filter(

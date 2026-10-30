@@ -36,3 +36,5 @@ class student(Base):
     user = relationship("User", foreign_keys=[user_id], back_populates="student_profile")
     memberships = relationship("Membership", back_populates="student", cascade="all, delete-orphan")
     biometric_logs = relationship("BiometricLog", back_populates="student", cascade="all, delete-orphan")
+
+Student = student

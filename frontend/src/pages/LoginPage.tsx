@@ -274,7 +274,7 @@ export function LoginPage() {
             {/* Enterprise Security Footer */}
             <div className="flex items-center justify-center gap-1.5 text-xs font-semibold text-slate-400 dark:text-slate-500 mt-6 pt-4 border-t border-slate-100 dark:border-slate-800">
               <Icon name="shield-check" size={15} className="text-emerald-500" />
-              <span>Secure 256-Bit SSL • Dynamic Role-Based Access</span>
+              <span> </span>
             </div>
 
           </div>

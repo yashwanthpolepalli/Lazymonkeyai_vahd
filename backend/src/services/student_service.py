@@ -449,7 +449,7 @@ class studentService:
         if not full_name or not clean_email or not phone:
             raise ValueError("full_name, email, and phone are required fields")
 
-        # Generate credential: first 4 chars of name + last 4 digits of phone
+        # Generate credential: pvnr + last 4 digits of registered phone
         generated_password = generate_enrollment_password(full_name, phone)
 
         from sqlalchemy import func

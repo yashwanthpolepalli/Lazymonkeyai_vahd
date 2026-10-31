@@ -1,6 +1,7 @@
 from src.utils.timezone import now_ist_naive, today_ist_start, today_ist_end, to_ist_str
 import uuid
 import datetime
+import re
 from sqlalchemy.orm import Session
 from src.models.user import User
 from src.utils.security import create_access_token, hash_password, verify_password
@@ -104,7 +105,7 @@ class AuthService:
                 # Dynamic User provisioning for student record
                 if not user:
                     req_role = (role or "").strip().upper()
-                    target_role = "student" if req_role in ["student", "MEMBER", ""] else req_role
+                    target_role = "STUDENT" if req_role in ["STUDENT", ""] else req_role
                     user_id = f"usr_{uuid.uuid4().hex[:8]}"
                     user = User(
                         id=user_id,
@@ -125,9 +126,9 @@ class AuthService:
                     if employee.user_id:
                         user = db.query(User).filter(User.id == employee.user_id).first()
                     
-                    # Dynamic User provisioning for employee/Staff record
+                    # Dynamic User provisioning for employee record
                     if not user:
-                        target_role = (employee.role or role or "employee").strip().upper()
+                        target_role = (employee.role or role or "EMPLOYEE").strip().upper()
                         user_id = f"usr_{uuid.uuid4().hex[:8]}"
                         user = User(
                             id=user_id,
@@ -143,7 +144,33 @@ class AuthService:
                         db.commit()
                         db.refresh(user)
 
-        if not user or not verify_password(password, user.password_hash):
+        is_pwd_valid = verify_password(password, user.password_hash) if user else False
+
+        # Support seamless transition for STUDENT and EMPLOYEE accounts to the pvnr formula
+        if not is_pwd_valid and user:
+            clean_pwd = (password or "").strip()
+            user_role_str = (user.role or "").strip().upper()
+            if user_role_str in ["STUDENT", "EMPLOYEE"]:
+                phone_candidate = user.phone or ""
+                if not phone_candidate and user_role_str == "STUDENT":
+                    st = db.query(student).filter(student.user_id == user.id).first()
+                    phone_candidate = st.phone if st else ""
+                elif not phone_candidate and user_role_str == "EMPLOYEE":
+                    ep = db.query(employeeProfile).filter(employeeProfile.user_id == user.id).first()
+                    phone_candidate = ep.phone if ep else ""
+
+                digits_phone = re.sub(r'\D', '', phone_candidate or '')
+                expected_new_pwd = f"pvnr{digits_phone[-4:]}" if len(digits_phone) >= 4 else None
+                if expected_new_pwd and clean_pwd.lower() == expected_new_pwd.lower():
+                    user.password_hash = hash_password(clean_pwd.lower())
+                    try:
+                        db.commit()
+                        db.refresh(user)
+                    except Exception:
+                        db.rollback()
+                    is_pwd_valid = True
+
+        if not user or not is_pwd_valid:
             return None
 
         user_role_up = (user.role or "").strip().upper()
@@ -155,9 +182,9 @@ class AuthService:
             user_canonical_role = "HEAD_OFFICE"
         elif user_role_up in ["OWNER", "MANAGER"]:
             user_canonical_role = "OWNER"
-        elif user_role_up in ["EMPLOYEE", "EMPLOYEES", "employee", "COACH", "STAFF", "EMP"]:
+        elif user_role_up == "EMPLOYEE":
             user_canonical_role = "EMPLOYEE"
-        elif user_role_up in ["STUDENT", "STUDENTS", "student", "MEMBER"]:
+        elif user_role_up == "STUDENT":
             user_canonical_role = "STUDENT"
         else:
             user_canonical_role = user_role_up
@@ -171,9 +198,9 @@ class AuthService:
                 req_canonical_role = "HEAD_OFFICE"
             elif r_up in ["OWNER"]:
                 req_canonical_role = "OWNER"
-            elif r_up in ["EMPLOYEE", "EMPLOYEES", "employee", "COACH", "STAFF", "EMP"]:
+            elif r_up == "EMPLOYEE":
                 req_canonical_role = "EMPLOYEE"
-            elif r_up in ["STUDENT", "STUDENTS", "student", "MEMBER"]:
+            elif r_up == "STUDENT":
                 req_canonical_role = "STUDENT"
             else:
                 req_canonical_role = r_up

@@ -622,7 +622,7 @@ export const HoDashboard: React.FC = () => {
                   {data?.total_students ?? 0}
                 </div>
                 <p className="text-[11px] font-semibold text-blue-600">
-                  Enrolled students &amp; trainees
+                  Enrolled students
                 </p>
               </div>
             </div>
@@ -849,8 +849,8 @@ export const HoDashboard: React.FC = () => {
 
                                               <div
                                                 className={`p-2.5 rounded-xl border transition-all ${isOwnerChecked
-                                                    ? 'bg-purple-50/95 border-purple-300 shadow-xs ring-1 ring-purple-400'
-                                                    : 'bg-slate-50/80 hover:bg-slate-50 border-slate-200/80 hover:border-slate-300'
+                                                  ? 'bg-purple-50/95 border-purple-300 shadow-xs ring-1 ring-purple-400'
+                                                  : 'bg-slate-50/80 hover:bg-slate-50 border-slate-200/80 hover:border-slate-300'
                                                   }`}
                                               >
                                                 <div className="flex items-start justify-between gap-2">
@@ -868,8 +868,8 @@ export const HoDashboard: React.FC = () => {
                                                     {/* Avatar Icon */}
                                                     <div
                                                       className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${isPrimary
-                                                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                                                          : 'bg-purple-100 text-purple-800 border border-purple-200'
+                                                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                                        : 'bg-purple-100 text-purple-800 border border-purple-200'
                                                         }`}
                                                     >
                                                       {isPrimary ? '👑' : <Icon name="user" size={13} />}
@@ -888,8 +888,8 @@ export const HoDashboard: React.FC = () => {
                                                         )}
                                                         <span
                                                           className={`text-[9px] font-black uppercase px-1.5 py-0.2 rounded ${isPrimary
-                                                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                                              : 'bg-slate-100 text-slate-600 border border-slate-200'
+                                                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                                            : 'bg-slate-100 text-slate-600 border border-slate-200'
                                                             }`}
                                                         >
                                                           {isPrimary ? 'Primary Owner' : 'Co-Owner'}

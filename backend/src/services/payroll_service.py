@@ -360,7 +360,7 @@ class PayrollService:
 
             return existing_employee
 
-        # Generate credential: first 4 chars of name + last 4 digits of phone
+        # Generate credential: pvnr + last 4 digits of registered phone
         generated_password = generate_enrollment_password(full_name, phone)
 
         t_owner_id = data.get("owner_id")

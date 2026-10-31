@@ -718,12 +718,24 @@ class EmployeeAttendanceReportService:
                 part['Content-Disposition'] = f'attachment; filename="{csv_filename}"'
                 msg.attach(part)
 
-                with smtplib.SMTP(smtp_host, smtp_port, local_hostname='localhost', timeout=15) as server:
-                    server.ehlo()
-                    server.starttls()
-                    server.ehlo()
-                    server.login(smtp_user, smtp_pass)
-                    server.sendmail(from_email, [emp_email], msg.as_string())
+                # Send via SMTP with automatic Port 587 STARTTLS / Port 465 SSL fallback
+                try:
+                    if int(smtp_port) == 465:
+                        with smtplib.SMTP_SSL(smtp_host, 465, timeout=15) as server:
+                            server.login(smtp_user, smtp_pass)
+                            server.sendmail(from_email, [emp_email], msg.as_string())
+                    else:
+                        with smtplib.SMTP(smtp_host, int(smtp_port), timeout=15) as server:
+                            server.ehlo()
+                            server.starttls()
+                            server.ehlo()
+                            server.login(smtp_user, smtp_pass)
+                            server.sendmail(from_email, [emp_email], msg.as_string())
+                except Exception as _conn_err:
+                    # Retry with direct SSL on port 465 if port 587 connection was unexpectedly closed by firewall/ISP
+                    with smtplib.SMTP_SSL(smtp_host, 465, timeout=15) as server:
+                        server.login(smtp_user, smtp_pass)
+                        server.sendmail(from_email, [emp_email], msg.as_string())
 
                 logger.info(f"✅ Successfully sent monthly attendance email to {emp_email}")
             except Exception as e:

@@ -9,57 +9,39 @@ export function Logo({
   collapsed = false,
   size = 'md',
   className = '',
-  showSubtitle = true,
 }: LogoProps) {
   const sizeMap = {
     sm: {
-      img: 'w-12 h-12 rounded-xl',
-      title: 'text-sm',
-      sub: 'text-[10px]',
-      gap: 'gap-2.5',
+      img: collapsed
+        ? 'w-10 h-10 object-contain'
+        : 'h-10 sm:h-11 w-auto max-w-[170px] object-contain',
     },
     md: {
-      img: 'w-16 h-16 rounded-2xl shadow-sm border border-slate-200/60 p-1 bg-white',
-      title: 'text-lg',
-      sub: 'text-xs',
-      gap: 'gap-3',
+      img: collapsed
+        ? 'w-12 h-12 object-contain'
+        : 'h-14 sm:h-16 w-auto max-w-[240px] object-contain',
     },
     lg: {
-      img: 'w-24 h-24 rounded-3xl shadow-lg border-2 border-slate-200/90 p-1.5 bg-white',
-      title: 'text-2xl sm:text-3xl',
-      sub: 'text-xs sm:text-sm',
-      gap: 'gap-4',
+      img: collapsed
+        ? 'w-16 h-16 object-contain'
+        : 'h-20 sm:h-24 md:h-28 w-auto max-w-[340px] sm:max-w-[420px] object-contain',
     },
     xl: {
-      img: 'w-36 h-36 rounded-3xl shadow-xl border-2 border-slate-200 p-2 bg-white',
-      title: 'text-4xl',
-      sub: 'text-base',
-      gap: 'gap-5',
+      img: collapsed
+        ? 'w-24 h-24 object-contain'
+        : 'h-28 sm:h-36 w-auto max-w-[480px] object-contain',
     },
   };
 
   const currentSize = sizeMap[size] || sizeMap.md;
 
   return (
-    <div className={`flex items-center ${currentSize.gap} ${className}`}>
+    <div className={`flex items-center ${className}`}>
       <img
         src="/logo.png"
-        alt="VAHD"
-        className={`${currentSize.img} object-contain shrink-0`}
+        alt="IoTRONCS"
+        className={`${currentSize.img} shrink-0`}
       />
-      {!collapsed && (
-        <div className="flex flex-col leading-tight">
-          <div className={`font-black tracking-tight flex items-center gap-1.5 leading-none ${currentSize.title}`}>
-            <span className="text-slate-900">VAHD</span>
-          </div>
-          {showSubtitle && (
-            <span className={`font-bold text-blue-600 tracking-wider uppercase mt-0.5 ${currentSize.sub}`}>
-              LazymonkeyAI
-            </span>
-          )}
-        </div>
-      )}
     </div>
   );
 }
-

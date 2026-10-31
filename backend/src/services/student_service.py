@@ -491,6 +491,21 @@ class studentService:
                 if not resolved_branch_name:
                     resolved_branch_name = b_lookup.branch_name or b_lookup.vahd_name
 
+        if not resolved_branch_id:
+            if resolved_owner_id:
+                b_fb = db.query(vahdBranch).filter(vahdBranch.owner_id == resolved_owner_id).first()
+                if b_fb:
+                    resolved_branch_id = b_fb.id
+                    resolved_branch_name = b_fb.branch_name or b_fb.vahd_name
+                    resolved_ho_id = resolved_ho_id or b_fb.ho_id
+            if not resolved_branch_id:
+                b_fb = db.query(vahdBranch).filter(vahdBranch.is_active == True).first() or db.query(vahdBranch).first()
+                if b_fb:
+                    resolved_branch_id = b_fb.id
+                    resolved_branch_name = b_fb.branch_name or b_fb.vahd_name
+                    resolved_owner_id = resolved_owner_id or b_fb.owner_id
+                    resolved_ho_id = resolved_ho_id or b_fb.ho_id
+
         if not resolved_ho_id and resolved_owner_id:
             owner_u = db.query(User).filter(User.id == resolved_owner_id).first()
             if owner_u and owner_u.ho_id:

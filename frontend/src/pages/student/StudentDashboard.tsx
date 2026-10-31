@@ -11,7 +11,6 @@ import { studentApi } from '@/services/studentApi';
 import type {
   studentDashboardData,
   studentAttendanceData,
-  AICoachRecommendation,
 } from '@/types/student';
 import { StudentGoogleReviewCard } from '@/components/student/studentGoogleReviewCard';
 import { AttendanceSummary } from '@/components/student/AttendanceSummary';
@@ -24,7 +23,6 @@ export function studentDashboard() {
 
   const [dashboard, setDashboard] = useState<studentDashboardData | null>(null);
   const [attendance, setAttendance] = useState<studentAttendanceData | null>(null);
-  const [aiCoach, setAiCoach] = useState<AICoachRecommendation | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -35,12 +33,10 @@ export function studentDashboard() {
     Promise.all([
       studentApi.getDashboard(),
       studentApi.getAttendance().catch(() => null),
-      studentApi.getAICoachRecommendation().catch(() => null),
     ])
-      .then(([d, att, a]) => {
+      .then(([d, att]) => {
         setDashboard(d);
         setAttendance(att);
-        setAiCoach(a);
       })
       .catch(() => {
         setError('Unable to load dashboard metrics. Please check connection and try again.');
@@ -56,7 +52,6 @@ export function studentDashboard() {
 
   const actions = [
     { label: 'Attendance & Check-in', icon: 'calendar-check', color: 'from-purple-600 to-indigo-700', path: '/app/attendance' },
-    { label: 'AI Coach Hub', icon: 'sparkles', color: 'from-ai-500 to-ai-700', path: '/app/ai-coach' },
     { label: 'My Profile & Account', icon: 'user', color: 'from-blue-500 to-blue-700', path: '/app/profile' },
   ];
 
@@ -98,11 +93,13 @@ export function studentDashboard() {
         <div className="relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
           <div>
             <div className="flex items-center gap-2 mb-2"><span className="text-2xl">👋</span><h2 className="text-xl font-bold">Welcome back, {userName}!</h2></div>
-            <p className="text-brand-100 text-sm max-w-md mb-4">Your membership and attendance metrics are live and synchronized.</p>
+            <p className="text-brand-100 text-sm max-w-md mb-4"> </p>
             <div className="flex flex-wrap gap-4">
               <div className="flex items-center gap-2">
                 <Icon name="activity" size={16} className="text-brand-200" />
-                <span className="text-sm font-semibold">Status: Active Member</span>
+                <span className="text-sm font-semibold">
+                  Status: {dashboard?.course_progress?.status || 'Active Student'}
+                </span>
               </div>
               <div className="flex items-center gap-2">
                 <Icon name="calendar-check" size={16} className="text-brand-200" />
@@ -110,23 +107,39 @@ export function studentDashboard() {
                   {attendance?.monthly_visits ?? 0} Visits This Month
                 </span>
               </div>
+              {dashboard?.course_progress && (
+                <div className="flex items-center gap-2">
+                  <Icon name="clock" size={16} className="text-brand-200" />
+                  <span className="text-sm font-semibold">
+                    {dashboard.course_progress.days_remaining} Days Remaining
+                  </span>
+                </div>
+              )}
             </div>
           </div>
           <div className="flex flex-col items-center justify-center shrink-0">
             <ProgressRing
-              value={85}
+              value={dashboard?.course_progress?.progress_percentage ?? 0}
               max={100}
               size={96}
               strokeWidth={8}
               color="#ffffff"
               trackColor="rgba(255,255,255,0.25)"
-              label="85%"
+              label={`${dashboard?.course_progress?.progress_percentage ?? 0}%`}
               textColor="text-white"
               labelClassName="text-xl font-black text-white tracking-tight"
             />
-            <span className="mt-2 text-[11px] font-bold text-white bg-white/20 backdrop-blur-md px-3 py-0.5 rounded-full uppercase tracking-wider text-center shadow-xs">
-              Prime Member
+            <span
+              className="mt-2 text-[11px] font-bold text-white bg-white/20 backdrop-blur-md px-3 py-0.5 rounded-full uppercase tracking-wider text-center shadow-xs truncate max-w-[150px]"
+              title={dashboard?.course_progress?.plan_name || 'Enrolled Course'}
+            >
+              {dashboard?.course_progress?.plan_name || 'Enrolled Course'}
             </span>
+            {dashboard?.course_progress && (
+              <span className="text-[10px] text-brand-200 mt-1 font-medium">
+                {dashboard.course_progress.days_elapsed} of {dashboard.course_progress.total_days} Days
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -151,7 +164,7 @@ export function studentDashboard() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="w-full">
         {/* Attendance Summary Card */}
         {attendance ? (
           <AttendanceSummary attendance={attendance} />
@@ -172,16 +185,6 @@ export function studentDashboard() {
             </button>
           </div>
         )}
-
-        {/* AI Coach Insights Card */}
-        <div className="card p-5 bg-gradient-to-br from-ai-50/50 to-white border border-ai-200/60 flex flex-col justify-between">
-          <div>
-            <div className="flex items-center gap-2 mb-3"><Icon name="sparkles" size={18} className="text-ai-600" /><h3 className="text-base font-bold text-navy-900">AI Coach Insight</h3></div>
-            <h4 className="text-sm font-bold text-navy-800 mb-2">{aiCoach?.title || 'Personalized Recommendation'}</h4>
-            <p className="text-xs text-navy-600 leading-relaxed italic">"{aiCoach?.insight || 'Stay consistent with your daily attendance routine for optimal results.'}"</p>
-          </div>
-          <button onClick={() => navigate('/app/ai-coach')} className="btn-secondary mt-4 text-xs flex items-center justify-center gap-2"><Icon name="message-square" size={14} /> Chat with AI Coach</button>
-        </div>
       </div>
 
       {/* Official Google Business Reviews & AI Suggestion Hub */}

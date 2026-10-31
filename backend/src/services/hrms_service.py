@@ -286,6 +286,19 @@ class HrmsService:
                 if not owner_id and matched_b.owner_id:
                     owner_id = matched_b.owner_id
 
+        if not branch_id:
+            if owner_id:
+                matched_b = db.query(vahdBranch).filter(vahdBranch.owner_id == owner_id).first()
+            else:
+                matched_b = db.query(vahdBranch).filter(vahdBranch.is_active == True).first() or db.query(vahdBranch).first()
+            if matched_b:
+                branch_id = matched_b.id
+                vahd_branch = vahd_branch or matched_b.branch_name or matched_b.vahd_name
+                if not ho_id and matched_b.ho_id:
+                    ho_id = matched_b.ho_id
+                if not owner_id and matched_b.owner_id:
+                    owner_id = matched_b.owner_id
+
         if not ho_id and owner_id:
             owner_u = db.query(User).filter(User.id == owner_id).first()
             if owner_u and owner_u.ho_id:

@@ -9,8 +9,8 @@ const mobileNavItems: Record<string, string[]> = {
   super_admin: ['Overview', 'Organizations', 'SaaS Plans', 'AI Platform', 'Settings'],
   ho: ['Dashboard', 'HRMS & Students', 'Organisations', 'Settings'],
   owner: ['Dashboard', 'students', 'POS', 'Settings'],
-  employee: ['Dashboard', 'My students', 'HRMS', 'AI Coach', 'Profile'],
-  student: ['Home', 'Attendance', 'AI Coach', 'Profile'],
+  employee: ['Dashboard', 'Students', 'HRMS', 'Profile'],
+  student: ['Home', 'Attendance', 'Profile'],
 };
 
 export function BottomNav() {

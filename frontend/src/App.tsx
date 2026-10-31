@@ -30,7 +30,6 @@ const EmployeeDashboard = lazy(() => import('@/pages/employee/employeeDashboard'
 const EmployeeHrmsPage = lazy(() => import('@/pages/employee/employeeHrmsPage').then(m => ({ default: m.EmployeeHrmsPage || m.employeeHrmsPage })));
 const ProgressPage = lazy(() => import('@/pages/employee/ProgressPage').then(m => ({ default: m.ProgressPage })));
 const MessagesPage = lazy(() => import('@/pages/employee/MessagesPage').then(m => ({ default: m.MessagesPage })));
-const AiCoachPage = lazy(() => import('@/pages/employee/AiCoachPage').then(m => ({ default: m.AiCoachPage })));
 const EmployeeProfilePage = lazy(() => import('@/pages/employee/employeeProfilePage').then(m => ({ default: m.EmployeeProfilePage || m.employeeProfilePage })));
 
 // student pages
@@ -144,7 +143,6 @@ function AppRoutes() {
           <Route path="attendance" element={<Navigate to="/employee/hrms?tab=attendance" replace />} />
           <Route path="progress" element={<ProgressPage />} />
           <Route path="messages" element={<MessagesPage />} />
-          <Route path="ai-coach" element={<AiCoachPage />} />
           <Route path="profile" element={<EmployeeProfilePage />} />
         </Route>
 
@@ -153,7 +151,6 @@ function AppRoutes() {
           <Route index element={<StudentDashboard />} />
           <Route path="attendance" element={<StudentAttendancePage />} />
           <Route path="progress" element={<ProgressPage />} />
-          <Route path="ai-coach" element={<AiCoachPage />} />
           <Route path="history" element={<Navigate to="/app" replace />} />
           <Route path="profile" element={<StudentProfilePage />} />
         </Route>

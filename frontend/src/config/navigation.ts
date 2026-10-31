@@ -29,13 +29,11 @@ export const navConfig: Record<Role, NavItem[]> = {
     { label: 'Dashboard', path: '/employee', icon: 'layout-dashboard' },
     { label: 'Students', path: '/employee/students', icon: 'users' },
     { label: 'HRMS', path: '/employee/hrms', icon: 'users' },
-    { label: 'AI Coach', path: '/employee/ai-coach', icon: 'sparkles' },
     { label: 'Profile', path: '/employee/profile', icon: 'user' },
   ],
   student: [
     { label: 'Home', path: '/app', icon: 'home' },
     { label: 'Attendance', path: '/app/attendance', icon: 'calendar-check' },
-    { label: 'AI Coach', path: '/app/ai-coach', icon: 'sparkles' },
     { label: 'Profile', path: '/app/profile', icon: 'user' },
   ],
 };

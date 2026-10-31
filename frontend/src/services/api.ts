@@ -51,8 +51,8 @@ export const api = {
           ho_id: res.ho_id || '',
           hoId: res.ho_id || '',
           vahdId: res.vahd_id || '',
-          vahdName: res.vahd_name || '',
-          branchName: res.branch_name || '',
+          vahdName: res.vahd_name || res.organization_name || res.branch_name || '',
+          branchName: res.branch_name || res.vahd_name || '',
           permissions: res.permissions || {},
           role_title: res.role_title || '',
         };
@@ -124,8 +124,8 @@ export const api = {
           ho_id: res.ho_id || '',
           hoId: res.ho_id || '',
           vahdId: res.vahd_id || '',
-          vahdName: res.vahd_name || '',
-          branchName: res.branch_name || '',
+          vahdName: res.vahd_name || res.organization_name || res.branch_name || '',
+          branchName: res.branch_name || res.vahd_name || '',
           permissions: res.permissions || {},
           role_title: res.role_title || '',
         };
@@ -174,10 +174,6 @@ export const api = {
     audit: (params?: any): Promise<any> => apiClient.get('/payments/audit', { params }),
     transactions: (params?: any): Promise<any> => apiClient.get('/payments/transactions', { params }),
     membershipTransactions: (params?: any): Promise<any> => apiClient.get('/courses/transactions', { params }),
-  },
-  aiCoach: {
-    recommendations: (): Promise<any[]> => apiClient.get('/student/ai/recommendation'),
-    chat: (message: string): Promise<any> => apiClient.post('/ai-coach/chat', { message }),
   },
   crm: {
     leads: (): Promise<any[]> => apiClient.get('/crm/leads'),

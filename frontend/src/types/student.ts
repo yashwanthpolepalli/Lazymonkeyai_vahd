@@ -28,12 +28,24 @@ export interface studentDashboardKpi {
   icon: string;
 }
 
+export interface CourseProgressData {
+  progress_percentage: number;
+  total_days: number;
+  days_elapsed: number;
+  days_remaining: number;
+  plan_name: string;
+  status: string;
+  start_date?: string | null;
+  expiry_date?: string | null;
+}
+
 export interface studentDashboardData {
   greeting?: string;
   subtitle?: string;
   attendance?: {
     total_visits: number;
   };
+  course_progress?: CourseProgressData;
   kpis?: studentDashboardKpi[];
 }
 
@@ -73,11 +85,4 @@ export interface studentBiometricStatus {
   rfid_card: { status: string; card_number: string; active?: boolean; assigned?: boolean };
   last_verification: string | null;
   notice: string;
-}
-
-export interface AICoachRecommendation {
-  score: number;
-  title: string;
-  insight: string;
-  suggested_action: string;
 }

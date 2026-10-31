@@ -163,6 +163,43 @@ def get_student_dashboard(
         or 0
     )
 
+    now = now_ist_naive()
+    mem = (
+        db.query(Membership)
+        .filter(Membership.student_id == cust.id)
+        .order_by(Membership.created_at.desc())
+        .first()
+    )
+
+    plan_name = mem.plan_name if mem and mem.plan_name else "Enrolled Course"
+    mem_status = mem.status if mem and mem.status else (cust.status or "ACTIVE")
+
+    start_dt = (mem.start_date if mem and mem.start_date else None) or cust.created_at or now
+    expiry_dt = (mem.expiry_date if mem and mem.expiry_date else None)
+
+    if not expiry_dt and start_dt:
+        expiry_dt = start_dt + datetime.timedelta(days=30)
+
+    total_days = max(1, (expiry_dt.date() - start_dt.date()).days) if (start_dt and expiry_dt) else 30
+    days_elapsed = max(0, (now.date() - start_dt.date()).days) if start_dt else 0
+    days_remaining = max(0, (expiry_dt.date() - now.date()).days) if expiry_dt else 0
+
+    if total_days > 0:
+        progress_percentage = min(100, max(0, round((days_elapsed / total_days) * 100)))
+    else:
+        progress_percentage = 0
+
+    course_progress = {
+        "progress_percentage": progress_percentage,
+        "total_days": total_days,
+        "days_elapsed": min(days_elapsed, total_days),
+        "days_remaining": days_remaining,
+        "plan_name": plan_name,
+        "status": mem_status,
+        "start_date": start_dt.isoformat() if start_dt else None,
+        "expiry_date": expiry_dt.isoformat() if expiry_dt else None,
+    }
+
     kpis = [
         {"id": "present", "label": "Present", "value": str(visits_count), "change": "Verified Check-ins", "trend": "up", "icon": "check-circle"},
         {"id": "absent", "label": "Absent", "value": "0", "change": "Days Missed", "trend": "neutral", "icon": "x-circle"},
@@ -172,8 +209,9 @@ def get_student_dashboard(
 
     return {
         "greeting": f"Welcome back, {cust.full_name.split()[0]}!",
-        "subtitle": "Here is your membership overview and attendance summary.",
+        "subtitle": "Here is your course overview and attendance summary.",
         "attendance": {"total_visits": visits_count},
+        "course_progress": course_progress,
         "kpis": kpis,
     }
 
@@ -423,90 +461,4 @@ def verify_face(
             "action": action,
             "confidence": confidence_score,
         }
-    }
-
-
-# ── 4. AI COACH RECOMMENDATION ──────────────────────────────────────────────
-
-@router.get("/ai/recommendation")
-def get_ai_coach_recommendation(
-    authorization: Optional[str] = Header(None),
-    db: Session = Depends(get_db),
-):
-    """
-    Builds AI recommendation context from student, employee, or user records.
-    Safely resolves identity from JWT claims without throwing a 404 for non-students.
-    """
-    from src.models.hrms import Employee
-    from sqlalchemy import or_
-
-    student_rec = None
-    user = None
-    visits = 0
-
-    if authorization and authorization.startswith("Bearer "):
-        token = authorization.split(" ")[1]
-        payload = verify_token(token)
-        if payload:
-            user_id = payload.get("sub")
-            cust_id = payload.get("student_id")
-            email = (payload.get("email") or "").strip().lower()
-
-            if cust_id:
-                student_rec = db.query(Student).filter(Student.id == cust_id).first()
-            if not student_rec and user_id:
-                student_rec = db.query(Student).filter(Student.user_id == user_id).first()
-            if not student_rec and email:
-                student_rec = db.query(Student).filter(func.lower(Student.email) == email).first()
-
-            if user_id:
-                user = db.query(User).filter(User.id == user_id).first()
-            if not user and email:
-                user = db.query(User).filter(func.lower(User.email) == email).first()
-
-    if student_rec:
-        visits = (
-            db.query(func.count(BiometricLog.id))
-            .filter(BiometricLog.student_id == student_rec.id)
-            .scalar()
-            or 0
-        )
-        score = 92 if visits > 5 else 75
-        title = "Membership Active"
-        insight = f"Welcome back, {student_rec.full_name}! You have {visits} verified check-in session{'s' if visits != 1 else ''}."
-        suggested_action = "View Attendance"
-    elif user:
-        emp = db.query(Employee).filter(
-            func.lower(Employee.email) == (user.email or "").lower()
-        ).first() if user.email else None
-        if emp:
-            title = f"Shift Active • {emp.first_name}"
-            insight = f"Staff assignment active for {emp.first_name} {emp.last_name or ''} at {emp.vahd_branch or 'Campus'}. Geofence & attendance monitoring are enabled."
-            suggested_action = "Review Shift Attendance"
-            score = 95
-        else:
-            title = f"Command Active • {user.full_name or 'Admin'}"
-            insight = f"Welcome, {user.full_name or user.role}! Campus systems, biometric gateways, and user directories are operating normally."
-            suggested_action = "Open Dashboard"
-            score = 98
-    else:
-        title = "System Operational"
-        insight = "Welcome to VAHD. All member check-in portals and learning modules are online."
-        suggested_action = "Check In"
-        score = 85
-
-    return {
-        "score": score,
-        "title": title,
-        "insight": insight,
-        "suggested_action": suggested_action,
-        "visits": visits,
-        "recommendations": [
-            {
-                "title": title,
-                "insight": insight,
-                "suggested_action": suggested_action,
-                "priority": "low" if score >= 85 else "medium"
-            }
-        ]
     }

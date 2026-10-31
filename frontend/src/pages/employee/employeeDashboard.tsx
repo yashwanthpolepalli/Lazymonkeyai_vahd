@@ -13,29 +13,15 @@ import { cn } from '@/utils/cn';
 export function EmployeeDashboard() {
   const [kpis, setKpis] = useState<KpiType[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
-  const [aiAlerts, setAiAlerts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([
       api.dashboard.employeeKpis().catch(() => []),
       api.students.list().catch(() => []),
-      api.aiCoach.recommendations().catch(() => []),
-    ]).then(([k, m, recs]) => {
+    ]).then(([k, m]) => {
       setKpis(k);
       setMembers((m || []).slice(0, 6));
-
-      const anyRecs = recs as any;
-      const recsList = Array.isArray(anyRecs) ? anyRecs : (anyRecs?.recommendations || (anyRecs?.insight ? [anyRecs] : []));
-      if (Array.isArray(recsList) && recsList.length > 0) {
-        const formatted = recsList.map((r: any) => ({
-          text: r.insight || r.suggested_action || r.title || 'Client progression optimal',
-          severity: r.priority || 'medium',
-        }));
-        setAiAlerts(formatted);
-      } else {
-        setAiAlerts([]);
-      }
       setLoading(false);
     });
   }, []);
@@ -90,22 +76,6 @@ export function EmployeeDashboard() {
                       <div className="text-sm font-semibold text-navy-900 truncate">{m.name}</div>
                       <div className="text-xs text-navy-400">{m.membership || 'Active Member'} · {m.attendance || 100}% attendance</div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="card p-5 bg-gradient-to-br from-ai-50/50 to-white">
-            <div className="flex items-center gap-2 mb-4"><Icon name="sparkles" size={18} className="text-ai-600" /><h3 className="text-base font-bold text-navy-900">AI Alerts</h3></div>
-            {aiAlerts.length === 0 ? (
-              <div className="text-xs text-navy-400 text-center py-4">No active AI alerts. Client progress is optimal.</div>
-            ) : (
-              <div className="space-y-2">
-                {aiAlerts.map((a, i) => (
-                  <div key={i} className={cn('flex gap-2 p-3 rounded-xl', a.severity === 'high' ? 'bg-danger-50' : a.severity === 'medium' ? 'bg-warning-50' : 'bg-success-50')}>
-                    <Icon name={a.severity === 'high' ? 'alert-triangle' : a.severity === 'medium' ? 'alert-circle' : 'check-circle'} size={16} className={a.severity === 'high' ? 'text-danger-600' : a.severity === 'medium' ? 'text-warning-600' : 'text-success-600'} />
-                    <span className="text-sm text-navy-700">{a.text}</span>
                   </div>
                 ))}
               </div>

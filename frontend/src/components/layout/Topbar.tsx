@@ -246,86 +246,95 @@ export function Topbar() {
         <div className="flex items-center gap-4 min-w-0">
           <Logo size="sm" />
 
-          {/* Interactive Organization Selector Dropdown */}
-          <div className="relative">
-            <button
-              onClick={() => setShowOrgDropdown(!showOrgDropdown)}
-              className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-800 hover:bg-slate-100 cursor-pointer transition-colors"
-            >
-              <Icon name="map-pin" size={14} className="text-purple-600" />
-              <span className="truncate max-w-[200px]">
-                {(() => {
-                  if (selectedTopbarOrg === 'all') {
+          {/* Organization Badge for Students/Employees vs Switcher for Admin/HO/Owners */}
+          {user?.role === 'student' || user?.role === 'employee' ? (
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-purple-50/80 border border-purple-200 text-xs font-bold text-purple-900 shadow-xs">
+              <Icon name="map-pin" size={14} className="text-purple-600 shrink-0" />
+              <span className="truncate max-w-[220px]" title={user?.vahdName || user?.branchName || 'Enrolled Organization'}>
+                {user?.vahdName || user?.branchName || (user as any)?.organization_name || (user as any)?.vahd_name || 'Assigned Organization'}
+              </span>
+            </div>
+          ) : (
+            <div className="relative">
+              <button
+                onClick={() => setShowOrgDropdown(!showOrgDropdown)}
+                className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-800 hover:bg-slate-100 cursor-pointer transition-colors"
+              >
+                <Icon name="map-pin" size={14} className="text-purple-600" />
+                <span className="truncate max-w-[200px]">
+                  {(() => {
+                    if (selectedTopbarOrg === 'all') {
+                      return user?.role === 'super_admin'
+                        ? 'All Head Offices'
+                        : user?.role === 'ho'
+                          ? 'All Organizations (HQ)'
+                          : user?.vahdName || 'All Branches';
+                    }
+                    const match = topbarOrgs.find((o) => o.id === selectedTopbarOrg);
+                    if (match) {
+                      return match.branch && match.branch.toLowerCase() !== match.name.toLowerCase()
+                        ? `${match.name} - ${match.branch}`
+                        : match.name;
+                    }
                     return user?.role === 'super_admin'
                       ? 'All Head Offices'
-                      : user?.role === 'ho'
-                        ? 'All Organizations (HQ)'
-                        : user?.vahdName || 'All Branches';
-                  }
-                  const match = topbarOrgs.find((o) => o.id === selectedTopbarOrg);
-                  if (match) {
-                    return match.branch && match.branch.toLowerCase() !== match.name.toLowerCase()
-                      ? `${match.name} - ${match.branch}`
-                      : match.name;
-                  }
-                  return user?.role === 'super_admin'
-                    ? 'Selected Head Office'
-                    : user?.vahdName || 'Selected Organization';
-                })()}
-              </span>
-              <Icon name="chevron-down" size={12} className="text-slate-400 shrink-0" />
-            </button>
+                      : user?.vahdName || 'All Organizations';
+                  })()}
+                </span>
+                <Icon name="chevron-down" size={12} className="text-slate-400 shrink-0" />
+              </button>
 
-            {showOrgDropdown && (
-              <div className="absolute left-0 top-11 w-64 bg-white rounded-2xl p-2 z-50 shadow-2xl border border-slate-200 text-xs animate-in fade-in slide-in-from-top-1 duration-150">
-                <p className="px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-slate-400">
-                  {user?.role === 'super_admin' ? 'Filter by Head Office' : 'Switch Organization'}
-                </p>
-                <div className="space-y-0.5 max-h-56 overflow-y-auto">
-                  <button
-                    onClick={() => {
-                      setSelectedTopbarOrg('all');
-                      localStorage.setItem('vahd_selected_org_id', 'all');
-                      window.dispatchEvent(new CustomEvent('vahd:org_changed', { detail: { id: 'all' } }));
-                      setShowOrgDropdown(false);
-                    }}
-                    className={`w-full flex items-center justify-between p-2 rounded-xl text-left ${selectedTopbarOrg === 'all'
-                      ? 'bg-purple-50 text-purple-900 font-extrabold'
-                      : 'hover:bg-slate-50 text-slate-700 font-medium'
-                      }`}
-                  >
-                    <span>{user?.role === 'super_admin' ? 'All Head Offices' : 'All Organizations'}</span>
-                    {selectedTopbarOrg === 'all' && <Icon name="check" size={13} className="text-purple-600" />}
-                  </button>
-                  {topbarOrgs.map((o) => (
+              {showOrgDropdown && (
+                <div className="absolute left-0 top-11 w-64 bg-white rounded-2xl p-2 z-50 shadow-2xl border border-slate-200 text-xs animate-in fade-in slide-in-from-top-1 duration-150">
+                  <p className="px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                    {user?.role === 'super_admin' ? 'Filter by Head Office' : 'Switch Organization'}
+                  </p>
+                  <div className="space-y-0.5 max-h-56 overflow-y-auto">
                     <button
-                      key={o.id}
                       onClick={() => {
-                        setSelectedTopbarOrg(o.id);
-                        localStorage.setItem('vahd_selected_org_id', o.id);
-                        window.dispatchEvent(new CustomEvent('vahd:org_changed', { detail: { id: o.id } }));
+                        setSelectedTopbarOrg('all');
+                        localStorage.setItem('vahd_selected_org_id', 'all');
+                        window.dispatchEvent(new CustomEvent('vahd:org_changed', { detail: { id: 'all' } }));
                         setShowOrgDropdown(false);
                       }}
-                      className={`w-full flex items-center justify-between p-2 rounded-xl text-left ${selectedTopbarOrg === o.id
+                      className={`w-full flex items-center justify-between p-2 rounded-xl text-left ${selectedTopbarOrg === 'all'
                         ? 'bg-purple-50 text-purple-900 font-extrabold'
                         : 'hover:bg-slate-50 text-slate-700 font-medium'
                         }`}
                     >
-                      <div className="truncate">
-                        <p className="font-bold truncate">{o.name}</p>
-                        <p className="text-[10px] text-slate-400 truncate">
-                          {o.branch} • {o.city}
-                        </p>
-                      </div>
-                      {selectedTopbarOrg === o.id && (
-                        <Icon name="check" size={13} className="text-purple-600 shrink-0 ml-1" />
-                      )}
+                      <span>{user?.role === 'super_admin' ? 'All Head Offices' : 'All Organizations'}</span>
+                      {selectedTopbarOrg === 'all' && <Icon name="check" size={13} className="text-purple-600" />}
                     </button>
-                  ))}
+                    {topbarOrgs.map((o) => (
+                      <button
+                        key={o.id}
+                        onClick={() => {
+                          setSelectedTopbarOrg(o.id);
+                          localStorage.setItem('vahd_selected_org_id', o.id);
+                          window.dispatchEvent(new CustomEvent('vahd:org_changed', { detail: { id: o.id } }));
+                          setShowOrgDropdown(false);
+                        }}
+                        className={`w-full flex items-center justify-between p-2 rounded-xl text-left ${selectedTopbarOrg === o.id
+                          ? 'bg-purple-50 text-purple-900 font-extrabold'
+                          : 'hover:bg-slate-50 text-slate-700 font-medium'
+                          }`}
+                      >
+                        <div className="truncate">
+                          <p className="font-bold truncate">{o.name}</p>
+                          <p className="text-[10px] text-slate-400 truncate">
+                            {o.branch} • {o.city}
+                          </p>
+                        </div>
+                        {selectedTopbarOrg === o.id && (
+                          <Icon name="check" size={13} className="text-purple-600 shrink-0 ml-1" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Center: Search Bar */}

@@ -4,7 +4,6 @@ import type {
   studentDashboardData,
   studentAttendanceData,
   studentBiometricStatus,
-  AICoachRecommendation,
 } from '@/types/student';
 
 export const studentApi = {
@@ -25,9 +24,6 @@ export const studentApi = {
 
   getBiometricStatus: (): Promise<studentBiometricStatus> =>
     apiClient.get<studentBiometricStatus>('/student/biometric-status'),
-
-  getAICoachRecommendation: (): Promise<AICoachRecommendation> =>
-    apiClient.get<AICoachRecommendation>('/student/ai/recommendation'),
 
   // Face ID Biometric Methods
   getFaceStatus: (): Promise<{ student_id: string; is_enrolled: boolean; face_image?: string | null; full_name?: string; enrolled_at?: string | null }> =>

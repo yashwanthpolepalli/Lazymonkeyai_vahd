@@ -9,7 +9,6 @@ from src.api.v1.employees import router as employees_router
 from src.api.v1.payroll import router as payroll_router
 from src.api.v1.plans import router as plans_router
 from src.api.v1.settings import router as settings_router
-from src.api.v1.ai_coach import router as ai_coach_router
 from src.api.v1.student_portal import router as student_portal_router
 from src.api.v1.hrms import router as hrms_router
 from src.api.v1.hrms_payroll import router as hrms_payroll_router
@@ -42,7 +41,6 @@ api_router.include_router(employees_router)
 api_router.include_router(payroll_router)
 api_router.include_router(plans_router)
 api_router.include_router(settings_router)
-api_router.include_router(ai_coach_router)
 api_router.include_router(student_portal_router)
 api_router.include_router(hrms_router)
 api_router.include_router(hrms_payroll_router)

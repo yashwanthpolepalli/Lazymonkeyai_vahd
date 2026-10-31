@@ -14,7 +14,7 @@ from src.models.employee import employeeProfile
 
 
 def _fetch_vahd_context(db: Session, user: User = None) -> dict:
-    """Fetch vahd name, branch, and city dynamically from PostgreSQL DB for user & branch mapping."""
+    """Fetch organization name, branch, and city dynamically from PostgreSQL DB for user & branch mapping."""
     setting = db.query(vahdSetting).first()
     branch = None
 
@@ -38,21 +38,53 @@ def _fetch_vahd_context(db: Session, user: User = None) -> dict:
                     vahdBranch.owner_id == user.id
                 ).first()
 
-        # Check student primary vahd location mapping
+        # Check student profile mapping
         if not branch:
             cust = db.query(student).filter(student.user_id == user.id).first()
             if not cust:
                 cust = db.query(student).filter(student.email == user.email).first()
-            if cust and cust.primary_vahd_location:
-                loc = cust.primary_vahd_location.strip()
-                branch = db.query(vahdBranch).filter(
-                    or_(
-                        vahdBranch.id == loc,
-                        vahdBranch.branch_name.ilike(f"%{loc}%")
-                    )
-                ).first()
+            if cust:
+                if cust.branch_id:
+                    branch = db.query(vahdBranch).filter(vahdBranch.id == cust.branch_id).first()
+                if not branch and cust.primary_vahd_location:
+                    loc = cust.primary_vahd_location.strip()
+                    branch = db.query(vahdBranch).filter(
+                        or_(
+                            vahdBranch.id == loc,
+                            vahdBranch.branch_name.ilike(f"%{loc}%"),
+                            vahdBranch.vahd_name.ilike(f"%{loc}%")
+                        )
+                    ).first()
+                if not branch and cust.owner_id:
+                    branch = db.query(vahdBranch).filter(vahdBranch.owner_id == cust.owner_id).first()
+                if not branch and cust.ho_id:
+                    branch = db.query(vahdBranch).filter(vahdBranch.ho_id == cust.ho_id).first()
 
-        # Check employee primary vahd location mapping
+        # Check HRMS Employee mapping
+        if not branch:
+            try:
+                from src.models.hrms import Employee as HrmsEmployee
+                emp = db.query(HrmsEmployee).filter(HrmsEmployee.email == user.email).first()
+                if emp:
+                    if emp.branch_id:
+                        branch = db.query(vahdBranch).filter(vahdBranch.id == emp.branch_id).first()
+                    if not branch and emp.vahd_branch:
+                        t_b = emp.vahd_branch.strip()
+                        branch = db.query(vahdBranch).filter(
+                            or_(
+                                vahdBranch.id == t_b,
+                                vahdBranch.branch_name.ilike(f"%{t_b}%"),
+                                vahdBranch.vahd_name.ilike(f"%{t_b}%")
+                            )
+                        ).first()
+                    if not branch and emp.owner_id:
+                        branch = db.query(vahdBranch).filter(vahdBranch.owner_id == emp.owner_id).first()
+                    if not branch and emp.ho_id:
+                        branch = db.query(vahdBranch).filter(vahdBranch.ho_id == emp.ho_id).first()
+            except Exception:
+                pass
+
+        # Check employeeProfile legacy mapping
         if not branch:
             employee = db.query(employeeProfile).filter(employeeProfile.email == user.email).first()
             if employee and getattr(employee, "primary_vahd_location", None):
@@ -60,7 +92,8 @@ def _fetch_vahd_context(db: Session, user: User = None) -> dict:
                 branch = db.query(vahdBranch).filter(
                     or_(
                         vahdBranch.id == t_loc,
-                        vahdBranch.branch_name.ilike(f"%{t_loc}%")
+                        vahdBranch.branch_name.ilike(f"%{t_loc}%"),
+                        vahdBranch.vahd_name.ilike(f"%{t_loc}%")
                     )
                 ).first()
 
@@ -69,20 +102,41 @@ def _fetch_vahd_context(db: Session, user: User = None) -> dict:
     if not branch:
         branch = db.query(vahdBranch).first()
 
-    vahd_name = (
-        (branch.vahd_name if branch and branch.vahd_name else None)
-        or (setting.vahd_name if setting and setting.vahd_name else None)
-        or ""
-    )
-    branch_name = branch.branch_name if branch and branch.branch_name else ""
-    city = branch.city if branch and branch.city else ""
-    vahd_id = branch.id if branch and branch.id else ""
-    ho_id = (user.ho_id if user and user.ho_id else None) or (branch.ho_id if branch and branch.ho_id else "") or ""
+    # Self-heal user.branch_id and owner_id if missing so future lookups are instant
+    if user and branch and not user.branch_id and branch.id:
+        try:
+            user.branch_id = branch.id
+            if not user.owner_id and branch.owner_id:
+                user.owner_id = branch.owner_id
+            if not user.ho_id and branch.ho_id:
+                user.ho_id = branch.ho_id
+            db.commit()
+        except Exception:
+            db.rollback()
+
+    org_name = ""
+    branch_name = ""
+    city = ""
+    vahd_id = ""
+    ho_id = ""
+
+    if branch:
+        org_name = (branch.vahd_name or branch.branch_name or "").strip()
+        branch_name = (branch.branch_name or "").strip()
+        city = (branch.city or "").strip()
+        vahd_id = branch.id or ""
+        ho_id = (branch.ho_id or (user.ho_id if user else "") or "").strip()
+
+    if not org_name and setting:
+        org_name = (setting.vahd_name or "").strip()
+
+    display_org = org_name or branch_name or "Main Organization"
 
     return {
         "vahd_id": vahd_id,
-        "vahd_name": vahd_name,
-        "branch_name": branch_name,
+        "vahd_name": display_org,
+        "branch_name": branch_name or display_org,
+        "organization_name": display_org,
         "city": city,
         "ho_id": ho_id,
     }

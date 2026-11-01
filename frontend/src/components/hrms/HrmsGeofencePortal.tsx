@@ -60,9 +60,7 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
   const [minHalfDayHours, setMinHalfDayHours] = useState<number | string>('');
   const [allowedChannels, setAllowedChannels] = useState<string[]>([
     'gps',
-    'biometric',
     'face_recognition',
-    'web_ess',
   ]);
   const [assignedEmployeeIds, setAssignedEmployeeIds] = useState<string[]>([]);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
@@ -121,7 +119,7 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
         setShiftEndTime('');
         setGracePeriodMins(0);
         setMinHalfDayHours('');
-        setAllowedChannels(['gps', 'biometric', 'face_recognition', 'web_ess']);
+        setAllowedChannels(['gps', 'face_recognition']);
         setAssignedEmployeeIds([]);
       }
     } catch (e) {
@@ -213,8 +211,8 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
     setMinHalfDayHours(scheme.min_half_day_hours ?? '');
     setAllowedChannels(
       scheme.allowed_channels?.length
-        ? scheme.allowed_channels
-        : ['gps', 'biometric', 'face_recognition', 'web_ess']
+        ? scheme.allowed_channels.filter((c: string) => c === 'gps' || c === 'face_recognition')
+        : ['gps', 'face_recognition']
     );
 
     const rawAssigned = scheme.assigned_employee_ids || [];
@@ -1171,22 +1169,10 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
                   icon: 'map-pin',
                 },
                 {
-                  id: 'biometric',
-                  title: 'Biometric Fingerprint Terminals',
-                  desc: 'Hardware gate turnstiles',
-                  icon: 'fingerprint',
-                },
-                {
                   id: 'face_recognition',
                   title: 'AI Facial Recognition Tablet',
                   desc: 'Kiosk face recognition at entrance',
                   icon: 'camera',
-                },
-                {
-                  id: 'web_ess',
-                  title: 'Web ESS Portal & WFH',
-                  desc: 'Browser 1-click punch',
-                  icon: 'globe',
                 },
               ].map((channel) => {
                 const isChecked = allowedChannels.includes(channel.id);

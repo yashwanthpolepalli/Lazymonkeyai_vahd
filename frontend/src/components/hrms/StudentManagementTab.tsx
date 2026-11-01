@@ -8,6 +8,7 @@ import { WhatsAppGatewayConnectModal } from './WhatsAppGatewayConnectModal';
 import { printStudentAdmissionForm } from '@/lib/student-print-helper';
 import { TableColumnSettingsPopover, ColumnGroup } from './TableColumnSettingsPopover';
 import { HrmsImportExportControls } from './HrmsImportExportControls';
+import { PasswordResetModal } from './PasswordResetModal';
 
 export const STUDENT_COLUMN_GROUPS: ColumnGroup[] = [
   {
@@ -100,6 +101,7 @@ interface StudentItem {
   name?: string;
   email: string;
   phone: string;
+  student_number?: string;
   parent_phone?: string;
   parent_mobile?: string;
   member_code?: string;
@@ -188,6 +190,7 @@ export function StudentManagementTab() {
   const [sendingSingleReport, setSendingSingleReport] = useState(false);
   const [isWhatsAppReportsModalOpen, setIsWhatsAppReportsModalOpen] = useState(false);
   const [isGatewayModalOpen, setIsGatewayModalOpen] = useState(false);
+  const [passwordResetTarget, setPasswordResetTarget] = useState<StudentItem | null>(null);
 
   const handleDispatchMonthlyReports = async () => {
     if (!confirm("Dispatch official monthly biometric attendance reports to all registered parent WhatsApp numbers?")) {
@@ -1350,22 +1353,21 @@ export function StudentManagementTab() {
                         <div className="flex items-center justify-center gap-1.5">
                           <button
                             type="button"
-                            disabled={dispatchingWhatsAppId === s.id}
-                            onClick={() => handleQuickSendWhatsApp(s)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 transition disabled:opacity-50"
-                            title={`Send Attendance Report to Parent (${s.parent_phone || s.meta_data?.parent_mobile || 'Mapped Mobile'}) via WhatsApp`}
-                          >
-                            <Icon name="message-circle" size={13} className="text-emerald-600" />
-                            <span>{dispatchingWhatsAppId === s.id ? 'Sending...' : 'WhatsApp'}</span>
-                          </button>
-                          <button
-                            type="button"
                             onClick={() => handleEditStudent(s)}
                             className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition"
                             title="Edit Student Details"
                           >
                             <Icon name="pen" size={12} />
                             <span>Edit</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setPasswordResetTarget(s)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-purple-50 hover:bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 border border-purple-200 dark:border-purple-800 transition"
+                            title="Reset Student Password"
+                          >
+                            <Icon name="key" size={12} className="text-purple-600" />
+                            <span>Password</span>
                           </button>
                           <button
                             type="button"
@@ -1494,12 +1496,11 @@ export function StudentManagementTab() {
                   <div className="flex items-center gap-1">
                     <button
                       type="button"
-                      disabled={dispatchingWhatsAppId === s.id}
-                      onClick={() => handleQuickSendWhatsApp(s)}
-                      className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 transition font-bold disabled:opacity-50"
-                      title={`Send Attendance Report to Parent (${s.parent_phone || s.meta_data?.parent_mobile || 'Mapped Mobile'}) via WhatsApp`}
+                      onClick={() => setPasswordResetTarget(s)}
+                      className="p-1.5 rounded-lg text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950/50 transition font-bold"
+                      title="Reset Student Password"
                     >
-                      <Icon name="message-circle" size={15} />
+                      <Icon name="key" size={14} />
                     </button>
                     <button
                       type="button"
@@ -1739,6 +1740,20 @@ export function StudentManagementTab() {
 
           </div>
         </div>
+      )}
+
+      {/* Password Reset Modal */}
+      {passwordResetTarget && (
+        <PasswordResetModal
+          isOpen={!!passwordResetTarget}
+          onClose={() => setPasswordResetTarget(null)}
+          targetType="student"
+          targetId={passwordResetTarget.id}
+          targetName={passwordResetTarget.full_name || passwordResetTarget.name || 'Student'}
+          targetEmail={passwordResetTarget.email || ''}
+          targetCode={passwordResetTarget.student_number || passwordResetTarget.member_code || passwordResetTarget.code || passwordResetTarget.id}
+          onSuccess={(msg) => showToast(msg)}
+        />
       )}
 
     </div>

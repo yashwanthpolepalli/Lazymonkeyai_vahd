@@ -76,9 +76,10 @@ export function getNavItems(role: Role, permissions?: Record<string, any>): NavI
     permissions['hrms_designations.view'] ||
     permissions['hrms_teams.view'] ||
     permissions['hrms_documents.view'] ||
+    permissions['employee_password_reset.view'] ||
+    permissions['student_password_reset.view'] ||
     permissions['attendance.view'] ||
     permissions['geofence_portal.view'] ||
-    permissions['biometrics.view'] ||
     permissions['face_recognition.view'] ||
     permissions['gps_attendance.view'] ||
     permissions['shift_attendance.view'] ||

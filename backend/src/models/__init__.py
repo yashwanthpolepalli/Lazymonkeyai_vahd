@@ -16,7 +16,8 @@ from .hrms import (
     Employee, Department, Designation, Team, EmployeeDocument,
     EmployeeAttendance, LeaveRequest, PayrollRecord,
     RecruitmentJob, JobApplicant, EmployeePerformance, ExitRequest,
-    GeofenceScheme, LeaveType, EmployeeLeaveBalance, AttendanceCorrection
+    GeofenceScheme, LeaveType, EmployeeLeaveBalance, AttendanceCorrection,
+    EmployeeShiftRoster, WorkCalendarPolicy, CompanyHoliday, ShiftTemplate
 )
 from .super_admin import SaaSPlan, PlatformAuditLog, AiJobLog, PlatformSetting, SupportTicket, PlatformAlert, AiModelRouting
 
@@ -42,6 +43,7 @@ __all__ = [
     "WhatsAppSessionModel", "WhatsAppMessageModel",
     "Employee", "Department", "Designation", "Team", "EmployeeDocument",
     "EmployeeAttendance", "LeaveRequest", "PayrollRecord", "AttendanceCorrection",
+    "EmployeeShiftRoster", "WorkCalendarPolicy", "CompanyHoliday", "ShiftTemplate",
     "RecruitmentJob", "JobApplicant", "EmployeePerformance", "ExitRequest",
     "GeofenceScheme", "LeaveType", "EmployeeLeaveBalance",
     "SaaSPlan", "PlatformAuditLog", "AiJobLog", "PlatformSetting", "SupportTicket",

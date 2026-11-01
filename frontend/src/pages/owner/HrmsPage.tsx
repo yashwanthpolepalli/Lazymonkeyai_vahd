@@ -9,6 +9,8 @@ import { HrmsGeofencePortal } from '@/components/hrms/HrmsGeofencePortal';
 import { HrmsLeaveTab } from '@/components/hrms/HrmsLeaveTab';
 import { HrmsPayrollTab } from '@/components/hrms/HrmsPayrollTab';
 import { HrmsAttendanceCorrectionsTab } from '@/components/hrms/HrmsAttendanceCorrectionsTab';
+import { HrmsShiftRosterTab } from '@/components/hrms/HrmsShiftRosterTab';
+import { HrmsWorkCalendarsTab } from '@/components/hrms/HrmsWorkCalendarsTab';
 import { StudentManagementTab } from '@/components/hrms/StudentManagementTab';
 import { useAuth } from '@/context/AuthContext';
 import { apiClient } from '@/services/apiClient';
@@ -130,11 +132,11 @@ export function HrmsPage() {
       if (canViewStudents) setViewMode('students');
     }
     if (initialTab) {
-      const normalizedTab = initialTab === 'employees' ? 'employees' : initialTab;
+      const normalizedTab = initialTab === 'employees' ? 'employees' : (initialTab === 'biometric' || initialTab === 'biometrics') ? 'attendance' : initialTab;
       setActiveSubTab(normalizedTab);
-      if (['employees', 'employees', 'departments', 'designations', 'teams', 'documents', 'profile'].includes(initialTab)) {
+      if (['employees', 'departments', 'designations', 'teams', 'documents', 'profile'].includes(initialTab)) {
         setActiveCategory('Employee Management');
-      } else if (['attendance', 'biometrics', 'geofence', 'geofence_portal', 'daily_attendance', 'biometric', 'face_recognition', 'gps_attendance', 'shift_attendance', 'corrections'].includes(initialTab)) {
+      } else if (['attendance', 'attendance_settings', 'work_calendars', 'geofence', 'geofence_portal', 'daily_attendance', 'face_recognition', 'gps_attendance', 'shift_attendance', 'corrections', 'biometric', 'biometrics'].includes(initialTab)) {
         setActiveCategory('Attendance');
       } else if (initialTab === 'leave') {
         setActiveCategory('Leave');
@@ -283,7 +285,7 @@ export function HrmsPage() {
                   return val !== undefined ? !!val : true;
                 }
                 if (cat.id === 'Attendance') {
-                  const val = perms['attendance.view'] ?? perms['geofence_portal.view'] ?? perms['biometrics.view'] ?? perms['face_recognition.view'] ?? perms['gps_attendance.view'] ?? perms['shift_attendance.view'] ?? perms['attendance_corrections.view'];
+                  const val = perms['attendance.view'] ?? perms['geofence_portal.view'] ?? perms['face_recognition.view'] ?? perms['gps_attendance.view'] ?? perms['shift_attendance.view'] ?? perms['attendance_corrections.view'];
                   return val !== undefined ? !!val : true;
                 }
                 const val = perms[`${cat.permKey}.view`] ?? perms[cat.permKey];
@@ -454,10 +456,10 @@ export function HrmsPage() {
               <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
                 {[
                   { id: 'attendance', label: 'Daily Attendance', icon: 'calendar-check', permKey: 'attendance' },
+                  { id: 'attendance_settings', label: 'Work Calendars', icon: 'calendar', permKey: 'attendance_settings' },
                   ...(isHoUser || geofencePortalEnabled
                     ? [{ id: 'geofence_portal', label: 'Attendance & Geofence Portal', icon: 'sliders', permKey: 'geofence_portal' }]
                     : []),
-                  { id: 'biometric', label: 'Biometric', icon: 'fingerprint', permKey: 'biometrics' },
                   { id: 'face_recognition', label: 'Face Recognition', icon: 'camera', permKey: 'face_recognition' },
                   { id: 'gps_attendance', label: 'GPS Attendance', icon: 'map-pin', permKey: 'gps_attendance' },
                   { id: 'shift_attendance', label: 'Shift Attendance', icon: 'clock', permKey: 'shift_attendance' },
@@ -471,6 +473,7 @@ export function HrmsPage() {
                   const isSelected =
                     activeSubTab === sub.id ||
                     (sub.id === 'attendance' && activeSubTab === 'daily_attendance') ||
+                    (sub.id === 'attendance_settings' && activeSubTab === 'work_calendars') ||
                     (sub.id === 'geofence_portal' && activeSubTab === 'geofence');
 
                   return (
@@ -493,7 +496,9 @@ export function HrmsPage() {
               </div>
 
               {/* Conditional View */}
-              {activeSubTab === 'geofence_portal' || activeSubTab === 'geofence' ? (
+              {activeSubTab === 'attendance_settings' || activeSubTab === 'work_calendars' ? (
+                <HrmsWorkCalendarsTab onSuccessToast={triggerToast} />
+              ) : activeSubTab === 'geofence_portal' || activeSubTab === 'geofence' ? (
                 isHoUser || geofencePortalEnabled ? (
                   <HrmsGeofencePortal onSuccessToast={triggerToast} />
                 ) : (
@@ -521,8 +526,10 @@ export function HrmsPage() {
                 )
               ) : activeSubTab === 'corrections' || activeSubTab === 'attendance-approve' || activeSubTab === 'approvals' ? (
                 <HrmsAttendanceCorrectionsTab onSuccessToast={triggerToast} />
+              ) : activeSubTab === 'shift_attendance' || activeSubTab === 'shifts' || activeSubTab === 'shift_roster' ? (
+                <HrmsShiftRosterTab onSuccessToast={triggerToast} />
               ) : (
-                <HrmsAttendanceTab attendanceLogs={attendanceLogs} />
+                <HrmsAttendanceTab onSuccessToast={triggerToast} />
               )}
             </div>
           )}

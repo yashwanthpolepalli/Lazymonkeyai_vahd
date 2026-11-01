@@ -11,6 +11,7 @@ import { EmployeeEnrollmentModal } from './EmployeeEnrollmentModal';
 import { EmployeeAttendanceReportsModal } from './EmployeeAttendanceReportsModal';
 import { TableColumnSettingsPopover, type ColumnGroup } from './TableColumnSettingsPopover';
 import { HrmsImportExportControls } from './HrmsImportExportControls';
+import { PasswordResetModal } from './PasswordResetModal';
 
 const EMPLOYEE_COLUMN_GROUPS: ColumnGroup[] = [
   {
@@ -300,6 +301,7 @@ export function HrmsemployeesTab() {
   }, []);
 
   // Payroll & Salary Payout state
+  const [passwordResetTarget, setPasswordResetTarget] = useState<employeeRowData | null>(null);
   const [payrollModalOpen, setPayrollModalOpen] = useState(false);
   const [payrollInvoices, setPayrollInvoices] = useState<PayrollInvoice[]>([]);
   const [loadingPayroll, setLoadingPayroll] = useState(false);
@@ -1065,6 +1067,14 @@ export function HrmsemployeesTab() {
                         <Icon name="pen" size={13} className="text-blue-600" />
                         <span>Edit</span>
                       </button>
+                      <button
+                        onClick={() => setPasswordResetTarget(t)}
+                        className="px-3 py-1.5 text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200/60 rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                        title="Reset Account Password"
+                      >
+                        <Icon name="key" size={13} className="text-purple-600" />
+                        <span>Password</span>
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -1464,6 +1474,15 @@ export function HrmsemployeesTab() {
                             >
                               <Icon name="pen" size={13} className="text-blue-600" />
                               <span>Edit</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setPasswordResetTarget(t)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-purple-50 text-purple-700 hover:bg-purple-100 hover:text-purple-800 border border-purple-200/80 shadow-2xs transition-all active:scale-[0.98] cursor-pointer"
+                              title="Reset Account Password"
+                            >
+                              <Icon name="key" size={13} className="text-purple-600" />
+                              <span>Password</span>
                             </button>
                             <button
                               type="button"
@@ -1934,6 +1953,20 @@ export function HrmsemployeesTab() {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Password Reset Modal */}
+      {passwordResetTarget && (
+        <PasswordResetModal
+          isOpen={!!passwordResetTarget}
+          onClose={() => setPasswordResetTarget(null)}
+          targetType="employee"
+          targetId={passwordResetTarget.id}
+          targetName={passwordResetTarget.name}
+          targetEmail={passwordResetTarget.email}
+          targetCode={passwordResetTarget.code || passwordResetTarget.id}
+          onSuccess={(msg) => triggerToast(msg)}
+        />
       )}
     </div>
   );

@@ -33,6 +33,7 @@ class Employee(Base):
     qualification = Column(String, nullable=True)
     specialization = Column(String, nullable=True)
     skills = Column(JSON, nullable=True)
+    shift_code = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 class Department(Base):
@@ -94,6 +95,9 @@ class EmployeeAttendance(Base):
     status = Column(String, nullable=True)
     work_hours = Column(Float, nullable=True)
     device_id = Column(String, nullable=True)
+    shift_id = Column(String, nullable=True)
+    shift_code = Column(String, nullable=True)
+    shift_name = Column(String, nullable=True)
     notes = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -444,6 +448,77 @@ class AttendanceCorrection(Base):
     approved_at = Column(DateTime, nullable=True)
     rejection_reason = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class EmployeeShiftRoster(Base):
+    __tablename__ = "hrms_shift_rosters"
+    __table_args__ = {'extend_existing': True}
+
+    id = Column(String, primary_key=True, default=lambda: f"roster_{uuid.uuid4().hex[:8]}")
+    employee_id = Column(String, ForeignKey("hrms_employees.id", ondelete="CASCADE"), nullable=False, index=True)
+    date = Column(Date, nullable=False, index=True)
+    shift_id = Column(String, nullable=True)
+    shift_code = Column(String, nullable=True)
+    shift_name = Column(String, nullable=True)
+    start_time = Column(String, nullable=True)
+    end_time = Column(String, nullable=True)
+    is_weekly_off = Column(Boolean, default=False)
+    status = Column(String, nullable=True)
+    notes = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class ShiftTemplate(Base):
+    __tablename__ = "hrms_shift_templates"
+    __table_args__ = {'extend_existing': True}
+
+    id = Column(String, primary_key=True, default=lambda: f"shift_{uuid.uuid4().hex[:8]}")
+    code = Column(String, nullable=False, unique=True, index=True)
+    name = Column(String, nullable=False)
+    start_time = Column(String, nullable=True)
+    end_time = Column(String, nullable=True)
+    duration_hours = Column(Float, nullable=True)
+    break_mins = Column(Integer, nullable=True)
+    grace_period_mins = Column(Integer, nullable=True)
+    is_night_shift = Column(Boolean, default=False)
+    color = Column(String, nullable=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class WorkCalendarPolicy(Base):
+    __tablename__ = "hrms_work_calendars"
+    __table_args__ = {'extend_existing': True}
+
+    id = Column(String, primary_key=True, default=lambda: f"cal_{uuid.uuid4().hex[:8]}")
+    name = Column(String, nullable=False)
+    department = Column(String, nullable=True)
+    calendar_type = Column(String, nullable=True)
+    is_default = Column(Boolean, default=False)
+    default_shift_code = Column(String, nullable=True)
+    working_days = Column(JSON, default=list)
+    weekly_off_days = Column(JSON, default=list)
+    shift_timings = Column(JSON, default=list)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class CompanyHoliday(Base):
+    __tablename__ = "hrms_holidays"
+    __table_args__ = {'extend_existing': True}
+
+    id = Column(String, primary_key=True, default=lambda: f"hol_{uuid.uuid4().hex[:8]}")
+    calendar_id = Column(String, nullable=True)
+    name = Column(String, nullable=False)
+    date = Column(Date, nullable=False, index=True)
+    year = Column(Integer, nullable=False, index=True)
+    holiday_type = Column(String, nullable=True)
+    description = Column(String, nullable=True)
+    is_optional = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
 
 
 

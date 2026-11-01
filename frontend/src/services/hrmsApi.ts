@@ -599,5 +599,189 @@ export const hrmsApi = {
       time?: string;
       punch?: any;
     }>('/hrms/face/verify', payload),
+
+  // Shift Roster & Work Calendars
+  getWorkCalendars: () => apiClient.get<WorkCalendarItem[]>('/hrms/shifts/calendars'),
+  saveWorkCalendar: (payload: any) => apiClient.post<WorkCalendarItem>('/hrms/shifts/calendars', payload),
+  deleteWorkCalendar: (calId: string) => apiClient.delete<{ status: string; message: string }>(`/hrms/shifts/calendars/${calId}`),
+  addCalendarShiftTiming: (calId: string, payload: { name: string; start_time: string; end_time: string }) =>
+    apiClient.post<ShiftTimingItem>(`/hrms/shifts/calendars/${calId}/timings`, payload),
+  deleteCalendarShiftTiming: (calId: string, timingId: string) =>
+    apiClient.delete<{ status: string; message: string }>(`/hrms/shifts/calendars/${calId}/timings/${timingId}`),
+
+  // Shift Templates (Enterprise Shifts)
+  getShiftTemplates: () => apiClient.get<ShiftTemplateItem[]>('/hrms/shifts/templates'),
+  saveShiftTemplate: (payload: Partial<ShiftTemplateItem>) => apiClient.post<ShiftTemplateItem>('/hrms/shifts/templates', payload),
+  deleteShiftTemplate: (templateId: string) => apiClient.delete<{ status: string; message: string }>(`/hrms/shifts/templates/${templateId}`),
+
+  getShiftRoster: (params?: { start_date?: string; end_date?: string; department?: string; search?: string; view?: string }) =>
+    apiClient.get<ShiftRosterResponse>('/hrms/shifts/roster', { params }),
+  assignShift: (payload: { employee_ids?: string[]; employee_id?: string; dates?: string[]; date?: string; shift_code: string; is_off?: boolean }) =>
+    apiClient.post<{ status: string; message: string; updated_count: number }>('/hrms/shifts/assign', payload),
+
+  // Company Holidays & Work Calendar Schemes
+  getHolidays: (params?: { year?: number; type?: string; search?: string }) =>
+    apiClient.get<CompanyHolidayItem[]>('/hrms/holidays', { params }),
+  saveHoliday: (payload: Partial<CompanyHolidayItem>) =>
+    apiClient.post<CompanyHolidayItem>('/hrms/holidays', payload),
+  deleteHoliday: (holidayId: string) =>
+    apiClient.delete<{ message: string; id: string }>(`/hrms/holidays/${holidayId}`),
+  preseedHolidays: (year?: number) =>
+    apiClient.post<{ status: string; message: string; inserted_count: number }>('/hrms/holidays/preseed', { year }),
+
+  // Monthly Attendance Matrix & Punch
+  getAttendanceMatrix: (params?: { year?: number; month?: number; department?: string; search?: string }) =>
+    apiClient.get<AttendanceMatrixResponse>('/hrms/attendance/matrix', { params }),
+  punchAttendance: (payload: { employee_id: string; action: string; time?: string; date?: string; note?: string; lat?: number; lng?: number; method?: string }) =>
+    apiClient.post<any>('/hrms/attendance/punch', payload),
+
+  // Password Reset (Students & Employees)
+  resetPassword: (payload: { target_type: 'student' | 'employee' | string; target_id: string; new_password: string }) =>
+    apiClient.post<{ status: string; message: string; target_id: string; target_name: string; email: string }>('/hrms/reset-password', payload),
 };
+
+export interface ShiftTimingItem {
+  id: string;
+  name: string;
+  start_time: string;
+  end_time: string;
+}
+
+export interface ShiftTemplateItem {
+  id: string;
+  code: string;
+  name: string;
+  start_time: string;
+  end_time: string;
+  duration_hours?: number;
+  break_mins: number;
+  grace_period_mins: number;
+  is_night_shift: boolean;
+  color: string;
+  is_active: boolean;
+}
+
+export interface WorkCalendarItem {
+  id: string;
+  name: string;
+  calendar_type: string;
+  department: string;
+  is_default: boolean;
+  default_shift_code: string;
+  working_days: string[];
+  weekly_off_days: string[];
+  shift_timings?: ShiftTimingItem[];
+  is_active: boolean;
+  holidays_count?: number;
+}
+
+export interface CompanyHolidayItem {
+  id?: string;
+  calendar_id?: string;
+  name: string;
+  date: string;
+  formatted_date?: string;
+  day_name?: string;
+  year?: number;
+  holiday_type?: string;
+  description?: string;
+  is_optional?: boolean;
+}
+
+export interface DayMatrixCell {
+  code: 'P' | 'A' | 'PL' | 'WO' | 'HOL' | 'HD' | '-';
+  date: string;
+  status_label: string;
+  check_in?: string | null;
+  check_out?: string | null;
+  work_hours?: number | null;
+}
+
+export interface EmployeeMatrixRow {
+  id: string;
+  code: string;
+  name: string;
+  department: string;
+  designation: string;
+  initials: string;
+  avatar: string;
+  present_count: number;
+  absent_count: number;
+  leave_count: number;
+  payable_days: number;
+  days: Record<string, DayMatrixCell>;
+}
+
+export interface AttendanceMatrixResponse {
+  year: number;
+  month: number;
+  month_name: string;
+  days_in_month: {
+    day: number;
+    day_letter: string;
+    day_name: string;
+    formatted: string;
+    date_str: string;
+    is_today: boolean;
+    is_future: boolean;
+  }[];
+  summary: {
+    present_today: number;
+    absent: number;
+    on_leave: number;
+    avg_attendance_pct: number;
+    total_profiles: number;
+  };
+  employees: EmployeeMatrixRow[];
+  departments: string[];
+}
+
+export interface ShiftDayInfo {
+  shift_code: string;
+  shift_name: string;
+  start_time: string;
+  end_time: string;
+  is_off: boolean;
+  color: string;
+  time_range: string;
+  attendance_status?: string | null;
+  check_in?: string | null;
+  check_out?: string | null;
+  is_present?: boolean;
+}
+
+export interface EmployeeRosterRow {
+  id: string;
+  code: string;
+  name: string;
+  initials: string;
+  designation: string;
+  department: string;
+  avatar: string;
+  shifts: Record<string, ShiftDayInfo>;
+}
+
+export interface ShiftRosterResponse {
+  week_label: string;
+  start_date: string;
+  end_date: string;
+  dates: {
+    date: string;
+    day_name: string;
+    formatted: string;
+    full_str: string;
+    is_today: boolean;
+  }[];
+  summary: {
+    general: number;
+    morning: number;
+    evening: number;
+    night: number;
+    weekly_offs: number;
+  };
+  employees: EmployeeRosterRow[];
+  total_staff: number;
+  departments: string[];
+  shift_templates?: any[];
+}
 

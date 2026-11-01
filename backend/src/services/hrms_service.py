@@ -9,7 +9,8 @@ from src.models.hrms import (
     Employee, Department, Designation, Team, EmployeeDocument,
     EmployeeAttendance, LeaveRequest, PayrollRecord,
     RecruitmentJob, JobApplicant, EmployeePerformance, ExitRequest,
-    GeofenceScheme, LeaveType, EmployeeLeaveBalance, AttendanceCorrection
+    GeofenceScheme, LeaveType, EmployeeLeaveBalance, AttendanceCorrection,
+    EmployeeShiftRoster, WorkCalendarPolicy, CompanyHoliday, ShiftTemplate
 )
 from src.models.employee import employeeProfile
 from src.models.payroll import PayrollInvoice
@@ -19,6 +20,14 @@ from src.models.biometric import BiometricLog
 from src.models.settings import Branch as vahdBranch, Setting as vahdSetting, MasterData
 
 IST = timezone(timedelta(hours=5, minutes=30))
+
+STANDARD_SHIFTS = {
+    "GEN": {"code": "GEN", "name": "General (09-18)", "start_time": "09:00", "end_time": "18:00", "grace_period_mins": 15, "color": "#7c3aed"},
+    "MORN": {"code": "MORN", "name": "Morning (06-14)", "start_time": "06:00", "end_time": "14:00", "grace_period_mins": 15, "color": "#059669"},
+    "EVE": {"code": "EVE", "name": "Evening (14-22)", "start_time": "14:00", "end_time": "22:00", "grace_period_mins": 15, "color": "#d97706"},
+    "NIGHT": {"code": "NIGHT", "name": "Night (22-06)", "start_time": "22:00", "end_time": "06:00", "grace_period_mins": 15, "color": "#9333ea"},
+    "OFF": {"code": "OFF", "name": "Rest Day", "start_time": "", "end_time": "", "grace_period_mins": 0, "color": "#64748b"},
+}
 
 
 
@@ -33,18 +42,17 @@ class HrmsService:
         Removes any obsolete or mock employee records that do not belong to actual employees/staff.
         """
         employees = db.query(employeeProfile).all()
-        employee_emails = {t.email.strip().lower() for t in employees if t.email}
+        user_employees = db.query(User).filter(
+            func.upper(User.role).in_(["EMPLOYEE", "STAFF", "ADMIN", "OWNER", "SUPER_ADMIN", "HO"])
+        ).all()
+        valid_emails = {t.email.strip().lower() for t in employees if t.email}
+        valid_emails.update({u.email.strip().lower() for u in user_employees if u.email})
 
-        # 1. Purge obsolete/mock employees not present in employeeProfile
+        # 1. Only purge obsolete employees that have no email or are placeholder/mock artifacts
         all_employees = db.query(Employee).all()
         for emp in all_employees:
-            if not emp.email or emp.email.strip().lower() not in employee_emails:
-                db.query(EmployeeAttendance).filter(EmployeeAttendance.employee_id == emp.id).delete()
-                db.query(LeaveRequest).filter(LeaveRequest.employee_id == emp.id).delete()
-                db.query(PayrollRecord).filter(PayrollRecord.employee_id == emp.id).delete()
-                db.query(EmployeeDocument).filter(EmployeeDocument.employee_id == emp.id).delete()
-                db.query(EmployeePerformance).filter(EmployeePerformance.employee_id == emp.id).delete()
-                db.query(ExitRequest).filter(ExitRequest.employee_id == emp.id).delete()
+            # Keep any employee who has an email or was enrolled directly in HRMS
+            if not emp.email and not emp.code:
                 db.delete(emp)
         db.flush()
 
@@ -173,6 +181,9 @@ class HrmsService:
                     conditions.append(Employee.branch_id.in_(ho_branch_ids))
                 if ho_branch_names:
                     conditions.append(Employee.vahd_branch.in_(ho_branch_names))
+                # Also include unassigned or organization-wide enterprise employees
+                conditions.append(Employee.ho_id.is_(None))
+                conditions.append(Employee.ho_id == "")
 
                 query = query.filter(or_(*conditions))
 
@@ -192,6 +203,9 @@ class HrmsService:
                     conditions.append(Employee.branch_id.in_(owner_branch_ids))
                 if owner_branch_names:
                     conditions.append(Employee.vahd_branch.in_(owner_branch_names))
+                # Also include unassigned or organization-wide enterprise employees
+                conditions.append(Employee.owner_id.is_(None))
+                conditions.append(Employee.owner_id == "")
                 if conditions:
                     query = query.filter(or_(*conditions))
                 if branch_id:
@@ -790,7 +804,7 @@ class HrmsService:
                         shift_end_time="",
                         grace_period_mins=0,
                         min_half_day_hours=None,
-                        allowed_channels=["gps", "biometric", "face_recognition", "web_ess"],
+                        allowed_channels=["gps", "face_recognition"],
                         assigned_employee_ids=all_emp_ids,
                         is_active=True
                     )
@@ -800,6 +814,10 @@ class HrmsService:
 
         result = []
         for s in schemes:
+            raw_channels = s.allowed_channels or ["gps", "face_recognition"]
+            clean_channels = [c for c in raw_channels if c in ["gps", "face_recognition"]]
+            if not clean_channels:
+                clean_channels = ["gps", "face_recognition"]
             result.append({
                 "id": s.id,
                 "name": s.name,
@@ -814,7 +832,7 @@ class HrmsService:
                 "shift_end_time": s.shift_end_time or "",
                 "grace_period_mins": int(s.grace_period_mins or 0),
                 "min_half_day_hours": float(s.min_half_day_hours) if s.min_half_day_hours is not None else None,
-                "allowed_channels": s.allowed_channels or [],
+                "allowed_channels": clean_channels,
                 "assigned_employee_ids": s.assigned_employee_ids or [],
                 "is_active": bool(s.is_active),
                 "created_at": s.created_at.strftime("%Y-%m-%d %H:%M:%S") if s.created_at else "",
@@ -866,7 +884,9 @@ class HrmsService:
         if "min_half_day_hours" in payload:
             scheme.min_half_day_hours = float(payload["min_half_day_hours"]) if payload["min_half_day_hours"] is not None else None
         if "allowed_channels" in payload:
-            scheme.allowed_channels = payload["allowed_channels"]
+            raw_channels = payload.get("allowed_channels") or ["gps", "face_recognition"]
+            clean_channels = [c for c in raw_channels if c in ["gps", "face_recognition"]]
+            scheme.allowed_channels = clean_channels if clean_channels else ["gps", "face_recognition"]
         if "assigned_employee_ids" in payload:
             scheme.assigned_employee_ids = payload["assigned_employee_ids"]
         if "is_active" in payload:
@@ -1125,6 +1145,39 @@ class HrmsService:
             display_name = f"{emp.first_name} {emp.last_name or ''}".strip() or (employee.full_name if employee else emp.email)
             student_id_val = None
 
+            # Shift Roster mapping for accurate presence evaluation
+            roster = db.query(EmployeeShiftRoster).filter(
+                EmployeeShiftRoster.employee_id == emp.id,
+                EmployeeShiftRoster.date == today
+            ).first()
+
+            resolved_shift_code = (roster.shift_code if roster else getattr(emp, "shift_code", None)) or "GEN"
+            std_shift = STANDARD_SHIFTS.get(resolved_shift_code, STANDARD_SHIFTS["GEN"])
+            resolved_shift_name = (roster.shift_name if roster else None) or std_shift["name"]
+            resolved_shift_id = roster.shift_id if roster else None
+            shift_start_time = (roster.start_time if roster else None) or std_shift.get("start_time", "")
+            shift_grace = std_shift.get("grace_period_mins", 15)
+
+            # If punch is CHECK_IN, calculate attendance status based on shift start time & grace period
+            if action == "CHECK_IN" and shift_start_time:
+                try:
+                    expected_time = datetime.strptime(shift_start_time.strip(), "%H:%M").time()
+                    punch_time = now_ist.time()
+                    expected_mins = expected_time.hour * 60 + expected_time.minute
+                    actual_mins = punch_time.hour * 60 + punch_time.minute
+                    grace = shift_grace
+                    if actual_mins <= expected_mins + grace:
+                        status = "Present"
+                    else:
+                        status = "Present (Late)"
+                except Exception:
+                    status = "Present"
+            elif action == "CHECK_IN":
+                status = "Present"
+
+            if roster:
+                roster.status = "ATTENDED"
+
             # Record in EmployeeAttendance
             att = db.query(EmployeeAttendance).filter(
                 EmployeeAttendance.employee_id == emp.id,
@@ -1140,10 +1193,16 @@ class HrmsService:
                     check_out=now_str if action == "CHECK_OUT" else None,
                     status=status,
                     work_hours=0.0,
+                    shift_id=resolved_shift_id,
+                    shift_code=resolved_shift_code,
+                    shift_name=resolved_shift_name,
                     notes=punch_notes
                 )
                 db.add(att)
             else:
+                att.shift_id = resolved_shift_id
+                att.shift_code = resolved_shift_code
+                att.shift_name = resolved_shift_name
                 if action == "CHECK_IN":
                     att.check_in = now_str
                     att.status = status
@@ -2430,3 +2489,913 @@ class HrmsService:
             req.settlement_status = payload["settlement_status"]
         db.commit()
         return {"message": "Exit status updated successfully"}
+
+    # -------------------------------------------------------------
+    # 14. SHIFT ROSTER & WORK CALENDAR METHODS
+    # -------------------------------------------------------------
+    @staticmethod
+    def get_work_calendars(db: Session) -> List[Dict[str, Any]]:
+        cals = db.query(WorkCalendarPolicy).order_by(WorkCalendarPolicy.created_at.asc()).all()
+        holidays_count = db.query(CompanyHoliday).count()
+
+        return [
+            {
+                "id": c.id,
+                "name": c.name,
+                "calendar_type": getattr(c, "calendar_type", None) or "shift",
+                "department": c.department or "All",
+                "is_default": bool(getattr(c, "is_default", False)),
+                "default_shift_code": c.default_shift_code or "",
+                "working_days": getattr(c, "working_days", []) or [],
+                "weekly_off_days": c.weekly_off_days or [],
+                "shift_timings": getattr(c, "shift_timings", []) or [],
+                "is_active": bool(c.is_active),
+                "holidays_count": holidays_count,
+            }
+            for c in cals
+        ]
+
+    @staticmethod
+    def save_work_calendar(db: Session, payload: Dict[str, Any]) -> Dict[str, Any]:
+        cal_id = payload.get("id")
+        cal = None
+        if cal_id:
+            cal = db.query(WorkCalendarPolicy).filter(WorkCalendarPolicy.id == cal_id).first()
+        if not cal:
+            name = (payload.get("name") or "").strip()
+            if name:
+                cal = db.query(WorkCalendarPolicy).filter(WorkCalendarPolicy.name == name).first()
+        if not cal:
+            name = (payload.get("name") or "").strip()
+            if not name:
+                raise ValueError("Calendar name is required")
+            cal = WorkCalendarPolicy(
+                id=f"cal_{uuid.uuid4().hex[:8]}",
+                name=name,
+                calendar_type=payload.get("calendar_type") or "shift",
+                department=payload.get("department") or "All",
+                is_default=bool(payload.get("is_default", False)),
+                default_shift_code=payload.get("default_shift_code") or None,
+                working_days=payload.get("working_days") or [],
+                weekly_off_days=payload.get("weekly_off_days") or [],
+                shift_timings=payload.get("shift_timings") or [],
+                is_active=bool(payload.get("is_active", True))
+            )
+            db.add(cal)
+        else:
+            if "name" in payload:
+                cal.name = payload["name"]
+            if "calendar_type" in payload:
+                cal.calendar_type = payload["calendar_type"]
+            if "department" in payload:
+                cal.department = payload["department"]
+            if "is_default" in payload:
+                cal.is_default = bool(payload["is_default"])
+            if "default_shift_code" in payload:
+                cal.default_shift_code = payload["default_shift_code"]
+            if "working_days" in payload:
+                cal.working_days = payload["working_days"]
+            if "weekly_off_days" in payload:
+                cal.weekly_off_days = payload["weekly_off_days"]
+            if "shift_timings" in payload:
+                cal.shift_timings = payload["shift_timings"]
+            if "is_active" in payload:
+                cal.is_active = bool(payload["is_active"])
+        db.commit()
+        db.refresh(cal)
+        return {
+            "id": cal.id,
+            "name": cal.name,
+            "calendar_type": getattr(cal, "calendar_type", "shift"),
+            "department": cal.department,
+            "is_default": bool(getattr(cal, "is_default", False)),
+            "default_shift_code": cal.default_shift_code,
+            "working_days": getattr(cal, "working_days", []),
+            "weekly_off_days": cal.weekly_off_days,
+            "shift_timings": getattr(cal, "shift_timings", []) or [],
+            "is_active": bool(cal.is_active)
+        }
+
+    @staticmethod
+    def delete_work_calendar(db: Session, cal_id: str) -> Dict[str, Any]:
+        cal = db.query(WorkCalendarPolicy).filter(WorkCalendarPolicy.id == cal_id).first()
+        if not cal:
+            raise ValueError(f"Calendar with ID {cal_id} not found")
+        db.delete(cal)
+        db.commit()
+        return {"status": "success", "message": "Work calendar deleted successfully"}
+
+    @staticmethod
+    def add_calendar_shift_timing(db: Session, cal_id: str, timing_payload: Dict[str, Any]) -> Dict[str, Any]:
+        cal = db.query(WorkCalendarPolicy).filter(WorkCalendarPolicy.id == cal_id).first()
+        if not cal:
+            raise ValueError(f"Work calendar with ID {cal_id} not found")
+        current_timings = list(getattr(cal, "shift_timings", []) or [])
+        new_timing = {
+            "id": f"st_{uuid.uuid4().hex[:8]}",
+            "name": timing_payload.get("name", "Shift Timing").strip(),
+            "start_time": timing_payload.get("start_time", "09:00").strip(),
+            "end_time": timing_payload.get("end_time", "18:00").strip()
+        }
+        current_timings.append(new_timing)
+        cal.shift_timings = current_timings
+        db.commit()
+        db.refresh(cal)
+        return new_timing
+
+    @staticmethod
+    def delete_calendar_shift_timing(db: Session, cal_id: str, timing_id: str) -> Dict[str, Any]:
+        cal = db.query(WorkCalendarPolicy).filter(WorkCalendarPolicy.id == cal_id).first()
+        if not cal:
+            raise ValueError(f"Work calendar with ID {cal_id} not found")
+        current_timings = list(getattr(cal, "shift_timings", []) or [])
+        updated_timings = [t for t in current_timings if t.get("id") != timing_id]
+        cal.shift_timings = updated_timings
+        db.commit()
+        db.refresh(cal)
+        return {"status": "success", "message": "Shift timing removed successfully"}
+
+    @staticmethod
+    def get_shift_templates(db: Session) -> List[Dict[str, Any]]:
+        templates = db.query(ShiftTemplate).filter(ShiftTemplate.is_active == True).order_by(ShiftTemplate.created_at.asc()).all()
+        return [
+            {
+                "id": t.id,
+                "code": t.code,
+                "name": t.name,
+                "start_time": t.start_time or "",
+                "end_time": t.end_time or "",
+                "duration_hours": t.duration_hours,
+                "break_mins": t.break_mins,
+                "grace_period_mins": t.grace_period_mins,
+                "is_night_shift": bool(t.is_night_shift),
+                "color": t.color or "#7c3aed",
+                "is_active": bool(t.is_active),
+            }
+            for t in templates
+        ]
+
+    @staticmethod
+    def save_shift_template(db: Session, payload: Dict[str, Any]) -> Dict[str, Any]:
+        t_id = payload.get("id")
+        template = None
+        if t_id:
+            template = db.query(ShiftTemplate).filter(ShiftTemplate.id == t_id).first()
+        if not template and payload.get("code"):
+            template = db.query(ShiftTemplate).filter(ShiftTemplate.code == payload["code"].strip().upper()).first()
+        if not template:
+            code = (payload.get("code") or "").strip().upper()
+            name = (payload.get("name") or "").strip()
+            if not code or not name:
+                raise ValueError("Shift code and name are required")
+            template = ShiftTemplate(
+                id=f"shift_{uuid.uuid4().hex[:8]}",
+                code=code,
+                name=name,
+                start_time=payload.get("start_time"),
+                end_time=payload.get("end_time"),
+                duration_hours=float(payload.get("duration_hours")) if payload.get("duration_hours") is not None else None,
+                break_mins=int(payload.get("break_mins")) if payload.get("break_mins") is not None else None,
+                grace_period_mins=int(payload.get("grace_period_mins")) if payload.get("grace_period_mins") is not None else None,
+                is_night_shift=bool(payload.get("is_night_shift", False)),
+                color=payload.get("color"),
+                is_active=bool(payload.get("is_active", True))
+            )
+            db.add(template)
+        else:
+            for k in ["name", "start_time", "end_time", "duration_hours", "break_mins", "grace_period_mins", "is_night_shift", "color", "is_active"]:
+                if k in payload:
+                    setattr(template, k, payload[k])
+        db.commit()
+        db.refresh(template)
+        return {
+            "id": template.id,
+            "code": template.code,
+            "name": template.name,
+            "start_time": template.start_time or "",
+            "end_time": template.end_time or "",
+            "duration_hours": template.duration_hours,
+            "break_mins": template.break_mins,
+            "grace_period_mins": template.grace_period_mins,
+            "is_night_shift": bool(template.is_night_shift),
+            "color": template.color,
+            "is_active": bool(template.is_active)
+        }
+
+    @staticmethod
+    def delete_shift_template(db: Session, template_id: str) -> Dict[str, Any]:
+        template = db.query(ShiftTemplate).filter(ShiftTemplate.id == template_id).first()
+        if not template:
+            raise ValueError(f"Shift template with ID {template_id} not found")
+        db.delete(template)
+        db.commit()
+        return {"status": "success", "message": "Shift template deleted successfully"}
+
+    @staticmethod
+    def get_holidays(
+        db: Session,
+        year: Optional[int] = None,
+        holiday_type: Optional[str] = None,
+        search: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        query = db.query(CompanyHoliday)
+        if year:
+            query = query.filter(CompanyHoliday.year == year)
+        if holiday_type and holiday_type.upper() != "ALL":
+            query = query.filter(CompanyHoliday.holiday_type.ilike(f"%{holiday_type}%"))
+        if search:
+            query = query.filter(CompanyHoliday.name.ilike(f"%{search.strip()}%"))
+        holidays = query.order_by(CompanyHoliday.date.asc()).all()
+        return [
+            {
+                "id": h.id,
+                "name": h.name,
+                "date": h.date.strftime("%Y-%m-%d"),
+                "formatted_date": h.date.strftime("%d %b, %Y"),
+                "day_name": h.date.strftime("%A"),
+                "year": h.year,
+                "holiday_type": h.holiday_type or "Public",
+                "description": h.description or "",
+                "is_optional": bool(h.is_optional)
+            }
+            for h in holidays
+        ]
+
+    @staticmethod
+    def save_holiday(db: Session, payload: Dict[str, Any]) -> Dict[str, Any]:
+        name = (payload.get("name") or "").strip()
+        date_str = (payload.get("date") or "").strip()
+        if not name or not date_str:
+            raise ValueError("Holiday name and date are required")
+
+        d_obj = datetime.strptime(date_str, "%Y-%m-%d").date()
+        year = int(payload.get("year") or d_obj.year)
+
+        hol_id = payload.get("id")
+        hol = None
+        if hol_id:
+            hol = db.query(CompanyHoliday).filter(CompanyHoliday.id == hol_id).first()
+        if not hol:
+            hol = CompanyHoliday(
+                id=f"hol_{uuid.uuid4().hex[:8]}",
+                name=name,
+                date=d_obj,
+                year=year,
+                holiday_type=payload.get("holiday_type") or "Public",
+                description=payload.get("description") or "",
+                is_optional=bool(payload.get("is_optional", False))
+            )
+            db.add(hol)
+        else:
+            hol.name = name
+            hol.date = d_obj
+            hol.year = year
+            if "holiday_type" in payload:
+                hol.holiday_type = payload["holiday_type"]
+            if "description" in payload:
+                hol.description = payload["description"]
+            if "is_optional" in payload:
+                hol.is_optional = bool(payload["is_optional"])
+        db.commit()
+        db.refresh(hol)
+        return {
+            "id": hol.id,
+            "name": hol.name,
+            "date": hol.date.strftime("%Y-%m-%d"),
+            "formatted_date": hol.date.strftime("%d %b, %Y"),
+            "year": hol.year,
+            "holiday_type": hol.holiday_type,
+            "description": hol.description,
+            "is_optional": hol.is_optional
+        }
+
+    @staticmethod
+    def delete_holiday(db: Session, holiday_id: str) -> Dict[str, Any]:
+        hol = db.query(CompanyHoliday).filter(CompanyHoliday.id == holiday_id).first()
+        if not hol:
+            raise ValueError("Holiday not found")
+        db.delete(hol)
+        db.commit()
+        return {"message": "Holiday deleted successfully", "id": holiday_id}
+
+    @staticmethod
+    def preseed_holidays(db: Session, target_year: int = 2026) -> Dict[str, Any]:
+        seed_data = {
+            2026: [
+                ("New Year's Day", "2026-01-01", "National", None),
+                ("Republic Day", "2026-01-26", "National", None),
+                ("Maha Shivratri", "2026-02-15", "Festival", None),
+                ("Holi", "2026-03-04", "Festival", None),
+                ("Eid ul-Fitr", "2026-03-21", "Festival", None),
+                ("Good Friday", "2026-04-03", "Public", None),
+                ("Dr. B.R. Ambedkar Jayanti", "2026-04-14", "National", None),
+                ("May Day / Labour Day", "2026-05-01", "Public", None),
+                ("Bakrid / Eid al-Adha", "2026-05-27", "Festival", None),
+                ("Muharram", "2026-06-26", "Festival", None),
+                ("Independence Day", "2026-08-15", "National", None),
+                ("Ganesh Chaturthi", "2026-09-07", "Festival", None),
+                ("Gandhi Jayanti", "2026-10-02", "National", None),
+                ("Dussehra (Vijayadashami)", "2026-10-20", "Festival", None),
+                ("Diwali (Deepavali)", "2026-11-08", "Festival", None),
+                ("Guru Nanak Jayanti", "2026-11-24", "Festival", None),
+                ("Christmas Day", "2026-12-25", "National", None),
+            ],
+            2027: [
+                ("New Year's Day", "2027-01-01", "National", None),
+                ("Republic Day", "2027-01-26", "National", None),
+                ("Holi", "2027-03-22", "Festival", None),
+                ("Eid ul-Fitr", "2027-03-10", "Festival", None),
+                ("Good Friday", "2027-03-26", "Public", None),
+                ("Dr. B.R. Ambedkar Jayanti", "2027-04-14", "National", None),
+                ("May Day / Labour Day", "2027-05-01", "Public", None),
+                ("Independence Day", "2027-08-15", "National", None),
+                ("Gandhi Jayanti", "2027-10-02", "National", None),
+                ("Dussehra", "2027-10-10", "Festival", None),
+                ("Diwali", "2027-10-29", "Festival", None),
+                ("Christmas Day", "2027-12-25", "National", None),
+            ]
+        }
+        items = seed_data.get(target_year, seed_data[2026])
+        inserted = 0
+        for name, d_str, h_type, desc in items:
+            d_obj = datetime.strptime(d_str, "%Y-%m-%d").date()
+            existing = db.query(CompanyHoliday).filter(
+                (CompanyHoliday.name == name) & (CompanyHoliday.date == d_obj)
+            ).first()
+            if not existing:
+                db.add(CompanyHoliday(
+                    id=f"hol_{uuid.uuid4().hex[:8]}",
+                    name=name,
+                    date=d_obj,
+                    year=target_year,
+                    holiday_type=h_type,
+                    description=desc,
+                    is_optional=False
+                ))
+                inserted += 1
+            else:
+                existing.holiday_type = h_type
+                existing.description = None
+        db.commit()
+        return {
+            "status": "success",
+            "message": f"Pre-seeded {inserted} holidays for year {target_year} successfully.",
+            "inserted_count": inserted
+        }
+
+    @staticmethod
+    def get_shift_roster(
+        db: Session,
+        start_date_str: Optional[str] = None,
+        end_date_str: Optional[str] = None,
+        department: Optional[str] = None,
+        search: Optional[str] = None,
+        view_mode: Optional[str] = "flat",
+        branch_id: Optional[str] = None,
+        ho_id: Optional[str] = None,
+        current_user: Optional[User] = None
+    ) -> Dict[str, Any]:
+        now_ist = datetime.now(IST)
+        today = now_ist.date()
+
+        # Resolve 7-day week starting at Monday
+        if start_date_str:
+            try:
+                monday = datetime.strptime(start_date_str.strip(), "%Y-%m-%d").date()
+            except Exception:
+                monday = today - timedelta(days=today.weekday())
+        else:
+            monday = today - timedelta(days=today.weekday())
+
+        sunday = monday + timedelta(days=6)
+        week_days = [monday + timedelta(days=i) for i in range(7)]
+
+        week_dates_meta = []
+        for d in week_days:
+            week_dates_meta.append({
+                "date": d.strftime("%Y-%m-%d"),
+                "day_name": d.strftime("%a").upper(),
+                "formatted": d.strftime("%b %d").upper(),
+                "full_str": f"{d.strftime('%a').upper()} {d.strftime('%b %d').upper()}",
+                "is_today": d == today
+            })
+
+        week_label = f"Week of {monday.strftime('%b %d')} - {sunday.strftime('%b %d, %Y')}"
+
+        # Fetch employees using scoped permissions
+        emps = HrmsService.get_employees(
+            db, department=department, search=search,
+            branch_id=branch_id, ho_id=ho_id, current_user=current_user
+        )
+
+        # Load active work calendar policies (by department or fallback)
+        calendars = db.query(WorkCalendarPolicy).filter(WorkCalendarPolicy.is_active == True).all()
+        cal_by_dept = {c.department.lower(): c for c in calendars if c.department and c.department != "All"}
+        default_cal = next((c for c in calendars if c.department in ["All", None, ""]), None)
+
+        emp_ids = [e["id"] for e in emps]
+        roster_records = db.query(EmployeeShiftRoster).filter(
+            EmployeeShiftRoster.employee_id.in_(emp_ids),
+            EmployeeShiftRoster.date >= monday,
+            EmployeeShiftRoster.date <= sunday
+        ).all() if emp_ids else []
+
+        roster_map = {}
+        for r in roster_records:
+            d_key = r.date.strftime("%Y-%m-%d")
+            roster_map[(r.employee_id, d_key)] = r
+
+        # Fetch attendance records for this week to dynamically reflect Presence
+        att_records = db.query(EmployeeAttendance).filter(
+            EmployeeAttendance.employee_id.in_(emp_ids),
+            EmployeeAttendance.date >= monday,
+            EmployeeAttendance.date <= sunday
+        ).all() if emp_ids else []
+
+        att_map = {}
+        for a in att_records:
+            if a.date:
+                att_map[(a.employee_id, a.date.strftime("%Y-%m-%d"))] = a
+
+        # Summary counters
+        summary = {
+            "general": 0,
+            "morning": 0,
+            "evening": 0,
+            "night": 0,
+            "weekly_offs": 0
+        }
+
+        # Format rows for each employee
+        employee_rows = []
+        for emp in emps:
+            e_id = emp["id"]
+            emp_dept = (emp.get("department") or "").strip().lower()
+            emp_cal = cal_by_dept.get(emp_dept, default_cal)
+            shifts_by_date = {}
+
+            for d in week_days:
+                d_key = d.strftime("%Y-%m-%d")
+                day_of_week = d.strftime("%A")
+
+                r = roster_map.get((e_id, d_key))
+                att = att_map.get((e_id, d_key))
+
+                if r:
+                    s_code = r.shift_code
+                    is_off = bool(r.is_weekly_off or s_code == "OFF")
+                    std = STANDARD_SHIFTS.get(s_code, {})
+                    s_name = r.shift_name or ("Rest Day" if is_off else (std.get("name") or (f"{s_code} Shift" if s_code else "Unassigned")))
+                    s_start = r.start_time or std.get("start_time", "")
+                    s_end = r.end_time or std.get("end_time", "")
+                    color = std.get("color", "#64748b" if is_off else "#7c3aed")
+                elif emp_cal and emp_cal.weekly_off_days and day_of_week in emp_cal.weekly_off_days:
+                    s_code = "OFF"
+                    is_off = True
+                    s_name = "Rest Day"
+                    s_start = ""
+                    s_end = ""
+                    color = "#64748b"
+                elif emp_cal and emp_cal.default_shift_code and emp_cal.default_shift_code in STANDARD_SHIFTS:
+                    std = STANDARD_SHIFTS[emp_cal.default_shift_code]
+                    s_code = std["code"]
+                    is_off = False
+                    s_name = std["name"]
+                    s_start = std["start_time"]
+                    s_end = std["end_time"]
+                    color = std.get("color", "#7c3aed")
+                elif emp.get("shift_code") and emp.get("shift_code") in STANDARD_SHIFTS:
+                    std = STANDARD_SHIFTS[emp.get("shift_code")]
+                    s_code = std["code"]
+                    is_off = False
+                    s_name = std["name"]
+                    s_start = std["start_time"]
+                    s_end = std["end_time"]
+                    color = std.get("color", "#7c3aed")
+                else:
+                    s_code = None
+                    is_off = False
+                    s_name = "Unassigned"
+                    s_start = ""
+                    s_end = ""
+                    color = "#94a3b8"
+
+                if is_off or s_code == "OFF":
+                    summary["weekly_offs"] += 1
+                elif s_code == "GEN":
+                    summary["general"] += 1
+                elif s_code == "MORN":
+                    summary["morning"] += 1
+                elif s_code == "EVE":
+                    summary["evening"] += 1
+                elif s_code == "NIGHT":
+                    summary["night"] += 1
+
+                att_status = att.status if att else None
+                check_in_str = att.check_in if att else None
+                check_out_str = att.check_out if att else None
+
+                shifts_by_date[d_key] = {
+                    "shift_code": s_code,
+                    "shift_name": s_name,
+                    "start_time": s_start,
+                    "end_time": s_end,
+                    "is_off": is_off,
+                    "color": color,
+                    "time_range": f"{s_start}-{s_end}" if (s_start and s_end) else "Rest Day",
+                    "attendance_status": att_status,
+                    "check_in": check_in_str,
+                    "check_out": check_out_str,
+                    "is_present": att_status in ["Present", "Present (Late)"]
+                }
+
+            employee_rows.append({
+                "id": emp["id"],
+                "code": emp.get("code") or "EMP-0001",
+                "name": emp.get("full_name") or emp.get("name") or "",
+                "initials": emp.get("initials") or "EM",
+                "designation": emp.get("designation") or "Staff",
+                "department": emp.get("department") or "General",
+                "avatar": emp.get("avatar") or "",
+                "shifts": shifts_by_date
+            })
+
+        all_departments = sorted(list({e.get("department") for e in emps if e.get("department")}))
+        if not all_departments:
+            all_departments = [d.name for d in db.query(Department).all()]
+
+        return {
+            "week_label": week_label,
+            "start_date": monday.strftime("%Y-%m-%d"),
+            "end_date": sunday.strftime("%Y-%m-%d"),
+            "dates": week_dates_meta,
+            "summary": summary,
+            "employees": employee_rows,
+            "total_staff": len(employee_rows),
+            "departments": all_departments
+        }
+
+    @staticmethod
+    def assign_shift(db: Session, payload: Dict[str, Any]) -> Dict[str, Any]:
+        employee_ids = payload.get("employee_ids") or []
+        if isinstance(employee_ids, str):
+            employee_ids = [employee_ids]
+        if not employee_ids and payload.get("employee_id"):
+            employee_ids = [payload["employee_id"]]
+
+        dates = payload.get("dates") or []
+        if isinstance(dates, str):
+            dates = [dates]
+        if not dates and payload.get("date"):
+            dates = [payload["date"]]
+
+        shift_code = (payload.get("shift_code") or "").strip().upper()
+        is_off = shift_code == "OFF" or bool(payload.get("is_off", False))
+
+        std = STANDARD_SHIFTS.get(shift_code, {})
+        shift_name = "Rest Day" if is_off else (payload.get("shift_name") or std.get("name", f"{shift_code} Shift" if shift_code else "Custom Shift"))
+        start_time = "" if is_off else (payload.get("start_time") or std.get("start_time", ""))
+        end_time = "" if is_off else (payload.get("end_time") or std.get("end_time", ""))
+        shift_id = payload.get("shift_id") or None
+
+        updated_count = 0
+        for emp_id in employee_ids:
+            for d_str in dates:
+                try:
+                    d_obj = datetime.strptime(d_str.strip(), "%Y-%m-%d").date()
+                except Exception:
+                    continue
+
+                roster = db.query(EmployeeShiftRoster).filter(
+                    EmployeeShiftRoster.employee_id == emp_id,
+                    EmployeeShiftRoster.date == d_obj
+                ).first()
+
+                if not roster:
+                    roster = EmployeeShiftRoster(
+                        id=f"roster_{uuid.uuid4().hex[:8]}",
+                        employee_id=emp_id,
+                        date=d_obj,
+                        shift_id=shift_id,
+                        shift_code=shift_code,
+                        shift_name=shift_name,
+                        start_time=start_time,
+                        end_time=end_time,
+                        is_weekly_off=is_off,
+                        status="SCHEDULED"
+                    )
+                    db.add(roster)
+                else:
+                    roster.shift_id = shift_id
+                    roster.shift_code = shift_code
+                    roster.shift_name = shift_name
+                    roster.start_time = start_time
+                    roster.end_time = end_time
+                    roster.is_weekly_off = is_off
+
+                # If an attendance record exists for this employee on this date, update its shift linkage
+                att = db.query(EmployeeAttendance).filter(
+                    EmployeeAttendance.employee_id == emp_id,
+                    EmployeeAttendance.date == d_obj
+                ).first()
+                if att:
+                    att.shift_id = shift_id
+                    att.shift_code = shift_code
+                    att.shift_name = shift_name
+
+                updated_count += 1
+
+        db.commit()
+        return {
+            "status": "success",
+            "message": f"Successfully updated shift to {shift_name} across {updated_count} slot(s).",
+            "updated_count": updated_count
+        }
+
+    @staticmethod
+    def get_monthly_attendance_matrix(
+        db: Session,
+        year: int,
+        month: int,
+        department: Optional[str] = None,
+        search: Optional[str] = None,
+        branch_id: Optional[str] = None,
+        ho_id: Optional[str] = None,
+        current_user: Optional[User] = None
+    ) -> Dict[str, Any]:
+        now_ist = datetime.now(IST)
+        today = now_ist.date()
+
+        import calendar
+        num_days = calendar.monthrange(year, month)[1]
+        start_date = date(year, month, 1)
+        end_date = date(year, month, num_days)
+        month_name = calendar.month_name[month]
+
+        days_in_month = []
+        for day_num in range(1, num_days + 1):
+            curr_d = date(year, month, day_num)
+            day_name = curr_d.strftime("%A")
+            days_in_month.append({
+                "day": day_num,
+                "day_letter": day_name[0].upper(),
+                "day_name": day_name,
+                "formatted": curr_d.strftime("%b %d"),
+                "date_str": curr_d.strftime("%Y-%m-%d"),
+                "is_today": curr_d == today,
+                "is_future": curr_d > today
+            })
+
+        # Fetch employees using permission scoping
+        emps = HrmsService.get_employees(
+            db, department=department, search=search,
+            branch_id=branch_id, ho_id=ho_id, current_user=current_user
+        )
+        emp_ids = [e["id"] for e in emps]
+
+        # Load active work calendar policy
+        calendars = db.query(WorkCalendarPolicy).filter(WorkCalendarPolicy.is_active == True).all()
+        cal_by_dept = {c.department.lower(): c for c in calendars if c.department and c.department != "All"}
+        default_cal = next((c for c in calendars if c.department in ["All", None, ""]), None)
+
+        # Load holidays for this month
+        holidays = db.query(CompanyHoliday).filter(
+            CompanyHoliday.date >= start_date,
+            CompanyHoliday.date <= end_date
+        ).all()
+        holiday_map = {h.date.strftime("%Y-%m-%d"): h for h in holidays}
+
+        # Load attendance records
+        att_records = db.query(EmployeeAttendance).filter(
+            EmployeeAttendance.employee_id.in_(emp_ids),
+            EmployeeAttendance.date >= start_date,
+            EmployeeAttendance.date <= end_date
+        ).all() if emp_ids else []
+
+        att_by_emp_date = {}
+        for a in att_records:
+            if a.date:
+                att_by_emp_date[(a.employee_id, a.date.strftime("%Y-%m-%d"))] = a
+
+        # Load approved leaves
+        leaves = db.query(LeaveRequest).filter(
+            LeaveRequest.employee_id.in_(emp_ids),
+            LeaveRequest.status == "Approved",
+            LeaveRequest.start_date <= end_date,
+            LeaveRequest.end_date >= start_date
+        ).all() if emp_ids else []
+
+        # Today metrics
+        today_str = today.strftime("%Y-%m-%d")
+        present_today_count = 0
+        absent_today_count = 0
+        on_leave_today_count = 0
+
+        for emp in emps:
+            e_id = emp["id"]
+            today_att = att_by_emp_date.get((e_id, today_str))
+            if today_att and (today_att.status or "").lower() in ["present", "late", "verified", "half day"]:
+                present_today_count += 1
+            elif today_att and (today_att.status or "").lower() in ["absent"]:
+                absent_today_count += 1
+
+        for lv in leaves:
+            if lv.start_date <= today <= lv.end_date:
+                on_leave_today_count += 1
+
+        # Format employee rows
+        employee_rows = []
+
+        for emp in emps:
+            e_id = emp["id"]
+            emp_dept = (emp.get("department") or "").strip().lower()
+            emp_cal = cal_by_dept.get(emp_dept, default_cal)
+            weekly_offs = emp_cal.weekly_off_days if (emp_cal and emp_cal.weekly_off_days) else ["Saturday", "Sunday"]
+
+            p_count = 0
+            a_count = 0
+            pl_count = 0
+            wo_count = 0
+            hol_count = 0
+            days_status = {}
+
+            for day_info in days_in_month:
+                d_str = day_info["date_str"]
+                d_obj = date(year, month, day_info["day"])
+                d_name = day_info["day_name"]
+                is_fut = day_info["is_future"]
+
+                is_week_off = d_name in weekly_offs
+                is_hol = d_str in holiday_map
+
+                att = att_by_emp_date.get((e_id, d_str))
+                is_on_leave = any(lv.employee_id == e_id and lv.start_date <= d_obj <= lv.end_date for lv in leaves)
+
+                if is_on_leave:
+                    status_code = "PL"
+                    pl_count += 1
+                elif att and (att.status or "").lower() in ["present", "late", "verified"]:
+                    status_code = "P"
+                    p_count += 1
+                elif att and (att.status or "").lower() in ["half day"]:
+                    status_code = "HD"
+                    p_count += 0.5
+                    pl_count += 0.5
+                elif att and (att.status or "").lower() in ["absent"]:
+                    status_code = "A"
+                    a_count += 1
+                elif is_hol:
+                    status_code = "HOL"
+                    hol_count += 1
+                elif is_week_off:
+                    status_code = "WO"
+                    wo_count += 1
+                elif not is_fut:
+                    status_code = "-"
+                else:
+                    status_code = "-"
+
+                days_status[str(day_info["day"])] = {
+                    "code": status_code,
+                    "date": d_str,
+                    "status_label": "Present" if status_code == "P" else ("Week Off" if status_code == "WO" else ("Holiday" if status_code == "HOL" else ("Paid Leave" if status_code == "PL" else ("Absent" if status_code == "A" else "-")))),
+                    "check_in": att.check_in if att else None,
+                    "check_out": att.check_out if att else None,
+                    "work_hours": att.work_hours if att else None
+                }
+
+            payable = p_count + pl_count + wo_count + hol_count
+
+            employee_rows.append({
+                "id": emp["id"],
+                "code": emp.get("code") or "EMP-0001",
+                "name": emp.get("full_name") or emp.get("name") or "",
+                "department": emp.get("department") or "General",
+                "designation": emp.get("designation") or "Staff",
+                "initials": emp.get("initials") or "EM",
+                "avatar": emp.get("avatar") or "",
+                "present_count": int(p_count) if isinstance(p_count, float) and p_count.is_integer() else p_count,
+                "absent_count": a_count,
+                "leave_count": pl_count,
+                "payable_days": int(payable) if isinstance(payable, float) and payable.is_integer() else payable,
+                "days": days_status
+            })
+
+        all_depts = sorted(list({e.get("department") for e in emps if e.get("department")}))
+
+        avg_att = 0
+        if len(employee_rows) > 0 and num_days > 0:
+            total_present_sum = sum(r["present_count"] for r in employee_rows)
+            avg_att = round((total_present_sum / (len(employee_rows) * num_days)) * 100)
+
+        return {
+            "year": year,
+            "month": month,
+            "month_name": month_name,
+            "days_in_month": days_in_month,
+            "summary": {
+                "present_today": present_today_count,
+                "absent": absent_today_count,
+                "on_leave": on_leave_today_count,
+                "avg_attendance_pct": avg_att,
+                "total_profiles": len(employee_rows)
+            },
+            "employees": employee_rows,
+            "departments": all_depts
+        }
+
+    @staticmethod
+    def reset_user_password(
+        db: Session,
+        target_type: str,
+        target_id: str,
+        new_password: str,
+        current_user: Optional[User] = None
+    ) -> Dict[str, Any]:
+        from src.utils.security import hash_password
+        from src.models.student import student
+        from src.models.hrms import Employee
+        from src.models.user import User
+
+        if not new_password or len(new_password.strip()) < 4:
+            raise ValueError("New password must be at least 4 characters long.")
+
+        clean_pwd = new_password.strip()
+        pwd_hash = hash_password(clean_pwd)
+
+        email = ""
+        user_obj = None
+        target_name = ""
+
+        t_type = (target_type or "").strip().lower()
+
+        if t_type == "student":
+            st = db.query(student).filter(student.id == target_id).first()
+            if not st:
+                raise ValueError("Student record not found.")
+            email = (st.email or "").strip().lower()
+            target_name = st.full_name or "Student"
+            
+            if st.user_id:
+                user_obj = db.query(User).filter(User.id == st.user_id).first()
+            if not user_obj and email:
+                user_obj = db.query(User).filter(User.email.ilike(email)).first()
+            
+            if user_obj:
+                user_obj.password_hash = pwd_hash
+                if not st.user_id:
+                    st.user_id = user_obj.id
+            else:
+                user_id = f"usr_{uuid.uuid4().hex[:8]}"
+                user_obj = User(
+                    id=user_id,
+                    email=email,
+                    password_hash=pwd_hash,
+                    role="STUDENT",
+                    full_name=target_name,
+                    phone=st.phone,
+                    is_active=True
+                )
+                db.add(user_obj)
+                st.user_id = user_id
+
+        elif t_type in ["employee", "staff"]:
+            emp = db.query(Employee).filter(Employee.id == target_id).first()
+            if not emp:
+                raise ValueError("Employee record not found.")
+            email = (emp.email or "").strip().lower()
+            target_name = f"{emp.first_name} {emp.last_name or ''}".strip() or emp.email
+            
+            if emp.user_id:
+                user_obj = db.query(User).filter(User.id == emp.user_id).first()
+            if not user_obj and email:
+                user_obj = db.query(User).filter(User.email.ilike(email)).first()
+            
+            if user_obj:
+                user_obj.password_hash = pwd_hash
+                if not emp.user_id:
+                    emp.user_id = user_obj.id
+            else:
+                user_id = f"usr_{uuid.uuid4().hex[:8]}"
+                user_obj = User(
+                    id=user_id,
+                    email=email,
+                    password_hash=pwd_hash,
+                    role="EMPLOYEE",
+                    full_name=target_name,
+                    phone=emp.phone,
+                    is_active=True
+                )
+                db.add(user_obj)
+                emp.user_id = user_id
+        else:
+            raise ValueError(f"Invalid target_type: {target_type}")
+
+        db.commit()
+        return {
+            "status": "success",
+            "message": f"Password for {target_name} ({email}) updated successfully.",
+            "target_id": target_id,
+            "target_name": target_name,
+            "email": email
+        }

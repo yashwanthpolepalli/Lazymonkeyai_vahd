@@ -161,6 +161,36 @@ def delete_geofence_scheme(scheme_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Geofence scheme not found")
     return {"message": "Geofence scheme deleted successfully"}
 
+@router.get("/attendance/matrix")
+def get_attendance_matrix(
+    year: Optional[int] = Query(None),
+    month: Optional[int] = Query(None),
+    department: Optional[str] = Query(None),
+    search: Optional[str] = Query(None),
+    branch_id: Optional[str] = Query(None),
+    ho_id: Optional[str] = Query(None),
+    current_user: Optional[User] = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    from datetime import datetime
+    now = datetime.now()
+    y = year or now.year
+    m = month or now.month
+    try:
+        return HrmsService.get_monthly_attendance_matrix(
+            db,
+            year=y,
+            month=m,
+            department=department,
+            search=search,
+            branch_id=branch_id,
+            ho_id=ho_id,
+            current_user=current_user
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch attendance matrix: {str(e)}")
+
+
 @router.get("/attendance")
 def get_attendance(date: Optional[str] = None, db: Session = Depends(get_db)):
     return HrmsService.get_attendance_logs(db, selected_date=date)
@@ -838,3 +868,250 @@ def get_employee_attendance_report_pdf(
         return HTMLResponse(content=html_content)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+
+# -------------------------------------------------------------
+# 16. PASSWORD RESET ENDPOINT (STUDENTS & EMPLOYEES)
+# -------------------------------------------------------------
+@router.post("/reset-password")
+def reset_password(
+    payload: dict,
+    current_user: Optional[User] = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Allows Head Office or Owners to set a customized password for a specific student or employee.
+    """
+    target_type = payload.get("target_type") or payload.get("role") or ""
+    target_id = payload.get("target_id") or payload.get("id") or ""
+    new_password = payload.get("new_password") or payload.get("password") or ""
+
+    if not target_id or not new_password:
+        raise HTTPException(status_code=400, detail="Target ID and new password are required.")
+
+    try:
+        return HrmsService.reset_user_password(
+            db,
+            target_type=target_type,
+            target_id=target_id,
+            new_password=new_password,
+            current_user=current_user
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to reset password: {str(e)}")
+
+
+# -------------------------------------------------------------
+# 17. SHIFT ROSTER & WORK CALENDARS ENDPOINTS
+# -------------------------------------------------------------
+@router.get("/shifts/calendars")
+def get_work_calendars(
+    current_user: Optional[User] = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    try:
+        return HrmsService.get_work_calendars(db)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch work calendars: {str(e)}")
+
+
+@router.post("/shifts/calendars")
+def save_work_calendar(
+    payload: dict,
+    current_user: Optional[User] = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    try:
+        return HrmsService.save_work_calendar(db, payload)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save work calendar: {str(e)}")
+
+
+@router.delete("/shifts/calendars/{calendar_id}")
+def delete_work_calendar(
+    calendar_id: str,
+    current_user: Optional[User] = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    try:
+        return HrmsService.delete_work_calendar(db, calendar_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete work calendar: {str(e)}")
+
+
+@router.post("/shifts/calendars/{calendar_id}/timings")
+def add_calendar_shift_timing(
+    calendar_id: str,
+    payload: dict,
+    current_user: Optional[User] = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    try:
+        return HrmsService.add_calendar_shift_timing(db, calendar_id, payload)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to add shift timing: {str(e)}")
+
+
+@router.delete("/shifts/calendars/{calendar_id}/timings/{timing_id}")
+def delete_calendar_shift_timing(
+    calendar_id: str,
+    timing_id: str,
+    current_user: Optional[User] = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    try:
+        return HrmsService.delete_calendar_shift_timing(db, calendar_id, timing_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete shift timing: {str(e)}")
+
+
+@router.get("/shifts/templates")
+def get_shift_templates(
+    current_user: Optional[User] = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    try:
+        return HrmsService.get_shift_templates(db)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch shift templates: {str(e)}")
+
+
+@router.post("/shifts/templates")
+def save_shift_template(
+    payload: dict,
+    current_user: Optional[User] = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    try:
+        return HrmsService.save_shift_template(db, payload)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save shift template: {str(e)}")
+
+
+@router.delete("/shifts/templates/{template_id}")
+def delete_shift_template(
+    template_id: str,
+    current_user: Optional[User] = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    try:
+        return HrmsService.delete_shift_template(db, template_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete shift template: {str(e)}")
+
+
+@router.get("/shifts/roster")
+def get_shift_roster(
+    start_date: Optional[str] = Query(None),
+    end_date: Optional[str] = Query(None),
+    department: Optional[str] = Query(None),
+    search: Optional[str] = Query(None),
+    view: Optional[str] = Query("flat"),
+    branch_id: Optional[str] = Query(None),
+    ho_id: Optional[str] = Query(None),
+    current_user: Optional[User] = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    try:
+        return HrmsService.get_shift_roster(
+            db,
+            start_date_str=start_date,
+            end_date_str=end_date,
+            department=department,
+            search=search,
+            view_mode=view,
+            branch_id=branch_id,
+            ho_id=ho_id,
+            current_user=current_user
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to load shift roster: {str(e)}")
+
+
+@router.post("/shifts/assign")
+def assign_shift(
+    payload: dict,
+    current_user: Optional[User] = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    try:
+        return HrmsService.assign_shift(db, payload)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to assign shift: {str(e)}")
+
+
+# -------------------------------------------------------------
+# 18. COMPANY HOLIDAYS ENDPOINTS
+# -------------------------------------------------------------
+@router.get("/holidays")
+def get_holidays(
+    year: Optional[int] = Query(None),
+    type: Optional[str] = Query(None),
+    search: Optional[str] = Query(None),
+    current_user: Optional[User] = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    try:
+        return HrmsService.get_holidays(db, year=year, holiday_type=type, search=search)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch holidays: {str(e)}")
+
+
+@router.post("/holidays")
+def save_holiday(
+    payload: dict,
+    current_user: Optional[User] = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    try:
+        return HrmsService.save_holiday(db, payload)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save holiday: {str(e)}")
+
+
+@router.delete("/holidays/{holiday_id}")
+def delete_holiday(
+    holiday_id: str,
+    current_user: Optional[User] = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    try:
+        return HrmsService.delete_holiday(db, holiday_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete holiday: {str(e)}")
+
+
+@router.post("/holidays/preseed")
+def preseed_holidays(
+    payload: Optional[dict] = Body(None),
+    year: Optional[int] = Query(None),
+    current_user: Optional[User] = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    target_year = (payload.get("year") if payload else None) or year or 2026
+    try:
+        return HrmsService.preseed_holidays(db, target_year=int(target_year))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to preseed holidays: {str(e)}")
+
+

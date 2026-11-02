@@ -213,12 +213,14 @@ export function EmployeeGeofencePunchWidget({ onPunchSuccess }: employeeGeofence
         }
         try {
           const devicePlatform = (navigator as any).userAgentData?.platform || navigator.platform || 'Web Browser';
+          const punchLoc = activeScheme?.branch_name || user?.branchName || (deviceCoords ? `Office (${deviceCoords.lat.toFixed(4)}, ${deviceCoords.lng.toFixed(4)})` : 'Office');
           const res = await hrmsApi.verifyFace({
             employee_id: user?.id || '',
             live_image_base64: snapshot,
             action,
             user_role: user?.role || 'employee',
             branch: activeScheme?.branch_name || user?.branchName || '',
+            location: punchLoc,
             verification_type: 'FACE_BIOMETRIC',
             method: 'LIVE_CAMERA_SCAN',
             device_name: `${devicePlatform} (${window.innerWidth}x${window.innerHeight})`,
@@ -276,12 +278,14 @@ export function EmployeeGeofencePunchWidget({ onPunchSuccess }: employeeGeofence
   const handleManualPunch = async (action: 'CHECK_IN' | 'CHECK_OUT', method = 'GPS_GEOFENCE') => {
     setLoading(true);
     try {
+      const punchLoc = activeScheme?.branch_name || user?.branchName || (deviceCoords ? `Office (${deviceCoords.lat.toFixed(4)}, ${deviceCoords.lng.toFixed(4)})` : 'Office');
       const res = await hrmsApi.recordPunch({
         employee_id: user?.id || '',
         action,
         method,
         latitude: deviceCoords?.lat ?? activeScheme?.latitude ?? null,
         longitude: deviceCoords?.lng ?? activeScheme?.longitude ?? null,
+        location: punchLoc,
         user_role: 'employee',
         branch: activeScheme?.branch_name || user?.branchName || '',
         note: `employee shift punch via ${method}`,

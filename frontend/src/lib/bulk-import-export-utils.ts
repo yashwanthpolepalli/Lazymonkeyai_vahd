@@ -748,9 +748,29 @@ export function normalizeStudentImportRow(raw: any): StudentImportRow {
 
 export function normalizeEmployeeImportRow(raw: any): EmployeeImportRow {
   const findVal = (...keys: string[]) => {
+    // 1. Exact cleaned match
     for (const k of keys) {
+      const cleanK = k.toLowerCase().replace(/[^a-z0-9]/g, '');
       for (const rawKey of Object.keys(raw)) {
-        if (rawKey.toLowerCase().replace(/[^a-z0-9]/g, '') === k.toLowerCase().replace(/[^a-z0-9]/g, '')) {
+        const cleanRaw = rawKey.toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (cleanRaw === cleanK) {
+          const v = raw[rawKey];
+          if (v !== undefined && v !== null) {
+            const s = String(v).trim();
+            if (s.length > 0 && !s.startsWith('[')) {
+              return s;
+            }
+          }
+        }
+      }
+    }
+    // 2. Contains / Substring match (e.g. 'phonemobile' matching 'phone', 'basesalarymonthly' matching 'basesalary')
+    for (const k of keys) {
+      const cleanK = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (cleanK.length < 3) continue;
+      for (const rawKey of Object.keys(raw)) {
+        const cleanRaw = rawKey.toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (cleanRaw.includes(cleanK) || cleanK.includes(cleanRaw)) {
           const v = raw[rawKey];
           if (v !== undefined && v !== null) {
             const s = String(v).trim();
@@ -765,17 +785,17 @@ export function normalizeEmployeeImportRow(raw: any): EmployeeImportRow {
   };
 
   // Section 1: Employee / Post Details
-  const fullName = findVal('fullname', 'employeename', 'name');
-  const email = findVal('personalemail', 'email', 'employeeemail', 'workemail', 'mail');
-  const phone = findVal('contactnumbermobile', 'contactnumber', 'phone', 'mobile', 'phonenumber', 'mobilenumber', 'contact');
-  const designation = findVal('designation', 'jobdesignation', 'jobtitle', 'title');
-  const department = findVal('department', 'dept', 'division');
-  const code = findVal('employeecode', 'code', 'empid', 'staffid');
-  const role = findVal('role', 'employeerole');
+  const fullName = findVal('fullname', 'employeename', 'name', 'staffname');
+  const email = findVal('personalemail', 'email', 'employeeemail', 'workemail', 'mail', 'emailaddress');
+  const phone = findVal('phonemobile', 'contactnumbermobile', 'contactmobile', 'contactnumber', 'phone', 'mobile', 'phonenumber', 'mobilenumber', 'contact', 'cell');
+  const designation = findVal('designation', 'jobdesignation', 'jobtitle', 'title', 'post');
+  const department = findVal('department', 'dept', 'division', 'branchdept');
+  const code = findVal('employeecode', 'code', 'empid', 'staffid', 'empno', 'membercode');
+  const role = findVal('role', 'employeerole', 'staffrole');
   const employmentType = findVal('employmenttype', 'type', 'contracttype');
-  const joinedDate = findVal('dateofjoining', 'joiningdate', 'joineddate', 'doj');
-  const salary = findVal('basemonthlysalary', 'basesalary', 'salary', 'monthlysalary', 'ctc', 'pay');
-  const branch = findVal('branchcampuslocation', 'branchlocation', 'branch', 'location', 'campus');
+  const joinedDate = findVal('dateofjoiningyyyymmdd', 'dateofjoining', 'joiningdate', 'joineddate', 'doj', 'joindate');
+  const salary = findVal('basesalarymonthly', 'basemonthlysalary', 'basesalary', 'salary', 'monthlysalary', 'ctc', 'pay');
+  const branch = findVal('branchlocation', 'branchcampuslocation', 'branch', 'location', 'campus', 'organisation', 'placeofwork');
 
   // Section 2: Personal Details
   const fatherName = findVal('fathername', 'fathersname', 'father');
@@ -787,7 +807,7 @@ export function normalizeEmployeeImportRow(raw: any): EmployeeImportRow {
   const caste = findVal('caste');
   const maritalStatus = findVal('maritalstatus');
   const workExperienceYears = findVal('workexperienceyears', 'workexperience', 'experienceyears', 'experience');
-  const areaOfService = findVal('areaofservicespecialization', 'areaofservice', 'specialization', 'specializationskills');
+  const areaOfService = findVal('specializationskills', 'areaofservicespecialization', 'areaofservice', 'specialization', 'skills', 'technicalskills');
   const technicalSkills = findVal('technicalskills', 'skills', 'skill');
   const presentAddress = findVal('presentaddress', 'address');
   const permanentAddress = findVal('permanentaddress');
@@ -1232,5 +1252,295 @@ export function normalizeCourseImportRow(raw: any): CourseImportRow {
     language,
     description,
     status,
+  };
+}
+
+// ============================================================================
+// 6. SHIFT TEMPLATES BULK IMPORT / EXPORT UTILITIES
+// ============================================================================
+
+export interface ShiftTemplateImportRow {
+  code: string;
+  name: string;
+  start_time: string;
+  end_time: string;
+  break_mins: number;
+  grace_period_mins: number;
+  is_night_shift: boolean;
+  color: string;
+}
+
+export const SHIFT_TEMPLATE_HEADERS = [
+  'Shift Code *',
+  'Shift Name *',
+  'Start Time (HH:MM)',
+  'End Time (HH:MM)',
+  'Break (Minutes)',
+  'Grace Period (Minutes)',
+  'Is Night Shift (Yes/No)',
+  'Badge Color (Hex)',
+];
+
+export function downloadShiftTemplateSampleXlsx() {
+  const sampleRows = [
+    SHIFT_TEMPLATE_HEADERS,
+    ['GEN', 'General Day Shift', '09:00', '18:00', 60, 15, 'No', '#7c3aed'],
+    ['MORN', 'Morning Shift', '06:00', '14:00', 30, 10, 'No', '#059669'],
+    ['EVE', 'Evening Shift', '14:00', '22:00', 45, 15, 'No', '#d97706'],
+    ['NGT', 'Night Shift', '22:00', '06:00', 60, 15, 'Yes', '#475569'],
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(sampleRows);
+  ws['!cols'] = [
+    { wch: 16 },
+    { wch: 28 },
+    { wch: 20 },
+    { wch: 20 },
+    { wch: 18 },
+    { wch: 22 },
+    { wch: 24 },
+    { wch: 20 },
+  ];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Shift_Templates');
+  XLSX.writeFile(wb, 'shift_templates_sample_template.xlsx');
+}
+
+export function downloadShiftTemplateSampleCsv() {
+  const sampleRows = [
+    ['GEN', 'General Day Shift', '09:00', '18:00', 60, 15, 'No', '#7c3aed'],
+    ['MORN', 'Morning Shift', '06:00', '14:00', 30, 10, 'No', '#059669'],
+    ['EVE', 'Evening Shift', '14:00', '22:00', 45, 15, 'No', '#d97706'],
+    ['NGT', 'Night Shift', '22:00', '06:00', 60, 15, 'Yes', '#475569'],
+  ];
+  const csv = Papa.unparse({
+    fields: SHIFT_TEMPLATE_HEADERS,
+    data: sampleRows,
+  });
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', 'shift_templates_sample_template.csv');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+export function exportShiftTemplatesToXlsx(templates: any[], filename = 'shift_templates_export.xlsx') {
+  const rows = templates.map((tpl, idx) => ({
+    '#': idx + 1,
+    'Shift Code': tpl.code || '',
+    'Shift Name': tpl.name || '',
+    'Start Time': tpl.start_time || '',
+    'End Time': tpl.end_time || '',
+    'Break (Mins)': tpl.break_mins ?? 0,
+    'Grace Period (Mins)': tpl.grace_period_mins ?? 0,
+    'Is Night Shift': tpl.is_night_shift ? 'Yes' : 'No',
+    'Badge Color': tpl.color || '',
+  }));
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Shift_Templates');
+  XLSX.writeFile(wb, filename);
+}
+
+export function exportShiftTemplatesToCsv(templates: any[], filename = 'shift_templates_export.csv') {
+  const rows = templates.map((tpl, idx) => ({
+    '#': idx + 1,
+    'Shift Code': tpl.code || '',
+    'Shift Name': tpl.name || '',
+    'Start Time': tpl.start_time || '',
+    'End Time': tpl.end_time || '',
+    'Break (Mins)': tpl.break_mins ?? 0,
+    'Grace Period (Mins)': tpl.grace_period_mins ?? 0,
+    'Is Night Shift': tpl.is_night_shift ? 'Yes' : 'No',
+    'Badge Color': tpl.color || '',
+  }));
+  const csv = Papa.unparse(rows);
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', filename);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+export function normalizeShiftTemplateImportRow(raw: any): ShiftTemplateImportRow {
+  const findVal = (...keys: string[]) => {
+    for (const k of keys) {
+      for (const rawKey of Object.keys(raw)) {
+        if (rawKey.toLowerCase().replace(/[^a-z0-9]/g, '') === k.toLowerCase().replace(/[^a-z0-9]/g, '')) {
+          const v = raw[rawKey];
+          if (v !== undefined && v !== null) {
+            const s = String(v).trim();
+            if (s.length > 0 && !s.startsWith('[')) {
+              return s;
+            }
+          }
+        }
+      }
+    }
+    return '';
+  };
+
+  const code = (findVal('shiftcode', 'code', 'shortcode') || '').toUpperCase();
+  const name = findVal('shiftname', 'name', 'title');
+  const start_time = findVal('starttime', 'start', 'from');
+  const end_time = findVal('endtime', 'end', 'to');
+  const breakStr = findVal('breakminutes', 'breakmins', 'break');
+  const graceStr = findVal('graceperiodminutes', 'graceperiodmins', 'graceperiod', 'grace');
+  const nightStr = findVal('isnightshift', 'isnight', 'nightshift', 'night').toLowerCase();
+  const color = findVal('badgecolor', 'color', 'hex');
+
+  return {
+    code,
+    name,
+    start_time,
+    end_time,
+    break_mins: breakStr ? parseInt(breakStr, 10) || 0 : 0,
+    grace_period_mins: graceStr ? parseInt(graceStr, 10) || 0 : 0,
+    is_night_shift: nightStr === 'yes' || nightStr === 'true' || nightStr === '1',
+    color,
+  };
+}
+
+// ============================================================================
+// 7. HOLIDAYS BULK IMPORT / EXPORT UTILITIES
+// ============================================================================
+
+export interface HolidayImportRow {
+  name: string;
+  date: string;
+  holiday_type: string;
+  description: string;
+}
+
+export const HOLIDAY_TEMPLATE_HEADERS = [
+  'Holiday Name *',
+  'Date (YYYY-MM-DD) *',
+  'Holiday Type (National/Festival/Gazetted/Restricted/Public)',
+  'Description',
+];
+
+export function downloadHolidaySampleXlsx() {
+  const sampleRows = [
+    HOLIDAY_TEMPLATE_HEADERS,
+    ['Republic Day', '2026-01-26', 'National', 'National holiday celebration'],
+    ['Maha Shivaratri', '2026-02-15', 'Festival', 'Lord Shiva annual festival'],
+    ['Holi', '2026-03-04', 'Festival', 'Festival of colors'],
+    ['Good Friday', '2026-04-03', 'Gazetted', 'Christian holy day'],
+    ['Independence Day', '2026-08-15', 'National', 'Indian Independence day celebration'],
+    ['Gandhi Jayanti', '2026-10-02', 'National', 'Mahatma Gandhi birth anniversary'],
+    ['Diwali (Deepavali)', '2026-11-08', 'Festival', 'Festival of lights celebration'],
+    ['Christmas Day', '2026-12-25', 'Public', 'Christmas holiday celebration'],
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(sampleRows);
+  ws['!cols'] = [
+    { wch: 26 },
+    { wch: 22 },
+    { wch: 30 },
+    { wch: 40 },
+  ];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Holidays');
+  XLSX.writeFile(wb, 'holidays_sample_template.xlsx');
+}
+
+export function downloadHolidaySampleCsv() {
+  const sampleRows = [
+    ['Republic Day', '2026-01-26', 'National', 'National holiday celebration'],
+    ['Maha Shivaratri', '2026-02-15', 'Festival', 'Lord Shiva annual festival'],
+    ['Holi', '2026-03-04', 'Festival', 'Festival of colors'],
+    ['Good Friday', '2026-04-03', 'Gazetted', 'Christian holy day'],
+    ['Independence Day', '2026-08-15', 'National', 'Indian Independence day celebration'],
+    ['Gandhi Jayanti', '2026-10-02', 'National', 'Mahatma Gandhi birth anniversary'],
+    ['Diwali (Deepavali)', '2026-11-08', 'Festival', 'Festival of lights celebration'],
+    ['Christmas Day', '2026-12-25', 'Public', 'Christmas holiday celebration'],
+  ];
+  const csv = Papa.unparse({
+    fields: HOLIDAY_TEMPLATE_HEADERS,
+    data: sampleRows,
+  });
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', 'holidays_sample_template.csv');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+export function exportHolidaysToXlsx(holidays: any[], filename = 'holidays_export.xlsx') {
+  const rows = holidays.map((h, idx) => ({
+    '#': idx + 1,
+    'Holiday Name': h.name || '',
+    'Date': h.date || '',
+    'Holiday Type': h.holiday_type || '',
+    'Description': h.description || '',
+  }));
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Holidays');
+  XLSX.writeFile(wb, filename);
+}
+
+export function exportHolidaysToCsv(holidays: any[], filename = 'holidays_export.csv') {
+  const rows = holidays.map((h, idx) => ({
+    '#': idx + 1,
+    'Holiday Name': h.name || '',
+    'Date': h.date || '',
+    'Holiday Type': h.holiday_type || '',
+    'Description': h.description || '',
+  }));
+  const csv = Papa.unparse(rows);
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', filename);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+export function normalizeHolidayImportRow(raw: any): HolidayImportRow {
+  const findVal = (...keys: string[]) => {
+    for (const k of keys) {
+      for (const rawKey of Object.keys(raw)) {
+        if (rawKey.toLowerCase().replace(/[^a-z0-9]/g, '') === k.toLowerCase().replace(/[^a-z0-9]/g, '')) {
+          const v = raw[rawKey];
+          if (v !== undefined && v !== null) {
+            const s = String(v).trim();
+            if (s.length > 0 && !s.startsWith('[')) {
+              return s;
+            }
+          }
+        }
+      }
+    }
+    return '';
+  };
+
+  const name = findVal('holidayname', 'name', 'title');
+  let date = findVal('date', 'holidaydate', 'day');
+  if (date && date.includes('/')) {
+    const parts = date.split('/');
+    if (parts.length === 3) {
+      if (parts[2].length === 4) {
+        date = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+      }
+    }
+  }
+  const holiday_type = findVal('holidaytype', 'type', 'category');
+  const description = findVal('description', 'desc', 'notes', 'reason');
+
+  return {
+    name,
+    date,
+    holiday_type,
+    description,
   };
 }

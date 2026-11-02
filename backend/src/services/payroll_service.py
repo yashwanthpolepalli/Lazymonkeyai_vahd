@@ -156,6 +156,12 @@ class PayrollService:
             ho_id_val = getattr(t_emp, "ho_id", None) or getattr(t_user, "ho_id", None)
             vahd_branch_val = getattr(t_emp, "vahd_branch", None) or t.primary_vahd_location or ""
             emp_code_val = getattr(t_emp, "code", None) or f"EMP-{str(t.id).replace('tr_', '').upper()}"
+            dept_val = getattr(t_emp, "department", None) or getattr(t, "department", None) or ""
+            desg_val = getattr(t_emp, "designation", None) or getattr(t, "specialization", None) or t.role or ""
+            gender_val = getattr(t_emp, "gender", None) or getattr(t, "gender", None) or ""
+            phone_val = getattr(t_emp, "phone", None) or getattr(t, "phone", None) or ""
+            joined_val = getattr(t_emp, "joined_date", None)
+            emp_type_val = getattr(t_emp, "employment_type", None) or "Full-Time"
 
             setattr(t, 'branch_id', branch_id_val)
             setattr(t, 'owner_id', owner_id_val)
@@ -163,30 +169,63 @@ class PayrollService:
             setattr(t, 'vahd_branch', vahd_branch_val)
             setattr(t, 'primary_vahd_location', vahd_branch_val)
             setattr(t, 'employee_code', emp_code_val)
+            setattr(t, 'department', dept_val)
+            setattr(t, 'designation', desg_val)
+            setattr(t, 'gender', gender_val)
+            setattr(t, 'employment_type', emp_type_val)
+            if phone_val and not t.phone:
+                t.phone = phone_val
+            if joined_val:
+                setattr(t, 'joined_date', joined_val.isoformat() if hasattr(joined_val, 'isoformat') else str(joined_val))
 
             count = db.query(student).filter((student.employee_id == t.id) | (student.employee_id == t.user_id)).count()
             setattr(t, 'assigned_students_count', count)
 
-            # Match keys for this employee
+            # Match keys for this employee across all potential punch identifiers
             emp_keys = {str(t.id), str(t.id).replace('tr_', ''), f"emp_{t.id}", f"tr_{t.id}"}
+            if t_emp:
+                if t_emp.id:
+                    emp_keys.update({str(t_emp.id), str(t_emp.id).replace('emp_', ''), f"emp_{t_emp.id}"})
+                if t_emp.code:
+                    code_clean = str(t_emp.code).strip()
+                    num_clean = code_clean.replace('EMP-', '').strip()
+                    emp_keys.update({
+                        code_clean,
+                        code_clean.upper(),
+                        code_clean.lower(),
+                        num_clean,
+                        num_clean.zfill(4),
+                        f"EMP-{num_clean}",
+                        f"EMP-{num_clean.zfill(4)}"
+                    })
+            if emp_code_val:
+                c_clean = str(emp_code_val).strip()
+                n_clean = c_clean.replace('EMP-', '').strip()
+                emp_keys.update({c_clean, n_clean, n_clean.zfill(4), f"EMP-{n_clean.zfill(4)}", f"EMP-{n_clean}"})
             if t.user_id:
-                emp_keys.update({str(t.user_id), f"cust_{t.user_id}", f"cust_usr_{t.user_id}", f"emp_{t.user_id}"})
+                emp_keys.update({str(t.user_id), f"cust_{t.user_id}", f"cust_usr_{t.user_id}", f"emp_{t.user_id}", f"usr_{t.user_id}"})
             if t.email:
                 emp_keys.add(t.email.lower().strip())
 
             # Find matching HRMS attendance
             matching_att = None
             for att in today_hrms_att:
-                if str(att.employee_id) in emp_keys or str(att.employee_id).replace('emp_', '') in emp_keys:
+                att_eid = str(att.employee_id or '').strip()
+                if (
+                    att_eid in emp_keys
+                    or att_eid.replace('emp_', '') in emp_keys
+                    or att_eid.replace('tr_', '') in emp_keys
+                ):
                     matching_att = att
                     break
 
-            # Find matching Biometric logs
+            # Find matching Biometric / Mobile / GPS logs
             matching_logs = []
             for b in today_bio_logs:
                 cid = str(b.student_id or '')
                 meta = b.meta_data or {}
                 meta_uid = str(meta.get("user_id") or meta.get("employee_id") or meta.get("student_id") or '')
+                meta_code = str(meta.get("employee_code") or meta.get("code") or '')
                 meta_name = str(meta.get("user_name") or meta.get("employee_name") or '').strip().lower()
                 meta_email = str(meta.get("email") or '').strip().lower()
 
@@ -195,12 +234,13 @@ class PayrollService:
                     or cid.replace('cust_', '') in emp_keys
                     or cid.replace('emp_', '') in emp_keys
                     or meta_uid in emp_keys
+                    or (meta_code and meta_code in emp_keys)
                     or (t.email and meta_email == t.email.lower().strip())
                     or (t.full_name and meta_name == t.full_name.lower().strip())
                 ):
                     matching_logs.append(b)
 
-            # Calculate Punch In and Out
+            # Calculate Punch In and Out dynamically based on real attendance records
             punch_in = None
             punch_out = None
             is_early = False
@@ -210,57 +250,59 @@ class PayrollService:
             if matching_att:
                 if matching_att.check_in and matching_att.check_in != "--:--":
                     punch_in = matching_att.check_in
-                    is_present = True
                 if matching_att.check_out and matching_att.check_out != "--:--":
                     punch_out = matching_att.check_out
-                if matching_att.status:
-                    if matching_att.status.upper() in ["PRESENT", "ON_DUTY"]:
-                        today_status = "Present"
-                        is_present = True
-                    elif matching_att.status.upper() in ["EARLY_LOGOUT", "EARLY_OUT"]:
-                        today_status = "Early Logout"
-                        is_early = True
-                        is_present = True
-                    elif matching_att.status.upper() in ["MISSED_PUNCH", "HALF_DAY"]:
-                        today_status = "Missed Punch"
-                        is_present = True
-                    elif matching_att.status.upper() in ["ON_LEAVE", "LEAVE"]:
-                        today_status = "Absent"
 
-            if matching_logs:
-                in_logs = [
-                    l for l in matching_logs
-                    if getattr(l, "direction", "") in ["CHECK_IN", "IN", "ENTRY", "ENROLL"]
-                    or "in" in str(getattr(l, "direction", "")).lower()
-                    or (l.event_type in ["FACE_SCAN", "FINGERPRINT", "RFID_CARD", "MANUAL", "GPS_SCAN"] and getattr(l, "direction", "") not in ["CHECK_OUT", "OUT", "EXIT"])
-                ]
-                out_logs = [
-                    l for l in matching_logs
-                    if getattr(l, "direction", "") in ["CHECK_OUT", "OUT", "EXIT"]
-                    or "out" in str(getattr(l, "direction", "")).lower()
-                ]
-
-                if in_logs and not punch_in:
-                    punch_in = in_logs[0].timestamp.strftime("%H:%M:%S")
-                elif not punch_in and matching_logs:
-                    punch_in = matching_logs[0].timestamp.strftime("%H:%M:%S")
-
-                if out_logs and not punch_out:
-                    punch_out = out_logs[-1].timestamp.strftime("%H:%M:%S")
-                elif len(matching_logs) > 1 and not punch_out:
-                    punch_out = matching_logs[-1].timestamp.strftime("%H:%M:%S")
-
-                is_present = True
-
-            if is_present or punch_in:
-                if punch_in and punch_out:
-                    today_status = "Early Logout" if is_early else "Present"
+                st_lower = (matching_att.status or "").strip().lower()
+                if any(x in st_lower for x in ["present", "late", "verified", "on_duty", "on duty"]):
+                    today_status = "Present"
+                    is_present = True
+                elif "early" in st_lower:
+                    today_status = "Early Logout"
+                    is_early = True
+                    is_present = True
+                elif "half" in st_lower or "missed" in st_lower:
+                    today_status = "Missed Punch"
+                    is_present = True
+                elif any(x in st_lower for x in ["absent", "leave", "off", "holiday", "rest"]):
+                    today_status = "Absent"
+                    is_present = False
                 elif punch_in:
                     today_status = "Present"
-                else:
+                    is_present = True
+
+            # If not already present via EmployeeAttendance, check Biometric / Mobile GPS logs
+            if not is_present and matching_logs:
+                # Include all valid punches (Face ID, Biometrics, GPS, Mobile, Manual)
+                valid_punch_logs = [
+                    l for l in matching_logs
+                    if getattr(l, "event_type", "") in ["FACE_SCAN", "FINGERPRINT", "RFID_CARD", "GPS_SCAN", "MANUAL", "GEOFENCE_ESS"]
+                    or getattr(l, "status", "") == "SUCCESS"
+                ]
+                if not valid_punch_logs:
+                    valid_punch_logs = matching_logs
+
+                if valid_punch_logs:
+                    in_logs = [
+                        l for l in valid_punch_logs
+                        if getattr(l, "direction", "") in ["CHECK_IN", "IN", "ENTRY"]
+                        or "in" in str(getattr(l, "direction", "")).lower()
+                    ]
+                    out_logs = [
+                        l for l in valid_punch_logs
+                        if getattr(l, "direction", "") in ["CHECK_OUT", "OUT", "EXIT"]
+                        or "out" in str(getattr(l, "direction", "")).lower()
+                    ]
+                    if in_logs and not punch_in:
+                        punch_in = in_logs[0].timestamp.strftime("%I:%M %p")
+                    elif valid_punch_logs and not punch_in:
+                        punch_in = valid_punch_logs[0].timestamp.strftime("%I:%M %p")
+                    if out_logs:
+                        punch_out = out_logs[-1].timestamp.strftime("%I:%M %p")
+                    elif len(valid_punch_logs) > 1 and not punch_out:
+                        punch_out = valid_punch_logs[-1].timestamp.strftime("%I:%M %p")
+                    is_present = True
                     today_status = "Present"
-            else:
-                today_status = "Absent"
 
             setattr(t, 'today_status', today_status)
             setattr(t, 'punch_in', punch_in)
@@ -339,6 +381,8 @@ class PayrollService:
             if "upi_id" in data:
                 existing_employee.upi_id = data["upi_id"]
 
+            if "gender" in data and data["gender"]:
+                existing_employee.gender = data["gender"]
             if "primary_vahd_location" in data or "branch" in data or "branch_name" in data or "location" in data:
                 existing_employee.primary_vahd_location = (data.get("primary_vahd_location") or data.get("branch") or data.get("branch_name") or data.get("location") or "").strip() or None
 
@@ -413,6 +457,7 @@ class PayrollService:
             full_name=full_name,
             email=email,
             phone=phone,
+            gender=data.get("gender"),
             role=employee_role,
             specialization=data.get("specialization"),
             base_monthly_salary=float(data.get("base_monthly_salary") or 0.0),

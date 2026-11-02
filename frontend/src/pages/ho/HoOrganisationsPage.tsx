@@ -84,17 +84,17 @@ export const HoOrganisationsPage: React.FC = () => {
   const handleExportCsv = () => {
     if (!data?.matrix) return;
     const headers = [
-      'Orag Name',
+      'Organisation Name',
       'Total EMP',
-      'Preent',
+      'Present',
       'Leave',
       'Leave Approvals',
-      'Abcent',
+      'Absent',
       'Total Students',
-      'Preent',
+      'Present',
       'Leave',
       'Leave Approvals',
-      'Abcent',
+      'Absent',
     ];
 
     const rows = filteredMatrix.map((r) => [
@@ -305,17 +305,17 @@ export const HoOrganisationsPage: React.FC = () => {
               </tr>
               {/* Spreadsheet Column Headers matching user's layout */}
               <tr className="bg-amber-300 text-slate-950 font-black text-[11px] uppercase tracking-wider border-b-2 border-slate-900 divide-x divide-amber-400">
-                <th className="py-3 px-4 min-w-[200px]">Orag Name</th>
+                <th className="py-3 px-4 min-w-[200px]">Organisation Name</th>
                 <th className="py-3 px-3 text-center min-w-[90px] bg-amber-200">Total EMP</th>
-                <th className="py-3 px-3 text-center min-w-[85px] text-emerald-950 bg-emerald-100">Preent</th>
+                <th className="py-3 px-3 text-center min-w-[85px] text-emerald-950 bg-emerald-100">Present</th>
                 <th className="py-3 px-3 text-center min-w-[85px] text-indigo-950 bg-indigo-100">Leave</th>
                 <th className="py-3 px-3 text-center min-w-[110px] text-amber-950 bg-amber-100">Leave Approvals</th>
-                <th className="py-3 px-3 text-center min-w-[85px] text-rose-950 bg-rose-100">Abcent</th>
+                <th className="py-3 px-3 text-center min-w-[85px] text-rose-950 bg-rose-100">Absent</th>
                 <th className="py-3 px-3 text-center min-w-[100px] bg-amber-200">Total Students</th>
-                <th className="py-3 px-3 text-center min-w-[85px] text-emerald-950 bg-emerald-100">Preent</th>
+                <th className="py-3 px-3 text-center min-w-[85px] text-emerald-950 bg-emerald-100">Present</th>
                 <th className="py-3 px-3 text-center min-w-[85px] text-indigo-950 bg-indigo-100">Leave</th>
                 <th className="py-3 px-3 text-center min-w-[110px] text-amber-950 bg-amber-100">Leave Approvals</th>
-                <th className="py-3 px-3 text-center min-w-[85px] text-rose-950 bg-rose-100">Abcent</th>
+                <th className="py-3 px-3 text-center min-w-[85px] text-rose-950 bg-rose-100">Absent</th>
               </tr>
             </thead>
 

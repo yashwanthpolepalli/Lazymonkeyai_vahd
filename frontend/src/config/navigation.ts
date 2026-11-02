@@ -18,11 +18,13 @@ export const navConfig: Record<Role, NavItem[]> = {
     { label: 'Dashboard', path: '/ho', icon: 'layout-dashboard' },
     { label: 'HRMS & Students', path: '/ho/hrms', icon: 'users' },
     { label: 'Organisations', path: '/ho/organisations', icon: 'building-2' },
+    { label: 'Reports', path: '/ho/reports', icon: 'bar-chart-3' },
     { label: 'Settings', path: '/ho/settings', icon: 'settings' },
   ],
   owner: [
     { label: 'Dashboard', path: '/owner', icon: 'layout-dashboard' },
     { label: 'HRMS & Students', path: '/owner/hrms', icon: 'users' },
+    { label: 'Reports', path: '/owner/reports', icon: 'bar-chart-3' },
     { label: 'Settings', path: '/owner/settings', icon: 'settings' },
   ],
   employee: [

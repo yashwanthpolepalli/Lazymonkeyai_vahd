@@ -6,6 +6,9 @@ class employeeCreateRequest(BaseModel):
     full_name: str
     email: EmailStr
     phone: Optional[str] = None
+    gender: Optional[str] = None
+    department: Optional[str] = None
+    designation: Optional[str] = None
     role: str = "EMPLOYEE"  # OWNER, MANAGER, EMPLOYEE, STAFF
     specialization: Optional[str] = None
     base_monthly_salary: float = 0.0
@@ -25,6 +28,11 @@ class employeeResponse(BaseModel):
     full_name: str
     email: EmailStr
     phone: Optional[str] = None
+    gender: Optional[str] = None
+    department: Optional[str] = None
+    designation: Optional[str] = None
+    joined_date: Optional[str] = None
+    employment_type: Optional[str] = None
     role: str
     specialization: Optional[str] = None
     base_monthly_salary: float

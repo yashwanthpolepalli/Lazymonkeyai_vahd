@@ -302,7 +302,7 @@ export function EmployeeEnrollmentModal({
       // 5. Departments (HRMS API + Settings masterStore) - Filtered specifically for Employee / Staff View
       const isEmployeeDept = (d: any) => {
         if (typeof d === 'object' && d) {
-          const extra = (d.extra_info || '').toLowerCase().trim();
+          const extra = (d.extra_info || d.department_type || '').toLowerCase().trim();
           if (extra === 'student' || extra === 'students' || extra === 'academic') return false;
           if (extra === 'employee' || extra === 'staff' || extra === 'both' || extra === 'all') return true;
         }

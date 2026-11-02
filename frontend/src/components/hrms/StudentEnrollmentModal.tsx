@@ -309,12 +309,12 @@ export function StudentEnrollmentModal({
       // 4. Departments (HRMS API + Master Data) - Filtered specifically for Student / Academic View
       const isStudentDept = (d: any) => {
         if (typeof d === 'object' && d) {
-          const extra = (d.extra_info || '').toLowerCase().trim();
+          const extra = (d.extra_info || d.department_type || '').toLowerCase().trim();
           if (extra === 'employee' || extra === 'staff') return false;
           if (extra === 'student' || extra === 'academic' || extra === 'both' || extra === 'all') return true;
         }
         const name = (typeof d === 'string' ? d : (d?.name || '')).toLowerCase();
-        const nonStudentKeywords = ['human resource', 'payroll', 'security &', 'housekeeping', 'maintenance &', 'fleet logistics', 'administration & hr'];
+        const nonStudentKeywords = ['human resource', 'payroll', 'security &', 'housekeeping', 'maintenance &', 'fleet logistics', 'administration & hr', 'administrative office', 'management'];
         return !nonStudentKeywords.some((k) => name.includes(k));
       };
 

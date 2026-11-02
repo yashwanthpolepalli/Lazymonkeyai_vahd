@@ -3,11 +3,11 @@ import io
 import csv
 import calendar
 from typing import Dict, Any, List, Optional
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Query, Body, status, Response
 from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
-from sqlalchemy import or_, and_, func, desc, String
+from sqlalchemy import or_, and_, func, desc, String, cast
 
 from src.database.session import get_db
 from src.models.user import User
@@ -19,7 +19,7 @@ from src.models.membership import Membership
 from src.models.super_admin import PlatformAuditLog
 from src.api.deps import get_current_user
 from src.utils.security import hash_password
-from src.utils.timezone import now_ist_naive
+from src.utils.timezone import now_ist_naive, IST
 from src.utils.email import send_enrollment_email
 from src.services.employee_attendance_report_service import EmployeeAttendanceReportService
 from src.services.student_attendance_report_service import StudentAttendanceReportService
@@ -892,6 +892,32 @@ def _gather_ho_branch_attendance(
             b_query = b_query.filter(vahdBranch.id == target_branch_id)
         branches = b_query.all()
 
+    if not branches:
+        # If no explicit Branch rows exist in DB, group dynamically by employee/student branch names
+        known_branch_names = set()
+        for e in db.query(Employee.vahd_branch).distinct().all():
+            if e and e[0]:
+                known_branch_names.add(e[0].strip())
+        from src.models.student import student as StudentModel
+        for s in db.query(StudentModel.primary_vahd_location).distinct().all():
+            if s and s[0]:
+                known_branch_names.add(s[0].strip())
+
+        if not known_branch_names:
+            known_branch_names.add("Main Branch")
+
+        class _DynamicBranchWrapper:
+            def __init__(self, name):
+                self.id = f"br_{name.lower().replace(' ', '_')}"
+                self.branch_name = name
+                self.vahd_name = name
+                self.city = name
+                self.address = name
+                self.owner_id = None
+                self.is_active = True
+
+        branches = [_DynamicBranchWrapper(b_name) for b_name in sorted(list(known_branch_names))]
+
     branch_reports = []
     grand_total_employees = 0
     grand_total_students = 0
@@ -919,7 +945,12 @@ def _gather_ho_branch_attendance(
 
         # Fetch employees
         emps = db.query(Employee).filter(
-            or_(Employee.branch_id == b.id, Employee.vahd_branch == b.branch_name),
+            or_(
+                Employee.branch_id == b.id,
+                Employee.vahd_branch == b.branch_name,
+                Employee.vahd_branch.ilike(f"%{b.branch_name}%") if b.branch_name else False,
+                b.branch_name in ["Main Branch", "srd"]
+            ),
             or_(func.upper(Employee.status) == "ACTIVE", Employee.status == "ACTIVE", Employee.status == "Active", Employee.status.is_(None))
         ).all()
 
@@ -959,7 +990,12 @@ def _gather_ho_branch_attendance(
 
         # Fetch students
         students = db.query(student).filter(
-            or_(student.branch_id == b.id, student.primary_vahd_location.ilike(f"%{b.branch_name}%")),
+            or_(
+                student.branch_id == b.id,
+                student.primary_vahd_location == b.branch_name,
+                student.primary_vahd_location.ilike(f"%{b.branch_name}%") if b.branch_name else False,
+                b.branch_name in ["Main Branch", "srd"]
+            ),
             or_(func.upper(student.status) == "ACTIVE", student.status == "ACTIVE", student.status == "Active", student.status.is_(None))
         ).all()
 
@@ -1003,9 +1039,9 @@ def _gather_ho_branch_attendance(
         branch_reports.append({
             "branch_id": b.id,
             "branch_name": b.branch_name,
-            "vahd_name": b.vahd_name or b.branch_name,
-            "city": b.city or "",
-            "address": b.address or "",
+            "vahd_name": getattr(b, "vahd_name", None) or b.branch_name,
+            "city": getattr(b, "city", "") or "",
+            "address": getattr(b, "address", "") or "",
             "owner_name": ", ".join([o.full_name for o in branch_owners if o.full_name]) if branch_owners else (primary_owner.full_name if primary_owner else None),
             "owner_email": primary_owner.email if primary_owner else None,
             "owner_phone": primary_owner.phone if primary_owner else None,
@@ -1457,32 +1493,93 @@ def get_ho_organisations_matrix(
 
         # 1. Employees in this branch
         emps = db.query(Employee).filter(
-            or_(Employee.branch_id == b.id, Employee.vahd_branch == b.branch_name),
+            or_(
+                Employee.branch_id == b.id,
+                Employee.vahd_branch == b.branch_name,
+                Employee.vahd_branch.ilike(f"%{b.branch_name}%"),
+                Employee.vahd_branch.ilike(f"%{b.vahd_name}%") if b.vahd_name else False
+            ),
             or_(func.upper(Employee.status) == "ACTIVE", Employee.status == "ACTIVE", Employee.status == "Active", Employee.status.is_(None))
         ).all()
+        # Fallback: if only 1 branch exists in organization, assign active employees to it
+        if not emps and len(branches) == 1:
+            emps = db.query(Employee).filter(
+                or_(func.upper(Employee.status) == "ACTIVE", Employee.status == "ACTIVE", Employee.status == "Active", Employee.status.is_(None))
+            ).all()
+
         emp_ids = [e.id for e in emps]
-        total_emp = len(emp_ids)
+        total_emp = len(emps)
+
+        emp_match_map = {}
+        for e in emps:
+            keys = [e.id, e.code, e.email, getattr(e, "user_id", None)]
+            if e.id.startswith("emp_"):
+                keys.append(e.id.replace("emp_", ""))
+            if e.code:
+                clean_num = "".join(filter(str.isdigit, e.code))
+                if clean_num:
+                    keys.extend([clean_num, clean_num.zfill(4), f"EMP-{clean_num}", f"EMP-{clean_num.zfill(4)}"])
+            for k in keys:
+                if k:
+                    emp_match_map[str(k).strip().lower()] = e.id
 
         emp_present_set = set()
-        if emp_ids:
+        if emps:
             # Check EmployeeAttendance records
-            att_records = db.query(EmployeeAttendance.employee_id).filter(
-                EmployeeAttendance.date == parsed_date,
-                EmployeeAttendance.employee_id.in_(emp_ids),
-                func.upper(EmployeeAttendance.status).in_(["PRESENT", "HALF_DAY", "LATE", "P"])
+            all_att_records = db.query(EmployeeAttendance).filter(
+                or_(
+                    EmployeeAttendance.date == parsed_date,
+                    cast(EmployeeAttendance.date, String) == parsed_date.strftime("%Y-%m-%d"),
+                    cast(EmployeeAttendance.date, String) == parsed_date.strftime("%d/%m/%Y"),
+                    cast(EmployeeAttendance.date, String).ilike(f"%{parsed_date.strftime('%Y-%m-%d')}%")
+                )
             ).all()
-            emp_present_set.update([a[0] for a in att_records if a[0]])
+            for a in all_att_records:
+                a_eid = str(a.employee_id or "").strip().lower()
+                clean_num = "".join(filter(str.isdigit, a_eid))
+                matched_id = emp_match_map.get(a_eid) or emp_match_map.get(a_eid.replace("emp_", "")) or (emp_match_map.get(clean_num) if clean_num else None)
+                if matched_id:
+                    st = (a.status or "").lower()
+                    has_checkin = bool(a.check_in and a.check_in not in ["--:--", "-", ""])
+                    is_pres = any(x in st for x in ["present", "late", "half", "verified", "p"]) or has_checkin
+                    if is_pres:
+                        emp_present_set.add(matched_id)
 
-            # Also check if BiometricLog has employee punch
+            # Also check BiometricLog punches for employees on parsed_date (with timezone tolerance)
             bio_punches = db.query(BiometricLog).filter(
-                BiometricLog.timestamp >= day_start,
-                BiometricLog.timestamp <= day_end,
-                BiometricLog.user_role.in_(["employee", "STAFF", "MANAGER", "EMPLOYEE"])
+                BiometricLog.timestamp >= day_start - timedelta(hours=6),
+                BiometricLog.timestamp <= day_end + timedelta(hours=6),
+                BiometricLog.status != "DENIED"
             ).all()
             for bp in bio_punches:
-                m_emp_id = (bp.meta_data or {}).get("employee_id") or bp.student_id
-                if m_emp_id in emp_ids:
-                    emp_present_set.add(m_emp_id)
+                if not bp.timestamp:
+                    continue
+                ts = bp.timestamp
+                p_dates = {ts.date(), (ts + timedelta(hours=5, minutes=30)).date()}
+                if ts.tzinfo:
+                    p_dates.add(ts.astimezone(IST).date())
+                if parsed_date not in p_dates:
+                    continue
+                if bp.direction in ["ENROLL", "FACE_ENROLLMENT", "MARK_ABSENT"]:
+                    continue
+
+                meta = bp.meta_data or {}
+                candidates = [
+                    str(bp.student_id or ""),
+                    str(meta.get("employee_id") or ""),
+                    str(meta.get("user_id") or ""),
+                    str(meta.get("employee_code") or meta.get("code") or ""),
+                    str(meta.get("email") or "").lower()
+                ]
+                for c in candidates:
+                    if not c:
+                        continue
+                    clean_c = c.strip().lower()
+                    clean_c_num = "".join(filter(str.isdigit, clean_c))
+                    matched_id = emp_match_map.get(clean_c) or emp_match_map.get(clean_c.replace("emp_", "")) or (emp_match_map.get(clean_c_num) if clean_c_num else None)
+                    if matched_id:
+                        emp_present_set.add(matched_id)
+                        break
 
         emp_present = len(emp_present_set)
 
@@ -1506,20 +1603,92 @@ def get_ho_organisations_matrix(
 
         # 2. Students in this branch
         students = db.query(student).filter(
-            or_(student.branch_id == b.id, student.primary_vahd_location.ilike(f"%{b.branch_name}%")),
+            or_(
+                student.branch_id == b.id,
+                student.primary_vahd_location.ilike(f"%{b.branch_name}%"),
+                student.primary_vahd_location.ilike(f"%{b.vahd_name}%") if b.vahd_name else False,
+                student.owner_id == b.owner_id if b.owner_id else False,
+                student.ho_id == b.ho_id if b.ho_id else False
+            ),
             or_(func.upper(student.status) == "ACTIVE", student.status == "ACTIVE", student.status == "Active", student.status.is_(None))
         ).all()
-        student_ids = [s.id for s in students]
-        total_students = len(student_ids)
+        # Fallback if single branch in organization
+        if not students and len(branches) == 1:
+            students = db.query(student).filter(
+                or_(func.upper(student.status) == "ACTIVE", student.status == "ACTIVE", student.status == "Active", student.status.is_(None))
+            ).all()
+
+        total_students = len(students)
+        student_match_map = {}
+        for s in students:
+            keys = [s.id, s.user_id, s.member_code, s.email]
+            if s.id.startswith("cust_"):
+                keys.append(s.id.replace("cust_", ""))
+            else:
+                keys.append(f"cust_{s.id}")
+            if s.user_id:
+                keys.append(f"cust_{s.user_id}")
+                keys.append(f"cust_usr_{s.user_id}")
+            for k in keys:
+                if k:
+                    student_match_map[str(k).strip().lower()] = s.id
 
         student_present_set = set()
-        if student_ids:
-            bio_stud_punches = db.query(BiometricLog.student_id).filter(
-                BiometricLog.timestamp >= day_start,
-                BiometricLog.timestamp <= day_end,
-                BiometricLog.student_id.in_(student_ids)
+        if students:
+            # Check EmployeeAttendance table for students on parsed_date
+            all_att_records = db.query(EmployeeAttendance).filter(
+                or_(
+                    EmployeeAttendance.date == parsed_date,
+                    cast(EmployeeAttendance.date, String) == parsed_date.strftime("%Y-%m-%d"),
+                    cast(EmployeeAttendance.date, String) == parsed_date.strftime("%d/%m/%Y"),
+                    cast(EmployeeAttendance.date, String).ilike(f"%{parsed_date.strftime('%Y-%m-%d')}%")
+                )
             ).all()
-            student_present_set.update([p[0] for p in bio_stud_punches if p[0]])
+            for a in all_att_records:
+                a_eid = str(a.employee_id or "").strip().lower()
+                clean_a_eid = a_eid.replace("cust_", "")
+                matched_sid = student_match_map.get(a_eid) or student_match_map.get(clean_a_eid)
+                if matched_sid:
+                    st = (a.status or "").lower()
+                    has_checkin = bool(a.check_in and a.check_in not in ["--:--", "-", ""])
+                    if any(x in st for x in ["present", "late", "half", "verified", "p"]) or has_checkin:
+                        student_present_set.add(matched_sid)
+
+            # Check BiometricLog punches for students on parsed_date
+            bio_stud_punches = db.query(BiometricLog).filter(
+                BiometricLog.timestamp >= day_start - timedelta(hours=6),
+                BiometricLog.timestamp <= day_end + timedelta(hours=6),
+                BiometricLog.status != "DENIED"
+            ).all()
+            for bp in bio_stud_punches:
+                if not bp.timestamp:
+                    continue
+                ts = bp.timestamp
+                p_dates = {ts.date(), (ts + timedelta(hours=5, minutes=30)).date()}
+                if ts.tzinfo:
+                    p_dates.add(ts.astimezone(IST).date())
+                if parsed_date not in p_dates:
+                    continue
+                if bp.direction in ["ENROLL", "FACE_ENROLLMENT", "MARK_ABSENT"]:
+                    continue
+
+                meta = bp.meta_data or {}
+                candidates = [
+                    str(bp.student_id or ""),
+                    str(meta.get("student_id") or ""),
+                    str(meta.get("user_id") or ""),
+                    str(meta.get("student_code") or meta.get("code") or ""),
+                    str(meta.get("email") or "").lower()
+                ]
+                for c in candidates:
+                    if not c:
+                        continue
+                    clean_c = c.strip().lower()
+                    clean_c_no_cust = clean_c.replace("cust_", "")
+                    matched_sid = student_match_map.get(clean_c) or student_match_map.get(clean_c_no_cust)
+                    if matched_sid:
+                        student_present_set.add(matched_sid)
+                        break
 
         student_present = len(student_present_set)
         student_leave = 0

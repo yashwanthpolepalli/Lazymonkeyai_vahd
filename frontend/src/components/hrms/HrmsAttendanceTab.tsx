@@ -146,9 +146,12 @@ export function HrmsAttendanceTab({ onSuccessToast }: HrmsAttendanceTabProps) {
     }
     setSubmittingPunch(true);
     try {
+      const isOffStatus = punchStatus === 'Absent' || punchStatus === 'Week Off' || punchStatus === 'Holiday';
       const action =
         punchStatus === 'Absent'
           ? 'MARK_ABSENT'
+          : punchStatus === 'Holiday'
+          ? 'HOLIDAY'
           : punchStatus === 'Half Day'
           ? 'HALF_DAY'
           : punchStatus === 'Paid Leave'
@@ -162,8 +165,8 @@ export function HrmsAttendanceTab({ onSuccessToast }: HrmsAttendanceTabProps) {
         action: action,
         status: punchStatus,
         date: punchDate,
-        time: punchStatus === 'Absent' || punchStatus === 'Week Off' ? undefined : (punchTime.trim() || undefined),
-        check_out_time: punchStatus === 'Absent' || punchStatus === 'Week Off' ? undefined : (punchCheckOutTime.trim() || undefined),
+        time: isOffStatus ? undefined : (punchTime.trim() || undefined),
+        check_out_time: isOffStatus ? undefined : (punchCheckOutTime.trim() || undefined),
         note: punchNote.trim() || undefined,
         method: punchMethod,
         user_role: attendanceScope,

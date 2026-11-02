@@ -28,6 +28,7 @@ const EMPLOYEE_COLUMN_GROUPS: ColumnGroup[] = [
   {
     name: 'WORKPLACE & STATUS',
     columns: [
+      { key: 'department', label: 'Department' },
       { key: 'designation', label: 'Designation' },
       { key: 'role', label: 'Role' },
       { key: 'zone', label: 'Zone' },
@@ -69,6 +70,7 @@ const DEFAULT_EMPLOYEE_COLUMNS: Record<string, boolean> = {
   email: false,
   gender: false,
   dob: false,
+  department: true,
   designation: true,
   role: true,
   zone: false,
@@ -104,6 +106,7 @@ interface employeeRowData {
   phone?: string;
   gender?: string;
   dob?: string;
+  department?: string;
   designation: string;
   role: string;
   zone?: string;
@@ -458,10 +461,11 @@ export function HrmsemployeesTab() {
     const name = t.name || t.full_name || '';
     const email = t.email || (t as any).personal_email || '';
     const phone = (t as any).phone || (t as any).contact_no || '';
+    const department = (t as any).department || '';
     const specialization = t.specialization || t.specialty || (t as any).job_designation || '';
     const empNo = (t as any).employee_code || (t as any).emp_no || (t as any).code || '';
     const designation = (t as any).job_designation || (t as any).designation || specialization || '';
-    const role = (t as any).role || (t as any).department || '';
+    const role = (t as any).role || department || '';
     const matchedBranch = branchesList.find(b =>
       b.id === (t as any).branch_id ||
       (b.branch_name && (t as any).vahd_branch && b.branch_name.toLowerCase() === String((t as any).vahd_branch).toLowerCase()) ||
@@ -580,6 +584,7 @@ export function HrmsemployeesTab() {
       phone,
       gender,
       dob,
+      department,
       designation,
       role,
       zone,
@@ -1054,7 +1059,7 @@ export function HrmsemployeesTab() {
                   </div>
 
                   <div className="pt-2 border-t border-navy-50 flex items-center justify-between text-xs">
-                    <span className="font-extrabold text-emerald-700">₹{t.base_monthly_salary.toLocaleString('en-IN')}/mo</span>
+                    <span className="font-extrabold text-navy-800 font-mono">{t.phone || '—'}</span>
                     <div className="flex items-center gap-1.5">
                       <button
                         onClick={() => {
@@ -1117,6 +1122,7 @@ export function HrmsemployeesTab() {
                     {visibleColumns.email && <th className="py-3.5 px-4 font-bold tracking-wider">EMAIL</th>}
                     {visibleColumns.gender && <th className="py-3.5 px-4 font-bold tracking-wider">GENDER</th>}
                     {visibleColumns.dob && <th className="py-3.5 px-4 font-bold tracking-wider">DATE OF BIRTH</th>}
+                    {visibleColumns.department && <th className="py-3.5 px-4 font-bold tracking-wider">DEPARTMENT</th>}
                     {visibleColumns.designation && <th className="py-3.5 px-4 font-bold tracking-wider">DESIGNATION</th>}
                     {visibleColumns.role && <th className="py-3.5 px-4 font-bold tracking-wider">ROLE</th>}
                     {visibleColumns.zone && <th className="py-3.5 px-4 font-bold tracking-wider">ZONE</th>}
@@ -1178,10 +1184,10 @@ export function HrmsemployeesTab() {
                               <div className="min-w-0">
                                 <div className="font-bold text-navy-900 text-xs truncate">{t.name || '—'}</div>
                                 {t.email && <div className="text-[11px] text-navy-400 font-normal truncate">{t.email}</div>}
-                                <div className="text-[10px] text-navy-500 font-semibold flex items-center gap-1.5 mt-0.5">
-                                  <span className="text-emerald-700 font-bold">₹{t.base_monthly_salary.toLocaleString('en-IN')}/mo</span>
-                                  {t.upi_id && <span className="text-navy-400">· UPI: {t.upi_id}</span>}
-                                  {!t.upi_id && t.bank_account_no && <span className="text-navy-400">· A/C: {t.bank_account_no}</span>}
+                                <div className="text-[11px] text-navy-500 font-semibold flex items-center gap-1.5 mt-0.5">
+                                  <span className="text-navy-800 font-mono font-bold">{t.phone || '—'}</span>
+                                  {t.upi_id && <span className="text-navy-400 text-[10px]">· UPI: {t.upi_id}</span>}
+                                  {!t.upi_id && t.bank_account_no && <span className="text-navy-400 text-[10px]">· A/C: {t.bank_account_no}</span>}
                                 </div>
                               </div>
                             </div>
@@ -1213,6 +1219,15 @@ export function HrmsemployeesTab() {
                         {visibleColumns.dob && (
                           <td className="py-3.5 px-4 text-xs font-mono text-navy-600 whitespace-nowrap">
                             {t.dob || '—'}
+                          </td>
+                        )}
+
+                        {/* DEPARTMENT */}
+                        {visibleColumns.department && (
+                          <td className="py-3.5 px-4 whitespace-nowrap">
+                            <span className="font-semibold text-navy-800 text-xs">
+                              {t.department || '—'}
+                            </span>
                           </td>
                         )}
 

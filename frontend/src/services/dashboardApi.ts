@@ -9,19 +9,23 @@ export const dashboardApi = {
 
     const liveActivity = (res?.recentCheckIns || []).map((item: any) => {
       const isLogout = item.direction && (item.direction.toUpperCase().includes('OUT') || item.direction.toUpperCase().includes('EXIT'));
+      const cleanZone = (item.zone || '').trim();
+      const cleanDevice = (item.deviceName || item.method || '').trim();
+      const descParts = [cleanZone, cleanDevice && cleanDevice.toLowerCase() !== cleanZone.toLowerCase() ? cleanDevice : ''].filter(Boolean);
+
       return {
         id: item.eventId || `act-${Math.random()}`,
         type: isLogout ? 'checkout' : 'checkin',
-        title: item.studentName || 'Student Member',
+        title: item.studentName || item.studentId || '',
         studentId: item.studentId || '',
         userRole: item.userRole || 'Student',
         direction: item.direction || (isLogout ? 'CHECK_OUT' : 'CHECK_IN'),
         status: item.status || 'SUCCESS',
-        description: `${item.zone || 'Main Branch'} · ${item.method || 'Biometric Scanner'}`,
-        device: item.deviceName || item.method || 'Biometric Scanner',
-        location: item.zone || 'Main Branch',
+        description: descParts.join(' · '),
+        device: cleanDevice,
+        location: cleanZone,
         timestamp: item.timestamp,
-        time: item.timestamp ? new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) : 'Just now',
+        time: item.timestamp ? new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) : '',
       };
     });
 

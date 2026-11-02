@@ -3,7 +3,7 @@ from typing import List, Dict, Any, Optional
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from src.models.settings import vahdBranch, vahdSetting, PaymentMethod, MasterData
-from src.models.hrms import Department, Designation
+from src.models.hrms import Department, Designation, Employee
 from src.models.student import student
 from src.models.biometric_device import BiometricDevice
 
@@ -149,8 +149,18 @@ class SettingsService:
             setting.address = data.get("address", "")
         if "phone" in data:
             setting.phone = data.get("phone", "")
+        if "email" in data:
+            setting.email = data.get("email", "")
         if "gstin" in data:
             setting.gstin = data.get("gstin", "")
+        if "currency" in data:
+            setting.currency = data.get("currency", "")
+        if "timezone" in data:
+            setting.timezone = data.get("timezone", "")
+        if "opening_time" in data:
+            setting.opening_time = data.get("opening_time", "")
+        if "closing_time" in data:
+            setting.closing_time = data.get("closing_time", "")
         if "essl_bioserver_url" in data:
             setting.essl_bioserver_url = data.get("essl_bioserver_url", "")
         if "enable_auto_sms" in data:
@@ -279,22 +289,30 @@ class SettingsService:
                 "created_at": it.created_at.isoformat() if it.created_at else None,
             })
 
-        # Helper to classify departments
+        # Helper to classify departments dynamically
         def infer_dept_type(dept_name: str, cur_extra: str = "") -> str:
             if cur_extra and cur_extra.strip():
-                return cur_extra.strip().lower()
+                val = cur_extra.strip().lower()
+                if val in ("student", "students", "academic"):
+                    return "student"
+                if val in ("employee", "employees", "staff"):
+                    return "employee"
+                if val in ("both", "all"):
+                    return "both"
             n = (dept_name or "").lower()
             student_keywords = [
                 "computer", "science", "mechanical", "civil", "electrical", "electronics",
                 "engineering", "tech", "data", "ai", "bba", "mca", "mba", "commerce",
                 "humanities", "polytechnic", "physics", "chemistry", "mathematics",
-                "biology", "sports", "student", "academic", "stream", "curriculum"
+                "biology", "sports", "student", "academic", "stream", "curriculum",
+                "cse", "ece", "eee", "it", "batch", "degree", "class", "course"
             ]
             employee_keywords = [
                 "hr", "human resource", "payroll", "admin", "management", "finance",
                 "account", "operations", "facility", "facilities", "security", "transport",
                 "housekeeping", "logistics", "maintenance", "reception", "desk",
-                "faculty", "teaching", "staff", "office", "executive", "it support"
+                "faculty", "teaching", "staff", "office", "executive", "it support",
+                "administrative", "manager"
             ]
             is_stud = any(k in n for k in student_keywords)
             is_emp = any(k in n for k in employee_keywords)
@@ -304,10 +322,49 @@ class SettingsService:
                 return "employee"
             return "both"
 
-        # Update department items with classification
+        # Calculate employee and student counts per department
+        dept_emp_counts: Dict[str, int] = {}
+        try:
+            for e in db.query(Employee).all():
+                ed = (getattr(e, "department", None) or "").strip().lower()
+                if ed:
+                    dept_emp_counts[ed] = dept_emp_counts.get(ed, 0) + 1
+        except Exception:
+            pass
+
+        dept_stud_counts: Dict[str, int] = {}
+        try:
+            for s in db.query(student).all():
+                sm = s.meta_data if isinstance(s.meta_data, dict) else {}
+                sd = (sm.get("department") or sm.get("dept") or sm.get("branchdept") or getattr(s, "specialization", None) or "").strip().lower()
+                if sd:
+                    dept_stud_counts[sd] = dept_stud_counts.get(sd, 0) + 1
+        except Exception:
+            pass
+
+        # Update department items with counts and dynamic classification
         for it in item_dicts:
             if it.get("category") == "departments":
-                it["extra_info"] = infer_dept_type(it.get("name", ""), it.get("extra_info", ""))
+                d_name = (it.get("name") or "").strip().lower()
+                ec = dept_emp_counts.get(d_name, 0)
+                sc = dept_stud_counts.get(d_name, 0)
+                it["employee_count"] = ec
+                it["student_count"] = sc
+                cur_extra = (it.get("extra_info") or "").strip().lower()
+                if cur_extra in ("student", "students", "academic"):
+                    it["extra_info"] = "student"
+                elif cur_extra in ("employee", "employees", "staff"):
+                    it["extra_info"] = "employee"
+                elif cur_extra in ("both", "all"):
+                    it["extra_info"] = "both"
+                elif ec > 0 and sc == 0:
+                    it["extra_info"] = "employee"
+                elif sc > 0 and ec == 0:
+                    it["extra_info"] = "student"
+                elif ec > 0 and sc > 0:
+                    it["extra_info"] = "both"
+                else:
+                    it["extra_info"] = infer_dept_type(it.get("name", ""), "")
 
         # Also merge departments from hrms_departments if category is 'departments' or all
         if not category or category == "departments":
@@ -316,6 +373,18 @@ class SettingsService:
             for d in db_depts:
                 if d.name and d.name.lower() not in existing_dept_names:
                     existing_dept_names.add(d.name.lower())
+                    d_name = d.name.strip().lower()
+                    ec = dept_emp_counts.get(d_name, 0)
+                    sc = dept_stud_counts.get(d_name, 0)
+                    if ec > 0 and sc == 0:
+                        d_type = "employee"
+                    elif sc > 0 and ec == 0:
+                        d_type = "student"
+                    elif ec > 0 and sc > 0:
+                        d_type = "both"
+                    else:
+                        d_type = infer_dept_type(d.name, "")
+
                     item_dicts.append({
                         "id": d.id,
                         "category": "departments",
@@ -325,7 +394,9 @@ class SettingsService:
                         "is_active": d.is_active is not False,
                         "parent_id": "",
                         "parent_name": "",
-                        "extra_info": infer_dept_type(d.name, ""),
+                        "extra_info": d_type,
+                        "employee_count": ec,
+                        "student_count": sc,
                         "level": "",
                         "display_order": 0,
                         "created_at": d.created_at.isoformat() if d.created_at else None,

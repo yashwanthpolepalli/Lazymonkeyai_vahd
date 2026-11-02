@@ -489,7 +489,7 @@ export function Topbar() {
                 />
               ) : (
                 <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-600 text-white font-extrabold text-xs flex items-center justify-center border border-purple-200/80 shadow-2xs uppercase">
-                  {(user?.name || user?.email?.split('@')[0] || 'User')
+                  {(user?.name || user?.email?.split('@')[0] || '')
                     .split(' ')
                     .filter(Boolean)
                     .map((n) => n[0])
@@ -499,7 +499,7 @@ export function Topbar() {
                 </div>
               )}
               <div className="hidden sm:flex flex-col items-start leading-tight">
-                <span className="text-xs font-extrabold text-slate-900">{user?.name || user?.email?.split('@')[0] || 'User'}</span>
+                <span className="text-xs font-extrabold text-slate-900">{user?.name || user?.email?.split('@')[0] || ''}</span>
                 <span className="text-[10px] font-medium text-slate-400">{roleLabel}</span>
               </div>
               <Icon name="chevron-down" size={14} className="text-slate-400 hidden sm:block" />
@@ -508,13 +508,21 @@ export function Topbar() {
             {showProfile && (
               <div className="absolute right-0 top-12 w-56 bg-white rounded-2xl p-2 animate-slide-up z-50 shadow-xl border border-slate-100">
                 <div className="px-3 py-2 border-b border-slate-100 mb-1">
-                  <div className="text-xs font-extrabold text-slate-900">{user?.name || user?.email?.split('@')[0] || 'User'}</div>
-                  <div className="text-[11px] text-slate-400">{user?.email || 'user@lazymonkey.com'}</div>
+                  <div className="text-xs font-extrabold text-slate-900">{user?.name || user?.email?.split('@')[0] || ''}</div>
+                  <div className="text-[11px] text-slate-400">{user?.email || ''}</div>
                 </div>
                 <button
                   onClick={() => {
                     setShowProfile(false);
-                    const profilePath = user?.role === 'super_admin' ? '/super-admin/settings' : (user?.role === 'student' ? '/app/profile' : `/${user?.role || 'owner'}/settings`);
+                    const role = (user?.role || '').toLowerCase();
+                    let profilePath = `/${role || 'owner'}/settings?tab=general`;
+                    if (role === 'super_admin') {
+                      profilePath = '/super-admin/settings?tab=general';
+                    } else if (role === 'student') {
+                      profilePath = '/app/profile';
+                    } else if (role === 'employee' || role === 'staff') {
+                      profilePath = '/employee/profile';
+                    }
                     navigate(profilePath);
                   }}
                   className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors flex items-center gap-2"
@@ -525,7 +533,15 @@ export function Topbar() {
                 <button
                   onClick={() => {
                     setShowProfile(false);
-                    const settingsPath = user?.role === 'super_admin' ? '/super-admin/settings' : `/${user?.role || 'owner'}/settings`;
+                    const role = (user?.role || '').toLowerCase();
+                    let settingsPath = `/${role || 'owner'}/settings`;
+                    if (role === 'super_admin') {
+                      settingsPath = '/super-admin/settings';
+                    } else if (role === 'student') {
+                      settingsPath = '/app/profile';
+                    } else if (role === 'employee' || role === 'staff') {
+                      settingsPath = '/employee/profile';
+                    }
                     navigate(settingsPath);
                   }}
                   className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors flex items-center gap-2"

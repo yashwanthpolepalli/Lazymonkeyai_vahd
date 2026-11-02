@@ -273,6 +273,7 @@ def record_punch(payload: dict, db: Session = Depends(get_db)):
     note = payload.get("note") or payload.get("notes") or payload.get("reason")
     latitude = payload.get("latitude")
     longitude = payload.get("longitude")
+    location = payload.get("location") or payload.get("place")
     method = payload.get("method", "MANUAL")
     user_role = payload.get("user_role", "STAFF")
     branch = payload.get("branch")
@@ -290,7 +291,8 @@ def record_punch(payload: dict, db: Session = Depends(get_db)):
             punch_date=punch_date,
             punch_time=punch_time,
             check_out_time=check_out_time,
-            status=status
+            status=status,
+            location=location
         )
     except ValueError as e:
         raise HTTPException(status_code=403, detail=str(e))
@@ -541,6 +543,9 @@ def verify_staff_face_punch(payload: dict, db: Session = Depends(get_db)):
         method="FACE_ID",
         user_role=resolved_role,
         branch=branch_name,
+        latitude=payload.get("latitude"),
+        longitude=payload.get("longitude"),
+        location=payload.get("location") or payload.get("place") or branch_name,
         note=f"{name} ({resolved_role}) Face ID Verified ({round(confidence * 100, 1)}% Match)"
     )
 
@@ -895,6 +900,10 @@ def reset_password(
     target_type = payload.get("target_type") or payload.get("role") or ""
     target_id = payload.get("target_id") or payload.get("id") or ""
     new_password = payload.get("new_password") or payload.get("password") or ""
+
+    if not target_id and current_user:
+        target_id = current_user.id
+        target_type = target_type or current_user.role or ""
 
     if not target_id or not new_password:
         raise HTTPException(status_code=400, detail="Target ID and new password are required.")

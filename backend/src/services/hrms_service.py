@@ -1,3 +1,4 @@
+import re
 import uuid
 import math
 import calendar
@@ -20,6 +21,39 @@ from src.models.biometric import BiometricLog
 from src.models.settings import Branch as vahdBranch, Setting as vahdSetting, MasterData
 
 IST = timezone(timedelta(hours=5, minutes=30))
+
+def infer_dept_type(dept_name: str, cur_extra: str = "") -> str:
+    """Helper to classify departments dynamically into student, employee, or both."""
+    if cur_extra and cur_extra.strip():
+        val = cur_extra.strip().lower()
+        if val in ("student", "students", "academic"):
+            return "student"
+        if val in ("employee", "employees", "staff"):
+            return "employee"
+        if val in ("both", "all"):
+            return "both"
+    n = (dept_name or "").lower()
+    student_keywords = [
+        "computer", "science", "mechanical", "civil", "electrical", "electronics",
+        "engineering", "tech", "data", "ai", "bba", "mca", "mba", "commerce",
+        "humanities", "polytechnic", "physics", "chemistry", "mathematics",
+        "biology", "sports", "student", "academic", "stream", "curriculum",
+        "cse", "ece", "eee", "it", "batch", "degree", "class", "course"
+    ]
+    employee_keywords = [
+        "hr", "human resource", "payroll", "admin", "management", "finance",
+        "account", "operations", "facility", "facilities", "security", "transport",
+        "housekeeping", "logistics", "maintenance", "reception", "desk",
+        "faculty", "teaching", "staff", "office", "executive", "it support",
+        "administrative", "manager"
+    ]
+    is_stud = any(k in n for k in student_keywords)
+    is_emp = any(k in n for k in employee_keywords)
+    if is_stud and not is_emp:
+        return "student"
+    if is_emp and not is_stud:
+        return "employee"
+    return "both"
 
 STANDARD_SHIFTS = {
     "GEN": {"code": "GEN", "name": "General (09-18)", "start_time": "09:00", "end_time": "18:00", "grace_period_mins": 15, "color": "#7c3aed"},
@@ -98,8 +132,12 @@ class HrmsService:
                 existing_emp.email = t.email
                 existing_emp.phone = t.phone or existing_emp.phone or ""
                 existing_emp.gender = t.gender or existing_emp.gender
-                existing_emp.designation = desg
-                existing_emp.department = dept or existing_emp.department
+                if desg and desg.upper() not in ["EMPLOYEE", "STAFF"]:
+                    existing_emp.designation = desg
+                elif not existing_emp.designation:
+                    existing_emp.designation = desg or "Staff"
+                if dept:
+                    existing_emp.department = dept
                 existing_emp.status = status
                 existing_emp.salary = salary
                 existing_emp.vahd_branch = t.primary_vahd_location or existing_emp.vahd_branch or ""
@@ -244,6 +282,7 @@ class HrmsService:
                 "initials": initials,
                 "email": e.email,
                 "phone": e.phone or "",
+                "gender": getattr(e, "gender", None) or "",
                 "designation": e.designation,
                 "department": e.department,
                 "reporting_manager": e.reporting_manager or "",
@@ -273,11 +312,172 @@ class HrmsService:
         phone = str(payload.get("phone") or "").strip()
         designation = str(payload.get("designation") or "").strip()
         department = str(payload.get("department") or "").strip()
+        gender = str(payload.get("gender") or "").strip().lower()
+        code = str(payload.get("code") or "").strip()
+        joined_date = payload.get("joined_date")
+        employment_type = str(payload.get("employment_type") or "Full-Time").strip()
         salary = float(payload.get("salary") or 0.0)
         vahd_branch = str(payload.get("vahd_branch") or "").strip()
         branch_id = payload.get("branch_id")
         ho_id = payload.get("ho_id")
         owner_id = payload.get("owner_id")
+
+        # 1. Auto-create Department if it doesn't already exist in DB
+        if department:
+            clean_d = department.strip()
+            existing_dept = db.query(Department).filter(
+                func.lower(Department.name) == clean_d.lower()
+            ).first()
+            words = clean_d.split()
+            d_code = "".join([w[0].upper() for w in words if w.isalnum()])[:6] or clean_d[:4].upper()
+            if not existing_dept:
+                existing_code = db.query(Department).filter(Department.code == d_code).first()
+                if existing_code:
+                    d_code = f"{d_code}{uuid.uuid4().hex[:3].upper()}"
+                new_dept = Department(
+                    id=f"dept_{uuid.uuid4().hex[:8]}",
+                    name=clean_d,
+                    code=d_code,
+                    description=f"Auto-created department: {clean_d}",
+                    head_name="",
+                    is_active=True
+                )
+                db.add(new_dept)
+                try:
+                    db.commit()
+                except Exception:
+                    db.rollback()
+
+            # Synchronize with MasterData for departments (marked as employee)
+            existing_md = db.query(MasterData).filter(
+                MasterData.category == "departments",
+                func.lower(MasterData.name) == clean_d.lower()
+            ).first()
+            if not existing_md:
+                new_md = MasterData(
+                    id=f"mdata_{uuid.uuid4().hex[:8]}",
+                    category="departments",
+                    name=clean_d,
+                    code=d_code,
+                    description=f"Auto-created department: {clean_d}",
+                    extra_info="employee",
+                    is_active=True
+                )
+                db.add(new_md)
+                try:
+                    db.commit()
+                except Exception:
+                    db.rollback()
+            elif not existing_md.extra_info or existing_md.extra_info.lower() not in ("employee", "both"):
+                existing_md.extra_info = "employee"
+                try:
+                    db.commit()
+                except Exception:
+                    db.rollback()
+
+        # 2. Auto-create Designation if it doesn't already exist in DB
+        if designation:
+            clean_desg = designation.strip()
+            existing_desg = db.query(Designation).filter(
+                func.lower(Designation.title) == clean_desg.lower()
+            ).first()
+            if not existing_desg:
+                clean_desg = designation.strip()
+                new_desg = Designation(
+                    id=f"desg_{uuid.uuid4().hex[:8]}",
+                    title=clean_desg,
+                    department=department or "General",
+                    level="Mid",
+                    description=f"Auto-created designation: {clean_desg}"
+                )
+                db.add(new_desg)
+                try:
+                    db.commit()
+                except Exception:
+                    db.rollback()
+
+            # Also sync to MasterData for designations
+            existing_md_desg = db.query(MasterData).filter(
+                MasterData.category == "designations",
+                func.lower(MasterData.name) == clean_desg.lower()
+            ).first()
+            if not existing_md_desg:
+                new_md_desg = MasterData(
+                    id=f"mdata_{uuid.uuid4().hex[:8]}",
+                    category="designations",
+                    name=clean_desg,
+                    code=f"DES-{clean_desg[:4].upper()}",
+                    parent_name=department or "General",
+                    description=f"Auto-created designation: {clean_desg}",
+                    is_active=True
+                )
+                db.add(new_md_desg)
+                try:
+                    db.commit()
+                except Exception:
+                    db.rollback()
+
+        # 3. Auto-append gender, qualification, specialization to MasterData if not present
+        if gender:
+            clean_gender = gender.strip().capitalize()
+            if clean_gender:
+                existing_g = db.query(MasterData).filter(
+                    MasterData.category == "gender_types",
+                    func.lower(MasterData.name) == clean_gender.lower()
+                ).first()
+                if not existing_g:
+                    db.add(MasterData(
+                        id=f"mdata_{uuid.uuid4().hex[:8]}",
+                        category="gender_types",
+                        name=clean_gender,
+                        code=f"GND-{clean_gender[:3].upper()}",
+                        is_active=True
+                    ))
+                    try:
+                        db.commit()
+                    except Exception:
+                        db.rollback()
+
+        emp_qual = payload.get("qualification")
+        if emp_qual and str(emp_qual).strip():
+            clean_qual = str(emp_qual).strip()
+            existing_q = db.query(MasterData).filter(
+                MasterData.category == "qualifications",
+                func.lower(MasterData.name) == clean_qual.lower()
+            ).first()
+            if not existing_q:
+                db.add(MasterData(
+                    id=f"mdata_{uuid.uuid4().hex[:8]}",
+                    category="qualifications",
+                    name=clean_qual,
+                    code=f"QLF-{clean_qual[:4].upper()}",
+                    is_active=True
+                ))
+                try:
+                    db.commit()
+                except Exception:
+                    db.rollback()
+
+        emp_spec = payload.get("specialization")
+        if emp_spec and str(emp_spec).strip():
+            clean_spec = str(emp_spec).strip()
+            existing_s = db.query(MasterData).filter(
+                MasterData.category == "specializations",
+                func.lower(MasterData.name) == clean_spec.lower()
+            ).first()
+            if not existing_s:
+                db.add(MasterData(
+                    id=f"mdata_{uuid.uuid4().hex[:8]}",
+                    category="specializations",
+                    name=clean_spec,
+                    code=f"SPC-{clean_spec[:4].upper()}",
+                    parent_name=str(emp_qual).strip() if emp_qual else "",
+                    is_active=True
+                ))
+                try:
+                    db.commit()
+                except Exception:
+                    db.rollback()
 
         from src.models.settings import Branch as vahdBranch
         from sqlalchemy import or_
@@ -318,6 +518,19 @@ class HrmsService:
             if owner_u and owner_u.ho_id:
                 ho_id = owner_u.ho_id
 
+        # Parse joined date safely
+        parsed_joined = None
+        if joined_date:
+            if isinstance(joined_date, (datetime, date)):
+                parsed_joined = joined_date if isinstance(joined_date, date) else joined_date.date()
+            elif isinstance(joined_date, str) and joined_date.strip():
+                for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%Y/%m/%d"):
+                    try:
+                        parsed_joined = datetime.strptime(joined_date.strip()[:10], fmt).date()
+                        break
+                    except Exception:
+                        pass
+
         # Map department/designation to employeeProfile role
         role = str(payload.get("role") or "EMPLOYEE").upper()
         if role == "employee":
@@ -334,34 +547,92 @@ class HrmsService:
             "full_name": full_name,
             "email": email,
             "phone": phone,
+            "gender": gender,
             "role": role,
             "specialization": designation,
+            "department": department,
             "base_monthly_salary": salary,
             "primary_vahd_location": vahd_branch,
             "branch_id": branch_id,
             "owner_id": owner_id,
-            "ho_id": ho_id
+            "ho_id": ho_id,
+            "join_date": parsed_joined.isoformat() if parsed_joined else None,
+            "bank_account_no": payload.get("account_number") or payload.get("bank_account_no"),
+            "bank_ifsc": payload.get("ifsc_code") or payload.get("bank_ifsc"),
         })
 
         HrmsService.sync_employees_to_employees(db)
         emp = db.query(Employee).filter(Employee.email == email).first()
-        if emp:
-            if payload.get("status"):
-                emp.status = str(payload["status"]).capitalize()
-            if payload.get("qualification"):
-                emp.qualification = payload["qualification"]
-            if payload.get("specialization"):
-                emp.specialization = payload["specialization"]
+        if not emp:
+            emp = Employee(
+                id=f"emp_{uuid.uuid4().hex[:8]}",
+                code=code or "",
+                first_name=first_name or full_name,
+                last_name=last_name or "",
+                email=email,
+                phone=phone,
+                gender=gender,
+                designation=designation,
+                department=department,
+                joined_date=parsed_joined or date.today(),
+                employment_type=employment_type,
+                status=str(payload.get("status") or "Active").capitalize(),
+                salary=salary,
+                vahd_branch=vahd_branch,
+                branch_id=branch_id,
+                ho_id=ho_id,
+                owner_id=owner_id,
+                address=payload.get("address") or "",
+                emergency_contact=payload.get("emergency_contact") or "",
+                qualification=payload.get("qualification") or "",
+                specialization=payload.get("specialization") or designation or "",
+            )
+            db.add(emp)
+            db.commit()
+            db.refresh(emp)
+        else:
+            if department:
+                emp.department = department
+            if designation:
+                emp.designation = designation
+            if gender:
+                emp.gender = gender
+            if phone:
+                emp.phone = phone
+            if code and not emp.code:
+                emp.code = code
+            elif code:
+                emp.code = code
+            if parsed_joined:
+                emp.joined_date = parsed_joined
+            if employment_type:
+                emp.employment_type = employment_type
+            if salary > 0:
+                emp.salary = salary
+            if vahd_branch:
+                emp.vahd_branch = vahd_branch
             if branch_id:
                 emp.branch_id = branch_id
             if ho_id:
                 emp.ho_id = ho_id
             if owner_id:
                 emp.owner_id = owner_id
+            if payload.get("status"):
+                emp.status = str(payload["status"]).capitalize()
+            if payload.get("qualification"):
+                emp.qualification = payload["qualification"]
+            if payload.get("specialization"):
+                emp.specialization = payload["specialization"]
+            if payload.get("address"):
+                emp.address = payload["address"]
+            if payload.get("emergency_contact"):
+                emp.emergency_contact = payload["emergency_contact"]
             db.commit()
 
         u = db.query(User).filter(User.email == email).first()
         if u:
+            if phone and not u.phone:
+                u.phone = phone
             if branch_id:
                 u.branch_id = branch_id
             if ho_id:
@@ -432,9 +703,59 @@ class HrmsService:
     # -------------------------------------------------------------
     @staticmethod
     def get_departments(db: Session) -> List[Dict[str, Any]]:
+        # Self-healing: ensure any department present on Employee records is in Department table
+        emp_depts = db.query(Employee.department).distinct().all()
+        existing_dept_names = {d.name.strip().lower() for d in db.query(Department.name).all() if d.name}
+        for (dept_name,) in emp_depts:
+            if dept_name and dept_name.strip() and dept_name.strip().lower() not in existing_dept_names:
+                clean_name = dept_name.strip()
+                words = clean_name.split()
+                d_code = "".join([w[0].upper() for w in words if w.isalnum()])[:6] or clean_name[:4].upper()
+                existing_code = db.query(Department).filter(Department.code == d_code).first()
+                if existing_code:
+                    d_code = f"{d_code}{uuid.uuid4().hex[:3].upper()}"
+                new_d = Department(
+                    id=f"dept_{uuid.uuid4().hex[:8]}",
+                    name=clean_name,
+                    code=d_code,
+                    description=f"Auto-created department: {clean_name}",
+                    head_name="",
+                    is_active=True
+                )
+                db.add(new_d)
+                existing_dept_names.add(clean_name.lower())
+
+        # Self-healing: ensure any student departments are also present in Department table
+        try:
+            for s in db.query(student).all():
+                s_meta = s.meta_data if isinstance(s.meta_data, dict) else {}
+                s_dept = (s_meta.get("department") or s_meta.get("dept") or s_meta.get("branchdept") or getattr(s, "specialization", None) or "").strip()
+                if s_dept and s_dept.lower() not in existing_dept_names:
+                    words = s_dept.split()
+                    d_code = "".join([w[0].upper() for w in words if w.isalnum()])[:6] or s_dept[:4].upper()
+                    new_d = Department(
+                        id=f"dept_{uuid.uuid4().hex[:8]}",
+                        name=s_dept,
+                        code=d_code,
+                        description=f"Auto-created department: {s_dept}",
+                        head_name="",
+                        is_active=True
+                    )
+                    db.add(new_d)
+                    existing_dept_names.add(s_dept.lower())
+        except Exception:
+            pass
+
+        try:
+            db.commit()
+        except Exception:
+            db.rollback()
+
         depts = db.query(Department).order_by(Department.name.asc()).all()
         employees = db.query(Employee).all()
         employee_profiles = db.query(employeeProfile).all()
+        students = db.query(student).all()
+        master_depts = {m.name.strip().lower(): m for m in db.query(MasterData).filter(MasterData.category == "departments").all() if m.name}
         
         result = []
         for d in depts:
@@ -476,6 +797,69 @@ class HrmsService:
                             "avatar": "",
                             "joined_date": t.created_at.strftime('%Y-%m-%d') if getattr(t, "created_at", None) else None,
                         })
+
+            # Map from student records
+            mapped_stud = []
+            for s in students:
+                s_meta = s.meta_data if isinstance(s.meta_data, dict) else {}
+                s_dept = (s_meta.get("department") or s_meta.get("dept") or s_meta.get("branchdept") or getattr(s, "specialization", None) or "").strip().lower()
+                if s_dept and s_dept == dept_name_lower:
+                    mapped_stud.append({
+                        "id": s.id,
+                        "name": getattr(s, "full_name", "") or "Student",
+                        "email": getattr(s, "email", "") or "",
+                        "phone": getattr(s, "phone", "") or "",
+                        "code": getattr(s, "member_code", "") or "",
+                        "department": d.name,
+                        "status": getattr(s, "status", "ACTIVE") or "ACTIVE",
+                        "avatar": getattr(s, "profile_image", "") or "",
+                        "joined_date": s.created_at.strftime('%Y-%m-%d') if getattr(s, "created_at", None) else None,
+                    })
+
+            emp_cnt = len(mapped_emp)
+            stud_cnt = len(mapped_stud)
+
+            # Determine department audience type
+            md_entry = master_depts.get(dept_name_lower)
+            explicit_type = (md_entry.extra_info or "").strip().lower() if md_entry else ""
+            if explicit_type in ("student", "students", "academic"):
+                dept_type = "student"
+            elif explicit_type in ("employee", "employees", "staff"):
+                dept_type = "employee"
+            elif explicit_type in ("both", "all"):
+                dept_type = "both"
+            elif emp_cnt > 0 and stud_cnt == 0:
+                dept_type = "employee"
+            elif stud_cnt > 0 and emp_cnt == 0:
+                dept_type = "student"
+            elif emp_cnt > 0 and stud_cnt > 0:
+                dept_type = "both"
+            else:
+                dept_type = infer_dept_type(d.name)
+
+            # Ensure MasterData entry exists and has extra_info aligned
+            if not md_entry:
+                try:
+                    new_md = MasterData(
+                        id=f"mdata_{uuid.uuid4().hex[:8]}",
+                        category="departments",
+                        name=d.name,
+                        code=d.code or d.name[:4].upper(),
+                        description=d.description or "",
+                        extra_info=dept_type,
+                        is_active=d.is_active if d.is_active is not None else True
+                    )
+                    db.add(new_md)
+                    db.commit()
+                    master_depts[dept_name_lower] = new_md
+                except Exception:
+                    db.rollback()
+            elif not md_entry.extra_info or md_entry.extra_info.lower() not in ("student", "employee", "both"):
+                try:
+                    md_entry.extra_info = dept_type
+                    db.commit()
+                except Exception:
+                    db.rollback()
             
             result.append({
                 "id": d.id,
@@ -484,24 +868,67 @@ class HrmsService:
                 "description": d.description or "",
                 "head_name": d.head_name or "",
                 "is_active": d.is_active if d.is_active is not None else True,
-                "employee_count": len(mapped_emp),
-                "employees": mapped_emp
+                "employee_count": emp_cnt,
+                "student_count": stud_cnt,
+                "department_type": dept_type,
+                "extra_info": dept_type,
+                "employees": mapped_emp,
+                "students": mapped_stud
             })
         return result
 
     @staticmethod
     def create_department(db: Session, payload: Dict[str, Any]) -> Dict[str, Any]:
-        dept = Department(
-            id=f"dept_{uuid.uuid4().hex[:8]}",
-            name=str(payload.get("name") or "").strip(),
-            code=str(payload.get("code") or "").strip(),
-            description=str(payload.get("description") or "").strip(),
-            head_name=str(payload.get("head_name") or "").strip(),
-            is_active=bool(payload.get("is_active", True))
-        )
-        db.add(dept)
+        dept_name = str(payload.get("name") or "").strip()
+        dept_code = str(payload.get("code") or "").strip()
+        dept_desc = str(payload.get("description") or "").strip()
+        dept_head = str(payload.get("head_name") or "").strip()
+        dept_active = bool(payload.get("is_active", True))
+        raw_type = (payload.get("department_type") or payload.get("extra_info") or payload.get("type") or "").strip().lower()
+        if raw_type not in ("student", "employee", "both"):
+            raw_type = infer_dept_type(dept_name)
+
+        dept = db.query(Department).filter(func.lower(Department.name) == dept_name.lower()).first()
+        if not dept:
+            dept = Department(
+                id=f"dept_{uuid.uuid4().hex[:8]}",
+                name=dept_name,
+                code=dept_code or dept_name[:4].upper(),
+                description=dept_desc,
+                head_name=dept_head,
+                is_active=dept_active
+            )
+            db.add(dept)
+        else:
+            if dept_code: dept.code = dept_code
+            if dept_desc: dept.description = dept_desc
+            if dept_head: dept.head_name = dept_head
+            dept.is_active = dept_active
+
+        # Synchronize with MasterData
+        md = db.query(MasterData).filter(
+            MasterData.category == "departments",
+            func.lower(MasterData.name) == dept_name.lower()
+        ).first()
+        if not md:
+            md = MasterData(
+                id=f"mdata_{uuid.uuid4().hex[:8]}",
+                category="departments",
+                name=dept_name,
+                code=dept.code or dept_name[:4].upper(),
+                description=dept.description or "",
+                extra_info=raw_type,
+                is_active=dept.is_active
+            )
+            db.add(md)
+        else:
+            md.code = dept.code
+            md.description = dept.description
+            md.extra_info = raw_type
+            md.is_active = dept.is_active
+
         db.commit()
-        return {"message": "Department created successfully", "id": dept.id, "name": dept.name}
+        return {"message": "Department created successfully", "id": dept.id, "name": dept.name, "extra_info": raw_type, "department_type": raw_type}
 
     @staticmethod
     def update_department(db: Session, dept_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -546,6 +973,7 @@ class HrmsService:
                         db.commit()
                     return {"message": "Department updated in MasterData", "id": dept_id}
 
+                raw_t = (payload.get("department_type") or payload.get("extra_info") or "").strip().lower() or infer_dept_type(dept_name)
                 dept = Department(
                     id=clean_id if clean_id.startswith("dept_") else f"dept_{uuid.uuid4().hex[:8]}",
                     name=dept_name,
@@ -555,6 +983,16 @@ class HrmsService:
                     is_active=bool(payload.get("is_active", True))
                 )
                 db.add(dept)
+                md = MasterData(
+                    id=f"mdata_{uuid.uuid4().hex[:8]}",
+                    category="departments",
+                    name=dept_name,
+                    code=dept.code,
+                    description=dept.description,
+                    extra_info=raw_t,
+                    is_active=dept.is_active
+                )
+                db.add(md)
                 db.commit()
                 return {"message": "Department created successfully", "id": dept.id}
 
@@ -572,8 +1010,29 @@ class HrmsService:
         if "is_active" in payload:
             dept.is_active = bool(payload["is_active"])
 
-        if m_item and "is_active" in payload:
-            m_item.is_active = bool(payload["is_active"])
+        # Sync MasterData
+        raw_type = (payload.get("extra_info") or payload.get("department_type") or "").strip().lower()
+        md = db.query(MasterData).filter(
+            MasterData.category == "departments",
+            func.lower(MasterData.name) == dept.name.lower()
+        ).first()
+        if md:
+            md.name = dept.name
+            md.code = dept.code
+            md.description = dept.description
+            md.is_active = dept.is_active
+            if raw_type:
+                md.extra_info = raw_type
+        elif raw_type:
+            db.add(MasterData(
+                id=f"mdata_{uuid.uuid4().hex[:8]}",
+                category="departments",
+                name=dept.name,
+                code=dept.code,
+                description=dept.description,
+                extra_info=raw_type,
+                is_active=dept.is_active
+            ))
 
         db.commit()
         return {"message": "Department updated successfully", "id": dept.id}
@@ -592,16 +1051,48 @@ class HrmsService:
             )
         ).first()
         if not dept:
+            # Also check MasterData
+            db.query(MasterData).filter(
+                MasterData.category == "departments",
+                or_(MasterData.id == dept_id, MasterData.id == clean_id)
+            ).delete(synchronize_session=False)
+            db.commit()
             return {"message": "Department deleted or already removed", "id": dept_id}
+        
+        dept_name = dept.name
         db.delete(dept)
+        db.query(MasterData).filter(
+            MasterData.category == "departments",
+            func.lower(MasterData.name) == dept_name.lower()
+        ).delete(synchronize_session=False)
         db.commit()
         return {"message": "Department deleted successfully", "id": dept.id}
 
     @staticmethod
     def get_designations(db: Session) -> List[Dict[str, Any]]:
+        # Self-healing: ensure any designation present on Employee records is in Designation table
+        emp_desgs = db.query(Employee.designation, Employee.department).distinct().all()
+        existing_titles = {d.title.strip().lower() for d in db.query(Designation.title).all() if d.title}
+        for desg_title, dept_name in emp_desgs:
+            if desg_title and desg_title.strip() and desg_title.strip().lower() not in existing_titles:
+                clean_title = desg_title.strip()
+                new_desg = Designation(
+                    id=f"desg_{uuid.uuid4().hex[:8]}",
+                    title=clean_title,
+                    department=dept_name or "General",
+                    level="Mid",
+                    description=f"Auto-created designation: {clean_title}"
+                )
+                db.add(new_desg)
+                existing_titles.add(clean_title.lower())
+        try:
+            db.commit()
+        except Exception:
+            db.rollback()
+
         desgs = db.query(Designation).order_by(Designation.title.asc()).all()
         employees = db.query(Employee).all()
-        employees = db.query(employeeProfile).all()
+        employee_profiles = db.query(employeeProfile).all()
         
         result = []
         for d in desgs:
@@ -621,7 +1112,7 @@ class HrmsService:
                         "phone": e.phone or ""
                     })
             
-            for t in employees:
+            for t in employee_profiles:
                 t_desg = (getattr(t, "job_designation", None) or getattr(t, "specialization", None) or getattr(t, "role", None) or "").strip().lower()
                 if t_desg and t_desg == title_lower:
                     if not any(emp["email"].lower() == (t.email or "").lower() for emp in mapped):
@@ -918,62 +1409,269 @@ class HrmsService:
         now_ist = datetime.now(IST)
         target_date = now_ist.date()
         if selected_date:
-            try:
-                target_date = datetime.strptime(selected_date, "%Y-%m-%d").date()
-            except Exception:
-                pass
+            for fmt in ["%Y-%m-%d", "%d/%m/%Y", "%Y/%m/%d", "%d-%m-%Y"]:
+                try:
+                    target_date = datetime.strptime(selected_date.strip(), fmt).date()
+                    break
+                except Exception:
+                    pass
 
-        logs = db.query(EmployeeAttendance).filter(EmployeeAttendance.date == target_date).order_by(EmployeeAttendance.created_at.desc()).all()
+        target_date_str = target_date.strftime("%Y-%m-%d")
+        target_date_slash = target_date.strftime("%d/%m/%Y")
+
+        logs = db.query(EmployeeAttendance).filter(
+            or_(
+                EmployeeAttendance.date == target_date,
+                cast(EmployeeAttendance.date, String) == target_date_str,
+                cast(EmployeeAttendance.date, String) == target_date_slash,
+                cast(EmployeeAttendance.date, String).ilike(f"%{target_date_str}%")
+            )
+        ).order_by(EmployeeAttendance.created_at.desc()).all()
+
         result = []
         recorded_emp_ids = set()
         for l in logs:
-            emp = db.query(Employee).filter(Employee.id == l.employee_id).first()
+            clean_lid = str(l.employee_id or '').strip()
+            clean_num = clean_lid.replace("EMP-", "").strip()
+            emp = db.query(Employee).filter(
+                or_(
+                    Employee.id == clean_lid,
+                    Employee.code == clean_lid,
+                    Employee.id == f"emp_{clean_lid}",
+                    Employee.code == f"EMP-{clean_lid}",
+                    Employee.code == f"EMP-{clean_num.zfill(4)}",
+                    Employee.code == clean_num.zfill(4),
+                    Employee.code == clean_num,
+                    Employee.email.ilike(clean_lid)
+                )
+            ).first()
+
             if not emp:
-                continue
-            full_name = f"{emp.first_name} {emp.last_name or ''}".strip()
+                t_prof = db.query(employeeProfile).filter(
+                    or_(
+                        employeeProfile.id == clean_lid,
+                        employeeProfile.id == clean_lid.replace("emp_", ""),
+                        employeeProfile.user_id == clean_lid,
+                        employeeProfile.email.ilike(clean_lid)
+                    )
+                ).first()
+                if t_prof:
+                    emp = db.query(Employee).filter(
+                        or_(
+                            Employee.email.ilike(t_prof.email),
+                            Employee.id == f"emp_{t_prof.id}",
+                            Employee.id == t_prof.id
+                        )
+                    ).first()
+
+            if not emp:
+                t_usr = db.query(User).filter(User.id == clean_lid).first()
+                if t_usr:
+                    emp = db.query(Employee).filter(
+                        or_(
+                            Employee.email.ilike(t_usr.email),
+                            Employee.id == f"emp_{t_usr.id}",
+                            Employee.id == t_usr.id
+                        )
+                    ).first()
+
+            full_name = f"{emp.first_name} {emp.last_name or ''}".strip() if emp else clean_lid
+            emp_code = (emp.code if emp and emp.code else clean_lid)
+            desg = (emp.designation if emp else "")
+            dept = (emp.department if emp else "")
             parts = full_name.split()
             initials = "".join([p[0].upper() for p in parts[:2]]) if parts else "EM"
+            clean_in_loc = re.sub(r'\s*\((Face Scanner|Biometric Turnstile|RFID Sensor|Manual Self Check-in|GPS Mobile|Face AI Terminal|Webcam|WEBCAM_FACE_SCANNER)\)', '', getattr(l, "check_in_location", None) or "").strip()
+            clean_out_loc = re.sub(r'\s*\((Face Scanner|Biometric Turnstile|RFID Sensor|Manual Self Check-in|GPS Mobile|Face AI Terminal|Webcam|WEBCAM_FACE_SCANNER)\)', '', getattr(l, "check_out_location", None) or "").strip()
+            if clean_in_loc.lower() in ["face scanner", "biometric device", "webcam"]:
+                clean_in_loc = ""
+            if clean_out_loc.lower() in ["face scanner", "biometric device", "webcam"]:
+                clean_out_loc = ""
+
+            # Check-in location only applies if the person actually checked in
+            if not l.check_in or l.check_in in ["--:--", "-", ""] or l.status == "Absent":
+                clean_in_loc = ""
+
+            # Check-out location only applies if the person actually checked out
+            if not l.check_out or l.check_out in ["--:--", "-", ""]:
+                clean_out_loc = ""
+
+            fmt_date = l.date.strftime("%d/%m/%Y") if (l.date and hasattr(l.date, "strftime")) else str(l.date or target_date_slash)
+
             result.append({
                 "id": l.id,
                 "employee_id": l.employee_id,
-                "employee_code": emp.code,
+                "employee_code": emp_code,
                 "employee_name": full_name,
                 "initials": initials,
-                "designation": emp.designation,
-                "department": emp.department,
-                "date": l.date.strftime("%d/%m/%Y") if l.date else "",
+                "designation": desg,
+                "department": dept,
+                "date": fmt_date,
                 "check_in": l.check_in or "--:--",
                 "check_out": l.check_out or "--:--",
-                "status": l.status,
+                "check_in_location": clean_in_loc,
+                "check_out_location": clean_out_loc,
+                "check_in_latitude": getattr(l, "check_in_latitude", None),
+                "check_in_longitude": getattr(l, "check_in_longitude", None),
+                "check_out_latitude": getattr(l, "check_out_latitude", None),
+                "check_out_longitude": getattr(l, "check_out_longitude", None),
+                "status": l.status or ("Present" if l.check_in and l.check_in not in ["--:--", "-", ""] else "Absent"),
                 "work_hours": float(l.work_hours or 0.0),
-                "notes": l.notes or ""
+                "notes": l.notes or "",
+                "email": emp.email if emp else "",
+                "user_id": emp.id if emp else clean_lid
             })
             recorded_emp_ids.add(l.employee_id)
+            recorded_emp_ids.add(clean_lid)
+            if emp:
+                recorded_emp_ids.add(emp.id)
+                if emp.code:
+                    recorded_emp_ids.add(emp.code)
+                if emp.email:
+                    recorded_emp_ids.add(emp.email.lower())
 
-        # Also pull staff / employee attendance from BiometricLog for target date
-        start_of_day = datetime.combine(target_date, datetime.min.time())
-        end_of_day = datetime.combine(target_date, datetime.max.time())
+        # Index existing attendance rows comprehensively by employee id/code/name/email/variants for merging
+        result_by_emp = {}
+        for r in result:
+            for k in [r.get("employee_id"), r.get("employee_code"), r.get("employee_name"), r.get("email"), r.get("user_id")]:
+                if not k:
+                    continue
+                clean_k = str(k).strip().lower()
+                result_by_emp[clean_k] = r
+                if clean_k.startswith("emp_") or clean_k.startswith("cust_"):
+                    result_by_emp[clean_k.replace("emp_", "").replace("cust_", "")] = r
+                if clean_k.startswith("emp-"):
+                    result_by_emp[clean_k.replace("emp-", "")] = r
+                num_only = "".join(filter(str.isdigit, clean_k))
+                if num_only:
+                    result_by_emp[num_only] = r
+                    result_by_emp[num_only.zfill(4)] = r
+                    try:
+                        result_by_emp[str(int(num_only))] = r
+                    except Exception:
+                        pass
+
+        # Also pull staff / employee attendance from BiometricLog for target date (with timezone tolerance)
+        start_of_day = datetime.combine(target_date, datetime.min.time()) - timedelta(hours=6)
+        end_of_day = datetime.combine(target_date, datetime.max.time()) + timedelta(hours=6)
         bio_staff_logs = db.query(BiometricLog).filter(
             BiometricLog.timestamp >= start_of_day,
             BiometricLog.timestamp <= end_of_day,
-            BiometricLog.user_role.in_(["employee", "STAFF", "OWNER", "MANAGER"])
+            BiometricLog.status != "DENIED"
         ).order_by(BiometricLog.timestamp.desc()).all()
 
         for blog in bio_staff_logs:
-            meta = blog.meta_data or {}
-            emp_id = blog.student_id or meta.get("employee_id") or meta.get("user_id") or ""
-            if not emp_id or emp_id in recorded_emp_ids:
+            if not blog.timestamp:
+                continue
+            ts = blog.timestamp
+            p_dates = {ts.date(), (ts + timedelta(hours=5, minutes=30)).date()}
+            if ts.tzinfo:
+                p_dates.add(ts.astimezone(IST).date())
+            if target_date not in p_dates:
                 continue
 
-            # Lookup real Employee record by id, code, or user_id
+            # Skip enrollment and registration events - only real punches count for attendance logs
+            if (
+                blog.direction in ["ENROLL", "FACE_ENROLLMENT", "REGISTRATION"]
+                or blog.event_type in ["ENROLL", "FACE_ENROLLMENT"]
+                or (blog.meta_data and blog.meta_data.get("action") == "FACE_ENROLLMENT")
+            ):
+                continue
+
+            meta = blog.meta_data or {}
+            candidates = [
+                str(blog.student_id or ""),
+                str(meta.get("employee_id") or ""),
+                str(meta.get("user_id") or ""),
+                str(meta.get("student_id") or ""),
+                str(meta.get("employee_code") or meta.get("code") or ""),
+                str(meta.get("email") or "").lower(),
+                str(meta.get("employee_name") or meta.get("user_name") or meta.get("name") or "").lower()
+            ]
+
+            emp_id = blog.student_id or meta.get("employee_id") or meta.get("user_id") or ""
+            meta_code = str(meta.get("employee_code") or meta.get("code") or "")
+            meta_email = str(meta.get("email") or "")
+
+            is_out = blog.direction in ["CHECK_OUT", "OUT"]
+            is_in = blog.direction in ["CHECK_IN", "IN"] or not is_out
+            t_str = blog.timestamp.strftime("%I:%M %p") if blog.timestamp else "--:--"
+
+            clean_dev = re.sub(r'\s*\((Face Scanner|Biometric Turnstile|RFID Sensor|Manual Self Check-in|GPS Mobile|Face AI Terminal|Webcam|WEBCAM_FACE_SCANNER)\)', '', blog.device_name or "").strip()
+            bio_loc = meta.get("location") or meta.get("branch") or (
+                f"{meta.get('scheme_name')} ({meta.get('latitude'):.4f}, {meta.get('longitude'):.4f})"
+                if meta.get("latitude") and meta.get("longitude")
+                else clean_dev
+            )
+            if bio_loc.lower() in ["face scanner", "biometric device", "webcam"]:
+                bio_loc = ""
+
+            # Check if this employee already has an entry in result to merge punches
+            existing_r = None
+            for c in candidates:
+                if not c:
+                    continue
+                clean_c = c.strip().lower()
+                if clean_c in result_by_emp:
+                    existing_r = result_by_emp[clean_c]
+                    break
+                num_only = "".join(filter(str.isdigit, clean_c))
+                if num_only and num_only in result_by_emp:
+                    existing_r = result_by_emp[num_only]
+                    break
+                if num_only and num_only.zfill(4) in result_by_emp:
+                    existing_r = result_by_emp[num_only.zfill(4)]
+                    break
+
+            if existing_r:
+                if is_in:
+                    if not existing_r.get("check_in") or existing_r["check_in"] in ["--:--", "-", ""]:
+                        existing_r["check_in"] = t_str
+                    if bio_loc and (not existing_r.get("check_in_location") or existing_r["check_in_location"] in ["—", ""]):
+                        existing_r["check_in_location"] = bio_loc
+                    if getattr(blog, "meta_data", None) and blog.meta_data.get("latitude"):
+                        existing_r["check_in_latitude"] = blog.meta_data.get("latitude")
+                        existing_r["check_in_longitude"] = blog.meta_data.get("longitude")
+                    if existing_r.get("status") in ["Absent", None, ""]:
+                        existing_r["status"] = "Present"
+                elif is_out:
+                    if not existing_r.get("check_out") or existing_r["check_out"] in ["--:--", "-", ""]:
+                        existing_r["check_out"] = t_str
+                    if bio_loc and (not existing_r.get("check_out_location") or existing_r["check_out_location"] in ["—", ""]):
+                        existing_r["check_out_location"] = bio_loc
+                    if getattr(blog, "meta_data", None) and blog.meta_data.get("latitude"):
+                        existing_r["check_out_latitude"] = blog.meta_data.get("latitude")
+                        existing_r["check_out_longitude"] = blog.meta_data.get("longitude")
+                continue
+
+            if (
+                not emp_id
+                or emp_id in recorded_emp_ids
+                or (meta_code and meta_code in recorded_emp_ids)
+                or (meta_email and meta_email.lower() in recorded_emp_ids)
+            ):
+                continue
+
+            # Lookup real Employee record by id, code, or user_id/email
             emp = db.query(Employee).filter(
                 or_(
                     Employee.id == emp_id,
                     Employee.code == emp_id,
-                    Employee.user_id == emp_id,
-                    Employee.email == meta.get("email", "___none___")
+                    Employee.id == f"emp_{emp_id}",
+                    Employee.email.ilike(emp_id),
+                    Employee.email.ilike(meta_email) if meta_email else False
                 )
             ).first()
+
+            if not emp:
+                t_usr = db.query(User).filter(User.id == emp_id).first()
+                if t_usr:
+                    emp = db.query(Employee).filter(
+                        or_(
+                            Employee.email.ilike(t_usr.email),
+                            Employee.id == f"emp_{t_usr.id}"
+                        )
+                    ).first()
 
             if emp:
                 real_emp_id = emp.id
@@ -991,6 +1689,16 @@ class HrmsService:
             parts = emp_name.split()
             initials = "".join([p[0].upper() for p in parts[:2]]) if parts else "EM"
             t_str = blog.timestamp.strftime("%I:%M %p") if blog.timestamp else "--:--"
+
+            clean_dev = re.sub(r'\s*\((Face Scanner|Biometric Turnstile|RFID Sensor|Manual Self Check-in|GPS Mobile|Face AI Terminal|Webcam|WEBCAM_FACE_SCANNER)\)', '', blog.device_name or "").strip()
+            bio_loc = meta.get("location") or meta.get("branch") or (
+                f"{meta.get('scheme_name')} ({meta.get('latitude'):.4f}, {meta.get('longitude'):.4f})"
+                if meta.get("latitude") and meta.get("longitude")
+                else (clean_dev or (emp.vahd_branch if emp else "") or "")
+            )
+            if bio_loc.lower() in ["face scanner", "biometric device", "webcam"]:
+                bio_loc = ""
+
             result.append({
                 "id": blog.id,
                 "employee_id": real_emp_id,
@@ -1000,17 +1708,27 @@ class HrmsService:
                 "designation": designation,
                 "department": department,
                 "date": blog.timestamp.strftime("%d/%m/%Y") if blog.timestamp else target_date.strftime("%d/%m/%Y"),
-                "check_in": t_str if blog.direction == "CHECK_IN" else "--:--",
-                "check_out": t_str if blog.direction == "CHECK_OUT" else "--:--",
+                "check_in": t_str if is_in else "--:--",
+                "check_out": t_str if is_out else "--:--",
+                "check_in_location": bio_loc if is_in else "",
+                "check_out_location": bio_loc if is_out else "",
+                "check_in_latitude": meta.get("latitude") if is_in else None,
+                "check_in_longitude": meta.get("longitude") if is_in else None,
+                "check_out_latitude": meta.get("latitude") if is_out else None,
+                "check_out_longitude": meta.get("longitude") if is_out else None,
                 "status": "Present",
                 "work_hours": 0.0,
-                "notes": f"Biometric Punch ({blog.event_type or blog.direction or 'PUNCH'})"
+                "notes": f"Biometric Punch ({blog.event_type or blog.direction or 'PUNCH'})",
+                "email": emp.email if emp else meta_email,
+                "user_id": emp.id if emp else real_emp_id
             })
             recorded_emp_ids.add(emp_id)
             if emp:
                 recorded_emp_ids.add(emp.id)
                 if emp.code:
                     recorded_emp_ids.add(emp.code)
+                if emp.email:
+                    recorded_emp_ids.add(emp.email.lower())
 
         return result
 
@@ -1020,7 +1738,7 @@ class HrmsService:
                      method: Optional[str] = "MANUAL", user_role: Optional[str] = "STAFF",
                      branch: Optional[str] = None, punch_date: Optional[str] = None,
                      punch_time: Optional[str] = None, check_out_time: Optional[str] = None,
-                     status: Optional[str] = None) -> Dict[str, Any]:
+                     status: Optional[str] = None, location: Optional[str] = None) -> Dict[str, Any]:
         now_ist = datetime.now(IST)
         if punch_date:
             try:
@@ -1068,6 +1786,17 @@ class HrmsService:
                 raise ValueError(
                     f"Geofence Restriction Active: Punch rejected. You are {distance:.0f}m away, which exceeds the permitted perimeter radius of {radius}m."
                 )
+
+        loc_label = location
+        if loc_label:
+            loc_label = re.sub(r'\s*\((Face Scanner|Biometric Turnstile|RFID Sensor|Manual Self Check-in|GPS Mobile|Face AI Terminal|Webcam|WEBCAM_FACE_SCANNER)\)', '', str(loc_label)).strip()
+
+        if not loc_label or loc_label.lower() in ["face scanner", "biometric device", "webcam"]:
+            b_name = branch or (scheme.branch_name if scheme and scheme.branch_name else "")
+            if latitude is not None and longitude is not None:
+                loc_label = f"{b_name} ({latitude:.4f}, {longitude:.4f})".strip() if b_name else f"{latitude:.4f}, {longitude:.4f}"
+            else:
+                loc_label = b_name
 
         # Check shift timing for late flag using IST
         st_clean = (status or "").strip().lower()
@@ -1148,26 +1877,44 @@ class HrmsService:
                     id=f"att_{uuid.uuid4().hex[:8]}",
                     employee_id=target_emp_id,
                     date=today,
-                    check_in=(punch_time or now_str) if final_status != "Absent" else None,
-                    check_out=check_out_time if final_status != "Absent" else None,
+                    check_in=(punch_time or now_str) if final_status not in ["Absent", "Week Off", "Holiday"] else None,
+                    check_out=check_out_time if final_status not in ["Absent", "Week Off", "Holiday"] else None,
+                    check_in_location=loc_label if (action in ["CHECK_IN", "IN"] and final_status not in ["Absent", "Week Off", "Holiday"]) else None,
+                    check_out_location=loc_label if (action in ["CHECK_OUT", "OUT"] and final_status not in ["Absent", "Week Off", "Holiday"]) else None,
+                    check_in_latitude=latitude if (action in ["CHECK_IN", "IN"] and final_status not in ["Absent", "Week Off", "Holiday"]) else None,
+                    check_in_longitude=longitude if (action in ["CHECK_IN", "IN"] and final_status not in ["Absent", "Week Off", "Holiday"]) else None,
+                    check_out_latitude=latitude if (action in ["CHECK_OUT", "OUT"] and final_status not in ["Absent", "Week Off", "Holiday"]) else None,
+                    check_out_longitude=longitude if (action in ["CHECK_OUT", "OUT"] and final_status not in ["Absent", "Week Off", "Holiday"]) else None,
                     status=final_status,
-                    work_hours=4.0 if final_status == "Half Day" else (0.0 if final_status == "Absent" else 8.0),
+                    work_hours=4.0 if final_status == "Half Day" else (0.0 if final_status in ["Absent", "Week Off", "Holiday"] else 8.0),
                     notes=punch_notes
                 )
                 db.add(att)
             else:
                 att.status = final_status
-                if final_status == "Absent":
+                if final_status in ["Absent", "Week Off", "Holiday"]:
                     att.check_in = None
                     att.check_out = None
+                    att.check_in_location = None
+                    att.check_out_location = None
                     att.work_hours = 0.0
                 else:
                     if punch_time:
                         att.check_in = punch_time
-                    elif not att.check_in:
+                    elif action in ["CHECK_IN", "IN"]:
                         att.check_in = now_str
+                    if action in ["CHECK_IN", "IN"] and not att.check_in_location:
+                        att.check_in_location = loc_label
+                        att.check_in_latitude = latitude
+                        att.check_in_longitude = longitude
                     if check_out_time is not None:
                         att.check_out = check_out_time
+                    elif action in ["CHECK_OUT", "OUT"]:
+                        att.check_out = now_str
+                    if action in ["CHECK_OUT", "OUT"]:
+                        att.check_out_location = loc_label
+                        att.check_out_latitude = latitude
+                        att.check_out_longitude = longitude
                     att.work_hours = 4.0 if final_status == "Half Day" else 8.0
                 if punch_notes:
                     att.notes = punch_notes
@@ -1266,12 +2013,12 @@ class HrmsService:
                 EmployeeShiftRoster.date == today
             ).first()
 
-            resolved_shift_code = (roster.shift_code if roster else getattr(emp, "shift_code", None)) or "GEN"
-            std_shift = STANDARD_SHIFTS.get(resolved_shift_code, STANDARD_SHIFTS["GEN"])
-            resolved_shift_name = (roster.shift_name if roster else None) or std_shift["name"]
-            resolved_shift_id = roster.shift_id if roster else None
-            shift_start_time = (roster.start_time if roster else None) or std_shift.get("start_time", "")
-            shift_grace = std_shift.get("grace_period_mins", 15)
+            resolved_shift_code = (roster.shift_code if roster else getattr(emp, "shift_code", None))
+            db_tmpl = db.query(ShiftTemplate).filter(ShiftTemplate.code.ilike(resolved_shift_code)).first() if resolved_shift_code else None
+            resolved_shift_name = (roster.shift_name if roster else None) or (db_tmpl.name if db_tmpl else (f"{resolved_shift_code} Shift" if resolved_shift_code else ""))
+            resolved_shift_id = (roster.shift_id if roster else None) or (db_tmpl.id if db_tmpl else None)
+            shift_start_time = (roster.start_time if roster else None) or (db_tmpl.start_time if db_tmpl else "")
+            shift_grace = int(db_tmpl.grace_period_mins if (db_tmpl and db_tmpl.grace_period_mins) else 0)
 
             # If punch is CHECK_IN and not explicitly marked absent/half-day, calculate attendance status based on shift start time & grace period
             if not status and action not in ["MARK_ABSENT", "ABSENT", "HALF_DAY", "LEAVE"]:
@@ -1305,10 +2052,16 @@ class HrmsService:
                     id=f"att_{uuid.uuid4().hex[:8]}",
                     employee_id=emp.id,
                     date=today,
-                    check_in=(punch_time or now_str) if final_status not in ["Absent", "Week Off"] else None,
-                    check_out=check_out_time if final_status not in ["Absent", "Week Off"] else (now_str if action == "CHECK_OUT" else None),
+                    check_in=(punch_time or now_str) if final_status not in ["Absent", "Week Off", "Holiday"] else None,
+                    check_out=check_out_time if final_status not in ["Absent", "Week Off", "Holiday"] else (now_str if action in ["CHECK_OUT", "OUT"] else None),
+                    check_in_location=loc_label if (action in ["CHECK_IN", "IN"] and final_status not in ["Absent", "Week Off", "Holiday"]) else None,
+                    check_out_location=loc_label if (action in ["CHECK_OUT", "OUT"] and final_status not in ["Absent", "Week Off", "Holiday"]) else None,
+                    check_in_latitude=latitude if (action in ["CHECK_IN", "IN"] and final_status not in ["Absent", "Week Off", "Holiday"]) else None,
+                    check_in_longitude=longitude if (action in ["CHECK_IN", "IN"] and final_status not in ["Absent", "Week Off", "Holiday"]) else None,
+                    check_out_latitude=latitude if (action in ["CHECK_OUT", "OUT"] and final_status not in ["Absent", "Week Off", "Holiday"]) else None,
+                    check_out_longitude=longitude if (action in ["CHECK_OUT", "OUT"] and final_status not in ["Absent", "Week Off", "Holiday"]) else None,
                     status=final_status,
-                    work_hours=0.0 if final_status in ["Absent", "Week Off"] else (4.0 if final_status == "Half Day" else 8.0),
+                    work_hours=0.0 if final_status in ["Absent", "Week Off", "Holiday"] else (4.0 if final_status == "Half Day" else 8.0),
                     shift_id=resolved_shift_id,
                     shift_code=resolved_shift_code,
                     shift_name=resolved_shift_name,
@@ -1321,19 +2074,29 @@ class HrmsService:
                 att.shift_code = resolved_shift_code
                 att.shift_name = resolved_shift_name
                 att.status = final_status
-                if final_status in ["Absent", "Week Off"]:
+                if final_status in ["Absent", "Week Off", "Holiday"]:
                     att.check_in = None
                     att.check_out = None
+                    att.check_in_location = None
+                    att.check_out_location = None
                     att.work_hours = 0.0
                 else:
                     if punch_time:
                         att.check_in = punch_time
-                    elif action == "CHECK_IN":
+                    elif action in ["CHECK_IN", "IN"]:
                         att.check_in = now_str
+                    if action in ["CHECK_IN", "IN"] and not att.check_in_location:
+                        att.check_in_location = loc_label
+                        att.check_in_latitude = latitude
+                        att.check_in_longitude = longitude
                     if check_out_time is not None:
                         att.check_out = check_out_time
-                    elif action == "CHECK_OUT":
+                    elif action in ["CHECK_OUT", "OUT"]:
                         att.check_out = now_str
+                    if action in ["CHECK_OUT", "OUT"]:
+                        att.check_out_location = loc_label
+                        att.check_out_latitude = latitude
+                        att.check_out_longitude = longitude
                     if att.check_in and att.check_out:
                         try:
                             for fmt in ["%I:%M %p", "%H:%M", "%I:%M%p"]:
@@ -1377,21 +2140,44 @@ class HrmsService:
                 event_type = "GPS_SCAN"
                 device_label = "GPS Mobile"
 
+            log_timestamp = now_ist
+            if punch_date:
+                try:
+                    p_d = datetime.strptime(punch_date.strip(), "%Y-%m-%d").date()
+                    t_val = now_ist.time()
+                    if punch_time:
+                        for fmt in ["%I:%M %p", "%H:%M", "%I:%M%p", "%H:%M:%S"]:
+                            try:
+                                t_val = datetime.strptime(punch_time.strip(), fmt).time()
+                                break
+                            except Exception:
+                                pass
+                    log_timestamp = datetime.combine(p_d, t_val)
+                except Exception:
+                    pass
+
+            resolved_branch = (
+                branch
+                or (scheme.branch_name if scheme and scheme.branch_name else None)
+                or (emp.vahd_branch if 'emp' in locals() and emp and emp.vahd_branch else "")
+            )
+
             bio_log = BiometricLog(
                 id=f"bio_{uuid.uuid4().hex[:8]}",
+                timestamp=log_timestamp,
                 student_id=student_id_val,
                 user_role=user_role_upper,
                 event_type=event_type,
                 device_type="GEOFENCE_ESS",
                 device_id="ess_geofence_portal",
-                device_name=f"{branch or (scheme.branch_name if scheme else 'Main Branch')} ({device_label})",
+                device_name=f"{resolved_branch} ({device_label})".strip() if resolved_branch else str(device_label),
                 direction=action,
                 status="SUCCESS",
                 confidence_score=0.99 if method == "FACE_ID" else 1.0,
                 meta_data={
                     "user_id": employee_id,
-                    "employee_id": (emp.id if 'emp' in locals() and emp else employee_id),
-                    "employee_id": (employee.id if 'employee' in locals() and employee else None),
+                    "employee_id": (emp.id if 'emp' in locals() and emp else (employee.id if 'employee' in locals() and employee else employee_id)),
+                    "employee_code": (emp.code if 'emp' in locals() and emp and emp.code else ""),
                     "user_name": display_name,
                     "employee_name": display_name,
                     "email": (emp.email if 'emp' in locals() and emp else (employee.email if 'employee' in locals() and employee else employee_id)),
@@ -1400,8 +2186,8 @@ class HrmsService:
                     "latitude": latitude,
                     "longitude": longitude,
                     "method": method,
-                    "branch": branch or (scheme.branch_name if scheme else "Main Branch"),
-                    "scheme_name": scheme.name if scheme else "Standard"
+                    "branch": resolved_branch,
+                    "scheme_name": scheme.name if scheme and scheme.name else ""
                 }
             )
             db.add(bio_log)
@@ -2883,7 +3669,7 @@ class HrmsService:
                 "formatted_date": h.date.strftime("%d %b, %Y"),
                 "day_name": h.date.strftime("%A"),
                 "year": h.year,
-                "holiday_type": h.holiday_type or "Public",
+                "holiday_type": h.holiday_type or "",
                 "description": h.description or "",
                 "is_optional": bool(h.is_optional)
             }
@@ -2910,7 +3696,7 @@ class HrmsService:
                 name=name,
                 date=d_obj,
                 year=year,
-                holiday_type=payload.get("holiday_type") or "Public",
+                holiday_type=payload.get("holiday_type") or "",
                 description=payload.get("description") or "",
                 is_optional=bool(payload.get("is_optional", False))
             )
@@ -3061,6 +3847,15 @@ class HrmsService:
                 stus_query = stus_query.filter(student.ho_id == ho_id)
             if branch_id:
                 stus_query = stus_query.filter(student.branch_id == branch_id)
+            if current_user and (current_user.role or "").strip().upper() == "OWNER":
+                stus_query = stus_query.filter(
+                    or_(
+                        student.owner_id == current_user.id,
+                        student.branch_id == current_user.branch_id,
+                        student.owner_id.is_(None),
+                        student.owner_id == ""
+                    )
+                )
             if search:
                 s = search.strip().lower()
                 stus_query = stus_query.filter(
@@ -3141,13 +3936,42 @@ class HrmsService:
                 att_map[(canon_id, d_key)] = a
                 att_map[(a.employee_id, d_key)] = a
 
-        # Summary counters
-        summary = {
-            "general": 0,
-            "morning": 0,
-            "evening": 0,
-            "night": 0,
-            "weekly_offs": 0
+        # Load dynamic shift templates from database
+        db_shift_templates = db.query(ShiftTemplate).filter(ShiftTemplate.is_active == True).order_by(ShiftTemplate.created_at.asc()).all()
+        shift_templates_map = {t.code.strip().upper(): t for t in db_shift_templates if t.code}
+        for t in db_shift_templates:
+            if t.id:
+                shift_templates_map[t.id] = t
+
+        def resolve_shift_meta(code):
+            if not code or code == "OFF":
+                return {"code": "OFF", "name": "Weekly Off", "start_time": "", "end_time": "", "color": "#64748b"}
+            c_upper = str(code).strip().upper()
+            if c_upper in shift_templates_map:
+                t = shift_templates_map[c_upper]
+                return {
+                    "code": t.code,
+                    "name": t.name or f"{t.code} Shift",
+                    "start_time": t.start_time or "",
+                    "end_time": t.end_time or "",
+                    "color": t.color or "#7c3aed"
+                }
+            return {
+                "code": str(code),
+                "name": f"{code} Shift",
+                "start_time": "",
+                "end_time": "",
+                "color": "#7c3aed"
+            }
+
+        # Summary counters tracking distinct employees assigned to each shift
+        employees_by_code: Dict[str, set] = {t.code.strip().upper(): set() for t in db_shift_templates if t.code}
+        employees_by_legacy: Dict[str, set] = {
+            "general": set(),
+            "morning": set(),
+            "evening": set(),
+            "night": set(),
+            "weekly_offs": set()
         }
 
         # Format rows for each employee
@@ -3168,11 +3992,11 @@ class HrmsService:
                 if r:
                     s_code = r.shift_code
                     is_off = bool(r.is_weekly_off or s_code == "OFF")
-                    std = STANDARD_SHIFTS.get(s_code, {})
-                    s_name = r.shift_name or ("Rest Day" if is_off else (std.get("name") or (f"{s_code} Shift" if s_code else "Unassigned")))
-                    s_start = r.start_time or std.get("start_time", "")
-                    s_end = r.end_time or std.get("end_time", "")
-                    color = std.get("color", "#64748b" if is_off else "#7c3aed")
+                    meta = resolve_shift_meta(s_code)
+                    s_name = "Rest Day" if is_off else (r.shift_name or meta.get("name") or f"{s_code} Shift")
+                    s_start = "" if is_off else (r.start_time or meta.get("start_time", ""))
+                    s_end = "" if is_off else (r.end_time or meta.get("end_time", ""))
+                    color = "#64748b" if is_off else (r.color if hasattr(r, 'color') and r.color else meta.get("color", "#7c3aed"))
                 elif emp_cal and emp_cal.weekly_off_days and day_of_week in emp_cal.weekly_off_days:
                     s_code = "OFF"
                     is_off = True
@@ -3180,44 +4004,55 @@ class HrmsService:
                     s_start = ""
                     s_end = ""
                     color = "#64748b"
-                elif emp_cal and emp_cal.default_shift_code and emp_cal.default_shift_code in STANDARD_SHIFTS:
-                    std = STANDARD_SHIFTS[emp_cal.default_shift_code]
-                    s_code = std["code"]
-                    is_off = False
-                    s_name = std["name"]
-                    s_start = std["start_time"]
-                    s_end = std["end_time"]
-                    color = std.get("color", "#7c3aed")
-                elif emp.get("shift_code") and emp.get("shift_code") in STANDARD_SHIFTS:
-                    std = STANDARD_SHIFTS[emp.get("shift_code")]
-                    s_code = std["code"]
-                    is_off = False
-                    s_name = std["name"]
-                    s_start = std["start_time"]
-                    s_end = std["end_time"]
-                    color = std.get("color", "#7c3aed")
                 else:
-                    s_code = None
+                    target_code = (emp_cal.default_shift_code if (emp_cal and emp_cal.default_shift_code) else emp.get("shift_code"))
+                    if not target_code and db_shift_templates:
+                        target_code = db_shift_templates[0].code
+                    meta = resolve_shift_meta(target_code) if target_code else {"code": "", "name": "", "start_time": "", "end_time": "", "color": "#94a3b8"}
+                    s_code = meta["code"]
                     is_off = False
-                    s_name = "Unassigned"
-                    s_start = ""
-                    s_end = ""
-                    color = "#94a3b8"
+                    s_name = meta["name"]
+                    s_start = meta.get("start_time", "")
+                    s_end = meta.get("end_time", "")
+                    color = meta.get("color", "#7c3aed")
 
                 if is_off or s_code == "OFF":
-                    summary["weekly_offs"] += 1
-                elif s_code == "GEN":
-                    summary["general"] += 1
-                elif s_code == "MORN":
-                    summary["morning"] += 1
-                elif s_code == "EVE":
-                    summary["evening"] += 1
-                elif s_code == "NIGHT":
-                    summary["night"] += 1
+                    employees_by_legacy["weekly_offs"].add(e_id)
+                else:
+                    c_up = str(s_code).strip().upper()
+                    if c_up in employees_by_code:
+                        employees_by_code[c_up].add(e_id)
+                    
+                    # Dynamically map to legacy fixed cards based on time window or code
+                    st_clean = (s_start or "").strip()
+                    try:
+                        hour = int(st_clean.split(":")[0]) if ":" in st_clean else None
+                    except Exception:
+                        hour = None
+
+                    if c_up in ["GEN", "1"] or (hour is not None and 8 <= hour < 14 and "morning" not in s_name.lower()):
+                        employees_by_legacy["general"].add(e_id)
+                    elif c_up == "MORN" or (hour is not None and 5 <= hour < 12):
+                        employees_by_legacy["morning"].add(e_id)
+                    elif c_up == "EVE" or (hour is not None and 14 <= hour < 21):
+                        employees_by_legacy["evening"].add(e_id)
+                    elif c_up == "NIGHT" or (hour is not None and (hour >= 21 or hour < 5)):
+                        employees_by_legacy["night"].add(e_id)
+                    else:
+                        employees_by_legacy["general"].add(e_id)
 
                 att_status = att.status if att else None
                 check_in_str = att.check_in if att else None
                 check_out_str = att.check_out if att else None
+
+                if is_off or s_code == "OFF":
+                    time_range_str = "Rest Day"
+                elif s_start and s_end:
+                    time_range_str = f"{s_start}-{s_end}"
+                elif s_name:
+                    time_range_str = s_name
+                else:
+                    time_range_str = "Flexible"
 
                 shifts_by_date[d_key] = {
                     "shift_code": s_code,
@@ -3226,7 +4061,7 @@ class HrmsService:
                     "end_time": s_end,
                     "is_off": is_off,
                     "color": color,
-                    "time_range": f"{s_start}-{s_end}" if (s_start and s_end) else "Rest Day",
+                    "time_range": time_range_str,
                     "attendance_status": att_status,
                     "check_in": check_in_str,
                     "check_out": check_out_str,
@@ -3251,12 +4086,37 @@ class HrmsService:
         if not all_departments and not is_student_scope:
             all_departments = [d.name for d in db.query(Department).all()]
 
+        summary = {
+            "general": len(employees_by_legacy["general"]),
+            "morning": len(employees_by_legacy["morning"]),
+            "evening": len(employees_by_legacy["evening"]),
+            "night": len(employees_by_legacy["night"]),
+            "weekly_offs": len(employees_by_legacy["weekly_offs"])
+        }
+
+        dynamic_template_summaries = []
+        for t in db_shift_templates:
+            code_u = t.code.strip().upper()
+            emp_cnt = len(employees_by_code.get(code_u, set()))
+            dynamic_template_summaries.append({
+                "id": t.id,
+                "code": t.code,
+                "name": t.name,
+                "start_time": t.start_time or "",
+                "end_time": t.end_time or "",
+                "time_range": f"{t.start_time}-{t.end_time}" if (t.start_time and t.end_time) else "",
+                "color": t.color or "#7c3aed",
+                "count": emp_cnt,
+                "employee_count": emp_cnt
+            })
+
         return {
             "week_label": week_label,
             "start_date": monday.strftime("%Y-%m-%d"),
             "end_date": sunday.strftime("%Y-%m-%d"),
             "dates": week_dates_meta,
             "summary": summary,
+            "template_summaries": dynamic_template_summaries,
             "employees": employee_rows,
             "total_staff": len(employee_rows),
             "departments": all_departments,
@@ -3280,11 +4140,22 @@ class HrmsService:
         shift_code = (payload.get("shift_code") or "").strip().upper()
         is_off = shift_code == "OFF" or bool(payload.get("is_off", False))
 
+        # Lookup dynamic shift template from DB first, then fallback to STANDARD_SHIFTS
+        tmpl = db.query(ShiftTemplate).filter(
+            or_(ShiftTemplate.code.ilike(shift_code), ShiftTemplate.id == payload.get("shift_id"))
+        ).first()
+
         std = STANDARD_SHIFTS.get(shift_code, {})
-        shift_name = "Rest Day" if is_off else (payload.get("shift_name") or std.get("name", f"{shift_code} Shift" if shift_code else "Custom Shift"))
-        start_time = "" if is_off else (payload.get("start_time") or std.get("start_time", ""))
-        end_time = "" if is_off else (payload.get("end_time") or std.get("end_time", ""))
-        shift_id = payload.get("shift_id") or None
+        if is_off:
+            shift_name = "Rest Day"
+            start_time = ""
+            end_time = ""
+            shift_id = None
+        else:
+            shift_name = payload.get("shift_name") or (tmpl.name if tmpl else std.get("name", f"{shift_code} Shift" if shift_code else "Custom Shift"))
+            start_time = payload.get("start_time") or (tmpl.start_time if tmpl else std.get("start_time", ""))
+            end_time = payload.get("end_time") or (tmpl.end_time if tmpl else std.get("end_time", ""))
+            shift_id = payload.get("shift_id") or (tmpl.id if tmpl else None)
 
         updated_count = 0
         for emp_id in employee_ids:
@@ -3397,6 +4268,15 @@ class HrmsService:
                 stus_query = stus_query.filter(student.ho_id == ho_id)
             if branch_id:
                 stus_query = stus_query.filter(student.branch_id == branch_id)
+            if current_user and (current_user.role or "").strip().upper() == "OWNER":
+                stus_query = stus_query.filter(
+                    or_(
+                        student.owner_id == current_user.id,
+                        student.branch_id == current_user.branch_id,
+                        student.owner_id.is_(None),
+                        student.owner_id == ""
+                    )
+                )
             if search:
                 s = search.strip().lower()
                 stus_query = stus_query.filter(
@@ -3433,26 +4313,74 @@ class HrmsService:
         profile_ids = [p["id"] for p in profiles]
         emp_id_to_profile_id = {}
         all_query_ids = set()
+
+        # Pass 1: Register exact profile IDs, explicit codes, and emails
         for p in profiles:
             pid = p["id"]
             all_query_ids.add(pid)
             emp_id_to_profile_id[pid] = pid
+            if pid.startswith("emp_"):
+                raw_id = pid[4:]
+                all_query_ids.add(raw_id)
+                emp_id_to_profile_id[raw_id] = pid
+            elif pid.startswith("cust_"):
+                raw_id = pid[5:]
+                all_query_ids.add(raw_id)
+                emp_id_to_profile_id[raw_id] = pid
+            else:
+                all_query_ids.add(f"emp_{pid}")
+                all_query_ids.add(f"cust_{pid}")
+
             code = p.get("code")
             if code:
                 all_query_ids.add(code)
                 emp_id_to_profile_id[code] = pid
-                clean_num = code.replace("EMP-", "").strip()
-                if clean_num:
-                    all_query_ids.add(clean_num)
-                    emp_id_to_profile_id[clean_num] = pid
-                    all_query_ids.add(clean_num.zfill(4))
-                    emp_id_to_profile_id[clean_num.zfill(4)] = pid
-                    all_query_ids.add(f"EMP-{clean_num.zfill(4)}")
-                    emp_id_to_profile_id[f"EMP-{clean_num.zfill(4)}"] = pid
+
             email = p.get("email")
             if email:
                 all_query_ids.add(email.lower())
                 emp_id_to_profile_id[email.lower()] = pid
+
+            # Check linked employeeProfile or student or user for cross-table punch lookup
+            if p.get("role_category") != "Student":
+                clean_lookup_id = pid.replace("emp_", "")
+                tr = db.query(employeeProfile).filter(
+                    or_(
+                        employeeProfile.id == clean_lookup_id,
+                        employeeProfile.id == f"tr_{clean_lookup_id}",
+                        employeeProfile.email.ilike(email) if email else False
+                    )
+                ).first()
+                if tr:
+                    all_query_ids.add(tr.id)
+                    emp_id_to_profile_id[tr.id] = pid
+                    if tr.user_id:
+                        all_query_ids.add(tr.user_id)
+                        emp_id_to_profile_id[tr.user_id] = pid
+            else:
+                from src.models.student import student as StudentModel
+                st = db.query(StudentModel).filter(
+                    or_(
+                        StudentModel.id == pid,
+                        StudentModel.email.ilike(email) if email else False
+                    )
+                ).first()
+                if st and st.user_id:
+                    all_query_ids.add(st.user_id)
+                    emp_id_to_profile_id[st.user_id] = pid
+
+        # Pass 2: Register formatted code variants only if not already claimed by an exact code
+        for p in profiles:
+            pid = p["id"]
+            code = p.get("code")
+            if code:
+                clean_num = code.replace("EMP-", "").strip()
+                if clean_num:
+                    variants = [clean_num, clean_num.zfill(4), f"EMP-{clean_num.zfill(4)}", f"EMP-{clean_num}"]
+                    for v in variants:
+                        all_query_ids.add(v)
+                        if v not in emp_id_to_profile_id:
+                            emp_id_to_profile_id[v] = pid
 
         # Load active work calendar policy
         calendars = db.query(WorkCalendarPolicy).filter(WorkCalendarPolicy.is_active == True).all()
@@ -3472,18 +4400,99 @@ class HrmsService:
 
         # Load attendance records
         att_records = db.query(EmployeeAttendance).filter(
-            EmployeeAttendance.employee_id.in_(list(all_query_ids)),
             EmployeeAttendance.date >= start_date,
             EmployeeAttendance.date <= end_date
-        ).all() if all_query_ids else []
+        ).all()
 
         att_by_emp_date = {}
         for a in att_records:
             if a.date:
                 d_key = a.date.strftime("%Y-%m-%d") if hasattr(a.date, "strftime") else str(a.date)[:10]
-                target_pid = emp_id_to_profile_id.get(a.employee_id, a.employee_id)
-                att_by_emp_date[(target_pid, d_key)] = a
+                target_pid = emp_id_to_profile_id.get(a.employee_id) or emp_id_to_profile_id.get(str(a.employee_id).replace("emp_", "")) or emp_id_to_profile_id.get(str(a.employee_id).replace("cust_", ""))
+                if target_pid:
+                    att_by_emp_date[(target_pid, d_key)] = a
                 att_by_emp_date[(a.employee_id, d_key)] = a
+
+        # Also pull BiometricLog punches for this month (GPS Mobile, Face ID, Turnstile)
+        start_dt = datetime.combine(start_date, datetime.min.time())
+        end_dt = datetime.combine(end_date, datetime.max.time())
+        month_bio_logs = db.query(BiometricLog).filter(
+            BiometricLog.timestamp >= start_dt,
+            BiometricLog.timestamp <= end_dt,
+            BiometricLog.status != "DENIED"
+        ).order_by(BiometricLog.timestamp.asc()).all()
+
+        for blog in month_bio_logs:
+            d_key = blog.timestamp.strftime("%Y-%m-%d") if blog.timestamp else ""
+            meta = blog.meta_data or {}
+            candidates = [
+                str(blog.student_id or ""),
+                str(meta.get("user_id") or ""),
+                str(meta.get("employee_id") or ""),
+                str(meta.get("student_id") or ""),
+                str(meta.get("employee_code") or meta.get("code") or ""),
+                str(meta.get("email") or "").lower()
+            ]
+            target_pid = None
+            for c in candidates:
+                if not c:
+                    continue
+                if c in emp_id_to_profile_id:
+                    target_pid = emp_id_to_profile_id[c]
+                    break
+                elif c.replace("emp_", "") in emp_id_to_profile_id:
+                    target_pid = emp_id_to_profile_id[c.replace("emp_", "")]
+                    break
+                elif c.replace("cust_", "") in emp_id_to_profile_id:
+                    target_pid = emp_id_to_profile_id[c.replace("cust_", "")]
+                    break
+
+            if target_pid:
+                clean_dev_loc = re.sub(r'\s*\((Face Scanner|Biometric Turnstile|RFID Sensor|Manual Self Check-in|GPS Mobile|Face AI Terminal|Webcam|WEBCAM_FACE_SCANNER)\)', '', blog.device_name or "").strip()
+                bio_loc = meta.get("location") or meta.get("branch") or clean_dev_loc or ""
+                if bio_loc.lower() in ["face scanner", "biometric device", "webcam"]:
+                    bio_loc = ""
+
+                punch_time_str = blog.timestamp.strftime("%I:%M %p") if blog.timestamp else "--:--"
+                is_out = blog.direction in ["CHECK_OUT", "OUT"]
+                is_in = blog.direction in ["CHECK_IN", "IN"] or not is_out
+
+                if (target_pid, d_key) not in att_by_emp_date:
+                    att_by_emp_date[(target_pid, d_key)] = {
+                        "status": "Present",
+                        "check_in": punch_time_str if is_in else None,
+                        "check_out": punch_time_str if is_out else None,
+                        "check_in_location": bio_loc if is_in else "",
+                        "check_out_location": bio_loc if is_out else "",
+                        "work_hours": 8.0,
+                        "notes": f"Punched via {blog.event_type or blog.direction or 'Biometric'}"
+                    }
+                else:
+                    existing_entry = att_by_emp_date[(target_pid, d_key)]
+                    st = getattr(existing_entry, "status", None) if hasattr(existing_entry, "status") else (existing_entry.get("status") if isinstance(existing_entry, dict) else "")
+                    if (st or "").lower() in ["absent", "none", "", "-"]:
+                        if hasattr(existing_entry, "status"):
+                            existing_entry.status = "Present"
+                            if is_in and (not existing_entry.check_in or existing_entry.check_in in ["--:--", "-"]):
+                                existing_entry.check_in = punch_time_str
+                            if is_out and (not existing_entry.check_out or existing_entry.check_out in ["--:--", "-"]):
+                                existing_entry.check_out = punch_time_str
+                            if bio_loc:
+                                if is_in and not existing_entry.check_in_location:
+                                    existing_entry.check_in_location = bio_loc
+                                if is_out and not existing_entry.check_out_location:
+                                    existing_entry.check_out_location = bio_loc
+                        elif isinstance(existing_entry, dict):
+                            existing_entry["status"] = "Present"
+                            if is_in and (not existing_entry.get("check_in") or existing_entry["check_in"] in ["--:--", "-"]):
+                                existing_entry["check_in"] = punch_time_str
+                            if is_out and (not existing_entry.get("check_out") or existing_entry["check_out"] in ["--:--", "-"]):
+                                existing_entry["check_out"] = punch_time_str
+                            if bio_loc:
+                                if is_in and not existing_entry.get("check_in_location"):
+                                    existing_entry["check_in_location"] = bio_loc
+                                if is_out and not existing_entry.get("check_out_location"):
+                                    existing_entry["check_out_location"] = bio_loc
 
         # Load approved leaves (for employees)
         leaves = db.query(LeaveRequest).filter(
@@ -3503,8 +4512,9 @@ class HrmsService:
             p_id = p["id"]
             today_att = att_by_emp_date.get((p_id, today_str))
             if today_att:
-                t_st = (today_att.status or "").lower()
-                if any(x in t_st for x in ["present", "late", "verified", "half"]):
+                t_st = (getattr(today_att, "status", None) if hasattr(today_att, "status") else today_att.get("status", "") or "").lower()
+                t_in = getattr(today_att, "check_in", None) if hasattr(today_att, "check_in") else today_att.get("check_in", None)
+                if any(x in t_st for x in ["present", "late", "verified", "half"]) or t_in:
                     present_today_count += 1
                 elif "absent" in t_st:
                     absent_today_count += 1
@@ -3555,19 +4565,18 @@ class HrmsService:
                 att = att_by_emp_date.get((p_id, d_str))
                 is_on_leave = any(lv.employee_id in [p_id, p.get("code")] and lv.start_date <= d_obj <= lv.end_date for lv in leaves)
 
+                att_check_in = None
+                att_check_out = None
+                att_work_hours = None
+
                 if att:
-                    st_lower = (att.status or "").strip().lower()
-                    if any(x in st_lower for x in ["present", "late", "verified", "on duty"]):
-                        status_code = "P"
-                        p_count += 1
-                    elif "half" in st_lower:
-                        status_code = "HD"
-                        p_count += 0.5
-                        pl_count += 0.5
-                    elif any(x in st_lower for x in ["leave", "paid leave", "pl"]):
-                        status_code = "PL"
-                        pl_count += 1
-                    elif any(x in st_lower for x in ["holiday", "hol"]):
+                    st_val = getattr(att, "status", None) if hasattr(att, "status") else att.get("status", "")
+                    st_lower = (st_val or "").strip().lower()
+                    att_check_in = getattr(att, "check_in", None) if hasattr(att, "check_in") else att.get("check_in", None)
+                    att_check_out = getattr(att, "check_out", None) if hasattr(att, "check_out") else att.get("check_out", None)
+                    att_work_hours = getattr(att, "work_hours", None) if hasattr(att, "work_hours") else att.get("work_hours", 8.0)
+
+                    if any(x in st_lower for x in ["holiday", "hol"]):
                         status_code = "HOL"
                         hol_count += 1
                     elif any(x in st_lower for x in ["week off", "wo", "off", "rest"]):
@@ -3576,9 +4585,26 @@ class HrmsService:
                     elif any(x in st_lower for x in ["absent", "unexcused"]):
                         status_code = "A"
                         a_count += 1
-                    else:
+                    elif any(x in st_lower for x in ["leave", "paid leave", "pl"]):
+                        status_code = "PL"
+                        pl_count += 1
+                    elif "half" in st_lower:
+                        status_code = "HD"
+                        p_count += 0.5
+                        pl_count += 0.5
+                    elif any(x in st_lower for x in ["present", "late", "verified", "on duty"]) or (att_check_in and not is_fut):
                         status_code = "P"
                         p_count += 1
+                    else:
+                        if is_fut:
+                            status_code = "HOL" if is_hol else ("WO" if is_week_off else "-")
+                            if status_code == "HOL":
+                                hol_count += 1
+                            elif status_code == "WO":
+                                wo_count += 1
+                        else:
+                            status_code = "P"
+                            p_count += 1
                 elif is_on_leave:
                     status_code = "PL"
                     pl_count += 1
@@ -3595,13 +4621,19 @@ class HrmsService:
                 else:
                     status_code = "-"
 
+                att_in_loc = getattr(att, "check_in_location", None) if hasattr(att, "check_in_location") else (att.get("check_in_location") if isinstance(att, dict) else "")
+                att_out_loc = getattr(att, "check_out_location", None) if hasattr(att, "check_out_location") else (att.get("check_out_location") if isinstance(att, dict) else "")
+
                 days_status[str(day_info["day"])] = {
                     "code": status_code,
                     "date": d_str,
                     "status_label": "Present" if status_code == "P" else ("Half Day" if status_code == "HD" else ("Week Off" if status_code == "WO" else ("Holiday" if status_code == "HOL" else ("Paid Leave" if status_code == "PL" else ("Absent" if status_code == "A" else "-"))))),
-                    "check_in": att.check_in if att else None,
-                    "check_out": att.check_out if att else None,
-                    "work_hours": att.work_hours if att else None
+                    "status": "Present" if status_code == "P" else ("Half Day" if status_code == "HD" else ("Absent" if status_code == "A" else status_code)),
+                    "check_in": att_check_in,
+                    "check_out": att_check_out,
+                    "check_in_location": att_in_loc or "",
+                    "check_out_location": att_out_loc or "",
+                    "work_hours": att_work_hours
                 }
 
             payable = p_count + pl_count + wo_count + hol_count
@@ -3674,8 +4706,16 @@ class HrmsService:
         t_type = (target_type or "").strip().lower()
 
         if t_type == "student":
-            st = db.query(student).filter(student.id == target_id).first()
+            st = db.query(student).filter(
+                (student.id == target_id) | (student.user_id == target_id) | (student.email.ilike(target_id))
+            ).first()
             if not st:
+                # Check direct User match
+                u_direct = db.query(User).filter((User.id == target_id) | (User.email.ilike(target_id))).first()
+                if u_direct:
+                    u_direct.password_hash = pwd_hash
+                    db.commit()
+                    return {"status": "success", "message": f"Password for {u_direct.full_name or u_direct.email} updated successfully.", "email": u_direct.email}
                 raise ValueError("Student record not found.")
             email = (st.email or "").strip().lower()
             target_name = st.full_name or "Student"
@@ -3704,8 +4744,15 @@ class HrmsService:
                 st.user_id = user_id
 
         elif t_type in ["employee", "staff"]:
-            emp = db.query(Employee).filter(Employee.id == target_id).first()
+            emp = db.query(Employee).filter(
+                (Employee.id == target_id) | (Employee.id == f"emp_{target_id}") | (Employee.email.ilike(target_id))
+            ).first()
             if not emp:
+                u_direct = db.query(User).filter((User.id == target_id) | (User.email.ilike(target_id))).first()
+                if u_direct:
+                    u_direct.password_hash = pwd_hash
+                    db.commit()
+                    return {"status": "success", "message": f"Password for {u_direct.full_name or u_direct.email} updated successfully.", "email": u_direct.email}
                 raise ValueError("Employee record not found.")
             email = (emp.email or "").strip().lower()
             target_name = f"{emp.first_name} {emp.last_name or ''}".strip() or emp.email
@@ -3732,8 +4779,30 @@ class HrmsService:
                 )
                 db.add(user_obj)
                 emp.user_id = user_id
+        elif t_type in ["ho", "head_office", "head office", "owner", "manager", "admin", "super_admin"]:
+            user_obj = db.query(User).filter(
+                (User.id == target_id) | (User.email.ilike(target_id))
+            ).first()
+            if not user_obj and current_user:
+                user_obj = current_user
+            if not user_obj:
+                raise ValueError(f"{target_type.upper()} account record not found.")
+            email = (user_obj.email or "").strip().lower()
+            target_name = user_obj.full_name or user_obj.email
+            user_obj.password_hash = pwd_hash
         else:
-            raise ValueError(f"Invalid target_type: {target_type}")
+            # Fallback direct user lookup across the database
+            user_obj = db.query(User).filter(
+                (User.id == target_id) | (User.email.ilike(target_id))
+            ).first()
+            if not user_obj and current_user:
+                user_obj = current_user
+            if user_obj:
+                email = (user_obj.email or "").strip().lower()
+                target_name = user_obj.full_name or user_obj.email
+                user_obj.password_hash = pwd_hash
+            else:
+                raise ValueError(f"Account not found for target: {target_id}")
 
         db.commit()
         return {

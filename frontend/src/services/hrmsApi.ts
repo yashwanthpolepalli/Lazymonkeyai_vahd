@@ -46,7 +46,11 @@ export interface DepartmentItem {
   head_name: string;
   is_active: boolean;
   employee_count: number;
+  student_count?: number;
+  department_type?: 'student' | 'employee' | 'both';
+  extra_info?: string;
   employees?: MappedEmployee[];
+  students?: any[];
 }
 
 export interface DesignationItem {
@@ -89,6 +93,12 @@ export interface AttendanceRecord {
   date: string;
   check_in: string;
   check_out: string;
+  check_in_location?: string;
+  check_out_location?: string;
+  check_in_latitude?: number | null;
+  check_in_longitude?: number | null;
+  check_out_latitude?: number | null;
+  check_out_longitude?: number | null;
   status: string;
   work_hours: number;
   notes: string;
@@ -458,6 +468,7 @@ export const hrmsApi = {
     note?: string;
     latitude?: number | null;
     longitude?: number | null;
+    location?: string;
     method?: string;
     user_role?: string;
     branch?: string;
@@ -618,7 +629,18 @@ export const hrmsApi = {
 
   getShiftRoster: (params?: { start_date?: string; end_date?: string; department?: string; search?: string; view?: string; user_type?: 'employee' | 'student' }) =>
     apiClient.get<ShiftRosterResponse>('/hrms/shifts/roster', { params }),
-  assignShift: (payload: { employee_ids?: string[]; employee_id?: string; dates?: string[]; date?: string; shift_code: string; is_off?: boolean }) =>
+  assignShift: (payload: {
+    employee_ids?: string[];
+    employee_id?: string;
+    dates?: string[];
+    date?: string;
+    shift_code: string;
+    shift_name?: string;
+    start_time?: string;
+    end_time?: string;
+    shift_id?: string;
+    is_off?: boolean;
+  }) =>
     apiClient.post<{ status: string; message: string; updated_count: number }>('/hrms/shifts/assign', payload),
 
   // Company Holidays & Work Calendar Schemes
@@ -647,6 +669,10 @@ export const hrmsApi = {
     notes?: string;
     lat?: number;
     lng?: number;
+    latitude?: number;
+    longitude?: number;
+    location?: string;
+    place?: string;
     method?: string;
     user_role?: string;
   }) => apiClient.post<any>('/hrms/attendance/punch', payload),
@@ -800,5 +826,15 @@ export interface ShiftRosterResponse {
   total_staff: number;
   departments: string[];
   shift_templates?: any[];
+  template_summaries?: {
+    id: string;
+    code: string;
+    name: string;
+    start_time: string;
+    end_time: string;
+    time_range: string;
+    color: string;
+    count: number;
+  }[];
 }
 

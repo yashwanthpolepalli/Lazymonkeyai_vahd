@@ -308,12 +308,14 @@ export function StudentGeofenceCheckinWidget({ onCheckinSuccess }: studentGeofen
   const handleManualPunch = async (action: 'CHECK_IN' | 'CHECK_OUT') => {
     setLoading(true);
     try {
+      const punchLoc = activeScheme?.branch_name || user?.branchName || (activeScheme?.latitude ? `Campus (${activeScheme.latitude.toFixed(4)}, ${activeScheme.longitude.toFixed(4)})` : 'Campus');
       const payload = {
         employee_id: user?.id || '',
         action,
         method: 'MANUAL',
         latitude: activeScheme?.latitude ?? null,
         longitude: activeScheme?.longitude ?? null,
+        location: punchLoc,
         user_role: 'student',
         branch: activeScheme?.branch_name || user?.branchName || '',
         note: `student manual attendance check-${action === 'CHECK_IN' ? 'in' : 'out'}`,

@@ -8,6 +8,7 @@ from src.models.user import User
 from src.models.student import student
 from src.models.membership import Membership
 from src.models.biometric import BiometricLog
+from src.models.hrms import EmployeeAttendance
 from src.utils.email import generate_enrollment_password, send_enrollment_email
 from src.utils.security import hash_password
 from src.models.settings import Branch as vahdBranch
@@ -41,9 +42,10 @@ class studentService:
         ).count()
         attendance_pct = min(100, int((logs_count / 30.0) * 100)) if logs_count > 0 else 0
 
-        # Real-time Today Attendance Calculation from Biometric DB Log
+        # Real-time Today Attendance Calculation from DB (EmployeeAttendance & BiometricLog)
         today_start = today_ist_start()
         today_end = today_ist_end()
+        today_date = today_start.date()
         cust_match_ids = {str(c.id)}
         if c.user_id:
             cust_match_ids.add(str(c.user_id))
@@ -53,19 +55,56 @@ class studentService:
             cust_match_ids.add(str(c.id).replace("cust_", ""))
         else:
             cust_match_ids.add(f"cust_{c.id}")
+        if getattr(c, "member_code", None):
+            cust_match_ids.add(str(c.member_code).strip())
+        if c.email:
+            cust_match_ids.add(c.email.strip().lower())
 
-        today_logs = db.query(BiometricLog).filter(
-            (BiometricLog.student_id.in_(list(cust_match_ids))) |
-            (BiometricLog.student_id == c.id) |
-            (BiometricLog.student_id == c.user_id),
+        # Check EmployeeAttendance table for today
+        today_att = db.query(EmployeeAttendance).filter(
+            EmployeeAttendance.employee_id.in_(list(cust_match_ids)),
+            EmployeeAttendance.date == today_date
+        ).first()
+
+        # Query all biometric logs for today
+        raw_today_logs = db.query(BiometricLog).filter(
             BiometricLog.timestamp >= today_start,
             BiometricLog.timestamp <= today_end
         ).order_by(BiometricLog.timestamp.asc()).all()
+
+        today_logs = []
+        for l in raw_today_logs:
+            l_sid = str(l.student_id or "")
+            meta = l.meta_data or {}
+            m_uid = str(meta.get("user_id") or meta.get("student_id") or "")
+            m_code = str(meta.get("student_code") or "")
+            m_email = str(meta.get("email") or "").strip().lower()
+            if (
+                l_sid in cust_match_ids
+                or l_sid.replace("cust_", "") in cust_match_ids
+                or m_uid in cust_match_ids
+                or m_code in cust_match_ids
+                or (c.email and m_email == c.email.strip().lower())
+            ):
+                today_logs.append(l)
 
         punch_in = None
         punch_out = None
         is_today_present = False
         today_punch_status = "Absent"
+
+        if today_att:
+            if today_att.check_in and today_att.check_in != "--:--":
+                punch_in = today_att.check_in
+            if today_att.check_out and today_att.check_out != "--:--":
+                punch_out = today_att.check_out
+            st_clean = (today_att.status or "").lower()
+            if any(x in st_clean for x in ["present", "late", "verified", "half", "check_in"]) or punch_in:
+                is_today_present = True
+                today_punch_status = "Present"
+            elif any(x in st_clean for x in ["absent", "leave", "holiday", "week off"]):
+                is_today_present = False
+                today_punch_status = "Absent"
 
         if today_logs:
             in_logs = [
@@ -80,27 +119,26 @@ class studentService:
                 or "out" in str(getattr(l, "direction", "")).lower()
             ]
 
-            if in_logs:
+            if in_logs and not punch_in:
                 punch_in = in_logs[0].timestamp.strftime("%H:%M:%S")
-            elif today_logs:
+            elif today_logs and not punch_in:
                 punch_in = today_logs[0].timestamp.strftime("%H:%M:%S")
 
             if out_logs:
                 punch_out = out_logs[-1].timestamp.strftime("%H:%M:%S")
-            elif len(today_logs) > 1:
+            elif len(today_logs) > 1 and not punch_out:
                 punch_out = today_logs[-1].timestamp.strftime("%H:%M:%S")
 
             is_today_present = True
-            if punch_in and punch_out:
-                today_punch_status = "Present"
-            elif punch_in:
-                today_punch_status = "Present"
-            else:
-                today_punch_status = "Present"
+            today_punch_status = "Present"
 
         # Dynamic Biometric Sync Detection (Strict DB check)
-        biometric_count = db.query(BiometricLog).filter(BiometricLog.student_id == c.id).count()
-        is_completed = bool(biometric_count > 0)
+        biometric_count = db.query(BiometricLog).filter(
+            (BiometricLog.student_id.in_(list(cust_match_ids))) | (BiometricLog.student_id == c.id)
+        ).count()
+        if biometric_count == 0 and today_att:
+            biometric_count = 1
+        is_completed = bool(biometric_count > 0 or getattr(c, "face_image", None))
         biometric_status = "Completed" if is_completed else "Pending"
 
         # Dynamic KYC Completeness Calculation
@@ -567,6 +605,122 @@ class studentService:
             or (meta_data_payload.get("specialization") if isinstance(meta_data_payload, dict) else None)
             or ""
         ).strip()
+
+        # Dynamic Department registration & synchronization for students
+        dept_candidate = (
+            data.get("department")
+            or (meta_data_payload.get("department") if isinstance(meta_data_payload, dict) else None)
+            or (meta_data_payload.get("dept") if isinstance(meta_data_payload, dict) else None)
+            or (meta_data_payload.get("branchdept") if isinstance(meta_data_payload, dict) else None)
+            or specialization
+            or ""
+        ).strip()
+        if dept_candidate:
+            if isinstance(meta_data_payload, dict):
+                meta_data_payload["department"] = dept_candidate
+            from src.models.hrms import Department
+            from src.models.settings import MasterData
+            clean_d = dept_candidate
+            existing_dept = db.query(Department).filter(func.lower(Department.name) == clean_d.lower()).first()
+            if not existing_dept:
+                words = clean_d.split()
+                d_code = "".join([w[0].upper() for w in words if w.isalnum()])[:6] or clean_d[:4].upper()
+                new_dept = Department(
+                    id=f"dept_{uuid.uuid4().hex[:8]}",
+                    name=clean_d,
+                    code=d_code,
+                    description=f"Auto-created student department: {clean_d}",
+                    head_name="",
+                    is_active=True
+                )
+                db.add(new_dept)
+                try:
+                    db.commit()
+                except Exception:
+                    db.rollback()
+
+            existing_md = db.query(MasterData).filter(
+                MasterData.category == "departments",
+                func.lower(MasterData.name) == clean_d.lower()
+            ).first()
+            if not existing_md:
+                words = clean_d.split()
+                d_code = "".join([w[0].upper() for w in words if w.isalnum()])[:6] or clean_d[:4].upper()
+                new_md = MasterData(
+                    id=f"mdata_{uuid.uuid4().hex[:8]}",
+                    category="departments",
+                    name=clean_d,
+                    code=d_code,
+                    description=f"Student department: {clean_d}",
+                    extra_info="student",
+                    is_active=True
+                )
+                db.add(new_md)
+                try:
+                    db.commit()
+                except Exception:
+                    db.rollback()
+
+        # Also auto-append gender, qualification, specialization to MasterData if not present
+        from src.models.settings import MasterData
+        if gender:
+            clean_gender = gender.strip().capitalize()
+            if clean_gender:
+                existing_g = db.query(MasterData).filter(
+                    MasterData.category == "gender_types",
+                    func.lower(MasterData.name) == clean_gender.lower()
+                ).first()
+                if not existing_g:
+                    db.add(MasterData(
+                        id=f"mdata_{uuid.uuid4().hex[:8]}",
+                        category="gender_types",
+                        name=clean_gender,
+                        code=f"GND-{clean_gender[:3].upper()}",
+                        is_active=True
+                    ))
+                    try:
+                        db.commit()
+                    except Exception:
+                        db.rollback()
+
+        if qualification:
+            clean_qual = qualification.strip()
+            existing_q = db.query(MasterData).filter(
+                MasterData.category == "qualifications",
+                func.lower(MasterData.name) == clean_qual.lower()
+            ).first()
+            if not existing_q:
+                db.add(MasterData(
+                    id=f"mdata_{uuid.uuid4().hex[:8]}",
+                    category="qualifications",
+                    name=clean_qual,
+                    code=f"QLF-{clean_qual[:4].upper()}",
+                    is_active=True
+                ))
+                try:
+                    db.commit()
+                except Exception:
+                    db.rollback()
+
+        if specialization:
+            clean_spec = specialization.strip()
+            existing_s = db.query(MasterData).filter(
+                MasterData.category == "specializations",
+                func.lower(MasterData.name) == clean_spec.lower()
+            ).first()
+            if not existing_s:
+                db.add(MasterData(
+                    id=f"mdata_{uuid.uuid4().hex[:8]}",
+                    category="specializations",
+                    name=clean_spec,
+                    code=f"SPC-{clean_spec[:4].upper()}",
+                    parent_name=qualification or "",
+                    is_active=True
+                ))
+                try:
+                    db.commit()
+                except Exception:
+                    db.rollback()
 
         existing_cust = db.query(student).filter(student.user_id == user.id).first()
         if existing_cust:

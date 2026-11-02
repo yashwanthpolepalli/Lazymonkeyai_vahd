@@ -364,8 +364,25 @@ export function HrmsDepartmentsTab() {
                         </span>
                       </td>
                       <td className="py-3 px-4">
-                        <div className="font-extrabold text-navy-900 text-sm group-hover:text-purple-700 transition">
-                          {dept.name}
+                        <div className="flex items-center gap-2">
+                          <span className="font-extrabold text-navy-900 text-sm group-hover:text-purple-700 transition">
+                            {dept.name}
+                          </span>
+                          {(dept.department_type === 'student' || dept.extra_info === 'student') && (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200/80">
+                              Students View
+                            </span>
+                          )}
+                          {(dept.department_type === 'employee' || dept.extra_info === 'employee') && (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/80">
+                              Employee View
+                            </span>
+                          )}
+                          {(dept.department_type === 'both' || dept.extra_info === 'both') && (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200/80">
+                              Both Views
+                            </span>
+                          )}
                         </div>
                         {dept.description && (
                           <div className="text-[11px] text-navy-400 line-clamp-1 max-w-xs">{dept.description}</div>
@@ -385,7 +402,10 @@ export function HrmsDepartmentsTab() {
                             className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold text-xs border border-purple-200/60 transition cursor-pointer"
                           >
                             <Icon name="users" size={12} />
-                            <span>{dept.employee_count} Members</span>
+                            <span>
+                              {dept.employee_count} Staff
+                              {dept.student_count !== undefined && dept.student_count > 0 ? ` · ${dept.student_count} Students` : ''}
+                            </span>
                           </button>
                           {employeesList.length > 0 && (
                             <div className="hidden sm:flex items-center -space-x-1.5">

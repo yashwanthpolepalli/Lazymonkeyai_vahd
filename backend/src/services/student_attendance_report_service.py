@@ -83,11 +83,30 @@ class StudentAttendanceReportService:
             or ""
         ).strip()
 
-        # Query all biometric logs for this student in the target month
-        logs = (
+        # Build exhaustive match keys for student
+        stu_match_ids = {str(student.id), str(student.id).replace("cust_", ""), f"cust_{student.id}"}
+        if student.user_id:
+            stu_match_ids.add(str(student.user_id))
+            stu_match_ids.add(f"cust_{student.user_id}")
+            stu_match_ids.add(f"cust_usr_{student.user_id}")
+        if getattr(student, "member_code", None):
+            stu_match_ids.add(str(student.member_code).strip())
+        if student.email:
+            stu_match_ids.add(student.email.strip().lower())
+
+        # 1. Query EmployeeAttendance records for this student
+        from src.models.hrms import EmployeeAttendance
+        att_records = db.query(EmployeeAttendance).filter(
+            EmployeeAttendance.employee_id.in_(list(stu_match_ids)),
+            EmployeeAttendance.date >= date(target_year, target_month, 1),
+            EmployeeAttendance.date <= date(target_year, target_month, last_day)
+        ).all()
+        att_by_day = {a.date.day: a for a in att_records if a.date}
+
+        # 2. Query all biometric logs for this student in the target month
+        raw_bio_logs = (
             db.query(BiometricLog)
             .filter(
-                BiometricLog.student_id == student.id,
                 BiometricLog.timestamp >= start_dt,
                 BiometricLog.timestamp <= end_dt,
                 BiometricLog.status != "DENIED"
@@ -95,6 +114,22 @@ class StudentAttendanceReportService:
             .order_by(BiometricLog.timestamp.asc())
             .all()
         )
+
+        logs = []
+        for bl in raw_bio_logs:
+            sid = str(bl.student_id or "")
+            b_meta = bl.meta_data or {}
+            m_uid = str(b_meta.get("user_id") or b_meta.get("student_id") or "")
+            m_code = str(b_meta.get("student_code") or "")
+            m_email = str(b_meta.get("email") or "").strip().lower()
+            if (
+                sid in stu_match_ids
+                or sid.replace("cust_", "") in stu_match_ids
+                or m_uid in stu_match_ids
+                or m_code in stu_match_ids
+                or (student.email and m_email == student.email.strip().lower())
+            ):
+                logs.append(bl)
 
         # Group logs by day
         day_logs: Dict[int, List[BiometricLog]] = {}
@@ -115,14 +150,15 @@ class StudentAttendanceReportService:
             weekday_name = cur_date.strftime("%a")
             date_str = cur_date.strftime("%Y-%m-%d")
 
+            att = att_by_day.get(d)
             d_logs = day_logs.get(d, [])
-            if d_logs:
-                # Student is present on this day
+
+            if att or d_logs:
                 status = "PRESENT"
                 days_present += 1
-                punch_in = d_logs[0].timestamp.strftime("%I:%M %p")
-                punch_out = d_logs[-1].timestamp.strftime("%I:%M %p") if len(d_logs) > 1 else punch_in
-                device_info = d_logs[0].device_name or "Biometric Terminal"
+                punch_in = (att.check_in if att and att.check_in else None) or (d_logs[0].timestamp.strftime("%I:%M %p") if d_logs else "--:--")
+                punch_out = (att.check_out if att and att.check_out else None) or (d_logs[-1].timestamp.strftime("%I:%M %p") if len(d_logs) > 1 else punch_in)
+                device_info = (d_logs[0].device_name if d_logs else None) or (att.notes if att else "Attendance System")
             elif is_sunday:
                 status = "SUNDAY"
                 punch_in = None

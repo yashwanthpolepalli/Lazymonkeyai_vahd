@@ -133,6 +133,13 @@ export const api = {
         return null;
       }
     },
+    changePassword: async (password: string, currentPassword?: string): Promise<{ status: string; message: string }> => {
+      return apiClient.post('/auth/change-password', {
+        new_password: password,
+        password: password,
+        current_password: currentPassword,
+      });
+    },
   },
   dashboard: {
     ...dashboardApi,

@@ -35,13 +35,19 @@ def get_branch_geofence_status(
 def get_settings(db: Session = Depends(get_db)):
     setting = SettingsService.get_settings(db)
     return {
-        "name": setting.name or setting.vahd_name,
-        "org_name": setting.name or setting.vahd_name,
-        "institution_name": setting.name or setting.vahd_name,
-        "vahd_name": setting.vahd_name,
-        "phone": setting.phone,
-        "gstin": setting.gstin,
-        "essl_bioserver_url": setting.essl_bioserver_url,
+        "name": setting.name or setting.vahd_name or "",
+        "org_name": setting.name or setting.vahd_name or "",
+        "institution_name": setting.name or setting.vahd_name or "",
+        "vahd_name": setting.vahd_name or setting.name or "",
+        "phone": setting.phone or "",
+        "email": getattr(setting, "email", "") or "",
+        "address": getattr(setting, "address", "") or "",
+        "gstin": setting.gstin or "",
+        "currency": getattr(setting, "currency", "") or "",
+        "timezone": getattr(setting, "timezone", "") or "",
+        "opening_time": getattr(setting, "opening_time", "") or "",
+        "closing_time": getattr(setting, "closing_time", "") or "",
+        "essl_bioserver_url": setting.essl_bioserver_url or "",
         "enable_auto_sms": setting.enable_auto_sms,
         "enable_gate_autolock": setting.enable_gate_autolock,
         "enable_pos": setting.enable_pos if setting.enable_pos is not None else True,
@@ -55,13 +61,19 @@ def post_settings(payload: dict = Body(...), db: Session = Depends(get_db)):
     return {
         "message": "Settings updated successfully",
         "settings": {
-            "name": setting.name or setting.vahd_name,
-            "org_name": setting.name or setting.vahd_name,
-            "institution_name": setting.name or setting.vahd_name,
-            "vahd_name": setting.vahd_name,
-            "phone": setting.phone,
-            "gstin": setting.gstin,
-            "essl_bioserver_url": setting.essl_bioserver_url,
+            "name": setting.name or setting.vahd_name or "",
+            "org_name": setting.name or setting.vahd_name or "",
+            "institution_name": setting.name or setting.vahd_name or "",
+            "vahd_name": setting.vahd_name or setting.name or "",
+            "phone": setting.phone or "",
+            "email": getattr(setting, "email", "") or "",
+            "address": getattr(setting, "address", "") or "",
+            "gstin": setting.gstin or "",
+            "currency": getattr(setting, "currency", "") or "",
+            "timezone": getattr(setting, "timezone", "") or "",
+            "opening_time": getattr(setting, "opening_time", "") or "",
+            "closing_time": getattr(setting, "closing_time", "") or "",
+            "essl_bioserver_url": setting.essl_bioserver_url or "",
         }
     }
 

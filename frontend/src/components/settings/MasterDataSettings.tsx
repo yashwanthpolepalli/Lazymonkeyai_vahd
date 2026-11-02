@@ -73,12 +73,37 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
   { id: 'sex_sorted_semen', title: 'Sex Sorted Semen', icon: 'dna', bgLight: 'bg-fuchsia-100', textColor: 'text-fuchsia-700', codePrefix: 'SSS' },
 ];
 
-export function getDepartmentType(item: Partial<MasterDataItem> | { name?: string; extra_info?: string }): 'student' | 'employee' | 'both' {
-  const extra = (item.extra_info || '').toLowerCase().trim();
+export function getDepartmentType(item: Partial<MasterDataItem> | { name?: string; extra_info?: string; department_type?: string; employee_count?: number; student_count?: number }): 'student' | 'employee' | 'both' {
+  const extra = (item.extra_info || (item as any).department_type || '').toLowerCase().trim();
   if (extra === 'student' || extra === 'students' || extra === 'academic') return 'student';
   if (extra === 'employee' || extra === 'employees' || extra === 'staff') return 'employee';
   if (extra === 'both' || extra === 'all') return 'both';
-  return 'student';
+
+  const empCount = Number((item as any).employee_count || 0);
+  const studCount = Number((item as any).student_count || 0);
+  if (empCount > 0 && studCount === 0) return 'employee';
+  if (studCount > 0 && empCount === 0) return 'student';
+  if (empCount > 0 && studCount > 0) return 'both';
+
+  const n = (item.name || '').toLowerCase();
+  const employeeKeywords = [
+    'admin', 'office', 'hr', 'management', 'payroll', 'finance', 'account',
+    'operations', 'facility', 'security', 'transport', 'housekeeping', 'logistics',
+    'maintenance', 'reception', 'faculty', 'teaching', 'staff', 'executive', 'it support',
+    'administrative', 'manager'
+  ];
+  const studentKeywords = [
+    'cse', 'ece', 'eee', 'it', 'computer', 'science', 'mechanical', 'civil', 'electrical',
+    'electronics', 'engineering', 'tech', 'data', 'ai', 'bba', 'mca', 'mba', 'commerce',
+    'humanities', 'polytechnic', 'physics', 'chemistry', 'mathematics', 'biology',
+    'student', 'academic', 'curriculum', 'course', 'class', 'batch', 'degree'
+  ];
+  const isEmp = employeeKeywords.some((k) => n.includes(k));
+  const isStud = studentKeywords.some((k) => n.includes(k));
+  if (isEmp && !isStud) return 'employee';
+  if (isStud && !isEmp) return 'student';
+
+  return 'both';
 }
 
 export interface MasterDataSettingsProps {
@@ -180,13 +205,19 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
     if (selectedCatId === 'departments' || !selectedCatId) {
       hrmsApi.getDepartments().then((depts) => {
         if (Array.isArray(depts) && depts.length > 0) {
-          const mapped: MasterDataItem[] = depts.map((d) => ({
-            id: d.id,
-            name: d.name,
-            code: d.code,
-            is_active: d.is_active,
-            description: d.description || '',
-          }));
+          const mapped: MasterDataItem[] = depts.map((d) => {
+            const extra = d.extra_info || d.department_type || getDepartmentType(d);
+            return {
+              id: d.id,
+              name: d.name,
+              code: d.code,
+              is_active: d.is_active,
+              description: d.description || '',
+              extra_info: extra,
+              employee_count: d.employee_count,
+              student_count: d.student_count,
+            };
+          });
           setMasterStore((prev) => {
             const next = { ...prev, departments: mapped };
             try {
@@ -802,7 +833,9 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                 ? 'employee'
                 : (rawType === 'both' || rawType === 'all')
                   ? 'both'
-                  : 'student';
+                  : (rawType === 'student' || rawType === 'students' || rawType === 'academic')
+                    ? 'student'
+                    : getDepartmentType({ name: cols[0], extra_info: rawType });
             }
 
             newRecords.push({

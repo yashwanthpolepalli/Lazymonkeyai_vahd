@@ -110,7 +110,7 @@ function AppRoutes() {
           <Route path="iot" element={<IotPage />} />
           <Route path="cctv" element={<Navigate to="/owner/iot?tab=cctv" replace />} />
           <Route path="biometrics" element={<Navigate to="/owner/iot?tab=biometrics" replace />} />
-          <Route path="reports" element={<Navigate to="/owner/settings?tab=reports" replace />} />
+          <Route path="reports" element={<ReportsPage />} />
           <Route path="multi-branch" element={<MultiBranchPage />} />
           <Route path="erp" element={<Navigate to="/owner/settings?tab=erp" replace />} />
           <Route path="settings" element={<SettingsPage />} />
@@ -121,7 +121,7 @@ function AppRoutes() {
           <Route index element={<HoDashboard />} />
           <Route path="hrms" element={<HrmsPage />} />
           <Route path="organisations" element={<HoOrganisationsPage />} />
-          <Route path="reports" element={<Navigate to="/ho/settings?tab=reports" replace />} />
+          <Route path="reports" element={<ReportsPage />} />
           <Route path="attendance" element={<Navigate to="/ho/hrms?tab=attendance" replace />} />
           <Route path="attendance-approve" element={<Navigate to="/ho/hrms?tab=corrections" replace />} />
           <Route path="memberships" element={<Navigate to="/ho/settings?tab=courses" replace />} />

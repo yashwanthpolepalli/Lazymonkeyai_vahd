@@ -8,6 +8,7 @@ import {
   type ShiftTemplateItem,
   type WorkCalendarItem,
 } from '@/services/hrmsApi';
+import { HrmsImportExportControls } from './HrmsImportExportControls';
 
 interface HrmsShiftRosterTabProps {
   onSuccessToast?: (msg: string) => void;
@@ -20,6 +21,7 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
   // Filter States (for Roster)
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState('ALL');
+  const [selectedShiftFilter, setSelectedShiftFilter] = useState('ALL');
   const [viewMode, setViewMode] = useState<'flat' | 'hierarchy'>('flat');
   const [selectedWeekOffset, setSelectedWeekOffset] = useState<number>(0);
 
@@ -36,14 +38,19 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
   // Scope Filter: Employee vs Student (replacing Flat List / Team Hierarchy)
   const [rosterScope, setRosterScope] = useState<'employee' | 'student'>('employee');
 
-  // Quick Shift Assignment Modal (from Roster cell click)
+  // Quick Shift Assignment Modal (from Roster cell click or Day Column header click)
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [modalTarget, setModalTarget] = useState<{
     employeeIds: string[];
     dateStr: string;
     employeeName?: string;
+    dayLabel?: string;
+    isDayColumn?: boolean;
   } | null>(null);
   const [modalShiftCode, setModalShiftCode] = useState('');
+  const [modalStartTime, setModalStartTime] = useState('');
+  const [modalEndTime, setModalEndTime] = useState('');
+  const [modalSubmitting, setModalSubmitting] = useState(false);
 
   // Add Shift Timing Modal (matching Image 3)
   const [showAddTimingModal, setShowAddTimingModal] = useState(false);
@@ -142,44 +149,177 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
     return () => clearTimeout(handler);
   }, [searchQuery]);
 
+  // Dynamic available shifts list for filtering
+  const availableShifts = useMemo(() => {
+    const shiftMap = new Map<string, { code: string; label: string; count?: number }>();
+
+    // 1. From template_summaries (if provided by backend)
+    if (rosterData?.template_summaries && rosterData.template_summaries.length > 0) {
+      rosterData.template_summaries.forEach((ts) => {
+        const code = (ts.code || '').toUpperCase();
+        if (!code) return;
+        const time = ts.time_range ? ` (${ts.time_range.replace('-', ' - ')})` : '';
+        const countStr = ts.count !== undefined ? ` • ${ts.count} ${rosterScope === 'student' ? 'students' : 'staff'}` : '';
+        shiftMap.set(code, {
+          code,
+          label: `${ts.name}${time}${countStr}`,
+          count: ts.count,
+        });
+      });
+    }
+
+    // 2. From shiftTemplates list
+    shiftTemplates.forEach((t) => {
+      const code = (t.code || '').toUpperCase();
+      if (!code || shiftMap.has(code)) return;
+      const time = t.start_time && t.end_time ? ` (${t.start_time} - ${t.end_time})` : '';
+      shiftMap.set(code, {
+        code,
+        label: `${t.name}${time}`,
+      });
+    });
+
+    // 3. From currently loaded employees in roster (in case any custom or existing shifts exist)
+    if (rosterData?.employees) {
+      rosterData.employees.forEach((emp) => {
+        Object.values(emp.shifts || {}).forEach((s) => {
+          if (!s) return;
+          if (s.is_off || s.shift_code === 'OFF') return;
+          const code = (s.shift_code || '').toUpperCase();
+          if (code && !shiftMap.has(code)) {
+            const rawTitle = s.shift_name && s.shift_name !== 'Rest Day' ? s.shift_name : code;
+            const cleanTitle = rawTitle.replace(/\s*\(\d+.*$/, ' Shift').replace('Shift Shift', 'Shift');
+            const time = s.start_time && s.end_time ? ` (${s.start_time} - ${s.end_time})` : '';
+            shiftMap.set(code, {
+              code,
+              label: `${cleanTitle}${time}`,
+            });
+          }
+        });
+      });
+    }
+
+    // 4. Always add Weekly Offs / Rest Day
+    const offCount = rosterData?.summary?.weekly_offs;
+    const offCountStr = offCount !== undefined ? ` • ${offCount} ${rosterScope === 'student' ? 'students' : 'staff'}` : '';
+    shiftMap.set('OFF', {
+      code: 'OFF',
+      label: `Weekly Off / Rest Day (OFF)${offCountStr}`,
+      count: offCount,
+    });
+
+    return Array.from(shiftMap.values());
+  }, [rosterData?.template_summaries, rosterData?.summary, rosterData?.employees, shiftTemplates, rosterScope]);
+
+  // Filtered employees list based on search, department, and shift filter
+  const displayedEmployees = useMemo(() => {
+    if (!rosterData?.employees) return [];
+    if (selectedShiftFilter === 'ALL') return rosterData.employees;
+
+    const filterCode = selectedShiftFilter.toUpperCase();
+
+    return rosterData.employees.filter((emp) => {
+      const shiftEntries = Object.values(emp.shifts || {});
+      if (filterCode === 'OFF') {
+        return shiftEntries.some((s) => Boolean(s.is_off || s.shift_code?.toUpperCase() === 'OFF'));
+      }
+      return shiftEntries.some((s) => {
+        if (s.is_off || s.shift_code?.toUpperCase() === 'OFF') return false;
+        const code = (s.shift_code || '').toUpperCase();
+        const name = (s.shift_name || '').toLowerCase();
+        return code === filterCode || name.includes(filterCode.toLowerCase());
+      });
+    });
+  }, [rosterData?.employees, selectedShiftFilter]);
+
   // Handle single cell shift quick change
   const handleCellClick = (emp: EmployeeRosterRow, dateStr: string) => {
-    const currentShift = emp.shifts[dateStr]?.shift_code || 'GEN';
+    const currentShift = emp.shifts[dateStr]?.shift_code || (shiftTemplates[0]?.code ?? 'GEN');
+    const tmpl = shiftTemplates.find((t) => t.code.toUpperCase() === currentShift.toUpperCase());
     setModalTarget({
       employeeIds: [emp.id],
       dateStr,
       employeeName: emp.name,
+      isDayColumn: false,
     });
     setModalShiftCode(currentShift);
+    setModalStartTime(emp.shifts[dateStr]?.start_time || tmpl?.start_time || '09:00');
+    setModalEndTime(emp.shifts[dateStr]?.end_time || tmpl?.end_time || '18:00');
+    setShowAssignModal(true);
+  };
+
+  // Handle day header click (e.g. MON NOV 02) to assign shift & timing across all employees
+  const handleDayHeaderClick = (d: { date: string; day_name: string; formatted: string }) => {
+    if (!rosterData || displayedEmployees.length === 0) return;
+    const targetEmployees = selectedEmployeeIds.length > 0
+      ? displayedEmployees.filter((e) => selectedEmployeeIds.includes(e.id))
+      : displayedEmployees;
+    const targetIds = targetEmployees.map((e) => e.id);
+
+    // Determine default shift for this day among target employees
+    const firstShift = targetEmployees[0]?.shifts[d.date];
+    const initialCode = firstShift?.shift_code || shiftTemplates[0]?.code || 'GEN';
+    const tmpl = shiftTemplates.find((t) => t.code.toUpperCase() === initialCode.toUpperCase());
+
+    setModalTarget({
+      employeeIds: targetIds,
+      dateStr: d.date,
+      dayLabel: `${d.day_name} (${d.formatted})`,
+      employeeName: selectedEmployeeIds.length > 0
+        ? `${targetIds.length} Selected Staff`
+        : `All ${targetIds.length} Staff`,
+      isDayColumn: true,
+    });
+    setModalShiftCode(initialCode);
+    setModalStartTime(firstShift?.start_time || tmpl?.start_time || '09:00');
+    setModalEndTime(firstShift?.end_time || tmpl?.end_time || '18:00');
     setShowAssignModal(true);
   };
 
   // Submit shift assignment
   const handleSaveShiftAssignment = async () => {
     if (!modalTarget) return;
+    setModalSubmitting(true);
     try {
+      const selectedTmpl = shiftTemplates.find((t) => t.code.toUpperCase() === modalShiftCode.toUpperCase());
+      const isOff = modalShiftCode === 'OFF';
+      const sName = isOff ? 'Rest Day' : (selectedTmpl?.name || `${modalShiftCode} Shift`);
+      const sStart = isOff ? '' : modalStartTime;
+      const sEnd = isOff ? '' : modalEndTime;
+
       await hrmsApi.assignShift({
         employee_ids: modalTarget.employeeIds,
         dates: [modalTarget.dateStr],
         shift_code: modalShiftCode,
-        is_off: modalShiftCode === 'OFF',
+        shift_name: sName,
+        start_time: sStart,
+        end_time: sEnd,
+        shift_id: isOff ? undefined : selectedTmpl?.id,
+        is_off: isOff,
       });
       setShowAssignModal(false);
       setModalTarget(null);
-      showToast(`Shift updated to ${modalShiftCode} successfully.`);
+      showToast(
+        modalTarget.isDayColumn
+          ? `Shift for ${modalTarget.dayLabel} set to ${sName} (${sStart && sEnd ? `${sStart} - ${sEnd}` : sName}) across ${modalTarget.employeeName}.`
+          : `Shift updated to ${sName} for ${modalTarget.employeeName}.`
+      );
       fetchRoster();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error assigning shift:', err);
+      showToast(err?.response?.data?.detail || err?.message || 'Failed to assign shift');
+    } finally {
+      setModalSubmitting(false);
     }
   };
 
   // Select all employees checkbox
   const handleToggleSelectAll = () => {
-    if (!rosterData) return;
-    if (selectedEmployeeIds.length === rosterData.employees.length) {
+    if (!rosterData || displayedEmployees.length === 0) return;
+    if (selectedEmployeeIds.length === displayedEmployees.length) {
       setSelectedEmployeeIds([]);
     } else {
-      setSelectedEmployeeIds(rosterData.employees.map((e) => e.id));
+      setSelectedEmployeeIds(displayedEmployees.map((e) => e.id));
     }
   };
 
@@ -451,84 +591,231 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
       </div>
 
       {/* ───────────────────────────────────────────────────────────── */}
-      {/* 2. 5 SUMMARY STATISTIC METRIC CARDS                           */}
+      {/* 2. DYNAMIC SHIFT STATISTIC METRIC CARDS (Real Live DB Templates) */}
       {/* ───────────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        {/* Card 1: GENERAL (09-18) */}
-        <div className="card p-4 rounded-2xl bg-gradient-to-br from-purple-50/80 via-white to-purple-50/30 border border-purple-200/80 shadow-2xs flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-2xl sm:text-3xl font-black text-purple-950 tracking-tight">
-              {rosterData?.summary?.general ?? 0}
-            </span>
-            <div className="w-8 h-8 rounded-xl bg-purple-100/80 flex items-center justify-center text-purple-600">
-              <Icon name="sun" size={18} />
-            </div>
-          </div>
-          <div className="mt-2 text-[11px] font-black uppercase text-purple-800 tracking-wider">
-            GENERAL (09-18)
-          </div>
-        </div>
+      {rosterData?.template_summaries && rosterData.template_summaries.length > 0 ? (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          {rosterData.template_summaries.map((tmpl, idx) => {
+            const colorThemes = [
+              { bg: 'from-purple-50/80 via-white to-purple-50/30', border: 'border-purple-200/80', text: 'text-purple-950', badge: 'text-purple-800', iconBg: 'bg-purple-100/80', iconText: 'text-purple-600', icon: 'sun' },
+              { bg: 'from-emerald-50/80 via-white to-emerald-50/30', border: 'border-emerald-200/80', text: 'text-emerald-950', badge: 'text-emerald-800', iconBg: 'bg-emerald-100/80', iconText: 'text-emerald-600', icon: 'sunrise' },
+              { bg: 'from-amber-50/80 via-white to-amber-50/30', border: 'border-amber-200/80', text: 'text-amber-950', badge: 'text-amber-800', iconBg: 'bg-amber-100/80', iconText: 'text-amber-600', icon: 'sunset' },
+              { bg: 'from-fuchsia-50/80 via-white to-fuchsia-50/30', border: 'border-fuchsia-200/80', text: 'text-fuchsia-950', badge: 'text-fuchsia-800', iconBg: 'bg-fuchsia-100/80', iconText: 'text-fuchsia-600', icon: 'moon' },
+              { bg: 'from-blue-50/80 via-white to-blue-50/30', border: 'border-blue-200/80', text: 'text-blue-950', badge: 'text-blue-800', iconBg: 'bg-blue-100/80', iconText: 'text-blue-600', icon: 'clock' },
+            ];
+            const theme = colorThemes[idx % colorThemes.length];
+            const isCardActive = selectedShiftFilter.toUpperCase() === (tmpl.code || '').toUpperCase();
+            return (
+              <div
+                key={tmpl.id || tmpl.code}
+                onClick={() => setSelectedShiftFilter((prev) => (prev.toUpperCase() === (tmpl.code || '').toUpperCase() ? 'ALL' : tmpl.code))}
+                className={`card p-4 rounded-2xl bg-gradient-to-br ${theme.bg} border ${
+                  isCardActive ? 'ring-2 ring-purple-600 border-purple-500 shadow-md scale-[1.01]' : theme.border
+                } shadow-2xs flex flex-col justify-between cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all`}
+                title={`Click to filter roster by ${tmpl.name}`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className={`text-2xl sm:text-3xl font-black ${theme.text} tracking-tight`}>
+                    {tmpl.count ?? 0}
+                  </span>
+                  <div className={`w-8 h-8 rounded-xl ${theme.iconBg} flex items-center justify-center ${theme.iconText}`}>
+                    <Icon name={theme.icon as any} size={18} />
+                  </div>
+                </div>
+                <div className="mt-2 space-y-0.5">
+                  <div className={`text-[11px] font-black uppercase ${theme.badge} tracking-wider truncate`} title={tmpl.name}>
+                    {tmpl.name}
+                  </div>
+                  {tmpl.time_range ? (
+                    <div className="text-[11px] font-mono font-bold text-slate-700">
+                      {tmpl.time_range.replace('-', ' - ')}
+                    </div>
+                  ) : null}
+                  <div className="text-[10px] text-slate-500 font-medium">
+                    {tmpl.count === 1 ? '1 employee' : `${tmpl.count ?? 0} employees`}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
 
-        {/* Card 2: MORNING (06-14) */}
-        <div className="card p-4 rounded-2xl bg-gradient-to-br from-emerald-50/80 via-white to-emerald-50/30 border border-emerald-200/80 shadow-2xs flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-2xl sm:text-3xl font-black text-emerald-950 tracking-tight">
-              {rosterData?.summary?.morning ?? 0}
-            </span>
-            <div className="w-8 h-8 rounded-xl bg-emerald-100/80 flex items-center justify-center text-emerald-600">
-              <Icon name="sunrise" size={18} />
+          {/* Dynamic Weekly Offs Card */}
+          <div
+            onClick={() => setSelectedShiftFilter((prev) => (prev === 'OFF' ? 'ALL' : 'OFF'))}
+            className={`card p-4 rounded-2xl bg-gradient-to-br from-slate-50/90 via-white to-slate-100/40 border ${
+              selectedShiftFilter === 'OFF' ? 'ring-2 ring-purple-600 border-purple-500 shadow-md scale-[1.01]' : 'border-slate-200/80'
+            } shadow-2xs flex flex-col justify-between cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all`}
+            title="Click to filter roster by Weekly Offs / Rest Days"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-2xl sm:text-3xl font-black text-slate-800 tracking-tight">
+                {rosterData?.summary?.weekly_offs ?? 0}
+              </span>
+              <div className="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600">
+                <Icon name="coffee" size={18} />
+              </div>
+            </div>
+            <div className="mt-2 space-y-0.5">
+              <div className="text-[11px] font-black uppercase text-slate-600 tracking-wider">
+                WEEKLY OFFS
+              </div>
+              <div className="text-[11px] font-mono font-bold text-slate-700">
+                Rest Days
+              </div>
+              <div className="text-[10px] text-slate-500 font-medium">
+                {rosterData?.summary?.weekly_offs === 1 ? '1 employee' : `${rosterData?.summary?.weekly_offs ?? 0} employees`}
+              </div>
             </div>
           </div>
-          <div className="mt-2 text-[11px] font-black uppercase text-emerald-800 tracking-wider">
-            MORNING (06-14)
-          </div>
         </div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          {/* Card 1: GENERAL (09-18) */}
+          <div
+            onClick={() => setSelectedShiftFilter((prev) => (prev === 'GEN' ? 'ALL' : 'GEN'))}
+            className={`card p-4 rounded-2xl bg-gradient-to-br from-purple-50/80 via-white to-purple-50/30 border ${
+              selectedShiftFilter === 'GEN' ? 'ring-2 ring-purple-600 border-purple-500 shadow-md scale-[1.01]' : 'border-purple-200/80'
+            } shadow-2xs flex flex-col justify-between cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all`}
+            title="Click to filter roster by General Shift"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-2xl sm:text-3xl font-black text-purple-950 tracking-tight">
+                {rosterData?.summary?.general ?? 0}
+              </span>
+              <div className="w-8 h-8 rounded-xl bg-purple-100/80 flex items-center justify-center text-purple-600">
+                <Icon name="sun" size={18} />
+              </div>
+            </div>
+            <div className="mt-2 space-y-0.5">
+              <div className="text-[11px] font-black uppercase text-purple-800 tracking-wider">
+                GENERAL SHIFT
+              </div>
+              <div className="text-[11px] font-mono font-bold text-slate-700">
+                09:00 - 18:00
+              </div>
+              <div className="text-[10px] text-slate-500 font-medium">
+                {rosterData?.summary?.general === 1 ? '1 employee' : `${rosterData?.summary?.general ?? 0} employees`}
+              </div>
+            </div>
+          </div>
 
-        {/* Card 3: EVENING (14-22) */}
-        <div className="card p-4 rounded-2xl bg-gradient-to-br from-amber-50/80 via-white to-amber-50/30 border border-amber-200/80 shadow-2xs flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-2xl sm:text-3xl font-black text-amber-950 tracking-tight">
-              {rosterData?.summary?.evening ?? 0}
-            </span>
-            <div className="w-8 h-8 rounded-xl bg-amber-100/80 flex items-center justify-center text-amber-600">
-              <Icon name="sunset" size={18} />
+          {/* Card 2: MORNING (06-14) */}
+          <div
+            onClick={() => setSelectedShiftFilter((prev) => (prev === 'MORN' ? 'ALL' : 'MORN'))}
+            className={`card p-4 rounded-2xl bg-gradient-to-br from-emerald-50/80 via-white to-emerald-50/30 border ${
+              selectedShiftFilter === 'MORN' ? 'ring-2 ring-emerald-600 border-emerald-500 shadow-md scale-[1.01]' : 'border-emerald-200/80'
+            } shadow-2xs flex flex-col justify-between cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all`}
+            title="Click to filter roster by Morning Shift"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-2xl sm:text-3xl font-black text-emerald-950 tracking-tight">
+                {rosterData?.summary?.morning ?? 0}
+              </span>
+              <div className="w-8 h-8 rounded-xl bg-emerald-100/80 flex items-center justify-center text-emerald-600">
+                <Icon name="sunrise" size={18} />
+              </div>
+            </div>
+            <div className="mt-2 space-y-0.5">
+              <div className="text-[11px] font-black uppercase text-emerald-800 tracking-wider">
+                MORNING SHIFT
+              </div>
+              <div className="text-[11px] font-mono font-bold text-slate-700">
+                06:00 - 14:30
+              </div>
+              <div className="text-[10px] text-slate-500 font-medium">
+                {rosterData?.summary?.morning === 1 ? '1 employee' : `${rosterData?.summary?.morning ?? 0} employees`}
+              </div>
             </div>
           </div>
-          <div className="mt-2 text-[11px] font-black uppercase text-amber-800 tracking-wider">
-            EVENING (14-22)
-          </div>
-        </div>
 
-        {/* Card 4: NIGHT (22-06) */}
-        <div className="card p-4 rounded-2xl bg-gradient-to-br from-fuchsia-50/80 via-white to-fuchsia-50/30 border border-fuchsia-200/80 shadow-2xs flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-2xl sm:text-3xl font-black text-fuchsia-950 tracking-tight">
-              {rosterData?.summary?.night ?? 0}
-            </span>
-            <div className="w-8 h-8 rounded-xl bg-fuchsia-100/80 flex items-center justify-center text-fuchsia-600">
-              <Icon name="moon" size={18} />
+          {/* Card 3: EVENING (14-22) */}
+          <div
+            onClick={() => setSelectedShiftFilter((prev) => (prev === 'EVE' ? 'ALL' : 'EVE'))}
+            className={`card p-4 rounded-2xl bg-gradient-to-br from-amber-50/80 via-white to-amber-50/30 border ${
+              selectedShiftFilter === 'EVE' ? 'ring-2 ring-amber-600 border-amber-500 shadow-md scale-[1.01]' : 'border-amber-200/80'
+            } shadow-2xs flex flex-col justify-between cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all`}
+            title="Click to filter roster by Evening Shift"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-2xl sm:text-3xl font-black text-amber-950 tracking-tight">
+                {rosterData?.summary?.evening ?? 0}
+              </span>
+              <div className="w-8 h-8 rounded-xl bg-amber-100/80 flex items-center justify-center text-amber-600">
+                <Icon name="sunset" size={18} />
+              </div>
+            </div>
+            <div className="mt-2 space-y-0.5">
+              <div className="text-[11px] font-black uppercase text-amber-800 tracking-wider">
+                EVENING SHIFT
+              </div>
+              <div className="text-[11px] font-mono font-bold text-slate-700">
+                14:00 - 22:30
+              </div>
+              <div className="text-[10px] text-slate-500 font-medium">
+                {rosterData?.summary?.evening === 1 ? '1 employee' : `${rosterData?.summary?.evening ?? 0} employees`}
+              </div>
             </div>
           </div>
-          <div className="mt-2 text-[11px] font-black uppercase text-fuchsia-800 tracking-wider">
-            NIGHT (22-06)
-          </div>
-        </div>
 
-        {/* Card 5: WEEKLY OFFS */}
-        <div className="card p-4 rounded-2xl bg-gradient-to-br from-slate-50/90 via-white to-slate-100/40 border border-slate-200/80 shadow-2xs flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-2xl sm:text-3xl font-black text-slate-800 tracking-tight">
-              {rosterData?.summary?.weekly_offs ?? 0}
-            </span>
-            <div className="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600">
-              <Icon name="coffee" size={18} />
+          {/* Card 4: NIGHT (22-06) */}
+          <div
+            onClick={() => setSelectedShiftFilter((prev) => (prev === 'NGT' ? 'ALL' : 'NGT'))}
+            className={`card p-4 rounded-2xl bg-gradient-to-br from-fuchsia-50/80 via-white to-fuchsia-50/30 border ${
+              selectedShiftFilter === 'NGT' ? 'ring-2 ring-fuchsia-600 border-fuchsia-500 shadow-md scale-[1.01]' : 'border-fuchsia-200/80'
+            } shadow-2xs flex flex-col justify-between cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all`}
+            title="Click to filter roster by Night Shift"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-2xl sm:text-3xl font-black text-fuchsia-950 tracking-tight">
+                {rosterData?.summary?.night ?? 0}
+              </span>
+              <div className="w-8 h-8 rounded-xl bg-fuchsia-100/80 flex items-center justify-center text-fuchsia-600">
+                <Icon name="moon" size={18} />
+              </div>
+            </div>
+            <div className="mt-2 space-y-0.5">
+              <div className="text-[11px] font-black uppercase text-fuchsia-800 tracking-wider">
+                NIGHT SHIFT
+              </div>
+              <div className="text-[11px] font-mono font-bold text-slate-700">
+                22:00 - 06:30
+              </div>
+              <div className="text-[10px] text-slate-500 font-medium">
+                {rosterData?.summary?.night === 1 ? '1 employee' : `${rosterData?.summary?.night ?? 0} employees`}
+              </div>
             </div>
           </div>
-          <div className="mt-2 text-[11px] font-black uppercase text-slate-600 tracking-wider">
-            WEEKLY OFFS
+
+          {/* Card 5: WEEKLY OFFS */}
+          <div
+            onClick={() => setSelectedShiftFilter((prev) => (prev === 'OFF' ? 'ALL' : 'OFF'))}
+            className={`card p-4 rounded-2xl bg-gradient-to-br from-slate-50/90 via-white to-slate-100/40 border ${
+              selectedShiftFilter === 'OFF' ? 'ring-2 ring-purple-600 border-purple-500 shadow-md scale-[1.01]' : 'border-slate-200/80'
+            } shadow-2xs flex flex-col justify-between cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all`}
+            title="Click to filter roster by Weekly Offs / Rest Days"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-2xl sm:text-3xl font-black text-slate-800 tracking-tight">
+                {rosterData?.summary?.weekly_offs ?? 0}
+              </span>
+              <div className="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600">
+                <Icon name="coffee" size={18} />
+              </div>
+            </div>
+            <div className="mt-2 space-y-0.5">
+              <div className="text-[11px] font-black uppercase text-slate-600 tracking-wider">
+                WEEKLY OFFS
+              </div>
+              <div className="text-[11px] font-mono font-bold text-slate-700">
+                Rest Days
+              </div>
+              <div className="text-[10px] text-slate-500 font-medium">
+                {rosterData?.summary?.weekly_offs === 1 ? '1 employee' : `${rosterData?.summary?.weekly_offs ?? 0} employees`}
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* ───────────────────────────────────────────────────────────── */}
       {/* 3. CONDITIONAL SUB-VIEW: TEMPLATES VS ROSTER                  */}
@@ -564,7 +851,15 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
                 )}
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <HrmsImportExportControls
+                  type="shift_templates"
+                  dataToExport={shiftTemplates}
+                  onImportSuccess={() => {
+                    fetchTemplatesAndCalendars();
+                    showToast('Shift templates updated successfully from import.');
+                  }}
+                />
                 {selectedTemplateIds.length > 0 && (
                   <button
                     type="button"
@@ -701,7 +996,7 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
               />
             </div>
 
-            {/* Right Controls: Scope Selector, Department Dropdown, Week Navigator */}
+            {/* Right Controls: Scope Selector, Department Dropdown, Shift Filter Dropdown, Week Navigator */}
             <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
               {/* Scope Selector: Employee vs Students (Replacing Flat List vs Team Hierarchy) */}
               <div className="flex items-center gap-1.5 bg-purple-50/80 px-2.5 py-1 rounded-xl border border-purple-200/60 shadow-2xs">
@@ -713,6 +1008,7 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
                   onChange={(e) => {
                     setRosterScope(e.target.value as 'employee' | 'student');
                     setSelectedDepartment('ALL');
+                    setSelectedShiftFilter('ALL');
                     setSearchQuery('');
                   }}
                   className="bg-white text-purple-700 px-3 py-1.5 rounded-lg text-xs font-black border-0 shadow-xs focus:outline-none cursor-pointer hover:bg-purple-50 transition"
@@ -742,6 +1038,36 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
                   name="chevron-down"
                   size={12}
                   className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+                />
+              </div>
+
+              {/* Shift Filter Dropdown */}
+              <div className="relative">
+                <select
+                  value={selectedShiftFilter}
+                  onChange={(e) => setSelectedShiftFilter(e.target.value)}
+                  className={cn(
+                    "pl-3 pr-8 py-1.5 border rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-purple-500/20 cursor-pointer appearance-none transition-colors max-w-[210px] truncate",
+                    selectedShiftFilter !== 'ALL'
+                      ? "bg-purple-50 border-purple-300 text-purple-700 ring-2 ring-purple-500/20 font-black"
+                      : "bg-slate-50 border-slate-200/80 text-slate-700"
+                  )}
+                  title="Filter employees by shift"
+                >
+                  <option value="ALL">All Shifts ({availableShifts.length})</option>
+                  {availableShifts.map((s) => (
+                    <option key={s.code} value={s.code}>
+                      {s.label}
+                    </option>
+                  ))}
+                </select>
+                <Icon
+                  name="chevron-down"
+                  size={12}
+                  className={cn(
+                    "absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none",
+                    selectedShiftFilter !== 'ALL' ? "text-purple-600" : "text-slate-400"
+                  )}
                 />
               </div>
 
@@ -781,8 +1107,20 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
           {/* Subtitle & Count Row */}
           <div className="flex items-center justify-between px-1 text-xs font-bold text-slate-500">
             <div>{rosterData?.week_label || 'Week of Current Schedule'}</div>
-            <div className="text-slate-400">
-              Showing {rosterData?.employees?.length ?? 0} of {rosterData?.total_staff ?? 0} {rosterScope === 'student' ? 'students' : 'staff'}
+            <div className="flex items-center gap-2.5">
+              {selectedShiftFilter !== 'ALL' && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedShiftFilter('ALL')}
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-purple-600 hover:text-purple-800 bg-purple-50 px-2 py-0.5 rounded-md border border-purple-200 transition cursor-pointer"
+                >
+                  <span>Filter: {selectedShiftFilter}</span>
+                  <Icon name="x" size={11} />
+                </button>
+              )}
+              <div className="text-slate-400">
+                Showing {displayedEmployees.length} of {rosterData?.total_staff ?? 0} {rosterScope === 'student' ? 'students' : 'staff'}
+              </div>
             </div>
           </div>
 
@@ -797,8 +1135,8 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
                       <input
                         type="checkbox"
                         checked={
-                          (rosterData?.employees?.length ?? 0) > 0 &&
-                          selectedEmployeeIds.length === (rosterData?.employees?.length ?? 0)
+                          displayedEmployees.length > 0 &&
+                          selectedEmployeeIds.length === displayedEmployees.length
                         }
                         onChange={handleToggleSelectAll}
                         className="rounded border-slate-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
@@ -810,13 +1148,25 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
                     {(rosterData?.dates || []).map((d) => (
                       <th
                         key={d.date}
+                        onClick={() => handleDayHeaderClick(d)}
+                        title={`Click to set shift for all employees on ${d.day_name} (${d.formatted})`}
                         className={cn(
-                          'py-3.5 px-3 text-center min-w-[120px]',
-                          d.is_today && 'bg-purple-100/50 text-purple-900 font-black'
+                          'py-3.5 px-3 text-center min-w-[120px] cursor-pointer group select-none transition-all',
+                          d.is_today
+                            ? 'bg-purple-100/60 text-purple-900 font-black hover:bg-purple-200/70'
+                            : 'hover:bg-purple-50/70 hover:text-purple-700'
                         )}
                       >
-                        <div className="font-extrabold">{d.day_name}</div>
-                        <div className="text-[10px] text-slate-400 font-bold">{d.formatted}</div>
+                        <div className="flex items-center justify-center gap-1 font-extrabold group-hover:text-purple-700 transition-colors">
+                          <span>{d.day_name}</span>
+                          <Icon name="edit-3" size={11} className="opacity-0 group-hover:opacity-100 text-purple-600 transition-opacity" />
+                        </div>
+                        <div className="text-[10px] text-slate-400 font-bold group-hover:text-purple-500 transition-colors">
+                          {d.formatted}
+                        </div>
+                        <div className="text-[9px] font-black text-purple-600 uppercase tracking-tighter opacity-0 group-hover:opacity-100 transition-opacity mt-0.5">
+                          Set Day Shift
+                        </div>
                       </th>
                     ))}
                   </tr>
@@ -833,14 +1183,16 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
                         </div>
                       </td>
                     </tr>
-                  ) : !rosterData || rosterData.employees.length === 0 ? (
+                  ) : !rosterData || displayedEmployees.length === 0 ? (
                     <tr>
                       <td colSpan={9} className="py-16 text-center text-slate-400 font-bold">
-                        No employees found matching filter criteria.
+                        {selectedShiftFilter !== 'ALL'
+                          ? `No ${rosterScope === 'student' ? 'students' : 'staff'} found assigned to "${selectedShiftFilter}" shift this week.`
+                          : 'No employees found matching filter criteria.'}
                       </td>
                     </tr>
                   ) : (
-                    rosterData.employees.map((emp) => {
+                    displayedEmployees.map((emp) => {
                       const isSelected = selectedEmployeeIds.includes(emp.id);
 
                       return (
@@ -881,9 +1233,25 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
                           {/* Daily Shift Cells (Mon - Sun) */}
                           {(rosterData.dates || []).map((dateMeta) => {
                             const shift = emp.shifts[dateMeta.date];
-                            const isOff = shift?.is_off || shift?.shift_code === 'OFF';
-                            const code = shift?.shift_code || 'GEN';
-                            const time = shift?.time_range || '09:00-18:00';
+                            const isOff = Boolean(shift?.is_off || shift?.shift_code === 'OFF');
+                            const code = shift?.shift_code || '';
+                            const rawTitle = shift?.shift_name && shift.shift_name !== 'Rest Day' ? shift.shift_name : code;
+                            const cleanShiftTitle = rawTitle.replace(/\s*\(\d+.*$/, ' Shift').replace('Shift Shift', 'Shift');
+                            const time = isOff
+                              ? 'Rest Day'
+                              : (shift?.start_time && shift?.end_time
+                                  ? `${shift.start_time} - ${shift.end_time}`
+                                  : (shift?.time_range && shift.time_range !== 'Rest Day' ? shift.time_range : ''));
+
+                            const isFilterActive = selectedShiftFilter !== 'ALL';
+                            const isMatchedShift = isFilterActive && (
+                              selectedShiftFilter === 'OFF'
+                                ? isOff
+                                : (!isOff && (
+                                    code.toUpperCase() === selectedShiftFilter.toUpperCase() ||
+                                    cleanShiftTitle.toLowerCase().includes(selectedShiftFilter.toLowerCase())
+                                  ))
+                            );
 
                             return (
                               <td
@@ -891,26 +1259,37 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
                                 onClick={() => handleCellClick(emp, dateMeta.date)}
                                 className={cn(
                                   'py-2 px-2 text-center cursor-pointer transition-all',
-                                  dateMeta.is_today && 'bg-purple-50/30'
+                                  dateMeta.is_today && 'bg-purple-50/30',
+                                  isFilterActive && !isMatchedShift && 'opacity-40 hover:opacity-100'
                                 )}
                               >
                                 {isOff ? (
-                                  <div className="p-2 rounded-xl bg-slate-50 border border-slate-200/80 text-slate-500 hover:border-slate-400 hover:shadow-2xs transition">
-                                    <div className="font-black text-xs text-slate-700 flex items-center justify-center gap-1">
-                                      <Icon name="coffee" size={11} className="text-slate-400" />
-                                      <span>OFF</span>
+                                  <div className={cn(
+                                    "py-2 px-1.5 rounded-xl border transition flex flex-col items-center justify-center text-center min-h-[52px]",
+                                    isMatchedShift
+                                      ? "bg-purple-50/90 border-purple-500 ring-2 ring-purple-500/40 text-purple-800 shadow-xs"
+                                      : "bg-slate-50 border-slate-200/80 text-slate-500 hover:border-slate-400 hover:shadow-2xs"
+                                  )}>
+                                    <div className={cn("font-extrabold text-[11px] flex items-center justify-center gap-1", isMatchedShift ? "text-purple-900" : "text-slate-700")}>
+                                      <Icon name="coffee" size={11} className={isMatchedShift ? "text-purple-600 shrink-0" : "text-slate-400 shrink-0"} />
+                                      <span className="truncate">OFF</span>
                                     </div>
-                                    <div className="text-[10px] font-medium text-slate-400">
+                                    <div className={cn("text-[10px] font-medium mt-0.5 truncate", isMatchedShift ? "text-purple-700 font-bold" : "text-slate-400")}>
                                       Rest Day
                                     </div>
                                   </div>
                                 ) : (
-                                  <div className="p-2 rounded-xl bg-purple-50/70 border border-purple-200 hover:border-purple-400 hover:shadow-2xs transition">
-                                    <div className="font-black text-xs text-purple-800 flex items-center justify-center gap-1">
-                                      <Icon name="sun" size={11} className="text-purple-500" />
-                                      <span>{code}</span>
+                                  <div className={cn(
+                                    "py-2 px-1.5 rounded-xl border transition flex flex-col items-center justify-center text-center min-h-[52px]",
+                                    isMatchedShift
+                                      ? "bg-purple-100/90 border-purple-600 ring-2 ring-purple-500/50 shadow-xs"
+                                      : "bg-purple-50/70 border-purple-200 hover:border-purple-400 hover:shadow-2xs"
+                                  )}>
+                                    <div className="font-extrabold text-[11px] text-purple-900 tracking-tight flex items-center justify-center gap-1">
+                                      <Icon name="sun" size={11} className={isMatchedShift ? "text-purple-700 shrink-0" : "text-purple-500 shrink-0"} />
+                                      <span className="truncate max-w-[105px]" title={cleanShiftTitle}>{cleanShiftTitle}</span>
                                     </div>
-                                    <div className="text-[10px] font-mono text-purple-700 font-bold">
+                                    <div className={cn("text-[10px] font-mono font-bold mt-0.5 truncate max-w-[105px]", isMatchedShift ? "text-purple-900" : "text-purple-700")}>
                                       {time}
                                     </div>
                                   </div>
@@ -1021,16 +1400,19 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
       )}
 
       {/* ───────────────────────────────────────────────────────────── */}
-      {/* 5. MODAL: QUICK SHIFT ASSIGNMENT (From cell click)             */}
+      {/* 5. MODAL: QUICK SHIFT ASSIGNMENT (From cell or Day Column click) */}
       {/* ───────────────────────────────────────────────────────────── */}
       {showAssignModal && modalTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4 animate-fade-in">
           <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 space-y-4">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <div>
-                <h3 className="text-sm font-black text-slate-900">Assign Working Shift</h3>
-                <p className="text-xs text-slate-500 font-medium">
-                  {modalTarget.employeeName} • {modalTarget.dateStr}
+                <h3 className="text-sm font-black text-slate-900 flex items-center gap-1.5">
+                  <Icon name={modalTarget.isDayColumn ? "calendar" : "clock"} size={16} className="text-purple-600" />
+                  <span>{modalTarget.isDayColumn ? `Set Shift: ${modalTarget.dayLabel}` : 'Assign Working Shift'}</span>
+                </h3>
+                <p className="text-xs text-purple-700 font-bold mt-0.5">
+                  {modalTarget.employeeName} {!modalTarget.isDayColumn && `• ${modalTarget.dateStr}`}
                 </p>
               </div>
               <button
@@ -1042,11 +1424,21 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
               </button>
             </div>
 
-            <div className="space-y-2 text-xs max-h-72 overflow-y-auto pr-1">
+            {modalTarget.isDayColumn && (
+              <div className="p-2.5 rounded-xl bg-purple-50/80 border border-purple-200 text-xs text-purple-900 font-medium">
+                Choose a shift template and timing below to schedule <strong>{modalTarget.employeeName}</strong> for this day.
+              </div>
+            )}
+
+            <div className="space-y-2 text-xs max-h-56 overflow-y-auto pr-1">
               {shiftTemplates.map((s) => (
                 <div
                   key={s.id}
-                  onClick={() => setModalShiftCode(s.code)}
+                  onClick={() => {
+                    setModalShiftCode(s.code);
+                    if (s.start_time) setModalStartTime(s.start_time);
+                    if (s.end_time) setModalEndTime(s.end_time);
+                  }}
                   className={cn(
                     'p-3 rounded-xl border flex items-center justify-between cursor-pointer transition',
                     modalShiftCode === s.code
@@ -1071,7 +1463,11 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
 
               {/* Dynamic Weekly Off / Rest Day Option */}
               <div
-                onClick={() => setModalShiftCode('OFF')}
+                onClick={() => {
+                  setModalShiftCode('OFF');
+                  setModalStartTime('');
+                  setModalEndTime('');
+                }}
                 className={cn(
                   'p-3 rounded-xl border flex items-center justify-between cursor-pointer transition',
                   modalShiftCode === 'OFF'
@@ -1089,6 +1485,46 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
               </div>
             </div>
 
+            {/* Shift Timing Customization (Start Time & End Time) */}
+            {modalShiftCode !== 'OFF' && (
+              <div className="p-3 rounded-xl bg-purple-50/60 border border-purple-200/80 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-black uppercase text-purple-900 tracking-wider flex items-center gap-1">
+                    <Icon name="clock" size={12} className="text-purple-600" />
+                    <span>Shift Timing</span>
+                  </label>
+                  <span className="text-[10px] text-purple-600 font-bold">
+                    {modalTarget.isDayColumn ? 'Applied to All' : 'Custom'}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 block mb-1">Start Time</label>
+                    <input
+                      type="time"
+                      value={modalStartTime}
+                      onChange={(e) => setModalStartTime(e.target.value)}
+                      className="w-full text-xs font-mono font-bold px-2.5 py-1.5 rounded-lg border border-purple-200 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 block mb-1">End Time</label>
+                    <input
+                      type="time"
+                      value={modalEndTime}
+                      onChange={(e) => setModalEndTime(e.target.value)}
+                      className="w-full text-xs font-mono font-bold px-2.5 py-1.5 rounded-lg border border-purple-200 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-400"
+                    />
+                  </div>
+                </div>
+                <p className="text-[10px] text-slate-500">
+                  {modalTarget.isDayColumn
+                    ? `Assigns this shift & timing (${modalStartTime || '--:--'} - ${modalEndTime || '--:--'}) to all employees on this day.`
+                    : `Customize the shift time for this assignment.`}
+                </p>
+              </div>
+            )}
+
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
               <button
                 type="button"
@@ -1099,10 +1535,11 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
               </button>
               <button
                 type="button"
+                disabled={modalSubmitting}
                 onClick={handleSaveShiftAssignment}
-                className="px-4 py-1.5 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white shadow-sm shadow-purple-600/20 transition"
+                className="px-4 py-1.5 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white shadow-sm shadow-purple-600/20 transition cursor-pointer disabled:opacity-50"
               >
-                Confirm Shift
+                {modalSubmitting ? 'Saving...' : modalTarget.isDayColumn ? 'Assign to All Staff' : 'Confirm Shift'}
               </button>
             </div>
           </div>

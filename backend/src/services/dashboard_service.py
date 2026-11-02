@@ -3,6 +3,7 @@ vahd — Enterprise Production Dashboard & Analytics Service
 Strict data requirement enforcement, zero hardcoded fallbacks, zero synthetic estimates.
 """
 from src.utils.timezone import now_ist_naive, today_ist_start, today_ist_end, to_ist_str
+import re
 import datetime
 from typing import Optional, Dict, Any, List
 from sqlalchemy.orm import Session
@@ -159,7 +160,28 @@ class DashboardService:
         ])
 
         today_logs = log_query.filter(BiometricLog.timestamp >= today_start).all()
-        today_attendance = len(set(log.student_id for log in today_logs if log.student_id))
+        today_attendee_ids = set()
+        for l in today_logs:
+            m = l.meta_data or {}
+            identifier = l.student_id or m.get("employee_id") or m.get("user_id") or m.get("student_id")
+            if identifier and str(l.direction or "").upper() in ["CHECK_IN", "IN", "ENTRY"]:
+                today_attendee_ids.add(str(identifier))
+
+        # Include employees with marked check-in attendance today from EmployeeAttendance table
+        from src.models.hrms import EmployeeAttendance
+        emp_att_today = db.query(EmployeeAttendance).filter(
+            EmployeeAttendance.date == now.date(),
+            or_(
+                EmployeeAttendance.status.ilike("%present%"),
+                EmployeeAttendance.status.ilike("%late%"),
+                EmployeeAttendance.check_in.isnot(None)
+            )
+        ).all()
+        for ea in emp_att_today:
+            if ea.check_in and ea.check_in not in ["--:--", "-", ""]:
+                today_attendee_ids.add(str(ea.employee_id))
+
+        today_attendance = len(today_attendee_ids)
 
         # Zone Analytics using structured location/device properties
         entrance_count = len([l for l in today_logs if "entrance" in (getattr(l, "location", None) or l.device_name or "").lower() or "gate" in (getattr(l, "location", None) or l.device_name or "").lower()])
@@ -342,6 +364,36 @@ class DashboardService:
                 due_amount = None
                 attendance_rate = None
 
+            # Resolve live dynamic location from record, metadata, or database entity
+            clean_zone = (
+                getattr(log, "location", None)
+                or meta.get("location")
+                or meta.get("branch")
+                or ""
+            )
+            if not clean_zone and log.device_name:
+                clean_zone = re.sub(r'\s*\([^)]*\)', '', log.device_name).strip()
+
+            if clean_zone:
+                clean_zone = re.sub(r'\s*\((Face Scanner|Biometric Turnstile|RFID Sensor|Manual Self Check-in|GPS Mobile|Face AI Terminal|Webcam|WEBCAM_FACE_SCANNER)\)', '', clean_zone).strip()
+
+            # If hardware tag was in clean_zone, fetch real branch/location dynamically from DB
+            if not clean_zone or clean_zone.lower() in ["face scanner", "biometric device", "webcam", "gps mobile", "manual self check-in"]:
+                clean_zone = (
+                    (emp_obj.vahd_branch if 'emp_obj' in locals() and emp_obj and emp_obj.vahd_branch else None)
+                    or (cust.primary_vahd_location if 'cust' in locals() and cust and cust.primary_vahd_location else None)
+                    or meta.get("branch")
+                    or ""
+                )
+
+            device_label = None
+            if log.device_name and "(" in log.device_name and ")" in log.device_name:
+                m_dev = re.search(r'\(([^)]+)\)', log.device_name)
+                if m_dev:
+                    device_label = m_dev.group(1).strip()
+            if not device_label:
+                device_label = meta.get("method") or log.device_type or log.event_type or ""
+
             recent_checkins.append({
                 "eventId": log.id,
                 "studentId": display_id,
@@ -350,9 +402,9 @@ class DashboardService:
                 "direction": log.direction or "CHECK_IN",
                 "status": log.status or "SUCCESS",
                 "avatarUrl": cust.profile_image if cust else None,
-                "method": log.device_type or log.event_type or "Biometric",
-                "zone": getattr(log, "location", None) or log.device_name or log.device_id or "Main Entrance",
-                "deviceName": log.device_name or log.device_id or None,
+                "method": device_label,
+                "zone": clean_zone,
+                "deviceName": device_label,
                 "timestamp": log.timestamp.isoformat() if log.timestamp else now.isoformat(),
                 "attendanceRate": attendance_rate,
                 "daysRemaining": days_remaining,

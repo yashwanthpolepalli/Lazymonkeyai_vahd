@@ -11,6 +11,10 @@ import {
   downloadDesignationSampleCsv,
   downloadCourseSampleXlsx,
   downloadCourseSampleCsv,
+  downloadShiftTemplateSampleXlsx,
+  downloadShiftTemplateSampleCsv,
+  downloadHolidaySampleXlsx,
+  downloadHolidaySampleCsv,
   exportStudentsToXlsx,
   exportStudentsToCsv,
   exportEmployeesToXlsx,
@@ -21,11 +25,15 @@ import {
   exportDesignationsToCsv,
   exportCoursesToXlsx,
   exportCoursesToCsv,
+  exportShiftTemplatesToXlsx,
+  exportShiftTemplatesToCsv,
+  exportHolidaysToXlsx,
+  exportHolidaysToCsv,
 } from '@/lib/bulk-import-export-utils';
 import { HrmsBulkImportModal } from './HrmsBulkImportModal';
 
 export interface HrmsImportExportControlsProps {
-  type: 'students' | 'employees' | 'departments' | 'designations' | 'courses';
+  type: 'students' | 'employees' | 'departments' | 'designations' | 'courses' | 'shift_templates' | 'holidays';
   dataToExport?: any[];
   onImportSuccess?: (count?: number) => void;
   className?: string;
@@ -67,6 +75,8 @@ export function HrmsImportExportControls({
     else if (type === 'employees') downloadEmployeeSampleXlsx();
     else if (type === 'departments') downloadDepartmentSampleXlsx();
     else if (type === 'designations') downloadDesignationSampleXlsx();
+    else if (type === 'shift_templates') downloadShiftTemplateSampleXlsx();
+    else if (type === 'holidays') downloadHolidaySampleXlsx();
     else downloadCourseSampleXlsx();
   };
 
@@ -75,6 +85,8 @@ export function HrmsImportExportControls({
     else if (type === 'employees') downloadEmployeeSampleCsv();
     else if (type === 'departments') downloadDepartmentSampleCsv();
     else if (type === 'designations') downloadDesignationSampleCsv();
+    else if (type === 'shift_templates') downloadShiftTemplateSampleCsv();
+    else if (type === 'holidays') downloadHolidaySampleCsv();
     else downloadCourseSampleCsv();
   };
 
@@ -89,6 +101,10 @@ export function HrmsImportExportControls({
       exportDepartmentsToXlsx(dataToExport, `vahd_departments_${dateStr}.xlsx`);
     } else if (type === 'designations') {
       exportDesignationsToXlsx(dataToExport, `vahd_designations_${dateStr}.xlsx`);
+    } else if (type === 'shift_templates') {
+      exportShiftTemplatesToXlsx(dataToExport, `vahd_shift_templates_${dateStr}.xlsx`);
+    } else if (type === 'holidays') {
+      exportHolidaysToXlsx(dataToExport, `vahd_holidays_${dateStr}.xlsx`);
     } else {
       exportCoursesToXlsx(dataToExport, `vahd_courses_${dateStr}.xlsx`);
     }
@@ -105,13 +121,17 @@ export function HrmsImportExportControls({
       exportDepartmentsToCsv(dataToExport, `vahd_departments_${dateStr}.csv`);
     } else if (type === 'designations') {
       exportDesignationsToCsv(dataToExport, `vahd_designations_${dateStr}.csv`);
+    } else if (type === 'shift_templates') {
+      exportShiftTemplatesToCsv(dataToExport, `vahd_shift_templates_${dateStr}.csv`);
+    } else if (type === 'holidays') {
+      exportHolidaysToCsv(dataToExport, `vahd_holidays_${dateStr}.csv`);
     } else {
       exportCoursesToCsv(dataToExport, `vahd_courses_${dateStr}.csv`);
     }
   };
 
   return (
-    <div className={`flex items-center gap-2 ${className}`}>
+    <div className={`flex items-center gap-2 shrink-0 flex-nowrap ${className}`}>
       
       {/* 1. Import Dropdown */}
       <div className="relative" ref={importDropdownRef}>

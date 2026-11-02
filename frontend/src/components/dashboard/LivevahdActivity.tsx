@@ -117,14 +117,24 @@ export function LivevahdActivity({ activity }: LivevahdActivityProps) {
       const { time, fullDateStr, sortTime } = formatTimestamp(item.timestamp, item.time);
       const desc = item.description || '';
 
+      const rawLoc = (item.location || desc.split('·')[0]?.trim() || '').replace(/\s*\([^)]*\)/g, '').trim();
+      let rawDev = (item.device || desc.split('·')[1]?.trim() || '').trim();
+      if (rawDev.includes('(') && rawDev.includes(')')) {
+        const m = rawDev.match(/\(([^)]+)\)/);
+        if (m) rawDev = m[1].trim();
+      }
+      if (rawLoc.toLowerCase() === rawDev.toLowerCase()) {
+        rawDev = '';
+      }
+
       list.push({
         id: item.id || `act-${Math.random().toString(36).slice(2)}`,
         role,
         action: isLogout ? 'Check-out' : 'Check-in',
         name: displayName,
         studentId: displaystudentId,
-        location: item.location || desc.split('·')[0]?.trim() || '',
-        device: item.device || desc.split('·')[1]?.trim() || '',
+        location: rawLoc,
+        device: rawDev,
         time,
         fullDateStr,
         status: isLogout ? 'warning' : 'success',
@@ -142,8 +152,11 @@ export function LivevahdActivity({ activity }: LivevahdActivityProps) {
 
       const processEntry = (timeStr: string, action: 'Check-in' | 'Check-out') => {
         const [h, m, s] = String(timeStr).split(':');
+        let h_val = parseInt(h, 10);
+        if (String(timeStr).toLowerCase().includes('pm') && h_val < 12) h_val += 12;
+        if (String(timeStr).toLowerCase().includes('am') && h_val === 12) h_val = 0;
         const dt = new Date(empDate);
-        if (h) dt.setHours(parseInt(h, 10), parseInt(m || '0', 10), parseInt(s || '0', 10));
+        if (!isNaN(h_val)) dt.setHours(h_val, parseInt(m || '0', 10), parseInt(s || '0', 10));
 
         // Deduplicate: skip if already in list within 5 minutes for same employee+action
         const isDupe = list.some(
@@ -351,10 +364,10 @@ export function LivevahdActivity({ activity }: LivevahdActivityProps) {
                           {item.location && (
                             <span className="font-semibold text-navy-700">{item.location}</span>
                           )}
-                          {item.location && item.device && (
+                          {item.location && item.device && item.device.toLowerCase() !== item.location.toLowerCase() && (
                             <span className="text-navy-300">·</span>
                           )}
-                          {item.device && (
+                          {item.device && item.device.toLowerCase() !== item.location.toLowerCase() && (
                             <span className="text-navy-400">{item.device}</span>
                           )}
                         </p>

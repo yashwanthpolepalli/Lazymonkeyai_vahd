@@ -161,12 +161,14 @@ export function OwnerClockInOutWidget({ onPunchSuccess }: OwnerClockInOutWidgetP
       const targetEmp = employees.find((e) => e.id === targetEmpId);
       const empName = isPunchingForSelf ? (user?.name || 'Owner') : (targetEmp?.full_name || 'Employee');
 
+      const punchLoc = activeScheme?.branch_name || user?.branchName || (deviceCoords ? `Office (${deviceCoords.lat.toFixed(4)}, ${deviceCoords.lng.toFixed(4)})` : 'Office');
       const payload = {
         employee_id: targetEmpId,
         action,
         method,
         latitude: deviceCoords?.lat ?? activeScheme?.latitude,
         longitude: deviceCoords?.lng ?? activeScheme?.longitude,
+        location: punchLoc,
         user_role: isPunchingForSelf ? 'OWNER' : (targetEmp?.designation?.toUpperCase() || 'EMPLOYEE'),
         branch: activeScheme?.branch_name || user?.branchName || '',
         note: `Manual portal punch via ${method} (${action})`,

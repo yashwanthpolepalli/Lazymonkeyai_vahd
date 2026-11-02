@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/utils/cn';
 import { hrmsApi, type CompanyHolidayItem } from '@/services/hrmsApi';
+import { HrmsImportExportControls } from './HrmsImportExportControls';
 
 const ALL_WEEK_DAYS = [
   { full: 'Monday', short: 'Mon' },
@@ -913,29 +914,38 @@ export function HrmsWorkCalendarsTab({ onSuccessToast }: HrmsWorkCalendarsTabPro
         <div className="lg:col-span-7 space-y-4">
           <div className="card p-5 sm:p-6 bg-white border border-slate-200 rounded-3xl shadow-2xs space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold shrink-0">
                   <Icon name="sun" size={16} />
                 </div>
-                <div>
-                  <h3 className="text-sm font-black text-slate-900">
+                <div className="min-w-0">
+                  <h3 className="text-sm font-black text-slate-900 truncate">
                     Festival &amp; National Holidays Roster
                   </h3>
-                  <p className="text-[11px] text-slate-500 font-medium">
+                  <p className="text-[11px] text-slate-500 font-medium truncate">
                     Configure company observed public, festival, and statutory national holidays.
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleOpenAddHoliday}
-                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white shadow-sm transition cursor-pointer"
+              <div className="flex items-center gap-2 shrink-0 flex-nowrap">
+                <HrmsImportExportControls
+                  type="holidays"
+                  dataToExport={filteredHolidays}
+                  onImportSuccess={() => {
+                    loadData();
+                    showToast('Holidays updated successfully from import.');
+                  }}
                 >
-                  <Icon name="plus" size={13} />
-                  <span>Add Holiday</span>
-                </button>
+                  <button
+                    type="button"
+                    onClick={handleOpenAddHoliday}
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white shadow-sm transition cursor-pointer shrink-0 whitespace-nowrap"
+                  >
+                    <Icon name="plus" size={13} />
+                    <span>Add Holiday</span>
+                  </button>
+                </HrmsImportExportControls>
               </div>
             </div>
 

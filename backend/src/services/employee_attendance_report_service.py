@@ -84,9 +84,33 @@ class EmployeeAttendanceReportService:
             if branch:
                 org_name = branch.vahd_name or branch.branch_name or org_name
 
+        # Build exhaustive match keys for this employee across models and formats
+        emp_match_ids = {str(emp.id), str(emp.id).replace("emp_", ""), f"emp_{emp.id}"}
+        if emp.code:
+            code_c = str(emp.code).strip()
+            num_c = code_c.replace("EMP-", "").strip()
+            emp_match_ids.update({code_c, num_c, num_c.zfill(4), f"EMP-{num_c.zfill(4)}", f"EMP-{num_c}"})
+        if emp.email:
+            emp_match_ids.add(emp.email.strip().lower())
+
+        from src.models.employee import employeeProfile
+        tr = db.query(employeeProfile).filter(
+            or_(
+                employeeProfile.id == emp.id.replace("emp_", ""),
+                employeeProfile.email.ilike(emp.email) if emp.email else False
+            )
+        ).first()
+        if tr:
+            emp_match_ids.add(str(tr.id))
+            emp_match_ids.add(f"tr_{tr.id}")
+            if tr.user_id:
+                emp_match_ids.add(str(tr.user_id))
+                emp_match_ids.add(f"emp_{tr.user_id}")
+                emp_match_ids.add(f"usr_{tr.user_id}")
+
         # 1. Fetch EmployeeAttendance records
         att_records = db.query(EmployeeAttendance).filter(
-            EmployeeAttendance.employee_id == emp.id,
+            EmployeeAttendance.employee_id.in_(list(emp_match_ids)),
             EmployeeAttendance.date >= start_date,
             EmployeeAttendance.date <= end_date
         ).all()
@@ -94,7 +118,7 @@ class EmployeeAttendanceReportService:
 
         # 2. Fetch approved LeaveRequests overlapping this month
         leave_records = db.query(LeaveRequest).filter(
-            LeaveRequest.employee_id == emp.id,
+            LeaveRequest.employee_id.in_(list(emp_match_ids)),
             LeaveRequest.status == "Approved",
             LeaveRequest.start_date <= end_date,
             LeaveRequest.end_date >= start_date
@@ -107,16 +131,28 @@ class EmployeeAttendanceReportService:
                 leave_days.add(cur.day)
                 cur += timedelta(days=1)
 
-        # 3. Fetch BiometricLogs (check both student_id=emp.id and employee_id / code)
-        bio_logs = db.query(BiometricLog).filter(
-            or_(
-                BiometricLog.student_id == emp.id,
-                func.cast(BiometricLog.meta_data, String).ilike(f"%{emp.code}%")
-            ),
+        # 3. Fetch BiometricLogs (check student_id, user_id, employee_id, and code)
+        raw_bio_logs = db.query(BiometricLog).filter(
             BiometricLog.timestamp >= start_dt,
             BiometricLog.timestamp <= end_dt,
             BiometricLog.status != "DENIED"
         ).order_by(BiometricLog.timestamp.asc()).all()
+
+        bio_logs = []
+        for bl in raw_bio_logs:
+            sid = str(bl.student_id or "")
+            meta = bl.meta_data or {}
+            m_uid = str(meta.get("user_id") or meta.get("employee_id") or "")
+            m_code = str(meta.get("employee_code") or meta.get("code") or "")
+            m_email = str(meta.get("email") or "").strip().lower()
+            if (
+                sid in emp_match_ids
+                or sid.replace("emp_", "") in emp_match_ids
+                or m_uid in emp_match_ids
+                or m_code in emp_match_ids
+                or (emp.email and m_email == emp.email.strip().lower())
+            ):
+                bio_logs.append(bl)
 
         bio_by_day: Dict[int, List[BiometricLog]] = {}
         for bl in bio_logs:

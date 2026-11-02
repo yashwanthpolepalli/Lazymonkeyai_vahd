@@ -473,7 +473,7 @@ export function MembersPage() {
                           </div>
                           <div className="min-w-0">
                             <div className="text-sm font-semibold text-navy-900 truncate">{name}</div>
-                            <div className="text-xs text-navy-500 font-medium truncate">{m.phone || m.email || '—'}</div>
+                            <div className="text-xs text-navy-600 font-mono font-medium truncate">{m.phone || '—'}</div>
                           </div>
                         </div>
                       </td>

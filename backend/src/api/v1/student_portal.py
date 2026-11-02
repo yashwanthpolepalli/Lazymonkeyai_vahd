@@ -12,6 +12,7 @@ from src.models.user import User
 from src.models.student import student, Student
 from src.models.membership import Membership
 from src.models.biometric import BiometricLog
+from src.models.hrms import EmployeeAttendance
 
 router = APIRouter(prefix="/student", tags=["student Portal"])
 
@@ -443,6 +444,58 @@ def verify_face(
         meta_data=dynamic_meta,
     )
     db.add(log)
+
+    # Upsert daily attendance in EmployeeAttendance table for dynamic reporting
+    today_date = now.date()
+    now_time_str = now.strftime("%I:%M %p")
+    lat = payload.get("latitude")
+    lng = payload.get("longitude")
+    loc = payload.get("location") or payload.get("place") or cust.primary_vahd_location or "Campus"
+    if lat and lng and not payload.get("location"):
+        try:
+            loc = f"{loc} ({float(lat):.4f}, {float(lng):.4f})"
+        except Exception:
+            pass
+
+    att = db.query(EmployeeAttendance).filter(
+        EmployeeAttendance.employee_id == cust.id,
+        EmployeeAttendance.date == today_date
+    ).first()
+    if not att:
+        att = EmployeeAttendance(
+            id=f"att_{uuid.uuid4().hex[:8]}",
+            employee_id=cust.id,
+            date=today_date,
+            check_in=now_time_str if action in ["CHECK_IN", "IN"] else None,
+            check_out=now_time_str if action in ["CHECK_OUT", "OUT"] else None,
+            check_in_location=loc if action in ["CHECK_IN", "IN"] else None,
+            check_out_location=loc if action in ["CHECK_OUT", "OUT"] else None,
+            check_in_latitude=lat if action in ["CHECK_IN", "IN"] else None,
+            check_in_longitude=lng if action in ["CHECK_IN", "IN"] else None,
+            check_out_latitude=lat if action in ["CHECK_OUT", "OUT"] else None,
+            check_out_longitude=lng if action in ["CHECK_OUT", "OUT"] else None,
+            status="Present",
+            work_hours=8.0,
+            notes=f"Student Face verification ({confidence_score}%) via {device_name}"
+        )
+        db.add(att)
+    else:
+        att.status = "Present"
+        if action in ["CHECK_IN", "IN"]:
+            if not att.check_in:
+                att.check_in = now_time_str
+            if not att.check_in_location:
+                att.check_in_location = loc
+                att.check_in_latitude = lat
+                att.check_in_longitude = lng
+        elif action in ["CHECK_OUT", "OUT"]:
+            att.check_out = now_time_str
+            att.check_out_location = loc
+            att.check_out_latitude = lat
+            att.check_out_longitude = lng
+        att.work_hours = 8.0
+        att.notes = f"Student Face verification ({confidence_score}%) via {device_name}"
+
     db.commit()
 
     return {

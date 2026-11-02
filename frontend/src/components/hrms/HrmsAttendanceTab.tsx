@@ -17,8 +17,8 @@ interface HrmsAttendanceTabProps {
 }
 
 export function HrmsAttendanceTab({ onSuccessToast }: HrmsAttendanceTabProps) {
-  // Navigation / View Tabs
-  const [viewMode, setViewMode] = useState<'matrix' | 'table' | 'calendar'>('matrix');
+  // Attendance Scope Filter: Employee vs Student
+  const [attendanceScope, setAttendanceScope] = useState<'employee' | 'student'>('employee');
 
   // Month & Year state
   const currentDate = new Date();
@@ -33,13 +33,16 @@ export function HrmsAttendanceTab({ onSuccessToast }: HrmsAttendanceTabProps) {
   const [loading, setLoading] = useState<boolean>(true);
   const [matrixData, setMatrixData] = useState<AttendanceMatrixResponse | null>(null);
 
-  // Manual Punch / Mark Date Modal
+  // Manual Punch / Adjustment Modal (Matching Image 2)
   const [showPunchModal, setShowPunchModal] = useState<boolean>(false);
   const [punchEmployeeId, setPunchEmployeeId] = useState<string>('');
   const [punchEmployeeName, setPunchEmployeeName] = useState<string>('');
   const [punchDate, setPunchDate] = useState<string>('');
   const [punchAction, setPunchAction] = useState<string>('CHECK_IN');
-  const [punchTime, setPunchTime] = useState<string>('09:00');
+  const [punchStatus, setPunchStatus] = useState<string>('Present');
+  const [punchTime, setPunchTime] = useState<string>('');
+  const [punchCheckOutTime, setPunchCheckOutTime] = useState<string>('');
+  const [punchMethod, setPunchMethod] = useState<string>('Manual Entry');
   const [punchNote, setPunchNote] = useState<string>('');
   const [submittingPunch, setSubmittingPunch] = useState<boolean>(false);
 
@@ -56,6 +59,7 @@ export function HrmsAttendanceTab({ onSuccessToast }: HrmsAttendanceTabProps) {
         month: selectedMonth,
         department: selectedDepartment !== 'ALL' ? selectedDepartment : undefined,
         search: searchQuery.trim() || undefined,
+        user_type: attendanceScope,
       });
       setMatrixData(res);
     } catch (e) {
@@ -67,7 +71,7 @@ export function HrmsAttendanceTab({ onSuccessToast }: HrmsAttendanceTabProps) {
 
   useEffect(() => {
     fetchAttendance();
-  }, [selectedYear, selectedMonth, selectedDepartment]);
+  }, [selectedYear, selectedMonth, selectedDepartment, attendanceScope]);
 
   // Debounced search
   useEffect(() => {
@@ -108,32 +112,79 @@ export function HrmsAttendanceTab({ onSuccessToast }: HrmsAttendanceTabProps) {
     setPunchEmployeeId(emp.id);
     setPunchEmployeeName(emp.name);
     setPunchDate(dayStr);
-    setPunchAction('CHECK_IN');
-    setPunchTime('09:00');
-    setPunchNote('Manual Administrative Entry');
+    const cell = emp.days[String(dayNum)];
+    const cellCode = cell?.code;
+    const initialStatus =
+      cellCode === 'P'
+        ? 'Present'
+        : cellCode === 'A'
+        ? 'Absent'
+        : cellCode === 'HD'
+        ? 'Half Day'
+        : cellCode === 'PL'
+        ? 'Paid Leave'
+        : cellCode === 'HOL'
+        ? 'Holiday'
+        : cellCode === 'WO'
+        ? 'Week Off'
+        : 'Present';
+    setPunchStatus(initialStatus);
+    setPunchAction(initialStatus === 'Absent' ? 'MARK_ABSENT' : initialStatus === 'Week Off' ? 'WEEK_OFF' : 'CHECK_IN');
+    setPunchTime(cell?.check_in || '');
+    setPunchCheckOutTime(cell?.check_out || '');
+    setPunchMethod(cell?.method || 'Manual Entry');
+    setPunchNote(cell?.status_label ? `Status: ${cell.status_label}` : '');
     setShowPunchModal(true);
   };
 
-  // Submit Manual Punch
+  // Submit Manual Punch / Status Update (Two-way dynamic sync)
   const handleSubmitPunch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!punchEmployeeId || !punchDate) {
-      showToast('Employee and Date are required.');
+      showToast('Person and Date are required.');
       return;
     }
     setSubmittingPunch(true);
     try {
+      const action =
+        punchStatus === 'Absent'
+          ? 'MARK_ABSENT'
+          : punchStatus === 'Half Day'
+          ? 'HALF_DAY'
+          : punchStatus === 'Paid Leave'
+          ? 'LEAVE'
+          : punchStatus === 'Week Off'
+          ? 'WEEK_OFF'
+          : 'CHECK_IN';
+
       await hrmsApi.punchAttendance({
         employee_id: punchEmployeeId,
-        action: punchAction,
+        action: action,
+        status: punchStatus,
         date: punchDate,
-        time: punchTime,
-        note: punchNote.trim() || `Manual punch (${punchAction}) by Administrator`,
-        method: 'MANUAL',
+        time: punchStatus === 'Absent' || punchStatus === 'Week Off' ? undefined : (punchTime.trim() || undefined),
+        check_out_time: punchStatus === 'Absent' || punchStatus === 'Week Off' ? undefined : (punchCheckOutTime.trim() || undefined),
+        note: punchNote.trim() || undefined,
+        method: punchMethod,
+        user_role: attendanceScope,
       });
-      showToast(`Recorded punch for ${punchEmployeeName || 'Employee'} on ${punchDate}.`);
+
+      showToast(`Recorded ${punchStatus} for ${punchEmployeeName || 'Profile'} on ${punchDate}.`);
       setShowPunchModal(false);
-      fetchAttendance();
+
+      const parts = punchDate.split('-');
+      if (parts.length === 3) {
+        const pYear = parseInt(parts[0], 10);
+        const pMonth = parseInt(parts[1], 10);
+        if (pYear !== selectedYear || pMonth !== selectedMonth) {
+          setSelectedYear(pYear);
+          setSelectedMonth(pMonth);
+        } else {
+          fetchAttendance();
+        }
+      } else {
+        fetchAttendance();
+      }
     } catch (err: any) {
       showToast(err?.response?.data?.detail || err?.message || 'Failed to submit punch.');
     } finally {
@@ -141,46 +192,10 @@ export function HrmsAttendanceTab({ onSuccessToast }: HrmsAttendanceTabProps) {
     }
   };
 
-  // Flattened logs for Table View
-  const tableLogs = useMemo(() => {
-    if (!matrixData) return [];
-    const logs: Array<{
-      key: string;
-      date: string;
-      employeeName: string;
-      employeeCode: string;
-      department: string;
-      status: string;
-      checkIn: string;
-      checkOut: string;
-      workHours: string;
-    }> = [];
-
-    matrixData.employees.forEach((emp) => {
-      Object.entries(emp.days).forEach(([dayNum, dayInfo]) => {
-        if (dayInfo.code !== '-' && dayInfo.code !== 'WO') {
-          logs.push({
-            key: `${emp.id}_${dayInfo.date}`,
-            date: dayInfo.date,
-            employeeName: emp.name,
-            employeeCode: emp.code,
-            department: emp.department,
-            status: dayInfo.status_label,
-            checkIn: dayInfo.check_in || '--:--',
-            checkOut: dayInfo.check_out || '--:--',
-            workHours: dayInfo.work_hours ? `${dayInfo.work_hours} hrs` : '--',
-          });
-        }
-      });
-    });
-
-    return logs.sort((a, b) => b.date.localeCompare(a.date));
-  }, [matrixData]);
-
   return (
     <div className="space-y-6">
       {/* ───────────────────────────────────────────────────────────── */}
-      {/* 1. HEADER SECTION (Matching Screenshot 2)                     */}
+      {/* 1. HEADER SECTION (Monthly Matrix & Scope Selector)           */}
       {/* ───────────────────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -188,52 +203,28 @@ export function HrmsAttendanceTab({ onSuccessToast }: HrmsAttendanceTabProps) {
             Daily Attendance
           </h1>
           <p className="text-xs text-slate-500 font-medium mt-0.5">
-            Timesheets log summary, interactive calendar grid, manual administrative punches, and WFH tracking.
+            Timesheets log summary, interactive monthly calendar matrix, and dynamic administrative punches.
           </p>
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">
-          {/* View Switch Buttons Pill */}
-          <div className="inline-flex p-1 bg-slate-100 rounded-xl border border-slate-200/80">
-            <button
-              type="button"
-              onClick={() => setViewMode('matrix')}
-              className={cn(
-                'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer',
-                viewMode === 'matrix'
-                  ? 'bg-white text-purple-700 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              )}
+          {/* Scroll-down to select Students Attendance vs Employees Attendance */}
+          <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200/80 shadow-2xs">
+            <span className="text-[10px] font-black uppercase text-slate-400 pl-2">
+              Scope:
+            </span>
+            <select
+              value={attendanceScope}
+              onChange={(e) => {
+                setAttendanceScope(e.target.value as 'employee' | 'student');
+                setSelectedDepartment('ALL');
+                setSearchQuery('');
+              }}
+              className="bg-white text-purple-700 px-3 py-1.5 rounded-lg text-xs font-black border-0 shadow-xs focus:outline-none cursor-pointer hover:bg-purple-50 transition"
             >
-              <Icon name="grid" size={13} />
-              <span>Monthly Matrix</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('table')}
-              className={cn(
-                'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer',
-                viewMode === 'table'
-                  ? 'bg-white text-purple-700 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              )}
-            >
-              <Icon name="list" size={13} />
-              <span>Table View</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('calendar')}
-              className={cn(
-                'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer',
-                viewMode === 'calendar'
-                  ? 'bg-white text-purple-700 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              )}
-            >
-              <Icon name="calendar" size={13} />
-              <span>Calendar View</span>
-            </button>
+              <option value="employee">👨‍💼 Employees Attendance</option>
+              <option value="student">🎓 Students Attendance</option>
+            </select>
           </div>
 
           {/* Manual Punch Action Button */}
@@ -243,12 +234,23 @@ export function HrmsAttendanceTab({ onSuccessToast }: HrmsAttendanceTabProps) {
               if (matrixData && matrixData.employees.length > 0) {
                 setPunchEmployeeId(matrixData.employees[0].id);
                 setPunchEmployeeName(matrixData.employees[0].name);
+              } else {
+                setPunchEmployeeId('');
+                setPunchEmployeeName('');
               }
               const now = new Date();
-              setPunchDate(now.toISOString().split('T')[0]);
+              const isCurrentMonth = selectedYear === now.getFullYear() && selectedMonth === (now.getMonth() + 1);
+              if (isCurrentMonth) {
+                setPunchDate(now.toISOString().split('T')[0]);
+              } else {
+                setPunchDate(`${selectedYear}-${String(selectedMonth).padStart(2, '0')}-01`);
+              }
+              setPunchStatus('Present');
               setPunchAction('CHECK_IN');
-              setPunchTime('09:00');
-              setPunchNote('Manual Administrative Punch');
+              setPunchTime('');
+              setPunchCheckOutTime('');
+              setPunchMethod('Manual Entry');
+              setPunchNote('');
               setShowPunchModal(true);
             }}
             className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white shadow-md shadow-purple-600/25 transition cursor-pointer"
@@ -369,7 +371,7 @@ export function HrmsAttendanceTab({ onSuccessToast }: HrmsAttendanceTabProps) {
           </button>
         </div>
 
-        {/* Right: Employee Filter & Department Dropdown */}
+        {/* Right: Search Filter & Department Dropdown */}
         <div className="flex items-center gap-2 flex-wrap">
           <div className="relative min-w-[200px]">
             <Icon
@@ -381,7 +383,11 @@ export function HrmsAttendanceTab({ onSuccessToast }: HrmsAttendanceTabProps) {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Filter employee..."
+              placeholder={
+                attendanceScope === 'student'
+                  ? 'Filter student by name, roll no...'
+                  : 'Filter employee...'
+              }
               className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
             />
           </div>
@@ -392,7 +398,7 @@ export function HrmsAttendanceTab({ onSuccessToast }: HrmsAttendanceTabProps) {
             className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none cursor-pointer"
           >
             <option value="ALL">
-              All Departments ({matrixData?.departments?.length ?? 0})
+              All {attendanceScope === 'student' ? 'Courses' : 'Departments'} ({matrixData?.departments?.length ?? 0})
             </option>
             {(matrixData?.departments || []).map((dept) => (
               <option key={dept} value={dept}>
@@ -413,384 +419,334 @@ export function HrmsAttendanceTab({ onSuccessToast }: HrmsAttendanceTabProps) {
       </div>
 
       {/* ───────────────────────────────────────────────────────────── */}
-      {/* 4. MAIN ATTENDANCE VIEWS                                      */}
+      {/* 4. MONTHLY ATTENDANCE MATRIX (Dynamic Two-Way Grid)           */}
       {/* ───────────────────────────────────────────────────────────── */}
+      <div className="bg-white border border-slate-200 rounded-3xl shadow-xs overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs border-collapse">
+            {/* Header Row */}
+            <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-black text-[11px] uppercase tracking-wider">
+              <tr>
+                <th className="py-3 px-4 min-w-[200px] border-r border-slate-200 sticky left-0 bg-slate-50 z-10">
+                  {attendanceScope === 'student' ? 'STUDENT' : 'EMPLOYEE'}
+                </th>
+                <th className="py-3 px-2 text-center w-10 text-emerald-700 bg-emerald-50/40 border-r border-slate-200">
+                  P
+                </th>
+                <th className="py-3 px-2 text-center w-10 text-rose-700 bg-rose-50/40 border-r border-slate-200">
+                  A
+                </th>
+                <th className="py-3 px-2 text-center w-10 text-purple-700 bg-purple-50/40 border-r border-slate-200">
+                  PL
+                </th>
+                <th className="py-3 px-3 text-center min-w-[70px] text-slate-800 bg-slate-100/60 border-r border-slate-200">
+                  Payable
+                </th>
 
-      {/* VIEW A: MONTHLY MATRIX (Matching Screenshot 2) */}
-      {viewMode === 'matrix' && (
-        <div className="bg-white border border-slate-200 rounded-3xl shadow-xs overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              {/* Header Row */}
-              <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-black text-[11px] uppercase tracking-wider">
-                <tr>
-                  <th className="py-3 px-4 min-w-[200px] border-r border-slate-200 sticky left-0 bg-slate-50 z-10">
-                    Employee
-                  </th>
-                  <th className="py-3 px-2 text-center w-10 text-emerald-700 bg-emerald-50/40 border-r border-slate-200">
-                    P
-                  </th>
-                  <th className="py-3 px-2 text-center w-10 text-rose-700 bg-rose-50/40 border-r border-slate-200">
-                    A
-                  </th>
-                  <th className="py-3 px-2 text-center w-10 text-purple-700 bg-purple-50/40 border-r border-slate-200">
-                    PL
-                  </th>
-                  <th className="py-3 px-3 text-center min-w-[70px] text-slate-800 bg-slate-100/60 border-r border-slate-200">
-                    Payable
-                  </th>
-
-                  {/* Days 1 to 30/31 Header */}
-                  {(matrixData?.days_in_month || []).map((d) => (
-                    <th
-                      key={d.day}
-                      className={cn(
-                        'py-2 px-1 text-center min-w-[36px] border-r border-slate-100',
-                        d.is_today && 'bg-purple-100/50 text-purple-900'
-                      )}
-                    >
-                      <div className="text-[11px] font-black">{d.day}</div>
-                      <div className="text-[9px] font-bold text-slate-400 -mt-0.5">{d.day_letter}</div>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-
-              {/* Body Rows */}
-              <tbody className="divide-y divide-slate-100">
-                {loading ? (
-                  <tr>
-                    <td
-                      colSpan={(matrixData?.days_in_month?.length ?? 30) + 5}
-                      className="py-12 text-center text-slate-400 font-bold"
-                    >
-                      Loading attendance matrix...
-                    </td>
-                  </tr>
-                ) : !matrixData?.employees || matrixData.employees.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={(matrixData?.days_in_month?.length ?? 30) + 5}
-                      className="py-12 text-center text-slate-400 font-bold"
-                    >
-                      No employees found for this filter.
-                    </td>
-                  </tr>
-                ) : (
-                  matrixData.employees.map((emp) => (
-                    <tr key={emp.id} className="hover:bg-slate-50/60 transition group">
-                      {/* Sticky Employee Profile */}
-                      <td className="py-3 px-4 border-r border-slate-200 sticky left-0 bg-white group-hover:bg-slate-50 transition z-10">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center shrink-0 border border-slate-200">
-                            {emp.initials || 'EM'}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="font-extrabold text-slate-900 text-xs truncate">
-                              {emp.name}
-                            </div>
-                            <div className="text-[10px] text-slate-400 font-semibold truncate">
-                              {emp.code} · {emp.department}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Counts: P, A, PL, Payable */}
-                      <td className="py-2.5 px-2 text-center font-black text-emerald-600 bg-emerald-50/20 border-r border-slate-200 text-xs">
-                        {emp.present_count}
-                      </td>
-                      <td className="py-2.5 px-2 text-center font-black text-rose-600 bg-rose-50/20 border-r border-slate-200 text-xs">
-                        {emp.absent_count}
-                      </td>
-                      <td className="py-2.5 px-2 text-center font-black text-purple-600 bg-purple-50/20 border-r border-slate-200 text-xs">
-                        {emp.leave_count}
-                      </td>
-                      <td className="py-2.5 px-3 text-center font-black text-slate-900 bg-slate-50/40 border-r border-slate-200 text-xs">
-                        {emp.payable_days}
-                      </td>
-
-                      {/* Day Cells 1 to 30 */}
-                      {(matrixData.days_in_month || []).map((d) => {
-                        const cell = emp.days[String(d.day)];
-                        const code = cell?.code || '-';
-
-                        return (
-                          <td
-                            key={d.day}
-                            onClick={() => handleCellClick(emp, d.day)}
-                            className={cn(
-                              'py-2 px-1 text-center border-r border-slate-100 cursor-pointer transition hover:scale-105 select-none',
-                              d.is_today && 'bg-purple-50/30'
-                            )}
-                            title={`${emp.name} - ${d.formatted}: ${cell?.status_label || code}${cell?.check_in ? ` (In: ${cell.check_in})` : ''} - Click to punch/edit`}
-                          >
-                            {code === 'WO' ? (
-                              <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold text-sky-700 bg-sky-100/80">
-                                WO
-                              </span>
-                            ) : code === 'HOL' ? (
-                              <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-black text-amber-800 bg-amber-100">
-                                HOL
-                              </span>
-                            ) : code === 'P' ? (
-                              <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-black text-emerald-800 bg-emerald-100">
-                                P
-                              </span>
-                            ) : code === 'HD' ? (
-                              <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-black text-amber-800 bg-amber-100">
-                                HD
-                              </span>
-                            ) : code === 'PL' ? (
-                              <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-black text-purple-800 bg-purple-100">
-                                PL
-                              </span>
-                            ) : code === 'A' ? (
-                              <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-black text-rose-800 bg-rose-100">
-                                A
-                              </span>
-                            ) : (
-                              <span className="text-slate-300 font-bold text-xs">-</span>
-                            )}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* VIEW B: TABLE VIEW */}
-      {viewMode === 'table' && (
-        <div className="bg-white border border-slate-200 rounded-3xl shadow-xs overflow-hidden">
-          <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500">
-              Showing {tableLogs.length} attendance records
-            </span>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead className="bg-slate-50 text-[11px] font-black uppercase text-slate-500 tracking-wider border-b border-slate-200">
-                <tr>
-                  <th className="py-3 px-4">Date</th>
-                  <th className="py-3 px-4">Employee</th>
-                  <th className="py-3 px-4">Department</th>
-                  <th className="py-3 px-4">Check In</th>
-                  <th className="py-3 px-4">Check Out</th>
-                  <th className="py-3 px-4">Work Hours</th>
-                  <th className="py-3 px-4">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {tableLogs.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="py-12 text-center text-slate-400 font-bold">
-                      No attendance log records found.
-                    </td>
-                  </tr>
-                ) : (
-                  tableLogs.map((log) => (
-                    <tr key={log.key} className="hover:bg-slate-50/60 transition">
-                      <td className="py-3 px-4 font-bold text-slate-900">{log.date}</td>
-                      <td className="py-3 px-4">
-                        <div className="font-extrabold text-slate-900">{log.employeeName}</div>
-                        <div className="text-[10px] text-slate-400">{log.employeeCode}</div>
-                      </td>
-                      <td className="py-3 px-4 font-medium text-slate-600">{log.department}</td>
-                      <td className="py-3 px-4 font-mono font-bold text-slate-700">{log.checkIn}</td>
-                      <td className="py-3 px-4 font-mono font-bold text-slate-700">{log.checkOut}</td>
-                      <td className="py-3 px-4 font-semibold text-slate-600">{log.workHours}</td>
-                      <td className="py-3 px-4">
-                        <span
-                          className={cn(
-                            'px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider',
-                            log.status === 'Present'
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : log.status === 'Late'
-                              ? 'bg-amber-100 text-amber-800'
-                              : log.status === 'Holiday'
-                              ? 'bg-purple-100 text-purple-800'
-                              : 'bg-slate-100 text-slate-700'
-                          )}
-                        >
-                          {log.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* VIEW C: CALENDAR VIEW */}
-      {viewMode === 'calendar' && (
-        <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xs space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-            <h3 className="text-base font-black text-slate-900">
-              {MONTH_NAMES[selectedMonth - 1]} {selectedYear} Attendance Calendar
-            </h3>
-            <span className="text-xs font-bold text-slate-400">
-              {matrixData?.employees?.length ?? 0} active employees
-            </span>
-          </div>
-
-          <div className="grid grid-cols-7 gap-2">
-            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
-              <div
-                key={d}
-                className="text-center text-[11px] font-black text-slate-400 uppercase py-2"
-              >
-                {d}
-              </div>
-            ))}
-
-            {(matrixData?.days_in_month || []).map((d) => (
-              <div
-                key={d.day}
-                className={cn(
-                  'p-2.5 rounded-2xl border min-h-[75px] flex flex-col justify-between transition hover:shadow-sm',
-                  d.is_today
-                    ? 'border-purple-500 bg-purple-50/30'
-                    : 'border-slate-200/80 bg-white'
-                )}
-              >
-                <div className="flex items-center justify-between">
-                  <span
+                {/* Days 1 to 30/31 Header */}
+                {(matrixData?.days_in_month || []).map((d) => (
+                  <th
+                    key={d.day}
                     className={cn(
-                      'text-xs font-black',
-                      d.is_today ? 'text-purple-700' : 'text-slate-800'
+                      'py-2 px-1 text-center min-w-[36px] border-r border-slate-100',
+                      d.is_today && 'bg-purple-100/50 text-purple-900'
                     )}
                   >
-                    {d.day}
-                  </span>
-                  <span className="text-[10px] text-slate-400">{d.day_letter}</span>
-                </div>
-                <div className="text-[10px] text-slate-500 font-bold mt-1">
-                  {matrixData?.summary ? (
-                    <span className="text-emerald-600 font-extrabold">Active Day</span>
-                  ) : (
-                    '-'
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
+                    <div className="text-[11px] font-black">{d.day}</div>
+                    <div className="text-[9px] font-bold text-slate-400 -mt-0.5">{d.day_letter}</div>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+
+            {/* Body Rows */}
+            <tbody className="divide-y divide-slate-100">
+              {loading ? (
+                <tr>
+                  <td
+                    colSpan={(matrixData?.days_in_month?.length ?? 30) + 5}
+                    className="py-12 text-center text-slate-400 font-bold"
+                  >
+                    Loading attendance matrix...
+                  </td>
+                </tr>
+              ) : !matrixData?.employees || matrixData.employees.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={(matrixData?.days_in_month?.length ?? 30) + 5}
+                    className="py-12 text-center text-slate-400 font-bold"
+                  >
+                    No {attendanceScope === 'student' ? 'students' : 'employees'} found for this filter.
+                  </td>
+                </tr>
+              ) : (
+                matrixData.employees.map((emp) => (
+                  <tr key={emp.id} className="hover:bg-slate-50/60 transition group">
+                    {/* Sticky Profile */}
+                    <td className="py-3 px-4 border-r border-slate-200 sticky left-0 bg-white group-hover:bg-slate-50 transition z-10">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center shrink-0 border border-slate-200">
+                          {emp.initials || (emp.designation === 'Student' || attendanceScope === 'student' ? 'ST' : 'EM')}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="font-extrabold text-slate-900 text-xs truncate">
+                            {emp.name}
+                          </div>
+                          <div className="text-[10px] text-slate-400 font-semibold truncate">
+                            {emp.code} · {emp.department} {emp.designation && emp.designation !== 'Student' ? `· ${emp.designation}` : ''}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* Counts: P, A, PL, Payable */}
+                    <td className="py-2.5 px-2 text-center font-black text-emerald-600 bg-emerald-50/20 border-r border-slate-200 text-xs">
+                      {emp.present_count}
+                    </td>
+                    <td className="py-2.5 px-2 text-center font-black text-rose-600 bg-rose-50/20 border-r border-slate-200 text-xs">
+                      {emp.absent_count}
+                    </td>
+                    <td className="py-2.5 px-2 text-center font-black text-purple-600 bg-purple-50/20 border-r border-slate-200 text-xs">
+                      {emp.leave_count}
+                    </td>
+                    <td className="py-2.5 px-3 text-center font-black text-slate-900 bg-slate-50/40 border-r border-slate-200 text-xs">
+                      {emp.payable_days}
+                    </td>
+
+                    {/* Day Cells 1 to 30 */}
+                    {(matrixData.days_in_month || []).map((d) => {
+                      const cell = emp.days[String(d.day)];
+                      const code = cell?.code || '-';
+
+                      return (
+                        <td
+                          key={d.day}
+                          onClick={() => handleCellClick(emp, d.day)}
+                          className={cn(
+                            'py-2 px-1 text-center border-r border-slate-100 cursor-pointer transition hover:scale-105 select-none',
+                            d.is_today && 'bg-purple-50/30'
+                          )}
+                          title={`${emp.name} - ${d.formatted}: ${cell?.status_label || code}${cell?.check_in ? ` (In: ${cell.check_in})` : ''} - Click to mark attendance`}
+                        >
+                          {code === 'WO' ? (
+                            <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold text-sky-700 bg-sky-100/80">
+                              WO
+                            </span>
+                          ) : code === 'HOL' ? (
+                            <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-black text-amber-800 bg-amber-100">
+                              HOL
+                            </span>
+                          ) : code === 'P' ? (
+                            <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-black text-emerald-800 bg-emerald-100">
+                              P
+                            </span>
+                          ) : code === 'HD' ? (
+                            <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-black text-amber-800 bg-amber-100">
+                              HD
+                            </span>
+                          ) : code === 'PL' ? (
+                            <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-black text-purple-800 bg-purple-100">
+                              PL
+                            </span>
+                          ) : code === 'A' ? (
+                            <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-black text-rose-800 bg-rose-100">
+                              A
+                            </span>
+                          ) : (
+                            <span className="text-slate-300 font-bold text-xs">-</span>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
-      )}
+      </div>
 
       {/* ───────────────────────────────────────────────────────────── */}
-      {/* 5. MANUAL PUNCH / MARK DATE MODAL                             */}
+      {/* 5. MODAL: MANUAL TIMESHEET PUNCH / ADJUSTMENT (Image 2)       */}
       {/* ───────────────────────────────────────────────────────────── */}
       {showPunchModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-slate-200 space-y-4">
+        <div className="fixed inset-0 z-50 bg-slate-950/40 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-lg w-full shadow-2xl border border-slate-100 space-y-4">
+            {/* Modal Header */}
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center font-bold">
-                  <Icon name="clock" size={16} />
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
+                  <Icon name="clock" size={17} />
                 </div>
-                <h3 className="text-base font-black text-slate-900">
-                  Manual Punch / Mark Date
+                <h3 className="text-base font-bold text-slate-900">
+                  Manual Timesheet Punch / Adjustment
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setShowPunchModal(false)}
-                className="text-slate-400 hover:text-slate-700 p-1 cursor-pointer"
+                className="w-7 h-7 rounded-full border border-slate-200 text-slate-400 hover:text-slate-600 hover:bg-slate-50 flex items-center justify-center transition cursor-pointer"
               >
-                ✕
+                <Icon name="x" size={14} />
               </button>
             </div>
 
-            <form onSubmit={handleSubmitPunch} className="space-y-3.5">
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700">Staff Member *</label>
+            <form onSubmit={handleSubmitPunch} className="space-y-4">
+              {/* Field 1: Choose Employee / Student Profile */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-black uppercase text-slate-500 tracking-wider block">
+                  {attendanceScope === 'student' ? 'CHOOSE STUDENT PROFILE *' : 'CHOOSE EMPLOYEE PROFILE *'}
+                </label>
                 <select
+                  required
                   value={punchEmployeeId}
                   onChange={(e) => {
                     setPunchEmployeeId(e.target.value);
                     const matched = matrixData?.employees.find((emp) => emp.id === e.target.value);
                     if (matched) setPunchEmployeeName(matched.name);
                   }}
-                  className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none"
+                  className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400"
                 >
                   {(matrixData?.employees || []).map((emp) => (
                     <option key={emp.id} value={emp.id}>
-                      {emp.name} ({emp.code} · {emp.department})
+                      {emp.name}{emp.code ? ` (${emp.code})` : ''}
                     </option>
                   ))}
                 </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">Date *</label>
+              {/* Field 2 & 3: 2-column Timesheet Date & Attendance Status */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-black uppercase text-slate-500 tracking-wider block">
+                    TIMESHEET DATE *
+                  </label>
                   <input
                     type="date"
                     required
                     value={punchDate}
                     onChange={(e) => setPunchDate(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none"
+                    className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400"
                   />
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">Punch Action</label>
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-black uppercase text-slate-500 tracking-wider block">
+                    ATTENDANCE STATUS
+                  </label>
                   <select
-                    value={punchAction}
-                    onChange={(e) => setPunchAction(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none"
+                    value={punchStatus}
+                    onChange={(e) => {
+                      const st = e.target.value;
+                      setPunchStatus(st);
+                      if (st === 'Absent') {
+                        setPunchAction('MARK_ABSENT');
+                      } else if (st === 'Half Day') {
+                        setPunchAction('HALF_DAY');
+                      } else if (st === 'Paid Leave') {
+                        setPunchAction('LEAVE');
+                      } else {
+                        setPunchAction('CHECK_IN');
+                      }
+                    }}
+                    className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400"
                   >
-                    <option value="CHECK_IN">Check In (Present)</option>
-                    <option value="CHECK_OUT">Check Out</option>
-                    <option value="HALF_DAY">Half Day</option>
-                    <option value="ABSENT">Mark Absent</option>
+                    <option value="Present">Present</option>
+                    <option value="Absent">Absent</option>
+                    <option value="Late">Late</option>
+                    <option value="Half Day">Half Day</option>
+                    <option value="Paid Leave">Paid Leave</option>
+                    <option value="Holiday">Holiday</option>
+                    <option value="Week Off">Week Off</option>
                   </select>
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700">Punch Time (HH:MM)</label>
-                <input
-                  type="time"
-                  value={punchTime}
-                  onChange={(e) => setPunchTime(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none"
-                />
+              {/* Field 4 & 5: 2-column Check In Time & Check Out Time */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-black uppercase text-slate-500 tracking-wider block">
+                    CHECK IN TIME
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      disabled={punchStatus === 'Absent' || punchStatus === 'Week Off' || punchStatus === 'Holiday'}
+                      value={punchTime}
+                      onChange={(e) => setPunchTime(e.target.value)}
+                      placeholder="HH:MM (e.g. 09:00 AM)"
+                      className="w-full pl-3.5 pr-8 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 disabled:bg-slate-100 disabled:text-slate-400"
+                    />
+                    <Icon name="clock" size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-black uppercase text-slate-500 tracking-wider block">
+                    CHECK OUT TIME
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      disabled={punchStatus === 'Absent' || punchStatus === 'Week Off' || punchStatus === 'Holiday'}
+                      value={punchCheckOutTime}
+                      onChange={(e) => setPunchCheckOutTime(e.target.value)}
+                      placeholder="HH:MM (e.g. 06:00 PM)"
+                      className="w-full pl-3.5 pr-8 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 disabled:bg-slate-100 disabled:text-slate-400"
+                    />
+                    <Icon name="clock" size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  </div>
+                </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700">Reason / Notes</label>
+              {/* Field 6: Punch Method */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-black uppercase text-slate-500 tracking-wider block">
+                  PUNCH METHOD
+                </label>
+                <select
+                  value={punchMethod}
+                  onChange={(e) => setPunchMethod(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400"
+                >
+                  <option value="Manual Entry">Manual Entry</option>
+                  <option value="Manual Entry (HR Verified)">Manual Entry (HR Verified)</option>
+                  <option value="Biometric Terminal">Biometric Terminal</option>
+                  <option value="Face Recognition ESS">Face Recognition ESS</option>
+                  <option value="GPS Mobile Check-In">GPS Mobile Check-In</option>
+                  <option value="System Admin Override">System Admin Override</option>
+                </select>
+              </div>
+
+              {/* Field 7: Administrative Notes / Reason */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-black uppercase text-slate-500 tracking-wider block">
+                  ADMINISTRATIVE NOTES / REASON
+                </label>
                 <input
                   type="text"
                   value={punchNote}
                   onChange={(e) => setPunchNote(e.target.value)}
-                  placeholder="Administrative manual punch reason"
-                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none"
+                  placeholder="Enter administrative notes or reason..."
+                  className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setShowPunchModal(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+                  className="px-5 py-2.5 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 transition cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submittingPunch}
-                  className="px-5 py-2 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white shadow-sm transition cursor-pointer disabled:opacity-50"
+                  className="px-6 py-2.5 rounded-xl text-xs font-bold bg-gradient-to-r from-purple-600 to-teal-600 hover:from-purple-700 hover:to-teal-700 text-white shadow-md shadow-purple-600/20 transition cursor-pointer disabled:opacity-50"
                 >
-                  {submittingPunch ? 'Saving...' : 'Record Punch'}
+                  {submittingPunch ? 'Saving...' : 'Save Attendance'}
                 </button>
               </div>
             </form>

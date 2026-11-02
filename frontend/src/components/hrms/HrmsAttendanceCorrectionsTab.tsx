@@ -483,8 +483,8 @@ export function HrmsAttendanceCorrectionsTab({ onSuccessToast }: HrmsAttendanceC
               className="w-full bg-slate-50/70 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 outline-none focus:border-purple-500 focus:bg-white transition cursor-pointer"
             >
               <option value="ALL">👥 All (Students &amp; Employees)</option>
-              <option value="EMPLOYEE">👨‍💼 Employees &amp; Staff Only</option>
-              <option value="STUDENT">🎓 Students Only</option>
+              <option value="EMPLOYEE"> Employees &amp; Staff Only</option>
+              <option value="STUDENT">Students Only</option>
             </select>
           </div>
 

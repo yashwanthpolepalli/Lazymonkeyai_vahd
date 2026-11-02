@@ -169,6 +169,7 @@ def get_attendance_matrix(
     search: Optional[str] = Query(None),
     branch_id: Optional[str] = Query(None),
     ho_id: Optional[str] = Query(None),
+    user_type: Optional[str] = Query("employee"),
     current_user: Optional[User] = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -185,6 +186,7 @@ def get_attendance_matrix(
             search=search,
             branch_id=branch_id,
             ho_id=ho_id,
+            user_type=user_type,
             current_user=current_user
         )
     except Exception as e:
@@ -264,11 +266,15 @@ def batch_approve_attendance_corrections(payload: dict, db: Session = Depends(ge
 def record_punch(payload: dict, db: Session = Depends(get_db)):
     emp_id = payload.get("employee_id") or payload.get("user_id") or ""
     action = payload.get("action", "CHECK_IN")
-    note = payload.get("note")
+    status = payload.get("status")
+    punch_date = payload.get("date")
+    punch_time = payload.get("time") or payload.get("check_in")
+    check_out_time = payload.get("check_out_time") or payload.get("check_out")
+    note = payload.get("note") or payload.get("notes") or payload.get("reason")
     latitude = payload.get("latitude")
     longitude = payload.get("longitude")
     method = payload.get("method", "MANUAL")
-    user_role = payload.get("user_role", "OWNER")
+    user_role = payload.get("user_role", "STAFF")
     branch = payload.get("branch")
     try:
         return HrmsService.record_punch(
@@ -280,7 +286,11 @@ def record_punch(payload: dict, db: Session = Depends(get_db)):
             longitude=longitude,
             method=method,
             user_role=user_role,
-            branch=branch
+            branch=branch,
+            punch_date=punch_date,
+            punch_time=punch_time,
+            check_out_time=check_out_time,
+            status=status
         )
     except ValueError as e:
         raise HTTPException(status_code=403, detail=str(e))
@@ -1023,6 +1033,7 @@ def get_shift_roster(
     view: Optional[str] = Query("flat"),
     branch_id: Optional[str] = Query(None),
     ho_id: Optional[str] = Query(None),
+    user_type: Optional[str] = Query("employee"),
     current_user: Optional[User] = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -1036,7 +1047,8 @@ def get_shift_roster(
             view_mode=view,
             branch_id=branch_id,
             ho_id=ho_id,
-            current_user=current_user
+            current_user=current_user,
+            user_type=user_type
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to load shift roster: {str(e)}")

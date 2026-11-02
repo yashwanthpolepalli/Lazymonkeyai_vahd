@@ -1963,9 +1963,9 @@ export function HrmsemployeesTab() {
           targetType="employee"
           targetId={passwordResetTarget.id}
           targetName={passwordResetTarget.name}
-          targetEmail={passwordResetTarget.email}
-          targetCode={passwordResetTarget.code || passwordResetTarget.id}
-          onSuccess={(msg) => triggerToast(msg)}
+          targetEmail={passwordResetTarget.email || ''}
+          targetCode={passwordResetTarget.empNo || passwordResetTarget.id}
+          onSuccess={(msg) => alert(msg)}
         />
       )}
     </div>

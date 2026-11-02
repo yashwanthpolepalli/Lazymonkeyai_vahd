@@ -22,18 +22,63 @@ export function HrmsWorkCalendarsTab({ onSuccessToast }: HrmsWorkCalendarsTabPro
   const [calendarId, setCalendarId] = useState<string>('');
   const [calendarName, setCalendarName] = useState<string>('');
   const [calendarType, setCalendarType] = useState<string>('');
+  const [customCalendarType, setCustomCalendarType] = useState<string>('');
+  const [isCustomType, setIsCustomType] = useState<boolean>(false);
+  const [calendarDepartment, setCalendarDepartment] = useState<string>('All');
+  const [modalDepartment, setModalDepartment] = useState<string>('All');
+  const [departmentList, setDepartmentList] = useState<string[]>([]);
   const [status, setStatus] = useState<string>('Active');
   const [isDefault, setIsDefault] = useState<boolean>(false);
   const [workingDays, setWorkingDays] = useState<string[]>([]);
   const [allCalendars, setAllCalendars] = useState<any[]>([]);
 
+  // Main Page Day-to-Day Range State
+  const [mainRangeStart, setMainRangeStart] = useState<string>('Monday');
+  const [mainRangeEnd, setMainRangeEnd] = useState<string>('Friday');
+
   // Create Calendar Modal State (Matching Screenshot)
   const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
   const [modalCalName, setModalCalName] = useState<string>('');
   const [modalCalType, setModalCalType] = useState<string>('');
+  const [modalCustomCalType, setModalCustomCalType] = useState<string>('');
+  const [modalIsCustomType, setModalIsCustomType] = useState<boolean>(false);
   const [modalWeeklyPreset, setModalWeeklyPreset] = useState<string>('');
+  const [modalRangeStart, setModalRangeStart] = useState<string>('');
+  const [modalRangeEnd, setModalRangeEnd] = useState<string>('');
+  const [modalWorkingDays, setModalWorkingDays] = useState<string[]>([]);
   const [modalIsDefault, setModalIsDefault] = useState<boolean>(false);
   const [creatingCalendar, setCreatingCalendar] = useState<boolean>(false);
+
+  // Derive dynamic calendar types from DB
+  const existingCalendarTypes = useMemo(() => {
+    const types = new Set<string>();
+    allCalendars.forEach((c) => {
+      if (c.calendar_type && typeof c.calendar_type === 'string' && c.calendar_type.trim()) {
+        types.add(c.calendar_type.trim());
+      }
+    });
+    if (types.size === 0) {
+      types.add('Standard Corporate');
+      types.add('Shift Based');
+      types.add('Factory / Operations');
+      types.add('Retail & Field');
+    }
+    return Array.from(types);
+  }, [allCalendars]);
+
+  // Compute contiguous or wrapped day-to-day range
+  const computeDayRange = (startDay: string, endDay: string): string[] => {
+    if (!startDay || !endDay) return [];
+    const daysOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const sIdx = daysOrder.indexOf(startDay);
+    const eIdx = daysOrder.indexOf(endDay);
+    if (sIdx === -1 || eIdx === -1) return [];
+    if (sIdx <= eIdx) {
+      return daysOrder.slice(sIdx, eIdx + 1);
+    } else {
+      return [...daysOrder.slice(sIdx), ...daysOrder.slice(0, eIdx + 1)];
+    }
+  };
 
   // Holidays State
   const [holidays, setHolidays] = useState<CompanyHolidayItem[]>([]);
@@ -58,27 +103,40 @@ export function HrmsWorkCalendarsTab({ onSuccessToast }: HrmsWorkCalendarsTabPro
   };
 
   // Fetch initial Calendars & Holidays
-  const loadData = async () => {
+  const loadData = async (targetCalId?: string) => {
     setLoading(true);
     try {
-      const [calsRes, holsRes] = await Promise.all([
+      const [calsRes, holsRes, deptsRes] = await Promise.all([
         hrmsApi.getWorkCalendars(),
         hrmsApi.getHolidays({ year: selectedYear, type: holidayTypeFilter !== 'ALL' ? holidayTypeFilter : undefined }),
+        hrmsApi.getDepartments().catch(() => []),
       ]);
+
+      if (Array.isArray(deptsRes)) {
+        setDepartmentList(deptsRes.map((d: any) => d.name).filter(Boolean));
+      }
 
       if (Array.isArray(calsRes) && calsRes.length > 0) {
         setAllCalendars(calsRes);
-        const primary = (calendarId ? calsRes.find((c: any) => c.id === calendarId) : null) || calsRes.find((c: any) => c.is_default) || calsRes[0];
+        const resolvedId = targetCalId || calendarId;
+        const primary = (resolvedId ? calsRes.find((c: any) => c.id === resolvedId) : null) || calsRes.find((c: any) => c.is_default) || calsRes[0];
         setCalendarId(primary.id);
         setCalendarName(primary.name || '');
         setCalendarType(primary.calendar_type || '');
+        setCalendarDepartment(primary.department || 'All');
         setStatus(primary.is_active ? 'Active' : 'Inactive');
         setIsDefault(Boolean(primary.is_default));
         if (primary.working_days && Array.isArray(primary.working_days) && primary.working_days.length > 0) {
           setWorkingDays(primary.working_days);
+          setMainRangeStart(primary.working_days[0] || 'Monday');
+          setMainRangeEnd(primary.working_days[primary.working_days.length - 1] || 'Friday');
         } else if (primary.weekly_off_days && Array.isArray(primary.weekly_off_days)) {
           const wDays = ALL_WEEK_DAYS.map((d) => d.full).filter((d) => !primary.weekly_off_days.includes(d));
           setWorkingDays(wDays);
+          if (wDays.length > 0) {
+            setMainRangeStart(wDays[0]);
+            setMainRangeEnd(wDays[wDays.length - 1]);
+          }
         }
       } else {
         setAllCalendars([]);
@@ -125,25 +183,35 @@ export function HrmsWorkCalendarsTab({ onSuccessToast }: HrmsWorkCalendarsTabPro
     return ALL_WEEK_DAYS.map((d) => d.full).filter((d) => !workingDays.includes(d));
   }, [workingDays]);
 
-  // Save Working Calendar
+  // Save Working Calendar (Entire Page Changes Persisted)
   const handleSaveCalendar = async () => {
-    if (!calendarName.trim()) {
-      showToast('Please enter a calendar name.');
-      return;
-    }
+    const finalName = calendarName.trim() || 'Standard 5-Day General Work Calendar';
+    const resolvedType = (isCustomType ? customCalendarType.trim() : calendarType.trim()) || 'Standard Corporate';
+    const finalWorkingDays = workingDays.length > 0 ? workingDays : ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+    const finalWeeklyOffs = ALL_WEEK_DAYS.map((d) => d.full).filter((d) => !finalWorkingDays.includes(d));
+
     setSavingCalendar(true);
     try {
-      await hrmsApi.saveWorkCalendar({
+      const savedRes = await hrmsApi.saveWorkCalendar({
         id: calendarId || undefined,
-        name: calendarName.trim(),
-        calendar_type: calendarType,
+        name: finalName,
+        calendar_type: resolvedType,
+        department: calendarDepartment || 'All',
         is_default: isDefault,
-        working_days: workingDays,
-        weekly_off_days: weeklyOffDays,
+        working_days: finalWorkingDays,
+        weekly_off_days: finalWeeklyOffs,
         is_active: status === 'Active',
       });
-      showToast('Working calendar policy saved and applied successfully.');
-      loadData();
+      const resolvedId = savedRes?.id || calendarId;
+      if (resolvedId) {
+        setCalendarId(resolvedId);
+      }
+      setCalendarName(finalName);
+      setCalendarType(resolvedType);
+      setWorkingDays(finalWorkingDays);
+      setIsCustomType(false);
+      showToast('Working calendar policy and settings saved successfully!');
+      await loadData(resolvedId);
     } catch (e: any) {
       showToast(e?.response?.data?.detail || e?.message || 'Failed to save calendar.');
     } finally {
@@ -151,46 +219,60 @@ export function HrmsWorkCalendarsTab({ onSuccessToast }: HrmsWorkCalendarsTabPro
     }
   };
 
-  // Create Calendar Modal Submit (Matching Screenshot Fields)
+  // Delete Work Calendar
+  const handleDeleteCalendar = async (id: string, name: string) => {
+    if (!id) return;
+    if (!window.confirm(`Are you sure you want to delete work calendar "${name}"?`)) {
+      return;
+    }
+    try {
+      await hrmsApi.deleteWorkCalendar(id);
+      showToast(`Work calendar "${name}" deleted successfully.`);
+      setCalendarId('');
+      setCalendarName('');
+      await loadData();
+    } catch (e: any) {
+      showToast(e?.response?.data?.detail || e?.message || 'Failed to delete calendar.');
+    }
+  };
+
+  // Create Calendar Modal Submit (Dynamic Type & Editable Days-to-Day Range)
   const handleCreateCalendarSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!modalCalName.trim()) {
       showToast('Please enter a calendar name.');
       return;
     }
-    if (!modalCalType) {
-      showToast('Please select a calendar type.');
+    const resolvedType = modalIsCustomType ? modalCustomCalType.trim() : modalCalType.trim();
+    if (!resolvedType) {
+      showToast('Please select or enter a calendar type.');
       return;
     }
-    if (!modalWeeklyPreset) {
-      showToast('Please select a weekly preset.');
+    if (modalWorkingDays.length === 0) {
+      showToast('Please configure at least 1 working day.');
       return;
     }
     setCreatingCalendar(true);
     try {
-      let days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-      let offs = ['Saturday', 'Sunday'];
-      if (modalWeeklyPreset.includes('6')) {
-        days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        offs = ['Sunday'];
-      } else if (modalWeeklyPreset.includes('7') || modalWeeklyPreset.toLowerCase().includes('all')) {
-        days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-        offs = [];
-      }
+      const offs = ALL_WEEK_DAYS.map((d) => d.full).filter((d) => !modalWorkingDays.includes(d));
 
       const res = await hrmsApi.saveWorkCalendar({
         name: modalCalName.trim(),
-        calendar_type: modalCalType,
+        calendar_type: resolvedType,
+        department: modalDepartment || 'All',
         is_default: modalIsDefault,
-        working_days: days,
+        working_days: modalWorkingDays,
         weekly_off_days: offs,
         is_active: true,
       });
 
       showToast(`Work Calendar "${modalCalName.trim()}" created successfully!`);
       setShowCreateModal(false);
-      if (res && res.id) setCalendarId(res.id);
-      await loadData();
+      const newId = res?.id;
+      if (newId) {
+        setCalendarId(newId);
+      }
+      await loadData(newId);
     } catch (err: any) {
       showToast(err?.response?.data?.detail || err?.message || 'Failed to create work calendar.');
     } finally {
@@ -323,7 +405,13 @@ export function HrmsWorkCalendarsTab({ onSuccessToast }: HrmsWorkCalendarsTabPro
             onClick={() => {
               setModalCalName('');
               setModalCalType('');
+              setModalCustomCalType('');
+              setModalDepartment('All');
+              setModalIsCustomType(false);
               setModalWeeklyPreset('');
+              setModalRangeStart('');
+              setModalRangeEnd('');
+              setModalWorkingDays([]);
               setModalIsDefault(false);
               setShowCreateModal(true);
             }}
@@ -365,32 +453,70 @@ export function HrmsWorkCalendarsTab({ onSuccessToast }: HrmsWorkCalendarsTabPro
             <span>Available Work Calendars:</span>
           </div>
           {allCalendars.length > 0 && (
-            <div className="flex items-center gap-1.5 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap">
               {allCalendars.map((cal) => (
-                <button
+                <div
                   key={cal.id}
-                  type="button"
+                  className={cn(
+                    'inline-flex items-center gap-2 pl-3 pr-2 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer shadow-2xs',
+                    calendarId === cal.id
+                      ? 'bg-purple-600 text-white border-purple-600 ring-2 ring-purple-600/30'
+                      : 'bg-white text-slate-700 border-slate-200 hover:border-purple-300 hover:bg-slate-50'
+                  )}
                   onClick={() => {
                     setCalendarId(cal.id);
                     setCalendarName(cal.name || '');
                     setCalendarType(cal.calendar_type || '');
+                    setCalendarDepartment(cal.department || 'All');
                     setStatus(cal.is_active ? 'Active' : 'Inactive');
                     setIsDefault(Boolean(cal.is_default));
                     if (cal.working_days && Array.isArray(cal.working_days) && cal.working_days.length > 0) {
                       setWorkingDays(cal.working_days);
+                      setMainRangeStart(cal.working_days[0] || 'Monday');
+                      setMainRangeEnd(cal.working_days[cal.working_days.length - 1] || 'Friday');
                     } else if (cal.weekly_off_days && Array.isArray(cal.weekly_off_days)) {
-                      setWorkingDays(ALL_WEEK_DAYS.map((d) => d.full).filter((d) => !cal.weekly_off_days.includes(d)));
+                      const wDays = ALL_WEEK_DAYS.map((d) => d.full).filter((d) => !cal.weekly_off_days.includes(d));
+                      setWorkingDays(wDays);
+                      if (wDays.length > 0) {
+                        setMainRangeStart(wDays[0]);
+                        setMainRangeEnd(wDays[wDays.length - 1]);
+                      }
                     }
                   }}
-                  className={cn(
-                    'px-2.5 py-1 rounded-lg text-xs font-bold border transition cursor-pointer',
-                    calendarId === cal.id
-                      ? 'bg-purple-600 text-white border-purple-600 shadow-2xs'
-                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-                  )}
                 >
-                  {cal.name} {cal.is_default && '★'}
-                </button>
+                  <span className="font-extrabold">{cal.name}</span>
+                  <span
+                    className={cn(
+                      'text-[10px] px-1.5 py-0.5 rounded font-black uppercase tracking-wider',
+                      calendarId === cal.id
+                        ? 'bg-purple-700/80 text-white'
+                        : cal.is_default
+                        ? 'bg-purple-100 text-purple-800'
+                        : 'bg-slate-100 text-slate-600'
+                    )}
+                  >
+                    {cal.is_default ? '★ Default' : (cal.department && cal.department !== 'All' ? cal.department : 'Custom')}
+                  </span>
+
+                  {allCalendars.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteCalendar(cal.id, cal.name);
+                      }}
+                      title={`Delete "${cal.name}"`}
+                      className={cn(
+                        'p-1 rounded-md transition cursor-pointer',
+                        calendarId === cal.id
+                          ? 'text-white/70 hover:text-white hover:bg-white/20'
+                          : 'text-slate-400 hover:text-rose-600 hover:bg-slate-100'
+                      )}
+                    >
+                      <Icon name="trash-2" size={12} />
+                    </button>
+                  )}
+                </div>
               ))}
             </div>
           )}
@@ -403,15 +529,27 @@ export function HrmsWorkCalendarsTab({ onSuccessToast }: HrmsWorkCalendarsTabPro
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                 Active Calendar
               </span>
-              <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-purple-100 text-purple-800">
-                STANDARD
-              </span>
+              <div className="flex items-center gap-1.5">
+                <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-purple-100 text-purple-800">
+                  {calendarType || 'STANDARD'}
+                </span>
+                {allCalendars.length > 1 && calendarId && (
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteCalendar(calendarId, calendarName)}
+                    title={`Delete "${calendarName}"`}
+                    className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                  >
+                    <Icon name="trash-2" size={13} />
+                  </button>
+                )}
+              </div>
             </div>
             <div className="mt-2">
               <h3 className="text-base font-black text-slate-900 truncate">{calendarName}</h3>
               <p className="text-xs font-bold text-emerald-600 flex items-center gap-1 mt-0.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-                Company Default Policy
+                {isDefault ? 'Company Policy' : (calendarDepartment && calendarDepartment !== 'All' ? `Department: ${calendarDepartment}` : 'Custom Work Policy')}
               </p>
             </div>
           </div>
@@ -503,31 +641,91 @@ export function HrmsWorkCalendarsTab({ onSuccessToast }: HrmsWorkCalendarsTabPro
               </div>
             </div>
 
-            {/* Calendar Name */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700">Calendar Name</label>
-              <input
-                type="text"
-                value={calendarName}
-                onChange={(e) => setCalendarName(e.target.value)}
-                placeholder="e.g. Standard Corporate Calendar"
-                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
-              />
+            {/* Calendar Name & Applicable Department Row */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700">Calendar Name</label>
+                <input
+                  type="text"
+                  value={calendarName}
+                  onChange={(e) => setCalendarName(e.target.value)}
+                  placeholder="e.g. Standard Corporate Calendar"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700">Applicable Department</label>
+                <select
+                  value={calendarDepartment}
+                  onChange={(e) => setCalendarDepartment(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500/20 cursor-pointer"
+                >
+                  <option value="All">All Departments (Company-wide)</option>
+                  {departmentList.map((dept) => (
+                    <option key={dept} value={dept}>
+                      {dept}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             {/* Type & Status Row */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-700">Calendar Type</label>
-                <select
-                  value={calendarType}
-                  onChange={(e) => setCalendarType(e.target.value)}
-                  className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
-                >
-                  <option value="Standard Corporate">Standard Corporate</option>
-                  <option value="Shift Rotation 24/7">Shift Rotation 24/7</option>
-                  <option value="Custom Departmental">Custom Departmental</option>
-                </select>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-700">Calendar Type</label>
+                  {isCustomType ? (
+                    <button
+                      type="button"
+                      onClick={() => setIsCustomType(false)}
+                      className="text-[10px] font-bold text-purple-600 hover:text-purple-800 cursor-pointer"
+                    >
+                      Choose Existing
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsCustomType(true);
+                        setCustomCalendarType('');
+                      }}
+                      className="text-[10px] font-bold text-purple-600 hover:text-purple-800 cursor-pointer"
+                    >
+                      + New Type
+                    </button>
+                  )}
+                </div>
+                {isCustomType ? (
+                  <input
+                    type="text"
+                    value={customCalendarType}
+                    onChange={(e) => setCustomCalendarType(e.target.value)}
+                    placeholder="e.g. Rotational 3-Shift"
+                    className="w-full px-3 py-2.5 bg-slate-50 border border-purple-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                    autoFocus
+                  />
+                ) : (
+                  <select
+                    value={calendarType}
+                    onChange={(e) => {
+                      if (e.target.value === '__NEW__') {
+                        setIsCustomType(true);
+                        setCustomCalendarType('');
+                      } else {
+                        setCalendarType(e.target.value);
+                      }
+                    }}
+                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                  >
+                    <option value="" disabled>Select Calendar Type</option>
+                    {existingCalendarTypes.map((t) => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                    <option value="__NEW__">+ Add Custom Calendar Type...</option>
+                  </select>
+                )}
               </div>
 
               <div className="space-y-1.5">
@@ -579,7 +777,7 @@ export function HrmsWorkCalendarsTab({ onSuccessToast }: HrmsWorkCalendarsTabPro
                   onClick={() => applyPreset('5')}
                   className={cn(
                     'py-2 px-2 rounded-xl text-xs font-bold text-center border transition',
-                    workingDays.length === 5 && !workingDays.includes('Saturday')
+                    workingDays.length === 5 && !workingDays.includes('Saturday') && !workingDays.includes('Sunday')
                       ? 'bg-purple-600 text-white border-purple-600 shadow-xs'
                       : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                   )}
@@ -591,7 +789,7 @@ export function HrmsWorkCalendarsTab({ onSuccessToast }: HrmsWorkCalendarsTabPro
                   onClick={() => applyPreset('6')}
                   className={cn(
                     'py-2 px-2 rounded-xl text-xs font-bold text-center border transition',
-                    workingDays.length === 6
+                    workingDays.length === 6 && !workingDays.includes('Sunday')
                       ? 'bg-purple-600 text-white border-purple-600 shadow-xs'
                       : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                   )}
@@ -610,6 +808,45 @@ export function HrmsWorkCalendarsTab({ onSuccessToast }: HrmsWorkCalendarsTabPro
                 >
                   All 7 Days
                 </button>
+              </div>
+
+              {/* Editable Day-to-Day Range Selector */}
+              <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-2 flex-wrap">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  Day Range:
+                </span>
+                <div className="flex items-center gap-1.5 flex-1 min-w-[200px]">
+                  <select
+                    value={mainRangeStart}
+                    onChange={(e) => setMainRangeStart(e.target.value)}
+                    className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-800 flex-1"
+                  >
+                    {ALL_WEEK_DAYS.map((d) => (
+                      <option key={d.full} value={d.full}>{d.short}</option>
+                    ))}
+                  </select>
+                  <span className="text-xs font-bold text-slate-400">to</span>
+                  <select
+                    value={mainRangeEnd}
+                    onChange={(e) => setMainRangeEnd(e.target.value)}
+                    className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-800 flex-1"
+                  >
+                    {ALL_WEEK_DAYS.map((d) => (
+                      <option key={d.full} value={d.full}>{d.short}</option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const range = computeDayRange(mainRangeStart, mainRangeEnd);
+                      setWorkingDays(range);
+                      showToast(`Applied ${range.length}-day range: ${range.map((d) => d.slice(0, 3)).join(', ')}`);
+                    }}
+                    className="px-2.5 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-bold transition cursor-pointer shadow-2xs"
+                  >
+                    Apply Range
+                  </button>
+                </div>
               </div>
 
               {/* 7 Days Toggle Rows (Matching Screenshot 5) */}
@@ -967,29 +1204,89 @@ export function HrmsWorkCalendarsTab({ onSuccessToast }: HrmsWorkCalendarsTabPro
                   required
                   value={modalCalName}
                   onChange={(e) => setModalCalName(e.target.value)}
-                  placeholder="Corporate 5-Day Standard Calendar"
+                  placeholder="Enter work calendar name..."
                   className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400"
                 />
+              </div>
+
+              {/* Applicable Department / Scope */}
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-700 block">
+                  Applicable Department / Scope
+                </label>
+                <select
+                  value={modalDepartment}
+                  onChange={(e) => setModalDepartment(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500/20 cursor-pointer"
+                >
+                  <option value="All">All Departments (Company-wide)</option>
+                  {departmentList.map((dept) => (
+                    <option key={dept} value={dept}>
+                      {dept}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               {/* 2-column: Calendar Type & Weekly Preset */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-700 block">
-                    Calendar Type *
-                  </label>
-                  <select
-                    required
-                    value={modalCalType}
-                    onChange={(e) => setModalCalType(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
-                  >
-                    <option value="" disabled>Select Calendar Type</option>
-                    <option value="Standard Corporate">Standard Corporate</option>
-                    <option value="Shift Based">Shift Based</option>
-                    <option value="Factory / Operations">Factory / Operations</option>
-                    <option value="Retail">Retail</option>
-                  </select>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-slate-700 block">
+                      Calendar Type *
+                    </label>
+                    {modalIsCustomType ? (
+                      <button
+                        type="button"
+                        onClick={() => setModalIsCustomType(false)}
+                        className="text-[10px] font-bold text-purple-600 hover:text-purple-800 cursor-pointer"
+                      >
+                        Existing
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setModalIsCustomType(true);
+                          setModalCustomCalType('');
+                        }}
+                        className="text-[10px] font-bold text-purple-600 hover:text-purple-800 cursor-pointer"
+                      >
+                        + New
+                      </button>
+                    )}
+                  </div>
+                  {modalIsCustomType ? (
+                    <input
+                      type="text"
+                      required
+                      value={modalCustomCalType}
+                      onChange={(e) => setModalCustomCalType(e.target.value)}
+                      placeholder="e.g. Rotational Shift"
+                      className="w-full px-3 py-2 bg-white border border-purple-300 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                      autoFocus
+                    />
+                  ) : (
+                    <select
+                      required
+                      value={modalCalType}
+                      onChange={(e) => {
+                        if (e.target.value === '__NEW__') {
+                          setModalIsCustomType(true);
+                          setModalCustomCalType('');
+                        } else {
+                          setModalCalType(e.target.value);
+                        }
+                      }}
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                    >
+                      <option value="" disabled>Select Calendar Type</option>
+                      {existingCalendarTypes.map((t) => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                      <option value="__NEW__">+ Add Custom Calendar Type...</option>
+                    </select>
+                  )}
                 </div>
 
                 <div className="space-y-1">
@@ -997,16 +1294,145 @@ export function HrmsWorkCalendarsTab({ onSuccessToast }: HrmsWorkCalendarsTabPro
                     Weekly Preset *
                   </label>
                   <select
-                    required
                     value={modalWeeklyPreset}
-                    onChange={(e) => setModalWeeklyPreset(e.target.value)}
+                    onChange={(e) => {
+                      const preset = e.target.value;
+                      setModalWeeklyPreset(preset);
+                      if (preset === '5') {
+                        setModalWorkingDays(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']);
+                        setModalRangeStart('Monday');
+                        setModalRangeEnd('Friday');
+                      } else if (preset === '6') {
+                        setModalWorkingDays(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']);
+                        setModalRangeStart('Monday');
+                        setModalRangeEnd('Saturday');
+                      } else if (preset === 'mideast') {
+                        setModalWorkingDays(['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday']);
+                        setModalRangeStart('Sunday');
+                        setModalRangeEnd('Thursday');
+                      } else if (preset === '7') {
+                        setModalWorkingDays(ALL_WEEK_DAYS.map((d) => d.full));
+                        setModalRangeStart('Monday');
+                        setModalRangeEnd('Sunday');
+                      }
+                    }}
                     className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
                   >
                     <option value="" disabled>Select Weekly Preset</option>
-                    <option value="Mon – Fri (5 Days)">Mon – Fri (5 Days)</option>
-                    <option value="Mon – Sat (6 Days)">Mon – Sat (6 Days)</option>
-                    <option value="All 7 Days">All 7 Days</option>
+                    <option value="5">Mon – Fri (5 Days)</option>
+                    <option value="6">Mon – Sat (6 Days)</option>
+                    <option value="mideast">Sun – Thu (5 Days)</option>
+                    <option value="7">All 7 Days (Continuous)</option>
+                    <option value="custom">Custom Day-to-Day Range</option>
                   </select>
+                </div>
+              </div>
+
+              {/* Editable Day-to-Day Range & Interactive Day Selection */}
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider">
+                    Edit Days to Day Range
+                  </span>
+                  <span className="text-xs font-black text-purple-700">
+                    {modalWorkingDays.length} Working Days
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 block mb-0.5">From Day</label>
+                    <select
+                      value={modalRangeStart}
+                      onChange={(e) => {
+                        const start = e.target.value;
+                        setModalRangeStart(start);
+                        if (modalRangeEnd) {
+                          const days = computeDayRange(start, modalRangeEnd);
+                          setModalWorkingDays(days);
+                        } else {
+                          setModalWorkingDays([start]);
+                        }
+                        setModalWeeklyPreset('custom');
+                      }}
+                      className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-800 focus:outline-none"
+                    >
+                      <option value="" disabled>Select start day</option>
+                      {ALL_WEEK_DAYS.map((d) => (
+                        <option key={d.full} value={d.full}>{d.full}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 block mb-0.5">To Day</label>
+                    <select
+                      value={modalRangeEnd}
+                      onChange={(e) => {
+                        const end = e.target.value;
+                        setModalRangeEnd(end);
+                        if (modalRangeStart) {
+                          const days = computeDayRange(modalRangeStart, end);
+                          setModalWorkingDays(days);
+                        } else {
+                          setModalWorkingDays([end]);
+                        }
+                        setModalWeeklyPreset('custom');
+                      }}
+                      className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-800 focus:outline-none"
+                    >
+                      <option value="" disabled>Select end day</option>
+                      {ALL_WEEK_DAYS.map((d) => (
+                        <option key={d.full} value={d.full}>{d.full}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Day Pills Toggle */}
+                <div className="pt-1">
+                  <label className="text-[10px] font-bold text-slate-400 block mb-1">
+                    Toggle working days / off days:
+                  </label>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {ALL_WEEK_DAYS.map((d) => {
+                      const isSel = modalWorkingDays.includes(d.full);
+                      return (
+                        <button
+                          key={d.full}
+                          type="button"
+                          onClick={() => {
+                            if (isSel) {
+                              if (modalWorkingDays.length <= 1) {
+                                showToast('At least 1 working day must be configured.');
+                                return;
+                              }
+                              setModalWorkingDays(modalWorkingDays.filter((w) => w !== d.full));
+                            } else {
+                              setModalWorkingDays([...modalWorkingDays, d.full]);
+                            }
+                            setModalWeeklyPreset('custom');
+                          }}
+                          className={cn(
+                            'px-2.5 py-1 rounded-lg text-xs font-bold border transition cursor-pointer',
+                            isSel
+                              ? 'bg-purple-600 text-white border-purple-600 shadow-2xs'
+                              : 'bg-white text-slate-400 border-slate-200 hover:bg-slate-100 hover:text-slate-700'
+                          )}
+                        >
+                          {d.short} {isSel ? '✓' : ''}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="pt-0.5 flex items-center justify-between text-[11px] font-semibold">
+                  <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/60">
+                    Working: {modalWorkingDays.map((d) => d.slice(0, 3)).join(', ')}
+                  </span>
+                  <span className="text-sky-700 bg-sky-50 px-2 py-0.5 rounded border border-sky-200/60">
+                    Off: {ALL_WEEK_DAYS.filter((d) => !modalWorkingDays.includes(d.full)).map((d) => d.short).join(', ') || 'None'}
+                  </span>
                 </div>
               </div>
 

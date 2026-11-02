@@ -33,6 +33,9 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
   const [shiftTemplates, setShiftTemplates] = useState<ShiftTemplateItem[]>([]);
   const [workCalendars, setWorkCalendars] = useState<WorkCalendarItem[]>([]);
 
+  // Scope Filter: Employee vs Student (replacing Flat List / Team Hierarchy)
+  const [rosterScope, setRosterScope] = useState<'employee' | 'student'>('employee');
+
   // Quick Shift Assignment Modal (from Roster cell click)
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [modalTarget, setModalTarget] = useState<{
@@ -42,7 +45,7 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
   } | null>(null);
   const [modalShiftCode, setModalShiftCode] = useState('');
 
-  // Add Shift Timing Modal (matching Image 2)
+  // Add Shift Timing Modal (matching Image 3)
   const [showAddTimingModal, setShowAddTimingModal] = useState(false);
   const [targetCalendar, setTargetCalendar] = useState<WorkCalendarItem | null>(null);
   const [newTimingName, setNewTimingName] = useState('');
@@ -50,13 +53,25 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
   const [newTimingEndTime, setNewTimingEndTime] = useState('');
   const [submittingTiming, setSubmittingTiming] = useState(false);
 
-  // New Work Calendar Modal (Matching Screenshot)
+  // New Work Calendar Modal (Matching Image 2)
   const [showNewCalendarModal, setShowNewCalendarModal] = useState(false);
   const [newCalName, setNewCalName] = useState('');
-  const [newCalType, setNewCalType] = useState('');
-  const [newCalPreset, setNewCalPreset] = useState('');
-  const [newCalIsDefault, setNewCalIsDefault] = useState(false);
+  const [newCalWorkingDays, setNewCalWorkingDays] = useState<string[]>(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
   const [submittingCal, setSubmittingCal] = useState(false);
+
+  // Shift Template Selection, Edit & Create States (Matching Item 1)
+  const [selectedTemplateIds, setSelectedTemplateIds] = useState<string[]>([]);
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
+  const [templateCode, setTemplateCode] = useState('');
+  const [templateName, setTemplateName] = useState('');
+  const [templateStartTime, setTemplateStartTime] = useState('');
+  const [templateEndTime, setTemplateEndTime] = useState('');
+  const [templateBreakMins, setTemplateBreakMins] = useState<number | ''>('');
+  const [templateGraceMins, setTemplateGraceMins] = useState<number | ''>('');
+  const [templateIsNight, setTemplateIsNight] = useState(false);
+  const [templateColor, setTemplateColor] = useState('#7c3aed');
+  const [submittingTemplate, setSubmittingTemplate] = useState(false);
 
   // Helper toast
   const showToast = (msg: string) => {
@@ -81,6 +96,7 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
         department: selectedDepartment !== 'ALL' ? selectedDepartment : undefined,
         search: searchQuery.trim() || undefined,
         view: viewMode,
+        user_type: rosterScope,
       });
       setRosterData(res);
     } catch (err) {
@@ -110,7 +126,7 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
   useEffect(() => {
     fetchRoster();
     fetchTemplatesAndCalendars();
-  }, [currentWeekMondayStr, selectedDepartment, viewMode]);
+  }, [currentWeekMondayStr, selectedDepartment, viewMode, rosterScope]);
 
   useEffect(() => {
     if (activeTabMode === 'templates') {
@@ -178,16 +194,21 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
   const handleOpenAddTimingModal = (cal: WorkCalendarItem) => {
     setTargetCalendar(cal);
     setNewTimingName('');
-    setNewTimingStartTime('09:00 AM');
-    setNewTimingEndTime('06:00 PM');
+    setNewTimingStartTime('');
+    setNewTimingEndTime('');
     setShowAddTimingModal(true);
   };
 
   // Submit adding shift timing to calendar
-  const handleSaveShiftTiming = async () => {
+  const handleSaveShiftTiming = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!targetCalendar) return;
     if (!newTimingName.trim()) {
-      alert('Please enter a shift name');
+      showToast('Please enter a shift name');
+      return;
+    }
+    if (!newTimingStartTime.trim() || !newTimingEndTime.trim()) {
+      showToast('Start time and end time are required');
       return;
     }
     setSubmittingTiming(true);
@@ -201,7 +222,7 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
       setShowAddTimingModal(false);
       fetchTemplatesAndCalendars();
     } catch (err: any) {
-      alert(err?.response?.data?.detail || err?.message || 'Failed to add shift timing');
+      showToast(err?.response?.data?.detail || err?.message || 'Failed to add shift timing');
     } finally {
       setSubmittingTiming(false);
     }
@@ -215,7 +236,7 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
       showToast('Shift timing removed successfully.');
       fetchTemplatesAndCalendars();
     } catch (err: any) {
-      alert(err?.response?.data?.detail || err?.message || 'Failed to remove shift timing');
+      showToast(err?.response?.data?.detail || err?.message || 'Failed to remove shift timing');
     }
   };
 
@@ -228,40 +249,40 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
       fetchTemplatesAndCalendars();
       fetchRoster();
     } catch (err: any) {
-      alert(err?.response?.data?.detail || err?.message || 'Failed to delete work calendar');
+      showToast(err?.response?.data?.detail || err?.message || 'Failed to delete work calendar');
     }
   };
 
-  // Create new work calendar
+  // Create new work calendar (matching Image 2)
   const handleCreateNewCalendar = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!newCalName.trim()) {
       showToast('Please enter a calendar name');
       return;
     }
-    if (!newCalType) {
-      showToast('Please select a calendar type');
-      return;
-    }
-    if (!newCalPreset) {
-      showToast('Please select a weekly preset');
+    if (newCalWorkingDays.length === 0) {
+      showToast('Please select at least one working day');
       return;
     }
     setSubmittingCal(true);
     try {
-      let days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-      let offs = ['Saturday', 'Sunday'];
-      if (newCalPreset.includes('6')) {
-        days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        offs = ['Sunday'];
-      } else if (newCalPreset.includes('7') || newCalPreset.toLowerCase().includes('all')) {
-        days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-        offs = [];
-      }
+      const dayMap: Record<string, string> = {
+        Mon: 'Monday',
+        Tue: 'Tuesday',
+        Wed: 'Wednesday',
+        Thu: 'Thursday',
+        Fri: 'Friday',
+        Sat: 'Saturday',
+        Sun: 'Sunday',
+      };
+      const allDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      const days = newCalWorkingDays.map((d) => dayMap[d] || d);
+      const offs = allDays.filter((d) => !newCalWorkingDays.includes(d)).map((d) => dayMap[d] || d);
+
       await hrmsApi.saveWorkCalendar({
         name: newCalName.trim(),
-        calendar_type: newCalType,
-        is_default: newCalIsDefault,
+        calendar_type: 'shift',
+        is_default: false,
         working_days: days,
         weekly_off_days: offs,
         is_active: true,
@@ -269,15 +290,95 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
       showToast(`Work calendar "${newCalName}" created successfully.`);
       setShowNewCalendarModal(false);
       setNewCalName('');
-      setNewCalType('');
-      setNewCalPreset('');
-      setNewCalIsDefault(false);
+      setNewCalWorkingDays(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
       fetchTemplatesAndCalendars();
       fetchRoster();
     } catch (err: any) {
       showToast(err?.response?.data?.detail || err?.message || 'Failed to create work calendar');
     } finally {
       setSubmittingCal(false);
+    }
+  };
+
+  // Shift Template Handlers: Add, Edit, Delete (Matching Item 1)
+  const handleOpenAddTemplate = () => {
+    setEditingTemplateId(null);
+    setTemplateCode('');
+    setTemplateName('');
+    setTemplateStartTime('');
+    setTemplateEndTime('');
+    setTemplateBreakMins('');
+    setTemplateGraceMins('');
+    setTemplateIsNight(false);
+    setTemplateColor('#7c3aed');
+    setShowTemplateModal(true);
+  };
+
+  const handleOpenEditTemplate = (tpl: ShiftTemplateItem) => {
+    setEditingTemplateId(tpl.id);
+    setTemplateCode(tpl.code);
+    setTemplateName(tpl.name);
+    setTemplateStartTime(tpl.start_time || '');
+    setTemplateEndTime(tpl.end_time || '');
+    setTemplateBreakMins(tpl.break_mins ?? '');
+    setTemplateGraceMins(tpl.grace_period_mins ?? '');
+    setTemplateIsNight(Boolean(tpl.is_night_shift));
+    setTemplateColor(tpl.color || '#7c3aed');
+    setShowTemplateModal(true);
+  };
+
+  const handleSaveShiftTemplate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!templateCode.trim() || !templateName.trim()) {
+      showToast('Shift code and name are required');
+      return;
+    }
+    setSubmittingTemplate(true);
+    try {
+      await hrmsApi.saveShiftTemplate({
+        id: editingTemplateId || undefined,
+        code: templateCode.trim().toUpperCase(),
+        name: templateName.trim(),
+        start_time: templateStartTime.trim(),
+        end_time: templateEndTime.trim(),
+        break_mins: templateBreakMins !== '' ? Number(templateBreakMins) : 0,
+        grace_period_mins: templateGraceMins !== '' ? Number(templateGraceMins) : 0,
+        is_night_shift: templateIsNight,
+        color: templateColor,
+        is_active: true,
+      });
+      showToast(`Shift template "${templateName}" saved successfully.`);
+      setShowTemplateModal(false);
+      fetchTemplatesAndCalendars();
+    } catch (err: any) {
+      showToast(err?.response?.data?.detail || err?.message || 'Failed to save shift template');
+    } finally {
+      setSubmittingTemplate(false);
+    }
+  };
+
+  const handleDeleteTemplate = async (templateId: string, tplName: string) => {
+    if (!confirm(`Are you sure you want to delete shift template "${tplName}"?`)) return;
+    try {
+      await hrmsApi.deleteShiftTemplate(templateId);
+      showToast(`Shift template "${tplName}" deleted.`);
+      setSelectedTemplateIds((prev) => prev.filter((id) => id !== templateId));
+      fetchTemplatesAndCalendars();
+    } catch (err: any) {
+      showToast(err?.response?.data?.detail || err?.message || 'Failed to delete shift template');
+    }
+  };
+
+  const handleBulkDeleteTemplates = async () => {
+    if (selectedTemplateIds.length === 0) return;
+    if (!confirm(`Are you sure you want to delete ${selectedTemplateIds.length} selected shift templates?`)) return;
+    try {
+      await Promise.all(selectedTemplateIds.map((id) => hrmsApi.deleteShiftTemplate(id)));
+      showToast(`Deleted ${selectedTemplateIds.length} shift templates.`);
+      setSelectedTemplateIds([]);
+      fetchTemplatesAndCalendars();
+    } catch (err: any) {
+      showToast(err?.response?.data?.detail || err?.message || 'Failed to delete selected templates');
     }
   };
 
@@ -338,9 +439,7 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
             type="button"
             onClick={() => {
               setNewCalName('');
-              setNewCalType('');
-              setNewCalPreset('');
-              setNewCalIsDefault(false);
+              setNewCalWorkingDays(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
               setShowNewCalendarModal(true);
             }}
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white shadow-sm shadow-purple-600/25 transition-all cursor-pointer"
@@ -436,128 +535,55 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
       {/* ───────────────────────────────────────────────────────────── */}
       {activeTabMode === 'templates' ? (
         /* ══════════════════════════════════════════════════════════════ */
-        /* VIEW 1: SHIFT TEMPLATES & WORK CALENDARS (Matching Image 1)   */
+        /* VIEW 1: SHIFT TEMPLATES                                       */
         /* ══════════════════════════════════════════════════════════════ */
         <div className="space-y-6">
-          {/* Section A: Active Work Calendars & Day Schedules */}
+          {/* Standard Enterprise Shift Templates (Matching Image 1 & Item 1) */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between px-1">
-              <h2 className="text-sm font-black text-slate-900 tracking-tight">
-                Active Work Calendars &amp; Day Schedules
-              </h2>
-            </div>
-
-            {templatesLoading ? (
-              <div className="p-8 text-center text-slate-400 font-bold bg-white rounded-2xl border border-slate-200">
-                <div className="w-6 h-6 border-2 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-                Loading work calendars...
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1">
+              <div className="flex items-center gap-3">
+                <h2 className="text-sm font-black text-slate-900 tracking-tight">
+                  Standard Enterprise Shift Templates
+                </h2>
+                {shiftTemplates.length > 0 && (
+                  <label className="flex items-center gap-1.5 text-xs font-bold text-slate-500 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={selectedTemplateIds.length === shiftTemplates.length && shiftTemplates.length > 0}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedTemplateIds(shiftTemplates.map((t) => t.id));
+                        } else {
+                          setSelectedTemplateIds([]);
+                        }
+                      }}
+                      className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 border-slate-300"
+                    />
+                    <span>Select All</span>
+                  </label>
+                )}
               </div>
-            ) : workCalendars.length === 0 ? (
-              <div className="p-8 text-center bg-white rounded-2xl border border-slate-200 space-y-2">
-                <p className="text-xs font-bold text-slate-500">No active work calendars found.</p>
+
+              <div className="flex items-center gap-2">
+                {selectedTemplateIds.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleBulkDeleteTemplates}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 transition cursor-pointer"
+                  >
+                    <Icon name="trash-2" size={13} />
+                    <span>Delete Selected ({selectedTemplateIds.length})</span>
+                  </button>
+                )}
                 <button
-                  onClick={() => setShowNewCalendarModal(true)}
-                  className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-purple-600 text-white"
+                  type="button"
+                  onClick={handleOpenAddTemplate}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white shadow-2xs transition cursor-pointer"
                 >
-                  Create Work Calendar
+                  <Icon name="plus" size={13} />
+                  <span>Add Shift Template</span>
                 </button>
               </div>
-            ) : (
-              <div className="space-y-3.5">
-                {workCalendars.map((cal) => {
-                  const daysShort = (cal.working_days || []).map((d) => d.slice(0, 3)).join(', ');
-                  const timings = cal.shift_timings || [];
-
-                  return (
-                    <div
-                      key={cal.id}
-                      className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs space-y-3"
-                    >
-                      {/* Calendar Card Header */}
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
-                        <div>
-                          <h3 className="text-sm font-black text-slate-900 tracking-tight">
-                            {cal.name}
-                          </h3>
-                          <p className="text-xs text-slate-500 font-medium">
-                            Working Days: <span className="font-semibold text-slate-700">{daysShort || 'None'}</span> • Type:{' '}
-                            <span className="font-semibold text-purple-700">{cal.calendar_type || 'shift'}</span>
-                          </p>
-                        </div>
-
-                        {/* Right Buttons: + Add Shift Timing & Delete Calendar */}
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => handleOpenAddTimingModal(cal)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 shadow-2xs transition"
-                          >
-                            <Icon name="plus" size={13} className="text-purple-600" />
-                            <span>Add Shift Timing</span>
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteCalendar(cal.id, cal.name)}
-                            title="Delete this work calendar"
-                            className="p-1.5 rounded-xl border border-rose-200 text-rose-500 hover:bg-rose-50 transition"
-                          >
-                            <Icon name="trash-2" size={14} />
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Shift Timings Box List */}
-                      <div className="space-y-2">
-                        {timings.length === 0 ? (
-                          <div className="p-4 rounded-xl bg-slate-50 border border-dashed border-slate-200 text-center text-xs text-slate-400 font-medium">
-                            No shift timings added to this calendar yet. Click &ldquo;+ Add Shift Timing&rdquo; to configure schedule hours.
-                          </div>
-                        ) : (
-                          timings.map((timing) => (
-                            <div
-                              key={timing.id}
-                              className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50/70 border border-slate-200/80 hover:border-purple-200 transition"
-                            >
-                              <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 border border-purple-200/70">
-                                  <Icon name="clock" size={14} />
-                                </div>
-                                <div>
-                                  <div className="text-xs font-bold text-slate-900">
-                                    {timing.name}
-                                  </div>
-                                  <div className="text-xs font-mono text-slate-500 font-medium">
-                                    {timing.start_time} - {timing.end_time}
-                                  </div>
-                                </div>
-                              </div>
-
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteTiming(cal.id, timing.id)}
-                                title="Remove this shift timing"
-                                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
-                              >
-                                <Icon name="trash-2" size={13} />
-                              </button>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Section B: Standard Enterprise Shift Templates (Matching Image 1) */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between px-1">
-              <h2 className="text-sm font-black text-slate-900 tracking-tight">
-                Standard Enterprise Shift Templates
-              </h2>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
@@ -572,34 +598,67 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
                 const cardBg = isGen
                   ? 'bg-purple-50/40 border-purple-200/80'
                   : isMorn
-                  ? 'bg-emerald-50/40 border-emerald-200/80'
-                  : isEve
-                  ? 'bg-amber-50/40 border-amber-200/80'
-                  : 'bg-indigo-50/40 border-indigo-200/80';
+                    ? 'bg-emerald-50/40 border-emerald-200/80'
+                    : isEve
+                      ? 'bg-amber-50/40 border-amber-200/80'
+                      : 'bg-indigo-50/40 border-indigo-200/80';
 
                 const badgeColor = isGen
                   ? 'text-purple-700 bg-purple-100/70'
                   : isMorn
-                  ? 'text-emerald-700 bg-emerald-100/70'
-                  : isEve
-                  ? 'text-amber-700 bg-amber-100/70'
-                  : 'text-indigo-700 bg-indigo-100/70';
+                    ? 'text-emerald-700 bg-emerald-100/70'
+                    : isEve
+                      ? 'text-amber-700 bg-amber-100/70'
+                      : 'text-indigo-700 bg-indigo-100/70';
 
-                const iconName = isGen ? 'sun' : isMorn ? 'sunrise' : isEve ? 'sunset' : 'moon';
+                const isChecked = selectedTemplateIds.includes(tpl.id);
 
                 return (
                   <div
                     key={tpl.id}
                     className={cn(
                       'card p-4 rounded-2xl border shadow-2xs space-y-3 relative transition hover:shadow-xs',
-                      cardBg
+                      cardBg,
+                      isChecked && 'ring-2 ring-purple-600'
                     )}
                   >
                     <div className="flex items-center justify-between">
-                      <span className={cn('px-2 py-0.5 rounded-md text-[11px] font-black tracking-wider uppercase', badgeColor)}>
-                        {tpl.code}
-                      </span>
-                      <Icon name={iconName} size={15} className="text-slate-400" />
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            setSelectedTemplateIds((prev) =>
+                              prev.includes(tpl.id) ? prev.filter((id) => id !== tpl.id) : [...prev, tpl.id]
+                            );
+                          }}
+                          className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 border-slate-300 cursor-pointer"
+                        />
+                        <span className={cn('px-2 py-0.5 rounded-md text-[11px] font-black tracking-wider uppercase', badgeColor)}>
+                          {tpl.code}
+                        </span>
+                      </div>
+
+                      {/* Action buttons: Edit & Delete */}
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditTemplate(tpl)}
+                          title="Edit this shift template"
+                          className="p-1 rounded-lg text-slate-400 hover:text-purple-700 hover:bg-white/80 transition cursor-pointer"
+                        >
+                          <Icon name="edit" size={13} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteTemplate(tpl.id, tpl.name)}
+                          title="Delete this shift template"
+                          className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-white/80 transition cursor-pointer"
+                        >
+                          <Icon name="trash-2" size={13} />
+                        </button>
+                      </div>
                     </div>
 
                     <div>
@@ -610,7 +669,7 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
                         {tpl.start_time} - {tpl.end_time}
                       </p>
                       <p className="text-[11px] text-slate-500 font-medium mt-0.5">
-                        Break: {tpl.break_mins ?? 60} mins • Grace: {tpl.grace_period_mins ?? 15} mins
+                        Break: {tpl.break_mins ?? 0} mins • Grace: {tpl.grace_period_mins ?? 0} mins
                       </p>
                     </div>
                   </div>
@@ -637,44 +696,30 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search staff by name, employee code, email, designation..."
+                placeholder={`Search ${rosterScope === 'student' ? 'students' : 'staff'} by name, code, designation...`}
                 className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200/80 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
               />
             </div>
 
-            {/* Right Controls: View Switcher, Department Dropdown, Week Navigator */}
+            {/* Right Controls: Scope Selector, Department Dropdown, Week Navigator */}
             <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
-              {/* View Switcher: Flat List vs Team Hierarchy */}
-              <div className="flex items-center gap-1 text-xs">
-                <span className="text-slate-400 font-bold hidden sm:inline">View:</span>
-                <div className="inline-flex p-0.5 bg-slate-100 rounded-xl border border-slate-200/80">
-                  <button
-                    type="button"
-                    onClick={() => setViewMode('flat')}
-                    className={cn(
-                      'px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer',
-                      viewMode === 'flat'
-                        ? 'bg-white text-purple-700 shadow-2xs'
-                        : 'text-slate-500 hover:text-slate-800'
-                    )}
-                  >
-                    <Icon name="list" size={12} />
-                    <span>Flat List</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setViewMode('hierarchy')}
-                    className={cn(
-                      'px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer',
-                      viewMode === 'hierarchy'
-                        ? 'bg-white text-purple-700 shadow-2xs'
-                        : 'text-slate-500 hover:text-slate-800'
-                    )}
-                  >
-                    <Icon name="git-branch" size={12} />
-                    <span>Team Hierarchy</span>
-                  </button>
-                </div>
+              {/* Scope Selector: Employee vs Students (Replacing Flat List vs Team Hierarchy) */}
+              <div className="flex items-center gap-1.5 bg-purple-50/80 px-2.5 py-1 rounded-xl border border-purple-200/60 shadow-2xs">
+                <span className="text-[11px] font-black uppercase text-purple-700 tracking-wider">
+                  Scope:
+                </span>
+                <select
+                  value={rosterScope}
+                  onChange={(e) => {
+                    setRosterScope(e.target.value as 'employee' | 'student');
+                    setSelectedDepartment('ALL');
+                    setSearchQuery('');
+                  }}
+                  className="bg-white text-purple-700 px-3 py-1.5 rounded-lg text-xs font-black border-0 shadow-xs focus:outline-none cursor-pointer hover:bg-purple-50 transition"
+                >
+                  <option value="employee"> Employees Roster</option>
+                  <option value="student">Students Roster</option>
+                </select>
               </div>
 
               {/* Department Dropdown */}
@@ -685,7 +730,7 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
                   className="pl-3 pr-8 py-1.5 bg-slate-50 border border-slate-200/80 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-500/20 cursor-pointer appearance-none"
                 >
                   <option value="ALL">
-                    All Departments ({rosterData?.departments?.length ?? 0})
+                    All {rosterScope === 'student' ? 'Courses' : 'Departments'} ({rosterData?.departments?.length ?? 0})
                   </option>
                   {(rosterData?.departments || []).map((dept) => (
                     <option key={dept} value={dept}>
@@ -718,8 +763,8 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
                   {selectedWeekOffset === 0
                     ? 'This Week'
                     : selectedWeekOffset > 0
-                    ? `+${selectedWeekOffset} Wk`
-                    : `${selectedWeekOffset} Wk`}
+                      ? `+${selectedWeekOffset} Wk`
+                      : `${selectedWeekOffset} Wk`}
                 </button>
                 <button
                   type="button"
@@ -737,7 +782,7 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
           <div className="flex items-center justify-between px-1 text-xs font-bold text-slate-500">
             <div>{rosterData?.week_label || 'Week of Current Schedule'}</div>
             <div className="text-slate-400">
-              Showing {rosterData?.employees?.length ?? 0} of {rosterData?.total_staff ?? 0} staff
+              Showing {rosterData?.employees?.length ?? 0} of {rosterData?.total_staff ?? 0} {rosterScope === 'student' ? 'students' : 'staff'}
             </div>
           </div>
 
@@ -759,7 +804,9 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
                         className="rounded border-slate-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
                       />
                     </th>
-                    <th className="py-3.5 px-4 min-w-[220px]">EMPLOYEE PROFILE</th>
+                    <th className="py-3.5 px-4 min-w-[220px]">
+                      {rosterScope === 'student' ? 'STUDENT PROFILE' : 'EMPLOYEE PROFILE'}
+                    </th>
                     {(rosterData?.dates || []).map((d) => (
                       <th
                         key={d.date}
@@ -883,90 +930,92 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
       )}
 
       {/* ───────────────────────────────────────────────────────────── */}
-      {/* 4. MODAL: ADD SHIFT TIMING TO CALENDAR (Matching Image 2)     */}
+      {/* 4. MODAL: ADD SHIFT TIMING TO CALENDAR (Matching Image 3)     */}
       {/* ───────────────────────────────────────────────────────────── */}
       {showAddTimingModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4 animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-              <h3 className="text-base font-black text-slate-900">
-                Add Shift to {targetCalendar?.name || 'Calendar'}
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 backdrop-blur-xs p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+            <div className="flex items-center justify-between pb-1">
+              <h3 className="text-base font-bold text-slate-900">
+                Add Shift to {targetCalendar?.name || 'Day Shift'}
               </h3>
               <button
                 type="button"
                 onClick={() => setShowAddTimingModal(false)}
-                className="text-slate-400 hover:text-slate-700 p-1 rounded-lg"
+                className="w-7 h-7 rounded-full border border-slate-200 text-slate-400 hover:text-slate-600 hover:bg-slate-50 flex items-center justify-center transition cursor-pointer"
               >
-                <Icon name="x" size={16} />
+                <Icon name="x" size={14} />
               </button>
             </div>
 
-            <div className="space-y-3 text-xs">
-              <div>
-                <label className="text-[11px] font-black uppercase text-slate-500 tracking-wider block mb-1">
+            <form onSubmit={handleSaveShiftTiming} className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-[11px] font-black uppercase text-slate-500 tracking-wider block">
                   SHIFT NAME
                 </label>
                 <input
                   type="text"
+                  required
                   value={newTimingName}
                   onChange={(e) => setNewTimingName(e.target.value)}
                   placeholder="e.g. Night Shift"
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                  className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[11px] font-black uppercase text-slate-500 tracking-wider block mb-1">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-black uppercase text-slate-500 tracking-wider block">
                     START TIME
                   </label>
                   <div className="relative">
                     <input
                       type="text"
+                      required
                       value={newTimingStartTime}
                       onChange={(e) => setNewTimingStartTime(e.target.value)}
                       placeholder="09:00 AM"
-                      className="w-full pl-3 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                      className="w-full pl-3 pr-8 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
                     />
-                    <Icon name="clock" size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <Icon name="clock" size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                   </div>
                 </div>
 
-                <div>
-                  <label className="text-[11px] font-black uppercase text-slate-500 tracking-wider block mb-1">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-black uppercase text-slate-500 tracking-wider block">
                     END TIME
                   </label>
                   <div className="relative">
                     <input
                       type="text"
+                      required
                       value={newTimingEndTime}
                       onChange={(e) => setNewTimingEndTime(e.target.value)}
                       placeholder="06:00 PM"
-                      className="w-full pl-3 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                      className="w-full pl-3 pr-8 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
                     />
-                    <Icon name="clock" size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <Icon name="clock" size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                   </div>
                 </div>
               </div>
-            </div>
 
-            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => setShowAddTimingModal(false)}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition border border-slate-200"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={submittingTiming}
-                onClick={handleSaveShiftTiming}
-                className="px-5 py-2 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white shadow-md shadow-purple-600/20 transition disabled:opacity-50"
-              >
-                {submittingTiming ? 'Adding...' : 'Add Shift'}
-              </button>
-            </div>
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowAddTimingModal(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingTiming}
+                  className="px-5 py-2 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white shadow-md shadow-purple-600/20 transition cursor-pointer disabled:opacity-50"
+                >
+                  {submittingTiming ? 'Adding...' : 'Add Shift'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
@@ -1061,112 +1110,235 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
       )}
 
       {/* ───────────────────────────────────────────────────────────── */}
-      {/* 6. MODAL: CREATE NEW WORK CALENDAR (Matching Screenshot)       */}
+      {/* 6. MODAL: CREATE NEW WORK CALENDAR (Matching Image 2)         */}
       {/* ───────────────────────────────────────────────────────────── */}
       {showNewCalendarModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 backdrop-blur-xs p-4 animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4">
             <div className="flex items-center justify-between pb-1">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
-                  <Icon name="calendar" size={16} />
-                </div>
-                <h3 className="text-sm font-bold text-slate-900">
-                  Create New Work Calendar
-                </h3>
-              </div>
+              <h3 className="text-base font-bold text-slate-900">
+                New Shift Calendar
+              </h3>
               <button
                 type="button"
                 onClick={() => setShowNewCalendarModal(false)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg cursor-pointer transition"
+                className="w-7 h-7 rounded-full border border-slate-200 text-slate-400 hover:text-slate-600 hover:bg-slate-50 flex items-center justify-center transition cursor-pointer"
               >
-                <Icon name="x" size={16} />
+                <Icon name="x" size={14} />
               </button>
             </div>
 
             <form onSubmit={handleCreateNewCalendar} className="space-y-4">
               {/* Calendar Name */}
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-700 block">
-                  Calendar Name *
+                <label className="text-[11px] font-black uppercase text-slate-500 tracking-wider block">
+                  CALENDAR NAME
                 </label>
                 <input
                   type="text"
                   required
                   value={newCalName}
                   onChange={(e) => setNewCalName(e.target.value)}
-                  placeholder="Corporate 5-Day Standard Calendar"
-                  className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400"
+                  placeholder="e.g. Standard Rotating Shifts"
+                  className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400"
                 />
               </div>
 
-              {/* 2-column: Calendar Type & Weekly Preset */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-700 block">
-                    Calendar Type *
-                  </label>
-                  <select
-                    required
-                    value={newCalType}
-                    onChange={(e) => setNewCalType(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
-                  >
-                    <option value="" disabled>Select Calendar Type</option>
-                    <option value="Standard Corporate">Standard Corporate</option>
-                    <option value="Shift Based">Shift Based</option>
-                    <option value="Factory / Operations">Factory / Operations</option>
-                    <option value="Retail">Retail</option>
-                  </select>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-700 block">
-                    Weekly Preset *
-                  </label>
-                  <select
-                    required
-                    value={newCalPreset}
-                    onChange={(e) => setNewCalPreset(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
-                  >
-                    <option value="" disabled>Select Weekly Preset</option>
-                    <option value="Mon – Fri (5 Days)">Mon – Fri (5 Days)</option>
-                    <option value="Mon – Sat (6 Days)">Mon – Sat (6 Days)</option>
-                    <option value="All 7 Days">All 7 Days</option>
-                  </select>
+              {/* Working Days Pill Selector (Matching Screenshot) */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-black uppercase text-slate-500 tracking-wider block">
+                  WORKING DAYS
+                </label>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => {
+                    const isSelected = newCalWorkingDays.includes(day);
+                    return (
+                      <button
+                        key={day}
+                        type="button"
+                        onClick={() => {
+                          setNewCalWorkingDays((prev) =>
+                            prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
+                          );
+                        }}
+                        className={cn(
+                          'px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer select-none',
+                          isSelected
+                            ? 'bg-purple-600 text-white shadow-xs'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        )}
+                      >
+                        {day}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
-
-              {/* Checkbox: Set as company default */}
-              <label className="flex items-center gap-2 pt-1 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={newCalIsDefault}
-                  onChange={(e) => setNewCalIsDefault(e.target.checked)}
-                  className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 border-slate-300"
-                />
-                <span className="text-xs font-medium text-slate-700">
-                  Set as company default work calendar
-                </span>
-              </label>
 
               {/* Action Buttons */}
-              <div className="flex items-center justify-end gap-2.5 pt-2">
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setShowNewCalendarModal(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 transition cursor-pointer"
+                  className="px-4 py-2 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 transition cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submittingCal}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-purple-600 hover:bg-purple-700 text-white shadow-md shadow-purple-600/20 transition cursor-pointer disabled:opacity-50"
+                  className="px-5 py-2 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white shadow-md shadow-purple-600/20 transition cursor-pointer disabled:opacity-50"
                 >
-                  <Icon name="plus" size={13} />
-                  <span>{submittingCal ? 'Creating...' : 'Create Calendar'}</span>
+                  {submittingCal ? 'Creating...' : 'Create Calendar'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ───────────────────────────────────────────────────────────── */}
+      {/* 7. MODAL: ADD / EDIT SHIFT TEMPLATE (Matching Item 1)         */}
+      {/* ───────────────────────────────────────────────────────────── */}
+      {showTemplateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 backdrop-blur-xs p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+            <div className="flex items-center justify-between pb-1">
+              <h3 className="text-base font-bold text-slate-900">
+                {editingTemplateId ? 'Edit Shift Template' : 'Add Shift Template'}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowTemplateModal(false)}
+                className="w-7 h-7 rounded-full border border-slate-200 text-slate-400 hover:text-slate-600 hover:bg-slate-50 flex items-center justify-center transition cursor-pointer"
+              >
+                <Icon name="x" size={14} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveShiftTemplate} className="space-y-3.5">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-black uppercase text-slate-500 tracking-wider block">
+                    SHIFT CODE *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={templateCode}
+                    onChange={(e) => setTemplateCode(e.target.value.toUpperCase())}
+                    placeholder="e.g. GEN"
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[11px] font-black uppercase text-slate-500 tracking-wider block">
+                    SHIFT NAME *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={templateName}
+                    onChange={(e) => setTemplateName(e.target.value)}
+                    placeholder="e.g. General Shift"
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-black uppercase text-slate-500 tracking-wider block">
+                    START TIME
+                  </label>
+                  <input
+                    type="text"
+                    value={templateStartTime}
+                    onChange={(e) => setTemplateStartTime(e.target.value)}
+                    placeholder="09:00"
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[11px] font-black uppercase text-slate-500 tracking-wider block">
+                    END TIME
+                  </label>
+                  <input
+                    type="text"
+                    value={templateEndTime}
+                    onChange={(e) => setTemplateEndTime(e.target.value)}
+                    placeholder="18:00"
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-black uppercase text-slate-500 tracking-wider block">
+                    BREAK (MINS)
+                  </label>
+                  <input
+                    type="number"
+                    value={templateBreakMins}
+                    onChange={(e) => setTemplateBreakMins(e.target.value === '' ? '' : Number(e.target.value))}
+                    placeholder="60"
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[11px] font-black uppercase text-slate-500 tracking-wider block">
+                    GRACE PERIOD (MINS)
+                  </label>
+                  <input
+                    type="number"
+                    value={templateGraceMins}
+                    onChange={(e) => setTemplateGraceMins(e.target.value === '' ? '' : Number(e.target.value))}
+                    placeholder="15"
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-1">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={templateIsNight}
+                    onChange={(e) => setTemplateIsNight(e.target.checked)}
+                    className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 border-slate-300"
+                  />
+                  <span className="text-xs font-bold text-slate-700">Night Shift</span>
+                </label>
+
+                <div className="flex items-center gap-2">
+                  <label className="text-xs font-bold text-slate-500">Color</label>
+                  <input
+                    type="color"
+                    value={templateColor}
+                    onChange={(e) => setTemplateColor(e.target.value)}
+                    className="w-8 h-8 rounded-lg border border-slate-200 cursor-pointer p-0.5"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowTemplateModal(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingTemplate}
+                  className="px-5 py-2 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white shadow-md shadow-purple-600/20 transition cursor-pointer disabled:opacity-50"
+                >
+                  {submittingTemplate ? 'Saving...' : editingTemplateId ? 'Update Template' : 'Add Template'}
                 </button>
               </div>
             </form>

@@ -58,6 +58,8 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
   const [shiftEndTime, setShiftEndTime] = useState<string>('');
   const [gracePeriodMins, setGracePeriodMins] = useState<number>(0);
   const [minHalfDayHours, setMinHalfDayHours] = useState<number | string>('');
+  const [allowOt, setAllowOt] = useState<boolean>(true);
+  const [minOtThresholdMins, setMinOtThresholdMins] = useState<number | ''>(60);
   const [allowedChannels, setAllowedChannels] = useState<string[]>([
     'gps',
     'face_recognition',
@@ -209,6 +211,8 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
     setShiftEndTime(scheme.shift_end_time || '');
     setGracePeriodMins(scheme.grace_period_mins ?? 0);
     setMinHalfDayHours(scheme.min_half_day_hours ?? '');
+    setAllowOt(scheme.allow_ot !== undefined && scheme.allow_ot !== null ? !!scheme.allow_ot : true);
+    setMinOtThresholdMins(scheme.min_ot_threshold_mins ?? 60);
     setAllowedChannels(
       scheme.allowed_channels?.length
         ? scheme.allowed_channels.filter((c: string) => c === 'gps' || c === 'face_recognition')
@@ -243,6 +247,8 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
     setShiftEndTime('');
     setGracePeriodMins(0);
     setMinHalfDayHours('');
+    setAllowOt(true);
+    setMinOtThresholdMins(60);
     setAllowedChannels(['gps', 'biometric', 'face_recognition', 'web_ess']);
     setAssignedEmployeeIds([]);
     showToast('New geofence scheme form opened. Enter parameters and click Save Scheme.');
@@ -295,6 +301,8 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
         shift_end_time: shiftEndTime,
         grace_period_mins: gracePeriodMins,
         min_half_day_hours: minHalfDayHours === '' || minHalfDayHours === undefined ? undefined : Number(minHalfDayHours),
+        allow_ot: allowOt,
+        min_ot_threshold_mins: minOtThresholdMins === '' ? 60 : Number(minOtThresholdMins),
         allowed_channels: allowedChannels,
         assigned_employee_ids: assignedEmployeeIds,
         is_active: true,
@@ -435,9 +443,6 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
                 <h2 className="text-lg sm:text-xl font-black text-white tracking-tight flex items-center gap-2">
                   <span>Branch Geofence Portal Access Control</span>
                 </h2>
-                <p className="text-xs text-slate-400 max-w-2xl font-medium">
-                  Toggle whether the <strong>Attendance &amp; Geofence Portal</strong> tab is visible and accessible in Owner login for each branch / organization. When disabled, this tab is completely hidden from that branch's owner.
-                </p>
               </div>
 
               {/* Active Branch Control Pill / Switch */}
@@ -883,7 +888,8 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Row 1: Primary Working Window & Thresholds */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
                 <label className="block text-[11px] font-extrabold text-slate-600 uppercase mb-1.5">
                   SHIFT START TIME
@@ -928,9 +934,7 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
                   className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50/70 border border-slate-200 text-xs font-bold text-slate-900 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
                 />
               </div>
-            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="block text-[11px] font-extrabold text-slate-600 uppercase mb-1.5">
                   MINIMUM HALF-DAY HOURS
@@ -944,24 +948,56 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
                   className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50/70 border border-slate-200 text-xs font-bold text-slate-900 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
                 />
               </div>
+            </div>
 
-              {/* Dynamic Rule Preview Callout */}
-              <div className="sm:col-span-2 p-3.5 rounded-xl bg-purple-50/70 border border-purple-200/80">
-                <span className="text-[11px] font-black text-purple-900 uppercase block mb-1">
-                  Rule Preview (IST Timezone):
-                </span>
-                <p className="text-xs text-slate-700 leading-relaxed">
-                  {shiftStartTime ? (
-                    <>
-                      Check-ins after <span className="font-extrabold text-purple-900">{shiftStartTime.split(' ')[0]} + {gracePeriodMins}m IST</span> will be flagged as <span className="font-extrabold text-amber-700 bg-amber-100 px-1 py-0.5 rounded">Late</span>.
-                    </>
-                  ) : (
-                    <span>Shift timing policy: Grace period of <span className="font-extrabold text-purple-900">{gracePeriodMins}m</span> will apply after shift start. </span>
+            {/* Row 2: Overtime (OT) Policy & Threshold (Matching Image 2) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
+              {/* Allow Overtime (OT) Card */}
+              <div
+                onClick={() => setAllowOt(!allowOt)}
+                className="flex items-center justify-between p-3.5 sm:p-4 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50/70 cursor-pointer transition select-none shadow-2xs"
+              >
+                <div>
+                  <h4 className="text-xs sm:text-sm font-black text-slate-900 tracking-tight">
+                    Allow Overtime (OT)
+                  </h4>
+                  <p className="text-[11px] font-medium text-slate-500 mt-0.5">
+                    Calculate extra hours beyond full-day shift
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  aria-checked={allowOt}
+                  role="checkbox"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setAllowOt(!allowOt);
+                  }}
+                  className={cn(
+                    'w-5 h-5 rounded-md flex items-center justify-center transition-colors border shrink-0 ml-3 cursor-pointer',
+                    allowOt
+                      ? 'bg-purple-600 border-purple-600 text-white'
+                      : 'border-slate-300 bg-white'
                   )}
-                  {minHalfDayHours ? (
-                    <> Shifts below <span className="font-extrabold text-purple-900">{minHalfDayHours} hours</span> automatically count as <span className="font-extrabold text-rose-700 bg-rose-100 px-1 py-0.5 rounded">Half Day</span>.</>
-                  ) : null}
-                </p>
+                >
+                  {allowOt && <Icon name="check" size={13} className="stroke-[3]" />}
+                </button>
+              </div>
+
+              {/* MIN. OT THRESHOLD (MINUTES) */}
+              <div>
+                <label className="block text-[11px] font-extrabold text-slate-600 uppercase mb-1.5">
+                  MIN. OT THRESHOLD (MINUTES)
+                </label>
+                <input
+                  type="number"
+                  value={minOtThresholdMins}
+                  onChange={(e) =>
+                    setMinOtThresholdMins(e.target.value === '' ? '' : parseInt(e.target.value, 10))
+                  }
+                  placeholder="60"
+                  className="w-full px-3.5 py-3 rounded-xl bg-white border border-slate-200 text-xs sm:text-sm font-bold text-slate-900 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all shadow-2xs"
+                />
               </div>
             </div>
           </div>
@@ -1251,7 +1287,7 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
                 <span className="font-extrabold text-emerald-600">{radiusMeters}m</span>
               </div>
 
-              <div className="flex justify-between items-center py-1">
+              <div className="flex justify-between items-center py-1 border-b border-slate-100">
                 <span className="text-slate-500 font-medium">Working Hours:</span>
                 <span className="font-bold text-slate-800">
                   {shiftStartTime && shiftEndTime
@@ -1259,6 +1295,13 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
                     : shiftStartTime
                       ? `${shiftStartTime} onwards IST (${gracePeriodMins}m grace)`
                       : 'Flexible / 24x7'}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center py-1">
+                <span className="text-slate-500 font-medium">Overtime (OT):</span>
+                <span className="font-bold text-slate-800">
+                  {allowOt ? `Allowed (≥ ${minOtThresholdMins || 0}m)` : 'Disabled'}
                 </span>
               </div>
             </div>

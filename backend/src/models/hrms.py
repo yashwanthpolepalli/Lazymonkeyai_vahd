@@ -255,6 +255,8 @@ class GeofenceScheme(Base):
     shift_end_time = Column(String, nullable=True)
     grace_period_mins = Column(Integer, nullable=True)
     min_half_day_hours = Column(Float, nullable=True)
+    allow_ot = Column(Boolean, nullable=True, default=True)
+    min_ot_threshold_mins = Column(Integer, nullable=True, default=60)
     allowed_channels = Column(JSON, nullable=True)
     assigned_employee_ids = Column(JSON, nullable=True)
     is_active = Column(Boolean, nullable=True)

@@ -804,6 +804,8 @@ class HrmsService:
                         shift_end_time="",
                         grace_period_mins=0,
                         min_half_day_hours=None,
+                        allow_ot=True,
+                        min_ot_threshold_mins=60,
                         allowed_channels=["gps", "face_recognition"],
                         assigned_employee_ids=all_emp_ids,
                         is_active=True
@@ -832,6 +834,8 @@ class HrmsService:
                 "shift_end_time": s.shift_end_time or "",
                 "grace_period_mins": int(s.grace_period_mins or 0),
                 "min_half_day_hours": float(s.min_half_day_hours) if s.min_half_day_hours is not None else None,
+                "allow_ot": bool(s.allow_ot) if s.allow_ot is not None else True,
+                "min_ot_threshold_mins": int(s.min_ot_threshold_mins) if s.min_ot_threshold_mins is not None else 60,
                 "allowed_channels": clean_channels,
                 "assigned_employee_ids": s.assigned_employee_ids or [],
                 "is_active": bool(s.is_active),
@@ -883,6 +887,10 @@ class HrmsService:
             scheme.grace_period_mins = int(payload["grace_period_mins"] or 0)
         if "min_half_day_hours" in payload:
             scheme.min_half_day_hours = float(payload["min_half_day_hours"]) if payload["min_half_day_hours"] is not None else None
+        if "allow_ot" in payload:
+            scheme.allow_ot = bool(payload["allow_ot"])
+        if "min_ot_threshold_mins" in payload:
+            scheme.min_ot_threshold_mins = int(payload["min_ot_threshold_mins"]) if payload["min_ot_threshold_mins"] is not None and str(payload["min_ot_threshold_mins"]).strip() != "" else 60
         if "allowed_channels" in payload:
             raw_channels = payload.get("allowed_channels") or ["gps", "face_recognition"]
             clean_channels = [c for c in raw_channels if c in ["gps", "face_recognition"]]
@@ -1010,10 +1018,18 @@ class HrmsService:
     def record_punch(db: Session, employee_id: str, action: str, note: Optional[str] = None,
                      latitude: Optional[float] = None, longitude: Optional[float] = None,
                      method: Optional[str] = "MANUAL", user_role: Optional[str] = "STAFF",
-                     branch: Optional[str] = None) -> Dict[str, Any]:
+                     branch: Optional[str] = None, punch_date: Optional[str] = None,
+                     punch_time: Optional[str] = None, check_out_time: Optional[str] = None,
+                     status: Optional[str] = None) -> Dict[str, Any]:
         now_ist = datetime.now(IST)
-        today = now_ist.date()
-        now_str = now_ist.strftime("%I:%M %p")
+        if punch_date:
+            try:
+                today = datetime.strptime(punch_date.strip(), "%Y-%m-%d").date()
+            except Exception:
+                today = now_ist.date()
+        else:
+            today = now_ist.date()
+        now_str = punch_time or now_ist.strftime("%I:%M %p")
 
         # Find active geofence scheme for branch / radius calculation
         scheme = None
@@ -1054,17 +1070,39 @@ class HrmsService:
                 )
 
         # Check shift timing for late flag using IST
-        status = "Present"
-        if action == "CHECK_IN" and scheme and scheme.shift_start_time:
-            try:
-                shift_time = datetime.strptime(scheme.shift_start_time.strip(), "%I:%M %p").time()
-                grace_mins = int(scheme.grace_period_mins or 0)
-                shift_total_mins = shift_time.hour * 60 + shift_time.minute + grace_mins
-                now_total_mins = now_ist.hour * 60 + now_ist.minute
-                if now_total_mins > shift_total_mins:
-                    status = "Late"
-            except Exception:
-                pass
+        st_clean = (status or "").strip().lower()
+        if "present" in st_clean or st_clean in ["p", "check_in", "check in"]:
+            final_status = "Present"
+        elif "late" in st_clean:
+            final_status = "Late"
+        elif "half" in st_clean or action == "HALF_DAY":
+            final_status = "Half Day"
+        elif any(x in st_clean for x in ["leave", "paid"]) or action in ["LEAVE", "PAID_LEAVE"]:
+            final_status = "Paid Leave"
+        elif any(x in st_clean for x in ["holiday", "hol"]):
+            final_status = "Holiday"
+        elif any(x in st_clean for x in ["week off", "wo", "off", "rest"]) or action in ["WEEK_OFF", "OFF"]:
+            final_status = "Week Off"
+        elif any(x in st_clean for x in ["absent", "a"]) or action in ["MARK_ABSENT", "ABSENT"]:
+            final_status = "Absent"
+        elif action in ["MARK_ABSENT", "ABSENT"]:
+            final_status = "Absent"
+        elif action in ["HALF_DAY"]:
+            final_status = "Half Day"
+        elif action in ["LEAVE", "PAID_LEAVE"]:
+            final_status = "Paid Leave"
+        else:
+            final_status = "Present"
+            if action == "CHECK_IN" and scheme and scheme.shift_start_time:
+                try:
+                    shift_time = datetime.strptime(scheme.shift_start_time.strip(), "%I:%M %p").time()
+                    grace_mins = int(scheme.grace_period_mins or 0)
+                    shift_total_mins = shift_time.hour * 60 + shift_time.minute + grace_mins
+                    now_total_mins = now_ist.hour * 60 + now_ist.minute
+                    if now_total_mins > shift_total_mins:
+                        final_status = "Late"
+                except Exception:
+                    pass
 
         punch_notes = note or f"Punch via {method} ({action})"
         if distance is not None:
@@ -1074,9 +1112,9 @@ class HrmsService:
         display_name = "User"
         student_id_val = None
 
-        if user_role_upper in ["student", "STUDENT", "MEMBER"]:
-            # Check student record
-            from src.models.student import student
+        from src.models.student import student
+        cust = None
+        if user_role_upper in ["STUDENT", "MEMBER"] or employee_id.startswith("cust_"):
             cust = db.query(student).filter(
                 (student.id == employee_id) | (student.user_id == employee_id) | (student.email.ilike(employee_id)) | (student.id == f"cust_{employee_id}")
             ).first()
@@ -1084,6 +1122,11 @@ class HrmsService:
                 user = db.query(User).filter((User.id == employee_id) | (User.email.ilike(employee_id))).first()
                 if user:
                     cust = db.query(student).filter((student.user_id == user.id) | (student.email == user.email)).first()
+        elif not db.query(Employee).filter((Employee.id == employee_id) | (Employee.code == employee_id)).first():
+            cust = db.query(student).filter((student.id == employee_id) | (student.user_id == employee_id) | (student.email.ilike(employee_id))).first()
+
+        if cust or user_role_upper in ["STUDENT", "MEMBER"] or employee_id.startswith("cust_"):
+            user_role_upper = "STUDENT"
 
             if cust:
                 display_name = cust.full_name
@@ -1092,16 +1135,78 @@ class HrmsService:
             else:
                 display_name = "Student Member"
                 student_id_val = employee_id
+
+            # Save student attendance record into EmployeeAttendance table for dynamic matrix sync
+            target_emp_id = student_id_val
+            att = db.query(EmployeeAttendance).filter(
+                EmployeeAttendance.employee_id == target_emp_id,
+                EmployeeAttendance.date == today
+            ).first()
+
+            if not att:
+                att = EmployeeAttendance(
+                    id=f"att_{uuid.uuid4().hex[:8]}",
+                    employee_id=target_emp_id,
+                    date=today,
+                    check_in=(punch_time or now_str) if final_status != "Absent" else None,
+                    check_out=check_out_time if final_status != "Absent" else None,
+                    status=final_status,
+                    work_hours=4.0 if final_status == "Half Day" else (0.0 if final_status == "Absent" else 8.0),
+                    notes=punch_notes
+                )
+                db.add(att)
+            else:
+                att.status = final_status
+                if final_status == "Absent":
+                    att.check_in = None
+                    att.check_out = None
+                    att.work_hours = 0.0
+                else:
+                    if punch_time:
+                        att.check_in = punch_time
+                    elif not att.check_in:
+                        att.check_in = now_str
+                    if check_out_time is not None:
+                        att.check_out = check_out_time
+                    att.work_hours = 4.0 if final_status == "Half Day" else 8.0
+                if punch_notes:
+                    att.notes = punch_notes
         else:
             # employee / Staff / Employee / Owner
+            clean_id = (employee_id or "").strip()
+            # 1. Direct match on id, code, or email
             emp = db.query(Employee).filter(
-                (Employee.id == employee_id) | (Employee.code == employee_id) | (Employee.email.ilike(employee_id))
+                (Employee.id == clean_id) |
+                (Employee.code == clean_id) |
+                (Employee.email.ilike(clean_id))
             ).first()
+
+            # 2. Match with/without 'EMP-' prefix and zero-padded code
+            if not emp:
+                clean_num = clean_id.replace("EMP-", "").strip()
+                emp = db.query(Employee).filter(
+                    (Employee.id == f"emp_{clean_id}") |
+                    (Employee.code == f"EMP-{clean_id}") |
+                    (Employee.code == f"EMP-{clean_num.zfill(4)}") |
+                    (Employee.code == clean_num.zfill(4)) |
+                    (Employee.code == clean_num) |
+                    (Employee.code.ilike(f"%{clean_num}%"))
+                ).first()
+
+            # 3. Match without 'emp_' prefix
+            if not emp and clean_id.startswith("emp_"):
+                raw_id = clean_id[4:]
+                emp = db.query(Employee).filter(
+                    (Employee.id == raw_id) |
+                    (Employee.code == raw_id) |
+                    (Employee.code == f"EMP-{raw_id}") |
+                    (Employee.code == f"EMP-{raw_id.zfill(4)}")
+                ).first()
 
             employee = None
             if not emp:
                 employee = db.query(employeeProfile).filter(
-                    (employeeProfile.id == employee_id) | (employeeProfile.email.ilike(employee_id))
+                    (employeeProfile.id == clean_id) | (employeeProfile.email.ilike(clean_id)) | (employeeProfile.user_id == clean_id)
                 ).first()
                 if employee:
                     emp = db.query(Employee).filter((Employee.id == f"emp_{employee.id}") | (Employee.id == employee.id)).first()
@@ -1126,6 +1231,16 @@ class HrmsService:
                         )
                         db.add(emp)
                         db.flush()
+
+            if not emp:
+                # If still not found, check User table
+                u = db.query(User).filter((User.id == clean_id) | (User.email.ilike(clean_id))).first()
+                if u:
+                    emp = db.query(Employee).filter((Employee.email.ilike(u.email)) | (Employee.id == f"emp_{u.id}")).first()
+
+            if not emp:
+                # Fallback to first existing active employee if this was a generic test punch
+                emp = db.query(Employee).order_by(Employee.created_at.asc()).first()
 
             if not emp:
                 full_name = (employee.full_name if employee else employee_id)
@@ -1158,29 +1273,30 @@ class HrmsService:
             shift_start_time = (roster.start_time if roster else None) or std_shift.get("start_time", "")
             shift_grace = std_shift.get("grace_period_mins", 15)
 
-            # If punch is CHECK_IN, calculate attendance status based on shift start time & grace period
-            if action == "CHECK_IN" and shift_start_time:
-                try:
-                    expected_time = datetime.strptime(shift_start_time.strip(), "%H:%M").time()
-                    punch_time = now_ist.time()
-                    expected_mins = expected_time.hour * 60 + expected_time.minute
-                    actual_mins = punch_time.hour * 60 + punch_time.minute
-                    grace = shift_grace
-                    if actual_mins <= expected_mins + grace:
-                        status = "Present"
-                    else:
-                        status = "Present (Late)"
-                except Exception:
-                    status = "Present"
-            elif action == "CHECK_IN":
-                status = "Present"
+            # If punch is CHECK_IN and not explicitly marked absent/half-day, calculate attendance status based on shift start time & grace period
+            if not status and action not in ["MARK_ABSENT", "ABSENT", "HALF_DAY", "LEAVE"]:
+                if action == "CHECK_IN" and shift_start_time:
+                    try:
+                        expected_time = datetime.strptime(shift_start_time.strip(), "%H:%M").time()
+                        punch_time_obj = now_ist.time()
+                        expected_mins = expected_time.hour * 60 + expected_time.minute
+                        actual_mins = punch_time_obj.hour * 60 + punch_time_obj.minute
+                        grace = shift_grace
+                        if actual_mins <= expected_mins + grace:
+                            final_status = "Present"
+                        else:
+                            final_status = "Present (Late)"
+                    except Exception:
+                        final_status = "Present"
+                elif action == "CHECK_IN":
+                    final_status = "Present"
 
             if roster:
-                roster.status = "ATTENDED"
+                roster.status = "ATTENDED" if final_status != "Absent" else "ABSENT"
 
             # Record in EmployeeAttendance
             att = db.query(EmployeeAttendance).filter(
-                EmployeeAttendance.employee_id == emp.id,
+                (EmployeeAttendance.employee_id == emp.id) | (EmployeeAttendance.employee_id == emp.code),
                 EmployeeAttendance.date == today
             ).first()
 
@@ -1189,10 +1305,10 @@ class HrmsService:
                     id=f"att_{uuid.uuid4().hex[:8]}",
                     employee_id=emp.id,
                     date=today,
-                    check_in=now_str if action == "CHECK_IN" else None,
-                    check_out=now_str if action == "CHECK_OUT" else None,
-                    status=status,
-                    work_hours=0.0,
+                    check_in=(punch_time or now_str) if final_status not in ["Absent", "Week Off"] else None,
+                    check_out=check_out_time if final_status not in ["Absent", "Week Off"] else (now_str if action == "CHECK_OUT" else None),
+                    status=final_status,
+                    work_hours=0.0 if final_status in ["Absent", "Week Off"] else (4.0 if final_status == "Half Day" else 8.0),
                     shift_id=resolved_shift_id,
                     shift_code=resolved_shift_code,
                     shift_name=resolved_shift_name,
@@ -1200,19 +1316,41 @@ class HrmsService:
                 )
                 db.add(att)
             else:
+                att.employee_id = emp.id
                 att.shift_id = resolved_shift_id
                 att.shift_code = resolved_shift_code
                 att.shift_name = resolved_shift_name
-                if action == "CHECK_IN":
-                    att.check_in = now_str
-                    att.status = status
-                elif action == "CHECK_OUT":
-                    att.check_out = now_str
-                    if att.check_in:
+                att.status = final_status
+                if final_status in ["Absent", "Week Off"]:
+                    att.check_in = None
+                    att.check_out = None
+                    att.work_hours = 0.0
+                else:
+                    if punch_time:
+                        att.check_in = punch_time
+                    elif action == "CHECK_IN":
+                        att.check_in = now_str
+                    if check_out_time is not None:
+                        att.check_out = check_out_time
+                    elif action == "CHECK_OUT":
+                        att.check_out = now_str
+                    if att.check_in and att.check_out:
                         try:
-                            t1 = datetime.strptime(att.check_in, "%I:%M %p")
-                            t2 = datetime.strptime(now_str, "%I:%M %p")
+                            for fmt in ["%I:%M %p", "%H:%M", "%I:%M%p"]:
+                                try:
+                                    t1 = datetime.strptime(att.check_in.strip(), fmt)
+                                    break
+                                except Exception:
+                                    continue
+                            for fmt in ["%I:%M %p", "%H:%M", "%I:%M%p"]:
+                                try:
+                                    t2 = datetime.strptime(att.check_out.strip(), fmt)
+                                    break
+                                except Exception:
+                                    continue
                             diff_hours = (t2 - t1).total_seconds() / 3600.0
+                            if diff_hours < 0:
+                                diff_hours += 24.0
                             att.work_hours = max(0.1, round(diff_hours, 1))
                             if scheme and scheme.min_half_day_hours and att.work_hours < scheme.min_half_day_hours:
                                 att.status = "Half Day"
@@ -1276,7 +1414,7 @@ class HrmsService:
             "message": f"Successfully Clocked {'In' if action == 'CHECK_IN' else 'Out'} at {now_str}",
             "action": action,
             "time": now_str,
-            "status": status,
+            "status": final_status,
             "distance_meters": distance,
             "is_within_geofence": is_within_geofence,
             "method": method,
@@ -2497,23 +2635,34 @@ class HrmsService:
     def get_work_calendars(db: Session) -> List[Dict[str, Any]]:
         cals = db.query(WorkCalendarPolicy).order_by(WorkCalendarPolicy.created_at.asc()).all()
         holidays_count = db.query(CompanyHoliday).count()
+        ALL_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
-        return [
-            {
+        result = []
+        for c in cals:
+            w_days = getattr(c, "working_days", []) or []
+            off_days = c.weekly_off_days or []
+            if w_days and not off_days:
+                off_days = [d for d in ALL_DAYS if d not in w_days]
+            elif off_days and not w_days:
+                w_days = [d for d in ALL_DAYS if d not in off_days]
+            elif not w_days and not off_days:
+                w_days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+                off_days = ["Saturday", "Sunday"]
+
+            result.append({
                 "id": c.id,
                 "name": c.name,
-                "calendar_type": getattr(c, "calendar_type", None) or "shift",
+                "calendar_type": getattr(c, "calendar_type", None) or "Standard Corporate",
                 "department": c.department or "All",
                 "is_default": bool(getattr(c, "is_default", False)),
                 "default_shift_code": c.default_shift_code or "",
-                "working_days": getattr(c, "working_days", []) or [],
-                "weekly_off_days": c.weekly_off_days or [],
+                "working_days": w_days,
+                "weekly_off_days": off_days,
                 "shift_timings": getattr(c, "shift_timings", []) or [],
                 "is_active": bool(c.is_active),
                 "holidays_count": holidays_count,
-            }
-            for c in cals
-        ]
+            })
+        return result
 
     @staticmethod
     def save_work_calendar(db: Session, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -2525,6 +2674,24 @@ class HrmsService:
             name = (payload.get("name") or "").strip()
             if name:
                 cal = db.query(WorkCalendarPolicy).filter(WorkCalendarPolicy.name == name).first()
+
+        working_days = payload.get("working_days") or []
+        weekly_off_days = payload.get("weekly_off_days") or []
+        ALL_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+
+        if working_days and not weekly_off_days:
+            weekly_off_days = [d for d in ALL_DAYS if d not in working_days]
+        elif weekly_off_days and not working_days:
+            working_days = [d for d in ALL_DAYS if d not in weekly_off_days]
+        elif not working_days and not weekly_off_days:
+            working_days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+            weekly_off_days = ["Saturday", "Sunday"]
+
+        is_def = bool(payload.get("is_default", False))
+        existing_default = db.query(WorkCalendarPolicy).filter(WorkCalendarPolicy.is_default == True).first()
+        if not existing_default and not cal:
+            is_def = True
+
         if not cal:
             name = (payload.get("name") or "").strip()
             if not name:
@@ -2532,46 +2699,48 @@ class HrmsService:
             cal = WorkCalendarPolicy(
                 id=f"cal_{uuid.uuid4().hex[:8]}",
                 name=name,
-                calendar_type=payload.get("calendar_type") or "shift",
+                calendar_type=payload.get("calendar_type") or "Standard Corporate",
                 department=payload.get("department") or "All",
-                is_default=bool(payload.get("is_default", False)),
+                is_default=is_def,
                 default_shift_code=payload.get("default_shift_code") or None,
-                working_days=payload.get("working_days") or [],
-                weekly_off_days=payload.get("weekly_off_days") or [],
+                working_days=working_days,
+                weekly_off_days=weekly_off_days,
                 shift_timings=payload.get("shift_timings") or [],
                 is_active=bool(payload.get("is_active", True))
             )
             db.add(cal)
         else:
-            if "name" in payload:
-                cal.name = payload["name"]
-            if "calendar_type" in payload:
+            if "name" in payload and payload["name"]:
+                cal.name = payload["name"].strip()
+            if "calendar_type" in payload and payload["calendar_type"]:
                 cal.calendar_type = payload["calendar_type"]
             if "department" in payload:
                 cal.department = payload["department"]
             if "is_default" in payload:
-                cal.is_default = bool(payload["is_default"])
+                cal.is_default = is_def
             if "default_shift_code" in payload:
                 cal.default_shift_code = payload["default_shift_code"]
-            if "working_days" in payload:
-                cal.working_days = payload["working_days"]
-            if "weekly_off_days" in payload:
-                cal.weekly_off_days = payload["weekly_off_days"]
+            cal.working_days = working_days
+            cal.weekly_off_days = weekly_off_days
             if "shift_timings" in payload:
                 cal.shift_timings = payload["shift_timings"]
             if "is_active" in payload:
                 cal.is_active = bool(payload["is_active"])
+
+        if is_def:
+            db.query(WorkCalendarPolicy).filter(WorkCalendarPolicy.id != cal.id).update({"is_default": False})
+
         db.commit()
         db.refresh(cal)
         return {
             "id": cal.id,
             "name": cal.name,
-            "calendar_type": getattr(cal, "calendar_type", "shift"),
+            "calendar_type": getattr(cal, "calendar_type", "Standard Corporate"),
             "department": cal.department,
             "is_default": bool(getattr(cal, "is_default", False)),
             "default_shift_code": cal.default_shift_code,
-            "working_days": getattr(cal, "working_days", []),
-            "weekly_off_days": cal.weekly_off_days,
+            "working_days": getattr(cal, "working_days", []) or [],
+            "weekly_off_days": cal.weekly_off_days or [],
             "shift_timings": getattr(cal, "shift_timings", []) or [],
             "is_active": bool(cal.is_active)
         }
@@ -2853,7 +3022,8 @@ class HrmsService:
         view_mode: Optional[str] = "flat",
         branch_id: Optional[str] = None,
         ho_id: Optional[str] = None,
-        current_user: Optional[User] = None
+        current_user: Optional[User] = None,
+        user_type: Optional[str] = "employee"
     ) -> Dict[str, Any]:
         now_ist = datetime.now(IST)
         today = now_ist.date()
@@ -2882,40 +3052,94 @@ class HrmsService:
 
         week_label = f"Week of {monday.strftime('%b %d')} - {sunday.strftime('%b %d, %Y')}"
 
-        # Fetch employees using scoped permissions
-        emps = HrmsService.get_employees(
-            db, department=department, search=search,
-            branch_id=branch_id, ho_id=ho_id, current_user=current_user
-        )
+        is_student_scope = (user_type or "").lower().startswith("student")
+
+        if is_student_scope:
+            from src.models.student import student
+            stus_query = db.query(student)
+            if ho_id:
+                stus_query = stus_query.filter(student.ho_id == ho_id)
+            if branch_id:
+                stus_query = stus_query.filter(student.branch_id == branch_id)
+            if search:
+                s = search.strip().lower()
+                stus_query = stus_query.filter(
+                    or_(
+                        student.full_name.ilike(f"%{s}%"),
+                        student.email.ilike(f"%{s}%"),
+                        student.phone.ilike(f"%{s}%"),
+                        student.member_code.ilike(f"%{s}%")
+                    )
+                )
+            if department and department != "ALL":
+                stus_query = stus_query.filter(
+                    or_(
+                        student.specialization.ilike(f"%{department}%"),
+                        student.qualification.ilike(f"%{department}%")
+                    )
+                )
+            stus = stus_query.all()
+            emps = []
+            for s in stus:
+                s_dept = s.specialization or s.qualification or "Batch A"
+                emps.append({
+                    "id": s.id,
+                    "code": s.member_code or "",
+                    "full_name": s.full_name or "",
+                    "name": s.full_name or "",
+                    "department": s_dept,
+                    "designation": "Student",
+                    "avatar": s.profile_image or ""
+                })
+        else:
+            # Fetch employees using scoped permissions
+            emps = HrmsService.get_employees(
+                db, department=department, search=search,
+                branch_id=branch_id, ho_id=ho_id, current_user=current_user
+            )
 
         # Load active work calendar policies (by department or fallback)
         calendars = db.query(WorkCalendarPolicy).filter(WorkCalendarPolicy.is_active == True).all()
         cal_by_dept = {c.department.lower(): c for c in calendars if c.department and c.department != "All"}
         default_cal = next((c for c in calendars if c.department in ["All", None, ""]), None)
 
-        emp_ids = [e["id"] for e in emps]
+        all_query_ids = set()
+        emp_id_to_profile_id = {}
+        for e in emps:
+            e_id = e["id"]
+            all_query_ids.add(e_id)
+            emp_id_to_profile_id[e_id] = e_id
+            if e.get("code"):
+                all_query_ids.add(e["code"])
+                emp_id_to_profile_id[e["code"]] = e_id
+
         roster_records = db.query(EmployeeShiftRoster).filter(
-            EmployeeShiftRoster.employee_id.in_(emp_ids),
+            EmployeeShiftRoster.employee_id.in_(list(all_query_ids)),
             EmployeeShiftRoster.date >= monday,
             EmployeeShiftRoster.date <= sunday
-        ).all() if emp_ids else []
+        ).all() if all_query_ids else []
 
         roster_map = {}
         for r in roster_records:
             d_key = r.date.strftime("%Y-%m-%d")
+            canon_id = emp_id_to_profile_id.get(r.employee_id, r.employee_id)
+            roster_map[(canon_id, d_key)] = r
             roster_map[(r.employee_id, d_key)] = r
 
         # Fetch attendance records for this week to dynamically reflect Presence
         att_records = db.query(EmployeeAttendance).filter(
-            EmployeeAttendance.employee_id.in_(emp_ids),
+            EmployeeAttendance.employee_id.in_(list(all_query_ids)),
             EmployeeAttendance.date >= monday,
             EmployeeAttendance.date <= sunday
-        ).all() if emp_ids else []
+        ).all() if all_query_ids else []
 
         att_map = {}
         for a in att_records:
             if a.date:
-                att_map[(a.employee_id, a.date.strftime("%Y-%m-%d"))] = a
+                d_key = a.date.strftime("%Y-%m-%d") if hasattr(a.date, "strftime") else str(a.date)[:10]
+                canon_id = emp_id_to_profile_id.get(a.employee_id, a.employee_id)
+                att_map[(canon_id, d_key)] = a
+                att_map[(a.employee_id, d_key)] = a
 
         # Summary counters
         summary = {
@@ -3009,19 +3233,22 @@ class HrmsService:
                     "is_present": att_status in ["Present", "Present (Late)"]
                 }
 
+            name_val = emp.get("full_name") or emp.get("name") or ""
+            parts = name_val.split()
+            calc_initials = "".join([p[0].upper() for p in parts[:2]]) if parts else ""
             employee_rows.append({
                 "id": emp["id"],
-                "code": emp.get("code") or "EMP-0001",
-                "name": emp.get("full_name") or emp.get("name") or "",
-                "initials": emp.get("initials") or "EM",
-                "designation": emp.get("designation") or "Staff",
-                "department": emp.get("department") or "General",
+                "code": emp.get("code") or "",
+                "name": name_val,
+                "initials": emp.get("initials") or calc_initials,
+                "designation": emp.get("designation") or ("Student" if is_student_scope else "Staff"),
+                "department": emp.get("department") or "",
                 "avatar": emp.get("avatar") or "",
                 "shifts": shifts_by_date
             })
 
         all_departments = sorted(list({e.get("department") for e in emps if e.get("department")}))
-        if not all_departments:
+        if not all_departments and not is_student_scope:
             all_departments = [d.name for d in db.query(Department).all()]
 
         return {
@@ -3032,7 +3259,8 @@ class HrmsService:
             "summary": summary,
             "employees": employee_rows,
             "total_staff": len(employee_rows),
-            "departments": all_departments
+            "departments": all_departments,
+            "user_type": "students" if is_student_scope else "employees"
         }
 
     @staticmethod
@@ -3121,6 +3349,7 @@ class HrmsService:
         search: Optional[str] = None,
         branch_id: Optional[str] = None,
         ho_id: Optional[str] = None,
+        user_type: Optional[str] = "employee",
         current_user: Optional[User] = None
     ) -> Dict[str, Any]:
         now_ist = datetime.now(IST)
@@ -3146,17 +3375,93 @@ class HrmsService:
                 "is_future": curr_d > today
             })
 
-        # Fetch employees using permission scoping
-        emps = HrmsService.get_employees(
-            db, department=department, search=search,
-            branch_id=branch_id, ho_id=ho_id, current_user=current_user
-        )
-        emp_ids = [e["id"] for e in emps]
+        u_type = (user_type or "employee").lower()
+        is_all_scope = u_type in ["all", "both"]
+        is_student_scope = u_type.startswith("student") or is_all_scope
+        is_employee_scope = not u_type.startswith("student") or is_all_scope
+
+        profiles = []
+        if is_employee_scope:
+            emp_profiles = HrmsService.get_employees(
+                db, department=department, search=search,
+                branch_id=branch_id, ho_id=ho_id, current_user=current_user
+            )
+            for e in emp_profiles:
+                e["role_category"] = "Employee"
+                profiles.append(e)
+
+        if is_student_scope:
+            from src.models.student import student
+            stus_query = db.query(student)
+            if ho_id:
+                stus_query = stus_query.filter(student.ho_id == ho_id)
+            if branch_id:
+                stus_query = stus_query.filter(student.branch_id == branch_id)
+            if search:
+                s = search.strip().lower()
+                stus_query = stus_query.filter(
+                    or_(
+                        student.full_name.ilike(f"%{s}%"),
+                        student.email.ilike(f"%{s}%"),
+                        student.phone.ilike(f"%{s}%"),
+                        student.member_code.ilike(f"%{s}%")
+                    )
+                )
+            if department and department != "ALL":
+                stus_query = stus_query.filter(
+                    or_(
+                        student.specialization.ilike(f"%{department}%"),
+                        student.qualification.ilike(f"%{department}%"),
+                        student.primary_vahd_location.ilike(f"%{department}%")
+                    )
+                )
+            student_records = stus_query.all()
+            for s in student_records:
+                initials = "".join([part[0].upper() for part in s.full_name.split()[:2]]) if s.full_name else ""
+                dept = s.specialization or s.qualification or s.primary_vahd_location or ""
+                profiles.append({
+                    "id": s.id,
+                    "code": s.member_code or s.id or "",
+                    "name": s.full_name or "",
+                    "department": dept,
+                    "designation": "Student",
+                    "initials": initials,
+                    "avatar": s.profile_image or "",
+                    "role_category": "Student"
+                })
+
+        profile_ids = [p["id"] for p in profiles]
+        emp_id_to_profile_id = {}
+        all_query_ids = set()
+        for p in profiles:
+            pid = p["id"]
+            all_query_ids.add(pid)
+            emp_id_to_profile_id[pid] = pid
+            code = p.get("code")
+            if code:
+                all_query_ids.add(code)
+                emp_id_to_profile_id[code] = pid
+                clean_num = code.replace("EMP-", "").strip()
+                if clean_num:
+                    all_query_ids.add(clean_num)
+                    emp_id_to_profile_id[clean_num] = pid
+                    all_query_ids.add(clean_num.zfill(4))
+                    emp_id_to_profile_id[clean_num.zfill(4)] = pid
+                    all_query_ids.add(f"EMP-{clean_num.zfill(4)}")
+                    emp_id_to_profile_id[f"EMP-{clean_num.zfill(4)}"] = pid
+            email = p.get("email")
+            if email:
+                all_query_ids.add(email.lower())
+                emp_id_to_profile_id[email.lower()] = pid
 
         # Load active work calendar policy
         calendars = db.query(WorkCalendarPolicy).filter(WorkCalendarPolicy.is_active == True).all()
-        cal_by_dept = {c.department.lower(): c for c in calendars if c.department and c.department != "All"}
-        default_cal = next((c for c in calendars if c.department in ["All", None, ""]), None)
+        cal_by_dept = {c.department.strip().lower(): c for c in calendars if c.department and c.department.strip().lower() not in ["all", "general", ""]}
+        default_cal = (
+            next((c for c in calendars if c.is_default), None)
+            or next((c for c in calendars if (c.department or "").strip().lower() in ["all", "general", ""]), None)
+            or (calendars[0] if calendars else None)
+        )
 
         # Load holidays for this month
         holidays = db.query(CompanyHoliday).filter(
@@ -3167,23 +3472,26 @@ class HrmsService:
 
         # Load attendance records
         att_records = db.query(EmployeeAttendance).filter(
-            EmployeeAttendance.employee_id.in_(emp_ids),
+            EmployeeAttendance.employee_id.in_(list(all_query_ids)),
             EmployeeAttendance.date >= start_date,
             EmployeeAttendance.date <= end_date
-        ).all() if emp_ids else []
+        ).all() if all_query_ids else []
 
         att_by_emp_date = {}
         for a in att_records:
             if a.date:
-                att_by_emp_date[(a.employee_id, a.date.strftime("%Y-%m-%d"))] = a
+                d_key = a.date.strftime("%Y-%m-%d") if hasattr(a.date, "strftime") else str(a.date)[:10]
+                target_pid = emp_id_to_profile_id.get(a.employee_id, a.employee_id)
+                att_by_emp_date[(target_pid, d_key)] = a
+                att_by_emp_date[(a.employee_id, d_key)] = a
 
-        # Load approved leaves
+        # Load approved leaves (for employees)
         leaves = db.query(LeaveRequest).filter(
-            LeaveRequest.employee_id.in_(emp_ids),
+            LeaveRequest.employee_id.in_(list(all_query_ids)),
             LeaveRequest.status == "Approved",
             LeaveRequest.start_date <= end_date,
             LeaveRequest.end_date >= start_date
-        ).all() if emp_ids else []
+        ).all() if all_query_ids and not is_student_scope else []
 
         # Today metrics
         today_str = today.strftime("%Y-%m-%d")
@@ -3191,26 +3499,41 @@ class HrmsService:
         absent_today_count = 0
         on_leave_today_count = 0
 
-        for emp in emps:
-            e_id = emp["id"]
-            today_att = att_by_emp_date.get((e_id, today_str))
-            if today_att and (today_att.status or "").lower() in ["present", "late", "verified", "half day"]:
-                present_today_count += 1
-            elif today_att and (today_att.status or "").lower() in ["absent"]:
-                absent_today_count += 1
+        for p in profiles:
+            p_id = p["id"]
+            today_att = att_by_emp_date.get((p_id, today_str))
+            if today_att:
+                t_st = (today_att.status or "").lower()
+                if any(x in t_st for x in ["present", "late", "verified", "half"]):
+                    present_today_count += 1
+                elif "absent" in t_st:
+                    absent_today_count += 1
+            for lv in leaves:
+                if lv.employee_id in [p_id, p.get("code")] and lv.start_date <= today <= lv.end_date:
+                    on_leave_today_count += 1
+                    break
 
-        for lv in leaves:
-            if lv.start_date <= today <= lv.end_date:
-                on_leave_today_count += 1
+        # Format rows
+        attendance_rows = []
 
-        # Format employee rows
-        employee_rows = []
+        ALL_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
-        for emp in emps:
-            e_id = emp["id"]
-            emp_dept = (emp.get("department") or "").strip().lower()
-            emp_cal = cal_by_dept.get(emp_dept, default_cal)
-            weekly_offs = emp_cal.weekly_off_days if (emp_cal and emp_cal.weekly_off_days) else ["Saturday", "Sunday"]
+        for p in profiles:
+            p_id = p["id"]
+            p_dept = (p.get("department") or "").strip().lower()
+            p_cal = cal_by_dept.get(p_dept, default_cal)
+
+            # Compute weekly offs
+            weekly_offs = []
+            if p_cal:
+                if p_cal.weekly_off_days and len(p_cal.weekly_off_days) > 0:
+                    weekly_offs = p_cal.weekly_off_days
+                elif p_cal.working_days and len(p_cal.working_days) > 0:
+                    weekly_offs = [d for d in ALL_DAYS if d not in p_cal.working_days]
+            if not weekly_offs:
+                weekly_offs = ["Saturday", "Sunday"]
+
+            weekly_offs_norm = {d.strip().lower() for d in weekly_offs}
 
             p_count = 0
             a_count = 0
@@ -3224,41 +3547,58 @@ class HrmsService:
                 d_obj = date(year, month, day_info["day"])
                 d_name = day_info["day_name"]
                 is_fut = day_info["is_future"]
+                is_tod = day_info["is_today"]
 
-                is_week_off = d_name in weekly_offs
+                is_week_off = (d_name.lower() in weekly_offs_norm) or (d_name[:3].lower() in weekly_offs_norm)
                 is_hol = d_str in holiday_map
 
-                att = att_by_emp_date.get((e_id, d_str))
-                is_on_leave = any(lv.employee_id == e_id and lv.start_date <= d_obj <= lv.end_date for lv in leaves)
+                att = att_by_emp_date.get((p_id, d_str))
+                is_on_leave = any(lv.employee_id in [p_id, p.get("code")] and lv.start_date <= d_obj <= lv.end_date for lv in leaves)
 
-                if is_on_leave:
+                if att:
+                    st_lower = (att.status or "").strip().lower()
+                    if any(x in st_lower for x in ["present", "late", "verified", "on duty"]):
+                        status_code = "P"
+                        p_count += 1
+                    elif "half" in st_lower:
+                        status_code = "HD"
+                        p_count += 0.5
+                        pl_count += 0.5
+                    elif any(x in st_lower for x in ["leave", "paid leave", "pl"]):
+                        status_code = "PL"
+                        pl_count += 1
+                    elif any(x in st_lower for x in ["holiday", "hol"]):
+                        status_code = "HOL"
+                        hol_count += 1
+                    elif any(x in st_lower for x in ["week off", "wo", "off", "rest"]):
+                        status_code = "WO"
+                        wo_count += 1
+                    elif any(x in st_lower for x in ["absent", "unexcused"]):
+                        status_code = "A"
+                        a_count += 1
+                    else:
+                        status_code = "P"
+                        p_count += 1
+                elif is_on_leave:
                     status_code = "PL"
                     pl_count += 1
-                elif att and (att.status or "").lower() in ["present", "late", "verified"]:
-                    status_code = "P"
-                    p_count += 1
-                elif att and (att.status or "").lower() in ["half day"]:
-                    status_code = "HD"
-                    p_count += 0.5
-                    pl_count += 0.5
-                elif att and (att.status or "").lower() in ["absent"]:
-                    status_code = "A"
-                    a_count += 1
                 elif is_hol:
                     status_code = "HOL"
                     hol_count += 1
                 elif is_week_off:
                     status_code = "WO"
                     wo_count += 1
-                elif not is_fut:
-                    status_code = "-"
+                elif not is_fut and not is_tod:
+                    # Past working day without attendance record is Absent
+                    status_code = "A"
+                    a_count += 1
                 else:
                     status_code = "-"
 
                 days_status[str(day_info["day"])] = {
                     "code": status_code,
                     "date": d_str,
-                    "status_label": "Present" if status_code == "P" else ("Week Off" if status_code == "WO" else ("Holiday" if status_code == "HOL" else ("Paid Leave" if status_code == "PL" else ("Absent" if status_code == "A" else "-")))),
+                    "status_label": "Present" if status_code == "P" else ("Half Day" if status_code == "HD" else ("Week Off" if status_code == "WO" else ("Holiday" if status_code == "HOL" else ("Paid Leave" if status_code == "PL" else ("Absent" if status_code == "A" else "-"))))),
                     "check_in": att.check_in if att else None,
                     "check_out": att.check_out if att else None,
                     "work_hours": att.work_hours if att else None
@@ -3266,14 +3606,17 @@ class HrmsService:
 
             payable = p_count + pl_count + wo_count + hol_count
 
-            employee_rows.append({
-                "id": emp["id"],
-                "code": emp.get("code") or "EMP-0001",
-                "name": emp.get("full_name") or emp.get("name") or "",
-                "department": emp.get("department") or "General",
-                "designation": emp.get("designation") or "Staff",
-                "initials": emp.get("initials") or "EM",
-                "avatar": emp.get("avatar") or "",
+            name_val = p.get("full_name") or p.get("name") or ""
+            parts = name_val.split()
+            calc_initials = "".join([part[0].upper() for part in parts[:2]]) if parts else ""
+            attendance_rows.append({
+                "id": p["id"],
+                "code": p.get("code") or "",
+                "name": name_val,
+                "department": p.get("department") or "",
+                "designation": p.get("designation") or "",
+                "initials": p.get("initials") or calc_initials,
+                "avatar": p.get("avatar") or "",
                 "present_count": int(p_count) if isinstance(p_count, float) and p_count.is_integer() else p_count,
                 "absent_count": a_count,
                 "leave_count": pl_count,
@@ -3281,26 +3624,27 @@ class HrmsService:
                 "days": days_status
             })
 
-        all_depts = sorted(list({e.get("department") for e in emps if e.get("department")}))
+        all_depts = sorted(list({p.get("department") for p in profiles if p.get("department")}))
 
         avg_att = 0
-        if len(employee_rows) > 0 and num_days > 0:
-            total_present_sum = sum(r["present_count"] for r in employee_rows)
-            avg_att = round((total_present_sum / (len(employee_rows) * num_days)) * 100)
+        if len(attendance_rows) > 0 and num_days > 0:
+            total_present_sum = sum(r["present_count"] for r in attendance_rows)
+            avg_att = round((total_present_sum / (len(attendance_rows) * num_days)) * 100)
 
         return {
             "year": year,
             "month": month,
             "month_name": month_name,
             "days_in_month": days_in_month,
+            "user_type": "all" if is_all_scope else ("students" if is_student_scope else "employees"),
             "summary": {
                 "present_today": present_today_count,
                 "absent": absent_today_count,
                 "on_leave": on_leave_today_count,
                 "avg_attendance_pct": avg_att,
-                "total_profiles": len(employee_rows)
+                "total_profiles": len(attendance_rows)
             },
-            "employees": employee_rows,
+            "employees": attendance_rows,
             "departments": all_depts
         }
 

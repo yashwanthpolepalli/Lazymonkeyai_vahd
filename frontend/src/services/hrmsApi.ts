@@ -371,6 +371,8 @@ export interface GeofenceScheme {
   shift_end_time: string;
   grace_period_mins: number;
   min_half_day_hours?: number | null;
+  allow_ot?: boolean;
+  min_ot_threshold_mins?: number;
   allowed_channels: string[];
   assigned_employee_ids: string[];
   is_active: boolean;
@@ -614,7 +616,7 @@ export const hrmsApi = {
   saveShiftTemplate: (payload: Partial<ShiftTemplateItem>) => apiClient.post<ShiftTemplateItem>('/hrms/shifts/templates', payload),
   deleteShiftTemplate: (templateId: string) => apiClient.delete<{ status: string; message: string }>(`/hrms/shifts/templates/${templateId}`),
 
-  getShiftRoster: (params?: { start_date?: string; end_date?: string; department?: string; search?: string; view?: string }) =>
+  getShiftRoster: (params?: { start_date?: string; end_date?: string; department?: string; search?: string; view?: string; user_type?: 'employee' | 'student' }) =>
     apiClient.get<ShiftRosterResponse>('/hrms/shifts/roster', { params }),
   assignShift: (payload: { employee_ids?: string[]; employee_id?: string; dates?: string[]; date?: string; shift_code: string; is_off?: boolean }) =>
     apiClient.post<{ status: string; message: string; updated_count: number }>('/hrms/shifts/assign', payload),
@@ -630,10 +632,24 @@ export const hrmsApi = {
     apiClient.post<{ status: string; message: string; inserted_count: number }>('/hrms/holidays/preseed', { year }),
 
   // Monthly Attendance Matrix & Punch
-  getAttendanceMatrix: (params?: { year?: number; month?: number; department?: string; search?: string }) =>
+  getAttendanceMatrix: (params?: { year?: number; month?: number; department?: string; search?: string; user_type?: 'employee' | 'student' | string }) =>
     apiClient.get<AttendanceMatrixResponse>('/hrms/attendance/matrix', { params }),
-  punchAttendance: (payload: { employee_id: string; action: string; time?: string; date?: string; note?: string; lat?: number; lng?: number; method?: string }) =>
-    apiClient.post<any>('/hrms/attendance/punch', payload),
+  punchAttendance: (payload: {
+    employee_id: string;
+    action?: string;
+    status?: string;
+    time?: string;
+    check_in?: string;
+    check_out_time?: string;
+    check_out?: string;
+    date?: string;
+    note?: string;
+    notes?: string;
+    lat?: number;
+    lng?: number;
+    method?: string;
+    user_role?: string;
+  }) => apiClient.post<any>('/hrms/attendance/punch', payload),
 
   // Password Reset (Students & Employees)
   resetPassword: (payload: { target_type: 'student' | 'employee' | string; target_id: string; new_password: string }) =>
@@ -695,6 +711,7 @@ export interface DayMatrixCell {
   check_in?: string | null;
   check_out?: string | null;
   work_hours?: number | null;
+  method?: string | null;
 }
 
 export interface EmployeeMatrixRow {

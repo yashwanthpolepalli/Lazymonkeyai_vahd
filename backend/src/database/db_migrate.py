@@ -208,6 +208,19 @@ def run_database_migrations() -> None:
         dropped_tables_count = 0
 
         with engine.connect() as conn:
+            # 1.5 Safely drop obsolete foreign keys that restrict employee_id to hrms_employees only
+            # This allows shift rosters and attendance to seamlessly support students and staff alike
+            try:
+                conn.execute(text('ALTER TABLE "hrms_shift_rosters" DROP CONSTRAINT IF EXISTS "hrms_shift_rosters_employee_id_fkey";'))
+                conn.commit()
+            except Exception as fkey_err:
+                conn.rollback()
+
+            try:
+                conn.execute(text('ALTER TABLE "hrms_attendance" DROP CONSTRAINT IF EXISTS "hrms_attendance_employee_id_fkey";'))
+                conn.commit()
+            except Exception as fkey_err:
+                conn.rollback()
 
             # 2. Safely drop any non-canonical tables detected in the database
             for tbl in obsolete_tables:

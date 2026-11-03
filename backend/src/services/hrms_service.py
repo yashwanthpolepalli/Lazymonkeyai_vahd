@@ -4,7 +4,7 @@ import math
 import calendar
 from datetime import datetime, date, timezone, timedelta
 from typing import List, Dict, Any, Optional
-from sqlalchemy import or_, func
+from sqlalchemy import or_, func, text
 from sqlalchemy.orm import Session
 from src.models.hrms import (
     Employee, Department, Designation, Team, EmployeeDocument,
@@ -3904,6 +3904,14 @@ class HrmsService:
             e_id = e["id"]
             all_query_ids.add(e_id)
             emp_id_to_profile_id[e_id] = e_id
+            if e_id.startswith("cust_"):
+                no_cust = e_id.replace("cust_", "")
+                all_query_ids.add(no_cust)
+                emp_id_to_profile_id[no_cust] = e_id
+            else:
+                cust_prefix = f"cust_{e_id}"
+                all_query_ids.add(cust_prefix)
+                emp_id_to_profile_id[cust_prefix] = e_id
             if e.get("code"):
                 all_query_ids.add(e["code"])
                 emp_id_to_profile_id[e["code"]] = e_id
@@ -4157,54 +4165,112 @@ class HrmsService:
             end_time = payload.get("end_time") or (tmpl.end_time if tmpl else std.get("end_time", ""))
             shift_id = payload.get("shift_id") or (tmpl.id if tmpl else None)
 
-        updated_count = 0
-        for emp_id in employee_ids:
-            for d_str in dates:
-                try:
-                    d_obj = datetime.strptime(d_str.strip(), "%Y-%m-%d").date()
-                except Exception:
-                    continue
+        # Proactively ensure foreign key constraint that blocks students/custom IDs is dropped
+        try:
+            db.execute(text('ALTER TABLE "hrms_shift_rosters" DROP CONSTRAINT IF EXISTS "hrms_shift_rosters_employee_id_fkey";'))
+            db.commit()
+        except Exception:
+            db.rollback()
 
-                roster = db.query(EmployeeShiftRoster).filter(
-                    EmployeeShiftRoster.employee_id == emp_id,
-                    EmployeeShiftRoster.date == d_obj
-                ).first()
+        def apply_shift_updates():
+            count = 0
+            for emp_id in employee_ids:
+                for d_str in dates:
+                    try:
+                        d_obj = datetime.strptime(d_str.strip(), "%Y-%m-%d").date()
+                    except Exception:
+                        continue
 
-                if not roster:
-                    roster = EmployeeShiftRoster(
-                        id=f"roster_{uuid.uuid4().hex[:8]}",
-                        employee_id=emp_id,
-                        date=d_obj,
-                        shift_id=shift_id,
-                        shift_code=shift_code,
-                        shift_name=shift_name,
-                        start_time=start_time,
-                        end_time=end_time,
-                        is_weekly_off=is_off,
-                        status="SCHEDULED"
+                    roster = db.query(EmployeeShiftRoster).filter(
+                        EmployeeShiftRoster.employee_id == emp_id,
+                        EmployeeShiftRoster.date == d_obj
+                    ).first()
+
+                    if not roster:
+                        roster = EmployeeShiftRoster(
+                            id=f"roster_{uuid.uuid4().hex[:8]}",
+                            employee_id=emp_id,
+                            date=d_obj,
+                            shift_id=shift_id,
+                            shift_code=shift_code,
+                            shift_name=shift_name,
+                            start_time=start_time,
+                            end_time=end_time,
+                            is_weekly_off=is_off,
+                            status="SCHEDULED"
+                        )
+                        db.add(roster)
+                    else:
+                        roster.shift_id = shift_id
+                        roster.shift_code = shift_code
+                        roster.shift_name = shift_name
+                        roster.start_time = start_time
+                        roster.end_time = end_time
+                        roster.is_weekly_off = is_off
+
+                    # If an attendance record exists for this employee/student on this date, update its shift linkage
+                    clean_sid = emp_id.replace("cust_", "")
+                    att = db.query(EmployeeAttendance).filter(
+                        or_(
+                            EmployeeAttendance.employee_id == emp_id,
+                            EmployeeAttendance.employee_id == clean_sid,
+                            EmployeeAttendance.employee_id == f"cust_{emp_id}"
+                        ),
+                        EmployeeAttendance.date == d_obj
+                    ).first()
+                    if att:
+                        att.shift_id = shift_id
+                        att.shift_code = shift_code
+                        att.shift_name = shift_name
+
+                    count += 1
+
+                # If student, sync default shift in student metadata
+                clean_sid = emp_id.replace("cust_", "")
+                st_obj = db.query(student).filter(
+                    or_(
+                        student.id == emp_id,
+                        student.id == clean_sid,
+                        student.id == f"cust_{emp_id}"
                     )
-                    db.add(roster)
-                else:
-                    roster.shift_id = shift_id
-                    roster.shift_code = shift_code
-                    roster.shift_name = shift_name
-                    roster.start_time = start_time
-                    roster.end_time = end_time
-                    roster.is_weekly_off = is_off
-
-                # If an attendance record exists for this employee on this date, update its shift linkage
-                att = db.query(EmployeeAttendance).filter(
-                    EmployeeAttendance.employee_id == emp_id,
-                    EmployeeAttendance.date == d_obj
                 ).first()
-                if att:
-                    att.shift_id = shift_id
-                    att.shift_code = shift_code
-                    att.shift_name = shift_name
+                if st_obj:
+                    s_meta = dict(st_obj.meta_data or {})
+                    s_meta["shift_code"] = shift_code
+                    s_meta["shift_name"] = shift_name
+                    st_obj.meta_data = s_meta
 
-                updated_count += 1
+                # If employee, sync default shift_code on Employee record
+                emp_obj = db.query(Employee).filter(
+                    or_(
+                        Employee.id == emp_id,
+                        Employee.code == emp_id
+                    )
+                ).first()
+                if emp_obj:
+                    emp_obj.shift_code = shift_code
 
-        db.commit()
+            return count
+
+        try:
+            updated_count = apply_shift_updates()
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            err_str = str(e).lower()
+            if "foreignkey" in err_str or "foreign key" in err_str or "hrms_shift_rosters_employee_id_fkey" in err_str:
+                # Force drop constraint in DB transaction and re-apply
+                try:
+                    db.execute(text('ALTER TABLE "hrms_shift_rosters" DROP CONSTRAINT IF EXISTS "hrms_shift_rosters_employee_id_fkey";'))
+                    db.commit()
+                    updated_count = apply_shift_updates()
+                    db.commit()
+                except Exception as retry_err:
+                    db.rollback()
+                    raise retry_err
+            else:
+                raise e
+
         return {
             "status": "success",
             "message": f"Successfully updated shift to {shift_name} across {updated_count} slot(s).",

@@ -88,7 +88,7 @@ class EmployeeAttendance(Base):
     __table_args__ = {'extend_existing': True}
 
     id = Column(String, primary_key=True, default=lambda: f"att_{uuid.uuid4().hex[:8]}")
-    employee_id = Column(String, ForeignKey("hrms_employees.id", ondelete="CASCADE"), nullable=False)
+    employee_id = Column(String, nullable=False, index=True)
     date = Column(Date, nullable=True)
     check_in = Column(String, nullable=True)
     check_out = Column(String, nullable=True)
@@ -463,7 +463,7 @@ class EmployeeShiftRoster(Base):
     __table_args__ = {'extend_existing': True}
 
     id = Column(String, primary_key=True, default=lambda: f"roster_{uuid.uuid4().hex[:8]}")
-    employee_id = Column(String, ForeignKey("hrms_employees.id", ondelete="CASCADE"), nullable=False, index=True)
+    employee_id = Column(String, nullable=False, index=True)
     date = Column(Date, nullable=False, index=True)
     shift_id = Column(String, nullable=True)
     shift_code = Column(String, nullable=True)

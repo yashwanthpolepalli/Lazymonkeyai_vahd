@@ -26,8 +26,21 @@ export function HrmsAttendanceTab({ onSuccessToast }: HrmsAttendanceTabProps) {
   const [selectedMonth, setSelectedMonth] = useState<number>(currentDate.getMonth() + 1);
 
   // Filters
+  const [selectedBranch, setSelectedBranch] = useState<string>(() => {
+    return localStorage.getItem('vahd_selected_org_id') || 'all';
+  });
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedDepartment, setSelectedDepartment] = useState<string>('ALL');
+
+  // Synchronize with Topbar organization / branch selector
+  useEffect(() => {
+    const handleOrgChanged = (e: any) => {
+      const orgId = e?.detail?.id ?? localStorage.getItem('vahd_selected_org_id') ?? 'all';
+      setSelectedBranch(orgId);
+    };
+    window.addEventListener('vahd:org_changed', handleOrgChanged);
+    return () => window.removeEventListener('vahd:org_changed', handleOrgChanged);
+  }, []);
 
   // Data
   const [loading, setLoading] = useState<boolean>(true);
@@ -54,12 +67,14 @@ export function HrmsAttendanceTab({ onSuccessToast }: HrmsAttendanceTabProps) {
   const fetchAttendance = async () => {
     setLoading(true);
     try {
+      const branchId = selectedBranch && selectedBranch !== 'all' ? selectedBranch : undefined;
       const res = await hrmsApi.getAttendanceMatrix({
         year: selectedYear,
         month: selectedMonth,
         department: selectedDepartment !== 'ALL' ? selectedDepartment : undefined,
         search: searchQuery.trim() || undefined,
         user_type: attendanceScope,
+        branch_id: branchId,
       });
       setMatrixData(res);
     } catch (e) {
@@ -71,7 +86,7 @@ export function HrmsAttendanceTab({ onSuccessToast }: HrmsAttendanceTabProps) {
 
   useEffect(() => {
     fetchAttendance();
-  }, [selectedYear, selectedMonth, selectedDepartment, attendanceScope]);
+  }, [selectedYear, selectedMonth, selectedDepartment, attendanceScope, selectedBranch]);
 
   // Debounced search
   useEffect(() => {

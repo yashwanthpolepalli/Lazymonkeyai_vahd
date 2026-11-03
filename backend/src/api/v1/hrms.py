@@ -194,8 +194,8 @@ def get_attendance_matrix(
 
 
 @router.get("/attendance")
-def get_attendance(date: Optional[str] = None, db: Session = Depends(get_db)):
-    return HrmsService.get_attendance_logs(db, selected_date=date)
+def get_attendance(date: Optional[str] = None, branch_id: Optional[str] = Query(None), db: Session = Depends(get_db)):
+    return HrmsService.get_attendance_logs(db, selected_date=date, branch_id=branch_id)
 
 @router.get("/attendance/corrections")
 def get_attendance_corrections(

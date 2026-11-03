@@ -50,11 +50,24 @@ type FilterType = typeof filters[number];
 export function MembersPage() {
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedBranch, setSelectedBranch] = useState<string>(() => {
+    return localStorage.getItem('vahd_selected_org_id') || 'all';
+  });
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterType>('All');
   const [attendanceFilter, setAttendanceFilter] = useState<'All' | '>=75' | '60-74' | '<60' | '0'>('All');
   const [enrollOpen, setEnrollOpen] = useState(false);
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
+
+  // Synchronize with Topbar organization / branch switcher
+  useEffect(() => {
+    const handleOrgChanged = (e: any) => {
+      const orgId = e?.detail?.id ?? localStorage.getItem('vahd_selected_org_id') ?? 'all';
+      setSelectedBranch(orgId);
+    };
+    window.addEventListener('vahd:org_changed', handleOrgChanged);
+    return () => window.removeEventListener('vahd:org_changed', handleOrgChanged);
+  }, []);
 
   // Renewal Modal state
   const [renewalOpen, setRenewalOpen] = useState(false);
@@ -175,8 +188,9 @@ export function MembersPage() {
 
   const fetchMembers = () => {
     setLoading(true);
+    const branchParam = selectedBranch && selectedBranch !== 'all' ? { branch_id: selectedBranch } : undefined;
     api.students
-      .list()
+      .list(branchParam)
       .then((data) => {
         setMembers(data || []);
       })
@@ -190,7 +204,7 @@ export function MembersPage() {
 
   useEffect(() => {
     fetchMembers();
-  }, []);
+  }, [selectedBranch]);
 
   const fetchDynamicPlans = () => {
     apiClient.get<PlanItem[]>('/courses/plans')
@@ -229,6 +243,15 @@ export function MembersPage() {
   };
 
   const filtered = members.filter((m) => {
+    const isAll = !selectedBranch || selectedBranch.toLowerCase() === 'all';
+    if (!isAll) {
+      const bTarget = selectedBranch.toLowerCase();
+      const mBranchId = (m.branch_id || '').toLowerCase();
+      const mBranch = (m.branch || '').toLowerCase();
+      const matchesBranch = mBranchId === bTarget || mBranch === bTarget || mBranch.includes(bTarget) || bTarget.includes(mBranch);
+      if (!matchesBranch && mBranchId && mBranch) return false;
+    }
+
     const name = m.name || (m as any).full_name || '';
     const email = m.email || '';
     const phone = m.phone || '';

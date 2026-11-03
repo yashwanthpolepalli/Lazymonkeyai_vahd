@@ -4,7 +4,7 @@ import math
 import calendar
 from datetime import datetime, date, timezone, timedelta
 from typing import List, Dict, Any, Optional
-from sqlalchemy import or_, func, text
+from sqlalchemy import or_, func, text, cast, String
 from sqlalchemy.orm import Session
 from src.models.hrms import (
     Employee, Department, Designation, Team, EmployeeDocument,
@@ -1405,7 +1405,7 @@ class HrmsService:
         return True
 
     @staticmethod
-    def get_attendance_logs(db: Session, selected_date: Optional[str] = None) -> List[Dict[str, Any]]:
+    def get_attendance_logs(db: Session, selected_date: Optional[str] = None, branch_id: Optional[str] = None) -> List[Dict[str, Any]]:
         now_ist = datetime.now(IST)
         target_date = now_ist.date()
         if selected_date:
@@ -1418,6 +1418,19 @@ class HrmsService:
 
         target_date_str = target_date.strftime("%Y-%m-%d")
         target_date_slash = target_date.strftime("%d/%m/%Y")
+
+        target_branch_ids = [branch_id]
+        target_branch_names = [branch_id]
+        if branch_id and str(branch_id).lower() not in ["all", "", "none", "undefined", "null"]:
+            br = db.query(vahdBranch).filter(
+                or_(vahdBranch.id == branch_id, vahdBranch.branch_name == branch_id, vahdBranch.vahd_name == branch_id)
+            ).first()
+            if br:
+                target_branch_ids.append(br.id)
+                if br.branch_name:
+                    target_branch_names.append(br.branch_name)
+                if br.vahd_name:
+                    target_branch_names.append(br.vahd_name)
 
         logs = db.query(EmployeeAttendance).filter(
             or_(
@@ -1474,6 +1487,16 @@ class HrmsService:
                             Employee.id == t_usr.id
                         )
                     ).first()
+
+            if branch_id and str(branch_id).lower() not in ["all", "", "none", "undefined", "null"]:
+                emp_br_id = getattr(emp, "branch_id", None) if emp else None
+                emp_br_name = getattr(emp, "vahd_branch", None) if emp else None
+                matched_br = (
+                    (emp_br_id and emp_br_id in target_branch_ids) or
+                    (emp_br_name and any(tn.lower() in emp_br_name.lower() or emp_br_name.lower() in tn.lower() for tn in target_branch_names))
+                )
+                if not matched_br:
+                    continue
 
             full_name = f"{emp.first_name} {emp.last_name or ''}".strip() if emp else clean_lid
             emp_code = (emp.code if emp and emp.code else clean_lid)

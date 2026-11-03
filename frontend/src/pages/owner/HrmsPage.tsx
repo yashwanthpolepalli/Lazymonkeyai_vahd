@@ -164,6 +164,8 @@ export function HrmsPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
+      const activeOrg = localStorage.getItem('vahd_selected_org_id') || 'all';
+      const branchIdParam = activeOrg !== 'all' ? activeOrg : undefined;
       const [deptRes, desgRes, teamRes, docRes] = await Promise.all([
         hrmsApi.getDepartments(),
         hrmsApi.getDesignations(),
@@ -177,9 +179,9 @@ export function HrmsPage() {
 
       // Fetch supplementary modules
       const [attRes, leaveRes, payRes, exitRes] = await Promise.all([
-        hrmsApi.getAttendance(),
-        hrmsApi.getLeaves(),
-        hrmsApi.getPayroll(),
+        hrmsApi.getAttendance(undefined, branchIdParam),
+        hrmsApi.getLeaves(undefined, branchIdParam),
+        hrmsApi.getPayroll(undefined, undefined, branchIdParam),
         hrmsApi.getExitRequests(),
       ]);
       setAttendanceLogs(attRes || []);

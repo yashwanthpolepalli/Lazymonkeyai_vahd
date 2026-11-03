@@ -14,6 +14,8 @@ export interface Member {
   revenue: string;
   risk: 'low' | 'medium' | 'high';
   branch: string;
+  branch_id?: string;
+  ho_id?: string;
   joinDate: string;
   age: number;
   gender: string;

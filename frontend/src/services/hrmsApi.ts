@@ -403,7 +403,7 @@ export interface PunchResponse {
 
 export const hrmsApi = {
   // Employees
-  getEmployees: (params?: { department?: string; status?: string; search?: string }) =>
+  getEmployees: (params?: { department?: string; status?: string; search?: string; branch_id?: string; ho_id?: string }) =>
     apiClient.get<EmployeeItem[]>('/hrms/employees', { params }),
   createEmployee: (payload: Partial<EmployeeItem>) =>
     apiClient.post<{ message: string; id: string; code: string }>('/hrms/employees', payload),
@@ -441,8 +441,8 @@ export const hrmsApi = {
     apiClient.delete<{ message: string }>(`/hrms/geofence-schemes/${schemeId}`),
 
   // Attendance
-  getAttendance: (date?: string) =>
-    apiClient.get<AttendanceRecord[]>('/hrms/attendance', { params: { date } }),
+  getAttendance: (date?: string, branch_id?: string) =>
+    apiClient.get<AttendanceRecord[]>('/hrms/attendance', { params: { date, branch_id } }),
   getAttendanceCorrections: (params?: {
     date?: string;
     status?: string;
@@ -451,8 +451,10 @@ export const hrmsApi = {
     district?: string;
     reason?: string;
     search?: string;
+    branch_id?: string;
+    ho_id?: string;
   }) => apiClient.get<AttendanceCorrectionItem[]>('/hrms/attendance/corrections', { params }),
-  getAttendanceCorrectionsStats: (params?: { date?: string }) =>
+  getAttendanceCorrectionsStats: (params?: { date?: string; branch_id?: string; ho_id?: string }) =>
     apiClient.get<AttendanceCorrectionStats>('/hrms/attendance/corrections/stats', { params }),
   createAttendanceCorrection: (payload: Partial<AttendanceCorrectionItem>) =>
     apiClient.post<{ message: string; id: string }>('/hrms/attendance/corrections', payload),
@@ -475,7 +477,7 @@ export const hrmsApi = {
   }) => apiClient.post<PunchResponse>('/hrms/attendance/punch', payload),
 
   // Leave
-  getLeaves: () => apiClient.get<LeaveItem[]>('/hrms/leaves'),
+  getLeaves: (status?: string, branch_id?: string) => apiClient.get<LeaveItem[]>('/hrms/leaves', { params: { status, branch_id } }),
   applyLeave: (payload: {
     employee_id: string;
     leave_type?: string;
@@ -549,8 +551,8 @@ export const hrmsApi = {
   createCommission: (payload: any) => apiClient.post<any>('/hrms/payroll/commissions', payload),
 
   // Legacy Payroll
-  getPayroll: (month?: string, year?: number) =>
-    apiClient.get<PayrollItem[]>('/hrms/payroll', { params: { month, year } }),
+  getPayroll: (month?: string, year?: number, branch_id?: string) =>
+    apiClient.get<PayrollItem[]>('/hrms/payroll', { params: { month, year, branch_id } }),
   generateBatchPayroll: (payload: { employee_ids: string[]; month?: string; year?: number }) =>
     apiClient.post<PayrollItem[]>('/hrms/payroll/generate-batch', payload),
   disbursePayroll: (payrollId: string, payload: { payment_method: string; transaction_reference?: string }) =>
@@ -627,7 +629,7 @@ export const hrmsApi = {
   saveShiftTemplate: (payload: Partial<ShiftTemplateItem>) => apiClient.post<ShiftTemplateItem>('/hrms/shifts/templates', payload),
   deleteShiftTemplate: (templateId: string) => apiClient.delete<{ status: string; message: string }>(`/hrms/shifts/templates/${templateId}`),
 
-  getShiftRoster: (params?: { start_date?: string; end_date?: string; department?: string; search?: string; view?: string; user_type?: 'employee' | 'student' }) =>
+  getShiftRoster: (params?: { start_date?: string; end_date?: string; department?: string; search?: string; view?: string; user_type?: 'employee' | 'student'; branch_id?: string; ho_id?: string }) =>
     apiClient.get<ShiftRosterResponse>('/hrms/shifts/roster', { params }),
   assignShift: (payload: {
     employee_ids?: string[];
@@ -654,7 +656,7 @@ export const hrmsApi = {
     apiClient.post<{ status: string; message: string; inserted_count: number }>('/hrms/holidays/preseed', { year }),
 
   // Monthly Attendance Matrix & Punch
-  getAttendanceMatrix: (params?: { year?: number; month?: number; department?: string; search?: string; user_type?: 'employee' | 'student' | string }) =>
+  getAttendanceMatrix: (params?: { year?: number; month?: number; department?: string; search?: string; user_type?: 'employee' | 'student' | string; branch_id?: string; ho_id?: string }) =>
     apiClient.get<AttendanceMatrixResponse>('/hrms/attendance/matrix', { params }),
   punchAttendance: (payload: {
     employee_id: string;

@@ -19,11 +19,24 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
   const [activeTabMode, setActiveTabMode] = useState<'roster' | 'templates'>('roster');
 
   // Filter States (for Roster)
+  const [selectedBranch, setSelectedBranch] = useState<string>(() => {
+    return localStorage.getItem('vahd_selected_org_id') || 'all';
+  });
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState('ALL');
   const [selectedShiftFilter, setSelectedShiftFilter] = useState('ALL');
   const [viewMode, setViewMode] = useState<'flat' | 'hierarchy'>('flat');
   const [selectedWeekOffset, setSelectedWeekOffset] = useState<number>(0);
+
+  // Synchronize with Topbar organization / branch switcher
+  useEffect(() => {
+    const handleOrgChanged = (e: any) => {
+      const orgId = e?.detail?.id ?? localStorage.getItem('vahd_selected_org_id') ?? 'all';
+      setSelectedBranch(orgId);
+    };
+    window.addEventListener('vahd:org_changed', handleOrgChanged);
+    return () => window.removeEventListener('vahd:org_changed', handleOrgChanged);
+  }, []);
 
   // Data States
   const [loading, setLoading] = useState(true);
@@ -98,12 +111,14 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
   const fetchRoster = async () => {
     setLoading(true);
     try {
+      const branchId = selectedBranch && selectedBranch !== 'all' ? selectedBranch : undefined;
       const res = await hrmsApi.getShiftRoster({
         start_date: currentWeekMondayStr,
         department: selectedDepartment !== 'ALL' ? selectedDepartment : undefined,
         search: searchQuery.trim() || undefined,
         view: viewMode,
         user_type: rosterScope,
+        branch_id: branchId,
       });
       setRosterData(res);
     } catch (err) {
@@ -133,7 +148,7 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
   useEffect(() => {
     fetchRoster();
     fetchTemplatesAndCalendars();
-  }, [currentWeekMondayStr, selectedDepartment, viewMode, rosterScope]);
+  }, [currentWeekMondayStr, selectedDepartment, viewMode, rosterScope, selectedBranch]);
 
   useEffect(() => {
     if (activeTabMode === 'templates') {

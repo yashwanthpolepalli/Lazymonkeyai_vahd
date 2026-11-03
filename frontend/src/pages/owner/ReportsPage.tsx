@@ -388,11 +388,12 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
       const y = parseInt(dateParts[0], 10);
       const m = parseInt(dateParts[1], 10);
 
+      const branchIdParam = selectedBranch && selectedBranch !== 'all' ? selectedBranch : undefined;
       const [empRes, deptRes, attRes, matrixRes] = await Promise.all([
-        hrmsApi.getEmployees().catch(() => []),
+        hrmsApi.getEmployees({ branch_id: branchIdParam }).catch(() => []),
         hrmsApi.getDepartments().catch(() => []),
-        hrmsApi.getAttendance(targetDate).catch(() => []),
-        (y && m) ? hrmsApi.getAttendanceMatrix({ year: y, month: m, user_type: 'employee' }).catch(() => null) : Promise.resolve(null)
+        hrmsApi.getAttendance(targetDate, branchIdParam).catch(() => []),
+        (y && m) ? hrmsApi.getAttendanceMatrix({ year: y, month: m, user_type: 'employee', branch_id: branchIdParam }).catch(() => null) : Promise.resolve(null)
       ]);
       setEmployees(Array.isArray(empRes) ? empRes : []);
       setDepartments(Array.isArray(deptRes) ? deptRes : []);
@@ -844,7 +845,10 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
   if (selectedReport === 'student-attendance') {
     const studentsList = studentsOverview?.students || [];
     const filteredStudents = studentsList.filter((s: any) => {
-      const matchBranch = !selectedBranch || selectedBranch === 'all' || s.branch_id === selectedBranch;
+      const matchBranch = !selectedBranch || selectedBranch === 'all' ||
+        s.branch_id === selectedBranch ||
+        (s.branch_name && s.branch_name.toLowerCase() === selectedBranch.toLowerCase()) ||
+        allBranchesList.some((b) => b.id === selectedBranch && (b.branch_name === s.branch_name || b.vahd_name === s.branch_name));
       const matchSearch =
         !searchTableQuery.trim() ||
         (s.student_name || '').toLowerCase().includes(searchTableQuery.toLowerCase()) ||
@@ -1181,7 +1185,10 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
   if (selectedReport === 'employee-attendance') {
     const employeesList = employeesOverview?.employees || [];
     const filteredEmployees = employeesList.filter((emp: any) => {
-      const matchBranch = !selectedBranch || selectedBranch === 'all' || emp.branch_id === selectedBranch;
+      const matchBranch = !selectedBranch || selectedBranch === 'all' ||
+        emp.branch_id === selectedBranch ||
+        (emp.branch_name && emp.branch_name.toLowerCase() === selectedBranch.toLowerCase()) ||
+        allBranchesList.some((b) => b.id === selectedBranch && (b.branch_name === emp.branch_name || b.vahd_name === emp.branch_name));
       const matchSearch =
         !searchTableQuery.trim() ||
         (emp.employee_name || '').toLowerCase().includes(searchTableQuery.toLowerCase()) ||

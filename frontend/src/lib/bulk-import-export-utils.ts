@@ -161,7 +161,7 @@ export function exportStudentsToXlsx(students: any[], filename = 'students_expor
       'Student Full Name': s.full_name || s.name || '',
       'Student Email': s.email || meta.email || '',
       'Student Phone / Mobile': s.phone || perm.mobile || '',
-      'Parent / Guardian Mobile': s.parent_phone || s.parent_mobile || meta.parent_mobile || meta.parent_phone || '',
+      'Parent / Guardian Mobile': s.parent_phone || meta.parent_phone || '',
 
       // Academic
       'Degree / Course Program': meta.course || s.course || s.goal || '',
@@ -238,7 +238,7 @@ export function exportStudentsToCsv(students: any[], filename = 'students_export
       'Student Full Name': s.full_name || s.name || '',
       'Student Email': s.email || meta.email || '',
       'Student Phone / Mobile': s.phone || perm.mobile || '',
-      'Parent / Guardian Mobile': s.parent_phone || s.parent_mobile || meta.parent_mobile || meta.parent_phone || '',
+      'Parent / Guardian Mobile': s.parent_phone || meta.parent_phone || '',
 
       // Academic
       'Degree / Course Program': meta.course || s.course || s.goal || '',

@@ -103,7 +103,6 @@ interface StudentItem {
   phone: string;
   student_number?: string;
   parent_phone?: string;
-  parent_mobile?: string;
   member_code?: string;
   code?: string;
   gender?: string;
@@ -281,7 +280,7 @@ export function StudentManagementTab() {
   const [dispatchingWhatsAppId, setDispatchingWhatsAppId] = useState<string | null>(null);
 
   const handleQuickSendWhatsApp = async (student: any) => {
-    const parentPhone = student.parent_phone || student.meta_data?.parent_mobile || student.meta_data?.parent_phone;
+    const parentPhone = student.parent_phone || student.meta_data?.parent_phone;
     if (!parentPhone) {
       showToast(`Cannot dispatch: Missing parent mobile number for ${student.full_name || student.name}.`);
       return;
@@ -1062,11 +1061,11 @@ export function StudentManagementTab() {
                       {/* PARENT WHATSAPP */}
                       {visibleColumns.parentMobile && (
                         <td className="p-3.5 text-xs font-mono font-bold text-emerald-800 dark:text-emerald-300">
-                          {s.parent_phone || meta.parent_mobile || meta.parent_phone ? (
+                          {s.parent_phone || meta.parent_phone ? (
                             <div className="flex items-center gap-1.5">
                               <span className="inline-flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-lg border border-emerald-200 dark:border-emerald-800 text-[11px]">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-                                {s.parent_phone || meta.parent_mobile || meta.parent_phone}
+                                {s.parent_phone || meta.parent_phone}
                               </span>
                               <button
                                 type="button"
@@ -1683,7 +1682,7 @@ export function StudentManagementTab() {
                     <Icon name="message-square" size={12} /> Parent WhatsApp:
                   </span>
                   <div className="font-mono font-black text-emerald-900 dark:text-emerald-100 mt-0.5 text-xs">
-                    {selectedStudentForView.parent_phone || selectedStudentForView.meta_data?.parent_mobile || selectedStudentForView.meta_data?.parent_phone || 'N/A'}
+                    {selectedStudentForView.parent_phone || selectedStudentForView.meta_data?.parent_phone || 'N/A'}
                   </div>
                 </div>
                 <div>

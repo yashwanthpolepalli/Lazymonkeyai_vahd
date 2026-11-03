@@ -177,6 +177,23 @@ class studentService:
         # Dynamic Student Admission Metadata & Course/Medium Resolution
         meta = dict(c.meta_data) if (c.meta_data and isinstance(c.meta_data, dict)) else {}
 
+        course_name = (
+            meta.get("course")
+            or meta.get("course_name")
+            or getattr(c, "qualification", None)
+            or getattr(c, "specialization", None)
+            or meta.get("program")
+            or (mem.plan_name if mem and mem.plan_name else None)
+            or meta.get("department")
+            or "General"
+        )
+
+        parent_phone_val = (
+            c.parent_phone
+            or meta.get("parent_phone")
+            or ""
+        )
+
         return {
             "id": c.id,
             "user_id": c.user_id,
@@ -184,19 +201,18 @@ class studentService:
             "employee": employee_name or "",
             "full_name": c.full_name,
             "name": c.full_name,
-            "email": c.email,
-            "phone": c.phone,
+            "email": c.email or "",
+            "phone": c.phone or "",
             "gender": c.gender or "",
             "qualification": getattr(c, "qualification", None) or meta.get("qualification") or "",
             "specialization": getattr(c, "specialization", None) or meta.get("specialization") or "",
             "department": meta.get("department") or "",
             "meta_data": meta,
-            "course": meta.get("course") or "",
+            "course": course_name,
             "medium": meta.get("medium") or "",
             "father_name": meta.get("father_name") or "",
             "mother_name": meta.get("mother_name") or "",
-            "parent_phone": c.parent_phone or meta.get("parent_mobile") or meta.get("parent_phone") or "",
-            "parent_mobile": c.parent_phone or meta.get("parent_mobile") or meta.get("parent_phone") or "",
+            "parent_phone": parent_phone_val,
             "profile_image": c.profile_image or "",
             "status": calculated_status,
             "attendance": attendance_pct,
@@ -209,7 +225,7 @@ class studentService:
             "ho_id": c.ho_id or "",
             "created_at": c.created_at.isoformat() if c.created_at else None,
             "joinDate": c.created_at.isoformat() if c.created_at else None,
-            "membership": mem.plan_name if mem else "No Active Plan",
+            "membership": course_name,
             "membership_plan": mem_dict,
             "biometric_synced": is_completed,
             "biometric_status": biometric_status,

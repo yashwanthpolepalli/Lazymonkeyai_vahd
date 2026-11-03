@@ -5,6 +5,8 @@ export interface Member {
   phone: string;
   avatar: string;
   membership: string;
+  course?: string;
+  parent_phone?: string;
   status: 'active' | 'inactive' | 'expiring' | 'trial' | 'vip';
   attendance: number;
   lastVisit: string;

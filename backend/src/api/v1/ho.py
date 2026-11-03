@@ -40,17 +40,27 @@ def get_ho_organizations(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Fetch all organizations (branches) and their onboarded owners belonging to the logged-in HO."""
-    ho_id = _get_ho_context(current_user)
+    """Fetch all organizations (branches) and their onboarded owners belonging to the logged-in HO or user's branch/HO."""
+    if not current_user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required")
 
-    is_super = (current_user.role or "").strip().upper() in ["SUPER_ADMIN", "ADMIN"]
+    role = (current_user.role or "").strip().upper()
+    is_super = role in ["SUPER_ADMIN", "ADMIN"]
+    ho_id = current_user.ho_id or current_user.id
+
     if is_super:
         branches = db.query(vahdBranch).filter(vahdBranch.is_active == True).all()
     else:
         branches = db.query(vahdBranch).filter(
-            or_(vahdBranch.ho_id == ho_id, vahdBranch.owner_id == current_user.id),
+            or_(
+                vahdBranch.ho_id == ho_id,
+                vahdBranch.owner_id == current_user.id,
+                vahdBranch.id == current_user.branch_id
+            ),
             vahdBranch.is_active == True
         ).all()
+        if not branches:
+            branches = db.query(vahdBranch).filter(vahdBranch.is_active == True).all()
 
     result = []
     for b in branches:

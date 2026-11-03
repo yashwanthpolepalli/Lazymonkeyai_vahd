@@ -77,9 +77,7 @@ class StudentAttendanceReportService:
         meta = student.meta_data or {}
         parent_phone = (
             student.parent_phone
-            or meta.get("parent_mobile")
             or meta.get("parent_phone")
-            or meta.get("guardian_phone")
             or ""
         ).strip()
 

@@ -619,7 +619,7 @@ export function StudentEnrollmentModal({
       setFullName(studentToEdit.full_name || studentToEdit.name || '');
       setFatherName(meta.father_name || studentToEdit.father_name || '');
       setMotherName(meta.mother_name || studentToEdit.mother_name || '');
-      setParentMobile(studentToEdit.parent_phone || studentToEdit.parent_mobile || meta.parent_mobile || meta.parent_phone || meta.guardian_phone || '');
+      setParentMobile(studentToEdit.parent_phone || meta.parent_phone || '');
       setStudentEmail(studentToEdit.email || meta.email || '');
 
       const perm = meta.permanent_address || {};
@@ -919,7 +919,6 @@ export function StudentEnrollmentModal({
       email: validEmail,
       phone: finalMobile,
       parent_phone: cleanParentMobile,
-      parent_mobile: cleanParentMobile,
       branch_id: resolvedBranchId,
       ho_id: resolvedHoId,
       owner_id: resolvedOwnerId,
@@ -952,7 +951,6 @@ export function StudentEnrollmentModal({
         email: validEmail,
         father_name: fatherName.toUpperCase(),
         mother_name: motherName.toUpperCase(),
-        parent_mobile: cleanParentMobile,
         parent_phone: cleanParentMobile,
         permanent_address: {
           door_no: permDoorNo,

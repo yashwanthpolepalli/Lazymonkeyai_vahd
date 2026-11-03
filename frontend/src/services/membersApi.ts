@@ -43,13 +43,18 @@ export const membersApi = {
         ? (riskRaw as Member['risk'])
         : 'low';
 
+      const courseVal = item.course || item.specialization || item.qualification || item.membership || (typeof item.membership_plan === 'object' ? item.membership_plan?.planName : item.membership_plan) || 'General';
+      const parentPhone = item.parent_phone || item.meta_data?.parent_phone || '';
+
       return {
         id: item.id || '',
         name: item.name || item.full_name || '',
         email: item.email || '',
         phone: item.phone || '',
         avatar: item.avatar || item.profile_image || '',
-        membership: item.membership || (typeof item.membership_plan === 'object' ? item.membership_plan?.planName : item.membership_plan) || '',
+        membership: courseVal,
+        course: courseVal,
+        parent_phone: parentPhone,
         status,
         attendance: Number(item.attendance) || 0,
         lastVisit: item.lastVisit || '',

@@ -1,4 +1,5 @@
 export * from './auth';
+export * from './member';
 
 export interface KpiCard {
   id: string;
@@ -46,26 +47,6 @@ export interface RevenueData {
   renewals: number[];
   newstudents: number[];
   churn: number[];
-}
-
-export interface Member {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  avatar: string;
-  membership: string;
-  status: 'active' | 'inactive' | 'expiring' | 'trial' | 'vip';
-  attendance: number;
-  lastVisit: string;
-  expiry: string;
-  revenue: string;
-  risk: 'low' | 'medium' | 'high';
-  branch: string;
-  joinDate: string;
-  age: number;
-  gender: string;
-  employee: string;
 }
 
 export interface Product {

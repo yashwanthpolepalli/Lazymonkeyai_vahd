@@ -64,6 +64,7 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
   const [modalShiftCode, setModalShiftCode] = useState('');
   const [modalStartTime, setModalStartTime] = useState('');
   const [modalEndTime, setModalEndTime] = useState('');
+  const [modalDate, setModalDate] = useState('');
   const [modalSubmitting, setModalSubmitting] = useState(false);
 
   // Add Shift Timing Modal (matching Image 3)
@@ -77,8 +78,17 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
   // New Work Calendar Modal (Matching Image 2)
   const [showNewCalendarModal, setShowNewCalendarModal] = useState(false);
   const [newCalName, setNewCalName] = useState('');
-  const [newCalWorkingDays, setNewCalWorkingDays] = useState<string[]>(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
+  const [newCalWorkingDays, setNewCalWorkingDays] = useState<string[]>([]);
   const [submittingCal, setSubmittingCal] = useState(false);
+
+  // Dynamic default working days from active database work calendar policies
+  const defaultCalWorkDays = useMemo(() => {
+    const active = workCalendars.find((c: any) => c.is_default) || workCalendars[0];
+    if (active?.working_days && active.working_days.length > 0) {
+      return active.working_days.map((d: string) => (d.length > 3 ? d.slice(0, 3) : d));
+    }
+    return [];
+  }, [workCalendars]);
 
   // Shift Template Selection, Edit & Create States (Matching Item 1)
   const [selectedTemplateIds, setSelectedTemplateIds] = useState<string[]>([]);
@@ -104,7 +114,7 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
   const [templateSelectedMemberIds, setTemplateSelectedMemberIds] = useState<string[]>([]);
   const [showMemberDropdown, setShowMemberDropdown] = useState(false);
   const [memberSearchQuery, setMemberSearchQuery] = useState('');
-  const [templateWorkDays, setTemplateWorkDays] = useState<string[]>(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
+  const [templateWorkDays, setTemplateWorkDays] = useState<string[]>([]);
   const [showDaysDropdown, setShowDaysDropdown] = useState(false);
 
   // Helper toast
@@ -331,8 +341,8 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
     });
   }, [rosterData?.employees, selectedShiftFilter]);
 
-  // Handle single cell shift quick change
-  const handleCellClick = (emp: EmployeeRosterRow, dateStr: string) => {
+  // Handle single cell shift quick change - loads existing data dynamically from DB via backend
+  const handleCellClick = async (emp: EmployeeRosterRow, dateStr: string) => {
     const currentShift = emp.shifts[dateStr]?.shift_code || (shiftTemplates[0]?.code ?? 'GEN');
     const tmpl = shiftTemplates.find((t) => t.code.toUpperCase() === currentShift.toUpperCase());
     setModalTarget({
@@ -341,10 +351,24 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
       employeeName: emp.name,
       isDayColumn: false,
     });
+    setModalDate(dateStr);
     setModalShiftCode(currentShift);
-    setModalStartTime(emp.shifts[dateStr]?.start_time || tmpl?.start_time || '09:00');
-    setModalEndTime(emp.shifts[dateStr]?.end_time || tmpl?.end_time || '18:00');
+    setModalStartTime(emp.shifts[dateStr]?.start_time || tmpl?.start_time || '');
+    setModalEndTime(emp.shifts[dateStr]?.end_time || tmpl?.end_time || '');
     setShowAssignModal(true);
+
+    // Dynamically fetch exact live record from database via backend
+    try {
+      const live = await hrmsApi.getShiftCell(emp.id, dateStr);
+      if (live) {
+        if (live.shift_code) setModalShiftCode(live.shift_code);
+        if (live.start_time !== undefined) setModalStartTime(live.start_time || '');
+        if (live.end_time !== undefined) setModalEndTime(live.end_time || '');
+        if (live.date) setModalDate(live.date);
+      }
+    } catch (err) {
+      // Fallback already rendered smoothly
+    }
   };
 
   // Handle day header click (e.g. MON NOV 02) to assign shift & timing across all employees
@@ -369,9 +393,10 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
         : `All ${targetIds.length} Staff`,
       isDayColumn: true,
     });
+    setModalDate(d.date);
     setModalShiftCode(initialCode);
-    setModalStartTime(firstShift?.start_time || tmpl?.start_time || '09:00');
-    setModalEndTime(firstShift?.end_time || tmpl?.end_time || '18:00');
+    setModalStartTime(firstShift?.start_time || tmpl?.start_time || '');
+    setModalEndTime(firstShift?.end_time || tmpl?.end_time || '');
     setShowAssignModal(true);
   };
 
@@ -385,10 +410,11 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
       const sName = isOff ? 'Rest Day' : (selectedTmpl?.name || `${modalShiftCode} Shift`);
       const sStart = isOff ? '' : modalStartTime;
       const sEnd = isOff ? '' : modalEndTime;
+      const targetDate = modalDate || modalTarget.dateStr;
 
       await hrmsApi.assignShift({
         employee_ids: modalTarget.employeeIds,
-        dates: [modalTarget.dateStr],
+        dates: [targetDate],
         shift_code: modalShiftCode,
         shift_name: sName,
         start_time: sStart,
@@ -401,7 +427,7 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
       showToast(
         modalTarget.isDayColumn
           ? `Shift for ${modalTarget.dayLabel} set to ${sName} (${sStart && sEnd ? `${sStart} - ${sEnd}` : sName}) across ${modalTarget.employeeName}.`
-          : `Shift updated to ${sName} for ${modalTarget.employeeName}.`
+          : `Shift updated to ${sName} (${sStart && sEnd ? `${sStart} - ${sEnd}` : sName}) for ${modalTarget.employeeName} on ${targetDate}.`
       );
       fetchRoster();
     } catch (err: any) {
@@ -529,7 +555,7 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
       showToast(`Work calendar "${newCalName}" created successfully.`);
       setShowNewCalendarModal(false);
       setNewCalName('');
-      setNewCalWorkingDays(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
+      setNewCalWorkingDays(defaultCalWorkDays.length > 0 ? defaultCalWorkDays : []);
       fetchTemplatesAndCalendars();
       fetchRoster();
     } catch (err: any) {
@@ -557,12 +583,32 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
     setTemplateSelectedMemberIds([]);
     setShowMemberDropdown(false);
     setMemberSearchQuery('');
-    setTemplateWorkDays(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
+    setTemplateWorkDays(defaultCalWorkDays.length > 0 ? defaultCalWorkDays : []);
     setShowDaysDropdown(false);
     setShowTemplateModal(true);
   };
 
-  const handleOpenEditTemplate = (tpl: ShiftTemplateItem) => {
+  const formatToDateInput = (val: any): string => {
+    if (!val) return '';
+    const str = String(val).trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+    if (/^\d{4}-\d{2}-\d{2}T/.test(str)) return str.slice(0, 10);
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(str)) {
+      const [d, m, y] = str.split('/');
+      return `${y}-${m}-${d}`;
+    }
+    if (/^\d{2}-\d{2}-\d{4}$/.test(str)) {
+      const [d, m, y] = str.split('-');
+      return `${y}-${m}-${d}`;
+    }
+    try {
+      const d = new Date(str);
+      if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+    } catch { }
+    return '';
+  };
+
+  const handleOpenEditTemplate = async (tpl: ShiftTemplateItem) => {
     setEditingTemplateId(tpl.id);
     setTemplateCode(tpl.code);
     setTemplateName(tpl.name);
@@ -573,15 +619,38 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
     setTemplateIsNight(Boolean(tpl.is_night_shift));
     setTemplateColor(tpl.color || '#7c3aed');
     setTemplateAssignType((tpl.assign_type as 'employee' | 'student' | 'both') || 'both');
-    setTemplateFromDate(tpl.from_date || '');
-    setTemplateToDate(tpl.to_date || '');
+    setTemplateFromDate(formatToDateInput(tpl.from_date));
+    setTemplateToDate(formatToDateInput(tpl.to_date));
     setTemplateNumMembers(tpl.num_members ?? '');
     setTemplateSelectedMemberIds(tpl.member_ids || []);
     setShowMemberDropdown(false);
     setMemberSearchQuery('');
-    setTemplateWorkDays(tpl.work_days && tpl.work_days.length > 0 ? tpl.work_days : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
+    setTemplateWorkDays(tpl.work_days && tpl.work_days.length > 0 ? tpl.work_days : (defaultCalWorkDays.length > 0 ? defaultCalWorkDays : []));
     setShowDaysDropdown(false);
     setShowTemplateModal(true);
+
+    // Dynamically fetch exact live record from database via backend
+    try {
+      const live = await hrmsApi.getShiftTemplateById(tpl.id);
+      if (live) {
+        if (live.code) setTemplateCode(live.code);
+        if (live.name) setTemplateName(live.name);
+        if (live.start_time !== undefined) setTemplateStartTime(live.start_time || '');
+        if (live.end_time !== undefined) setTemplateEndTime(live.end_time || '');
+        if (live.break_mins !== undefined) setTemplateBreakMins(live.break_mins ?? '');
+        if (live.grace_period_mins !== undefined) setTemplateGraceMins(live.grace_period_mins ?? '');
+        if (live.is_night_shift !== undefined) setTemplateIsNight(Boolean(live.is_night_shift));
+        if (live.color) setTemplateColor(live.color || '#7c3aed');
+        if (live.assign_type) setTemplateAssignType(live.assign_type as any);
+        if (live.from_date !== undefined) setTemplateFromDate(formatToDateInput(live.from_date));
+        if (live.to_date !== undefined) setTemplateToDate(formatToDateInput(live.to_date));
+        if (live.num_members !== undefined) setTemplateNumMembers(live.num_members ?? '');
+        if (live.member_ids) setTemplateSelectedMemberIds(live.member_ids || []);
+        if (live.work_days && live.work_days.length > 0) setTemplateWorkDays(live.work_days);
+      }
+    } catch (err) {
+      // Fallback already rendered smoothly
+    }
   };
 
   const handleSaveShiftTemplate = async (e: React.FormEvent) => {
@@ -620,7 +689,11 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
       if (templateSelectedMemberIds.length > 0) {
         const workDates: string[] = [];
         const offDates: string[] = [];
-        const startD = templateFromDate ? new Date(templateFromDate) : new Date();
+        const rawStart = templateFromDate ? new Date(templateFromDate) : new Date();
+        // Always align startD to Sunday of the active week so all applicable days in the week
+        // (Mon, Tue, etc.) are overwritten in the database instead of leaving partial days with stale shifts.
+        const dayOfWeek = rawStart.getDay(); // 0 = Sun, 1 = Mon...
+        const startD = new Date(rawStart.getFullYear(), rawStart.getMonth(), rawStart.getDate() - dayOfWeek);
         const endD = templateToDate
           ? new Date(templateToDate)
           : new Date(startD.getTime() + 35 * 24 * 60 * 60 * 1000); // Default to 35-day window so weekly roster is fully populated
@@ -691,7 +764,7 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
         view: viewMode,
         user_type: rosterScope,
         branch_id: branchId,
-      }).then((res) => setRosterData(res)).catch(() => {});
+      }).then((res) => setRosterData(res)).catch(() => { });
       fetchTemplatesAndCalendars();
     } catch (err: any) {
       showToast(err?.response?.data?.detail || err?.message || 'Failed to save shift template');
@@ -782,7 +855,7 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
             type="button"
             onClick={() => {
               setNewCalName('');
-              setNewCalWorkingDays(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
+              setNewCalWorkingDays(defaultCalWorkDays.length > 0 ? defaultCalWorkDays : []);
               setShowNewCalendarModal(true);
             }}
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white shadow-sm shadow-purple-600/25 transition-all cursor-pointer"
@@ -812,9 +885,8 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
               <div
                 key={tmpl.id || tmpl.code}
                 onClick={() => setSelectedShiftFilter((prev) => (prev.toUpperCase() === (tmpl.code || '').toUpperCase() ? 'ALL' : tmpl.code))}
-                className={`card p-4 rounded-2xl bg-gradient-to-br ${theme.bg} border ${
-                  isCardActive ? 'ring-2 ring-purple-600 border-purple-500 shadow-md scale-[1.01]' : theme.border
-                } shadow-2xs flex flex-col justify-between cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all`}
+                className={`card p-4 rounded-2xl bg-gradient-to-br ${theme.bg} border ${isCardActive ? 'ring-2 ring-purple-600 border-purple-500 shadow-md scale-[1.01]' : theme.border
+                  } shadow-2xs flex flex-col justify-between cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all`}
                 title={`Click to filter roster by ${tmpl.name}`}
               >
                 <div className="flex items-center justify-between">
@@ -845,9 +917,8 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
           {/* Dynamic Weekly Offs Card */}
           <div
             onClick={() => setSelectedShiftFilter((prev) => (prev === 'OFF' ? 'ALL' : 'OFF'))}
-            className={`card p-4 rounded-2xl bg-gradient-to-br from-slate-50/90 via-white to-slate-100/40 border ${
-              selectedShiftFilter === 'OFF' ? 'ring-2 ring-purple-600 border-purple-500 shadow-md scale-[1.01]' : 'border-slate-200/80'
-            } shadow-2xs flex flex-col justify-between cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all`}
+            className={`card p-4 rounded-2xl bg-gradient-to-br from-slate-50/90 via-white to-slate-100/40 border ${selectedShiftFilter === 'OFF' ? 'ring-2 ring-purple-600 border-purple-500 shadow-md scale-[1.01]' : 'border-slate-200/80'
+              } shadow-2xs flex flex-col justify-between cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all`}
             title="Click to filter roster by Weekly Offs / Rest Days"
           >
             <div className="flex items-center justify-between">
@@ -876,9 +947,8 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
           {/* Card 1: GENERAL (09-18) */}
           <div
             onClick={() => setSelectedShiftFilter((prev) => (prev === 'GEN' ? 'ALL' : 'GEN'))}
-            className={`card p-4 rounded-2xl bg-gradient-to-br from-purple-50/80 via-white to-purple-50/30 border ${
-              selectedShiftFilter === 'GEN' ? 'ring-2 ring-purple-600 border-purple-500 shadow-md scale-[1.01]' : 'border-purple-200/80'
-            } shadow-2xs flex flex-col justify-between cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all`}
+            className={`card p-4 rounded-2xl bg-gradient-to-br from-purple-50/80 via-white to-purple-50/30 border ${selectedShiftFilter === 'GEN' ? 'ring-2 ring-purple-600 border-purple-500 shadow-md scale-[1.01]' : 'border-purple-200/80'
+              } shadow-2xs flex flex-col justify-between cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all`}
             title="Click to filter roster by General Shift"
           >
             <div className="flex items-center justify-between">
@@ -905,9 +975,8 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
           {/* Card 2: MORNING (06-14) */}
           <div
             onClick={() => setSelectedShiftFilter((prev) => (prev === 'MORN' ? 'ALL' : 'MORN'))}
-            className={`card p-4 rounded-2xl bg-gradient-to-br from-emerald-50/80 via-white to-emerald-50/30 border ${
-              selectedShiftFilter === 'MORN' ? 'ring-2 ring-emerald-600 border-emerald-500 shadow-md scale-[1.01]' : 'border-emerald-200/80'
-            } shadow-2xs flex flex-col justify-between cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all`}
+            className={`card p-4 rounded-2xl bg-gradient-to-br from-emerald-50/80 via-white to-emerald-50/30 border ${selectedShiftFilter === 'MORN' ? 'ring-2 ring-emerald-600 border-emerald-500 shadow-md scale-[1.01]' : 'border-emerald-200/80'
+              } shadow-2xs flex flex-col justify-between cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all`}
             title="Click to filter roster by Morning Shift"
           >
             <div className="flex items-center justify-between">
@@ -934,9 +1003,8 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
           {/* Card 3: EVENING (14-22) */}
           <div
             onClick={() => setSelectedShiftFilter((prev) => (prev === 'EVE' ? 'ALL' : 'EVE'))}
-            className={`card p-4 rounded-2xl bg-gradient-to-br from-amber-50/80 via-white to-amber-50/30 border ${
-              selectedShiftFilter === 'EVE' ? 'ring-2 ring-amber-600 border-amber-500 shadow-md scale-[1.01]' : 'border-amber-200/80'
-            } shadow-2xs flex flex-col justify-between cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all`}
+            className={`card p-4 rounded-2xl bg-gradient-to-br from-amber-50/80 via-white to-amber-50/30 border ${selectedShiftFilter === 'EVE' ? 'ring-2 ring-amber-600 border-amber-500 shadow-md scale-[1.01]' : 'border-amber-200/80'
+              } shadow-2xs flex flex-col justify-between cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all`}
             title="Click to filter roster by Evening Shift"
           >
             <div className="flex items-center justify-between">
@@ -963,9 +1031,8 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
           {/* Card 4: NIGHT (22-06) */}
           <div
             onClick={() => setSelectedShiftFilter((prev) => (prev === 'NGT' ? 'ALL' : 'NGT'))}
-            className={`card p-4 rounded-2xl bg-gradient-to-br from-fuchsia-50/80 via-white to-fuchsia-50/30 border ${
-              selectedShiftFilter === 'NGT' ? 'ring-2 ring-fuchsia-600 border-fuchsia-500 shadow-md scale-[1.01]' : 'border-fuchsia-200/80'
-            } shadow-2xs flex flex-col justify-between cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all`}
+            className={`card p-4 rounded-2xl bg-gradient-to-br from-fuchsia-50/80 via-white to-fuchsia-50/30 border ${selectedShiftFilter === 'NGT' ? 'ring-2 ring-fuchsia-600 border-fuchsia-500 shadow-md scale-[1.01]' : 'border-fuchsia-200/80'
+              } shadow-2xs flex flex-col justify-between cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all`}
             title="Click to filter roster by Night Shift"
           >
             <div className="flex items-center justify-between">
@@ -992,9 +1059,8 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
           {/* Card 5: WEEKLY OFFS */}
           <div
             onClick={() => setSelectedShiftFilter((prev) => (prev === 'OFF' ? 'ALL' : 'OFF'))}
-            className={`card p-4 rounded-2xl bg-gradient-to-br from-slate-50/90 via-white to-slate-100/40 border ${
-              selectedShiftFilter === 'OFF' ? 'ring-2 ring-purple-600 border-purple-500 shadow-md scale-[1.01]' : 'border-slate-200/80'
-            } shadow-2xs flex flex-col justify-between cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all`}
+            className={`card p-4 rounded-2xl bg-gradient-to-br from-slate-50/90 via-white to-slate-100/40 border ${selectedShiftFilter === 'OFF' ? 'ring-2 ring-purple-600 border-purple-500 shadow-md scale-[1.01]' : 'border-slate-200/80'
+              } shadow-2xs flex flex-col justify-between cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all`}
             title="Click to filter roster by Weekly Offs / Rest Days"
           >
             <div className="flex items-center justify-between">
@@ -1452,17 +1518,17 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
                             const time = isOff
                               ? 'Rest Day'
                               : (shift?.start_time && shift?.end_time
-                                  ? `${shift.start_time} - ${shift.end_time}`
-                                  : (shift?.time_range && shift.time_range !== 'Rest Day' ? shift.time_range : ''));
+                                ? `${shift.start_time} - ${shift.end_time}`
+                                : (shift?.time_range && shift.time_range !== 'Rest Day' ? shift.time_range : ''));
 
                             const isFilterActive = selectedShiftFilter !== 'ALL';
                             const isMatchedShift = isFilterActive && (
                               selectedShiftFilter === 'OFF'
                                 ? isOff
                                 : (!isOff && (
-                                    code.toUpperCase() === selectedShiftFilter.toUpperCase() ||
-                                    cleanShiftTitle.toLowerCase().includes(selectedShiftFilter.toLowerCase())
-                                  ))
+                                  code.toUpperCase() === selectedShiftFilter.toUpperCase() ||
+                                  cleanShiftTitle.toLowerCase().includes(selectedShiftFilter.toLowerCase())
+                                ))
                             );
 
                             return (
@@ -1697,21 +1763,35 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
               </div>
             </div>
 
-            {/* Shift Timing Customization (Start Time & End Time) */}
+            {/* Shift Timing & Date Customization (From Time, To Time & Date) */}
             {modalShiftCode !== 'OFF' && (
-              <div className="p-3 rounded-xl bg-purple-50/60 border border-purple-200/80 space-y-2">
+              <div className="p-3 rounded-xl bg-purple-50/60 border border-purple-200/80 space-y-2.5">
                 <div className="flex items-center justify-between">
                   <label className="text-[11px] font-black uppercase text-purple-900 tracking-wider flex items-center gap-1">
                     <Icon name="clock" size={12} className="text-purple-600" />
-                    <span>Shift Timing</span>
+                    <span>Shift Timing & Date</span>
                   </label>
                   <span className="text-[10px] text-purple-600 font-bold">
-                    {modalTarget.isDayColumn ? 'Applied to All' : 'Custom'}
+                    {modalTarget.isDayColumn ? 'Applied to All' : ''}
                   </span>
                 </div>
+
+                {/* Date Input */}
+                {!modalTarget.isDayColumn && (
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 block mb-1">Shift Date</label>
+                    <input
+                      type="date"
+                      value={modalDate}
+                      onChange={(e) => setModalDate(e.target.value)}
+                      className="w-full text-xs font-mono font-bold px-2.5 py-1.5 rounded-lg border border-purple-200 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-400"
+                    />
+                  </div>
+                )}
+
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-[10px] font-bold text-slate-500 block mb-1">Start Time</label>
+                    <label className="text-[10px] font-bold text-slate-500 block mb-1">From Time (Start)</label>
                     <input
                       type="time"
                       value={modalStartTime}
@@ -1720,7 +1800,7 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold text-slate-500 block mb-1">End Time</label>
+                    <label className="text-[10px] font-bold text-slate-500 block mb-1">To Time (End)</label>
                     <input
                       type="time"
                       value={modalEndTime}
@@ -1732,7 +1812,7 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
                 <p className="text-[10px] text-slate-500">
                   {modalTarget.isDayColumn
                     ? `Assigns this shift & timing (${modalStartTime || '--:--'} - ${modalEndTime || '--:--'}) to all employees on this day.`
-                    : `Customize the shift time for this assignment.`}
+                    : `Dynamic shift assignment with From Time, To Time, and Date for ${modalTarget.employeeName}.`}
                 </p>
               </div>
             )}
@@ -1988,8 +2068,8 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
                       {templateSelectedMemberIds.length === 0
                         ? `Select ${templateAssignType === 'student' ? 'students' : templateAssignType === 'employee' ? 'employees' : 'members'}...`
                         : templateSelectedMemberIds.length === candidateMembers.length
-                        ? `All (${candidateMembers.length}) Selected`
-                        : `${templateSelectedMemberIds.length} selected`}
+                          ? `All (${candidateMembers.length}) Selected`
+                          : `${templateSelectedMemberIds.length} selected`}
                     </span>
                     <Icon
                       name="chevron-down"
@@ -2139,8 +2219,8 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
                       {templateWorkDays.length === 0
                         ? 'Select days...'
                         : templateWorkDays.length === 7
-                        ? 'All 7 Days'
-                        : templateWorkDays.join(', ')}
+                          ? 'All 7 Days'
+                          : templateWorkDays.join(', ')}
                     </span>
                     <Icon
                       name="chevron-down"

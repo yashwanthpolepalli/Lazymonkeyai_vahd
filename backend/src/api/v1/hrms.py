@@ -425,7 +425,7 @@ def register_staff_face(payload: dict, db: Session = Depends(get_db)):
                 branch_name = db_br.branch_name or db_br.vahd_name
     if not branch_name:
         db_br = db.query(vahdBranch).filter(vahdBranch.is_active == True).first()
-        branch_name = (db_br.branch_name or db_br.vahd_name) if db_br else "Campus"
+        branch_name = (db_br.branch_name or db_br.vahd_name) if db_br else ""
 
     event_type = payload.get("event_type") or "FACE_SCAN"
     device_type = payload.get("device_type") or payload.get("channel") or "AI_FACE_PORTAL"
@@ -550,7 +550,7 @@ def verify_staff_face_punch(payload: dict, db: Session = Depends(get_db)):
                 branch_name = db_br.branch_name or db_br.vahd_name
     if not branch_name:
         db_br = db.query(vahdBranch).filter(vahdBranch.is_active == True).first()
-        branch_name = (db_br.branch_name or db_br.vahd_name) if db_br else "Campus"
+        branch_name = (db_br.branch_name or db_br.vahd_name) if db_br else ""
 
     punch_res = HrmsService.record_punch(
         db=db,
@@ -1037,6 +1037,20 @@ def save_shift_template(
         raise HTTPException(status_code=500, detail=f"Failed to save shift template: {str(e)}")
 
 
+@router.get("/shifts/templates/{template_id}")
+def get_shift_template_by_id(
+    template_id: str,
+    current_user: Optional[User] = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    try:
+        return HrmsService.get_shift_template_by_id(db, template_id=template_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch shift template: {str(e)}")
+
+
 @router.delete("/shifts/templates/{template_id}")
 def delete_shift_template(
     template_id: str,
@@ -1049,6 +1063,21 @@ def delete_shift_template(
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to delete shift template: {str(e)}")
+
+
+@router.get("/shifts/roster/cell")
+def get_shift_cell(
+    employee_id: str = Query(...),
+    date: str = Query(...),
+    current_user: Optional[User] = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    try:
+        return HrmsService.get_shift_cell(db, employee_id=employee_id, date_str=date)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch shift cell: {str(e)}")
 
 
 @router.get("/shifts/roster")

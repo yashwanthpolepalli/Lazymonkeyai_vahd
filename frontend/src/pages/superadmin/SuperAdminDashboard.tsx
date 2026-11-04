@@ -169,7 +169,7 @@ export function SuperAdminDashboard() {
                   <label className="text-xs font-bold text-slate-700 block mb-1">Branch Name</label>
                   <input
                     type="text"
-                    placeholder="e.g. Main Branch"
+                    placeholder="Enter branch name"
                     value={onboardForm.branch_name}
                     onChange={(e) => setOnboardForm((p) => ({ ...p, branch_name: e.target.value }))}
                     className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-medium"

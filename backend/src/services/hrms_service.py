@@ -3554,6 +3554,31 @@ class HrmsService:
     # 14. SHIFT ROSTER & WORK CALENDAR METHODS
     # -------------------------------------------------------------
     @staticmethod
+    def _get_dynamic_work_days_from_db(db: Session, branch_id: Optional[str] = None) -> List[str]:
+        """Dynamically resolve active working days from WorkCalendarPolicy in DB, removing hardcoded days."""
+        cal = None
+        if branch_id and str(branch_id).lower() not in ["all", "", "none", "undefined", "null"]:
+            cal = db.query(WorkCalendarPolicy).filter(
+                WorkCalendarPolicy.is_active == True,
+                or_(WorkCalendarPolicy.id == branch_id, WorkCalendarPolicy.department == branch_id)
+            ).first()
+        if not cal:
+            cal = db.query(WorkCalendarPolicy).filter(
+                WorkCalendarPolicy.is_active == True,
+                WorkCalendarPolicy.is_default == True
+            ).first()
+        if not cal:
+            cal = db.query(WorkCalendarPolicy).filter(WorkCalendarPolicy.is_active == True).first()
+
+        if cal and cal.working_days:
+            return [d[:3].capitalize() if len(d) > 3 else d for d in cal.working_days]
+        if cal and cal.weekly_off_days:
+            off_abbr = {d[:3].capitalize() if len(d) > 3 else d for d in cal.weekly_off_days}
+            all_abbr = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+            return [d for d in all_abbr if d not in off_abbr]
+        return []
+
+    @staticmethod
     def get_work_calendars(db: Session) -> List[Dict[str, Any]]:
         cals = db.query(WorkCalendarPolicy).order_by(WorkCalendarPolicy.created_at.asc()).all()
         holidays_count = db.query(CompanyHoliday).count()
@@ -3749,12 +3774,140 @@ class HrmsService:
                 "to_date": t.to_date or "",
                 "num_members": t.num_members,
                 "member_ids": t.member_ids or [],
-                "work_days": t.work_days or ["Mon", "Tue", "Wed", "Thu", "Fri"],
+                "work_days": t.work_days or HrmsService._get_dynamic_work_days_from_db(db, t.branch_id),
                 "branch_id": t.branch_id or "",
                 "ho_id": t.ho_id or "",
             }
             for t in templates
         ]
+
+    @staticmethod
+    def get_shift_template_by_id(db: Session, template_id: str) -> Dict[str, Any]:
+        """Fetch a single shift template by ID or code dynamically from the DB with all fields."""
+        tmpl = db.query(ShiftTemplate).filter(
+            or_(ShiftTemplate.id == template_id, ShiftTemplate.code.ilike(template_id))
+        ).first()
+        if not tmpl:
+            raise ValueError(f"Shift template '{template_id}' not found")
+
+        dynamic_work_days = HrmsService._get_dynamic_work_days_from_db(db, tmpl.branch_id)
+        return {
+            "id": tmpl.id,
+            "code": tmpl.code,
+            "name": tmpl.name,
+            "start_time": tmpl.start_time or "",
+            "end_time": tmpl.end_time or "",
+            "duration_hours": tmpl.duration_hours,
+            "break_mins": tmpl.break_mins,
+            "grace_period_mins": tmpl.grace_period_mins,
+            "is_night_shift": bool(tmpl.is_night_shift),
+            "color": tmpl.color or "",
+            "is_active": bool(tmpl.is_active),
+            "assign_type": tmpl.assign_type or "",
+            "from_date": tmpl.from_date or "",
+            "to_date": tmpl.to_date or "",
+            "num_members": tmpl.num_members,
+            "member_ids": tmpl.member_ids or [],
+            "work_days": tmpl.work_days or dynamic_work_days,
+            "branch_id": tmpl.branch_id or "",
+            "ho_id": tmpl.ho_id or "",
+        }
+
+    @staticmethod
+    def get_shift_cell(db: Session, employee_id: str, date_str: str) -> Dict[str, Any]:
+        """Fetch the exact shift record for an employee on a specific date dynamically from DB with all fields."""
+        try:
+            d_obj = datetime.strptime(date_str.strip(), "%Y-%m-%d").date()
+        except Exception:
+            raise ValueError("Invalid date format, expected YYYY-MM-DD")
+
+        clean_sid = str(employee_id).replace("cust_", "").replace("emp_", "")
+        emp_matches = [
+            EmployeeShiftRoster.employee_id == str(employee_id),
+            EmployeeShiftRoster.employee_id == clean_sid,
+            EmployeeShiftRoster.employee_id == f"cust_{employee_id}",
+            EmployeeShiftRoster.employee_id == f"cust_{clean_sid}",
+            EmployeeShiftRoster.employee_id == f"emp_{clean_sid}"
+        ]
+
+        emp_obj = db.query(Employee).filter(
+            or_(Employee.id == str(employee_id), Employee.id == clean_sid, Employee.code == str(employee_id))
+        ).first()
+        if emp_obj:
+            emp_name = f"{emp_obj.first_name or ''} {emp_obj.last_name or ''}".strip() or emp_obj.code or employee_id
+        else:
+            stu_obj = db.query(student).filter(or_(student.id == str(employee_id), student.id == clean_sid)).first()
+            emp_name = stu_obj.full_name if (stu_obj and stu_obj.full_name) else employee_id
+
+        roster = db.query(EmployeeShiftRoster).filter(
+            or_(*emp_matches),
+            EmployeeShiftRoster.date == d_obj
+        ).first()
+
+        db_shift_templates = db.query(ShiftTemplate).filter(ShiftTemplate.is_active == True).all()
+        emp_candidate_keys = {str(employee_id), clean_sid, f"emp_{clean_sid}", f"cust_{clean_sid}"}
+        if emp_obj and emp_obj.code:
+            emp_candidate_keys.add(str(emp_obj.code).strip())
+
+        assigned_tpl = None
+        for tpl in db_shift_templates:
+            tpl_members = set(str(m).strip() for m in (tpl.member_ids or []))
+            if emp_candidate_keys & tpl_members:
+                assigned_tpl = tpl
+                break
+
+        day_abbr = d_obj.strftime("%a")
+        if roster:
+            meta = None
+            if roster.shift_code and roster.shift_code != "OFF":
+                meta = next((t for t in db_shift_templates if t.code.upper() == roster.shift_code.upper()), None)
+            return {
+                "employee_id": employee_id,
+                "employee_name": emp_name,
+                "date": date_str,
+                "shift_id": roster.shift_id or (meta.id if meta else None),
+                "shift_code": roster.shift_code,
+                "shift_name": roster.shift_name,
+                "start_time": roster.start_time or (meta.start_time if meta else ""),
+                "end_time": roster.end_time or (meta.end_time if meta else ""),
+                "is_off": bool(roster.is_weekly_off or roster.shift_code == "OFF"),
+                "break_mins": meta.break_mins if meta else None,
+                "grace_period_mins": meta.grace_period_mins if meta else None,
+                "color": meta.color if (meta and meta.color) else (roster.color if hasattr(roster, 'color') and roster.color else "")
+            }
+        elif assigned_tpl:
+            tpl_work_days = assigned_tpl.work_days or HrmsService._get_dynamic_work_days_from_db(db, assigned_tpl.branch_id)
+            is_work_day = day_abbr in tpl_work_days
+            return {
+                "employee_id": employee_id,
+                "employee_name": emp_name,
+                "date": date_str,
+                "shift_id": assigned_tpl.id if is_work_day else None,
+                "shift_code": assigned_tpl.code if is_work_day else "OFF",
+                "shift_name": assigned_tpl.name if is_work_day else "Rest Day",
+                "start_time": assigned_tpl.start_time if is_work_day else "",
+                "end_time": assigned_tpl.end_time if is_work_day else "",
+                "is_off": not is_work_day,
+                "break_mins": assigned_tpl.break_mins if is_work_day else None,
+                "grace_period_mins": assigned_tpl.grace_period_mins if is_work_day else None,
+                "color": assigned_tpl.color if (is_work_day and assigned_tpl.color) else ""
+            }
+        else:
+            first_tpl = db_shift_templates[0] if db_shift_templates else None
+            return {
+                "employee_id": employee_id,
+                "employee_name": emp_name,
+                "date": date_str,
+                "shift_id": first_tpl.id if first_tpl else None,
+                "shift_code": first_tpl.code if first_tpl else "",
+                "shift_name": first_tpl.name if first_tpl else "",
+                "start_time": first_tpl.start_time if first_tpl else "",
+                "end_time": first_tpl.end_time if first_tpl else "",
+                "is_off": False,
+                "break_mins": first_tpl.break_mins if first_tpl else None,
+                "grace_period_mins": first_tpl.grace_period_mins if first_tpl else None,
+                "color": first_tpl.color if first_tpl else ""
+            }
 
     @staticmethod
     def save_shift_template(db: Session, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -3787,7 +3940,7 @@ class HrmsService:
                 to_date=payload.get("to_date") or None,
                 num_members=int(payload.get("num_members")) if payload.get("num_members") is not None else None,
                 member_ids=payload.get("member_ids") or [],
-                work_days=payload.get("work_days") or ["Mon", "Tue", "Wed", "Thu", "Fri"],
+                work_days=payload.get("work_days") or HrmsService._get_dynamic_work_days_from_db(db, payload.get("branch_id")),
                 branch_id=payload.get("branch_id") or None,
                 ho_id=payload.get("ho_id") or None,
             )
@@ -3841,8 +3994,12 @@ class HrmsService:
                         except Exception:
                             pass
                 if not start_dt:
-                    # Default to current week's Monday
-                    start_dt = today - timedelta(days=today.weekday())
+                    start_dt = today
+
+                # Always align start_dt to Sunday of the active week so that the entire active week's roster
+                # is cleanly overwritten in the database instead of leaving partial days with stale shifts.
+                days_since_sunday = (start_dt.weekday() + 1) % 7  # 0 if Sun, 1 if Mon, ..., 6 if Sat
+                start_dt = start_dt - timedelta(days=days_since_sunday)
 
                 end_dt = None
                 if t_date_str:
@@ -3855,9 +4012,14 @@ class HrmsService:
                 if not end_dt or end_dt < start_dt:
                     # By default cover at least 35 days from start_dt
                     end_dt = start_dt + timedelta(days=35)
+                else:
+                    # Align end_dt to the end of its week (Saturday)
+                    days_to_sat = (5 - end_dt.weekday()) % 7
+                    end_dt = end_dt + timedelta(days=days_to_sat)
 
                 DAY_NAME_MAP = {0: "Mon", 1: "Tue", 2: "Wed", 3: "Thu", 4: "Fri", 5: "Sat", 6: "Sun"}
-                allowed_days = template.work_days or payload.get("work_days") or ["Mon", "Tue", "Wed", "Thu", "Fri"]
+                dynamic_db_work_days = HrmsService._get_dynamic_work_days_from_db(db, template.branch_id if hasattr(template, 'branch_id') else None)
+                allowed_days = template.work_days or payload.get("work_days") or dynamic_db_work_days
                 work_dates_list = []
                 off_dates_list = []
                 cur = start_dt
@@ -3914,7 +4076,7 @@ class HrmsService:
             "to_date": template.to_date or "",
             "num_members": template.num_members,
             "member_ids": template.member_ids or [],
-            "work_days": template.work_days or ["Mon", "Tue", "Wed", "Thu", "Fri"],
+            "work_days": template.work_days or HrmsService._get_dynamic_work_days_from_db(db, template.branch_id),
             "branch_id": template.branch_id or "",
             "ho_id": template.ho_id or "",
         }
@@ -4307,7 +4469,40 @@ class HrmsService:
 
                 DAY_ABBR = d.strftime("%a")
 
-                if r:
+                if assigned_tpl:
+                    # Explicit ShiftTemplate assignment governs this member's schedule across all applicable days
+                    r_updated = getattr(r, "updated_at", None) or getattr(r, "created_at", None) if r else None
+                    tpl_updated = getattr(assigned_tpl, "updated_at", None) or getattr(assigned_tpl, "created_at", None)
+                    is_newer_cell_override = bool(
+                        r and r.shift_code not in [assigned_tpl.code, "OFF"] and
+                        r_updated and tpl_updated and r_updated > tpl_updated
+                    )
+
+                    if not is_newer_cell_override:
+                        tpl_work_days = assigned_tpl.work_days or HrmsService._get_dynamic_work_days_from_db(db, branch_id)
+                        if DAY_ABBR in tpl_work_days:
+                            s_code = assigned_tpl.code
+                            is_off = False
+                            s_name = assigned_tpl.name or f"{assigned_tpl.code} Shift"
+                            s_start = assigned_tpl.start_time or ""
+                            s_end = assigned_tpl.end_time or ""
+                            color = assigned_tpl.color or "#7c3aed"
+                        else:
+                            s_code = "OFF"
+                            is_off = True
+                            s_name = "Rest Day"
+                            s_start = ""
+                            s_end = ""
+                            color = "#64748b"
+                    else:
+                        s_code = r.shift_code
+                        is_off = bool(r.is_weekly_off or s_code == "OFF")
+                        meta = resolve_shift_meta(s_code)
+                        s_name = "Rest Day" if is_off else (r.shift_name or meta.get("name") or f"{s_code} Shift")
+                        s_start = "" if is_off else (r.start_time or meta.get("start_time", ""))
+                        s_end = "" if is_off else (r.end_time or meta.get("end_time", ""))
+                        color = "#64748b" if is_off else (r.color if hasattr(r, 'color') and r.color else meta.get("color", "#7c3aed"))
+                elif r:
                     s_code = r.shift_code
                     is_off = bool(r.is_weekly_off or s_code == "OFF")
                     meta = resolve_shift_meta(s_code)
@@ -4315,22 +4510,6 @@ class HrmsService:
                     s_start = "" if is_off else (r.start_time or meta.get("start_time", ""))
                     s_end = "" if is_off else (r.end_time or meta.get("end_time", ""))
                     color = "#64748b" if is_off else (r.color if hasattr(r, 'color') and r.color else meta.get("color", "#7c3aed"))
-                elif assigned_tpl:
-                    tpl_work_days = assigned_tpl.work_days or ["Mon", "Tue", "Wed", "Thu", "Fri"]
-                    if DAY_ABBR in tpl_work_days:
-                        s_code = assigned_tpl.code
-                        is_off = False
-                        s_name = assigned_tpl.name or f"{assigned_tpl.code} Shift"
-                        s_start = assigned_tpl.start_time or ""
-                        s_end = assigned_tpl.end_time or ""
-                        color = assigned_tpl.color or "#7c3aed"
-                    else:
-                        s_code = "OFF"
-                        is_off = True
-                        s_name = "Rest Day"
-                        s_start = ""
-                        s_end = ""
-                        color = "#64748b"
                 elif emp_cal and emp_cal.weekly_off_days and day_of_week in emp_cal.weekly_off_days:
                     s_code = "OFF"
                     is_off = True

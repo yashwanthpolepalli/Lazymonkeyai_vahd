@@ -1232,7 +1232,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                           <div>{s.student_name}</div>
                           <div className="text-[10px] text-slate-500 font-medium flex items-center gap-1 mt-0.5">
                             <span className="px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 border border-slate-200">
-                              🏫 {s.branch_name || s.college_name || 'Main Campus'}
+                              🏫 {s.branch_name || s.college_name || ''}
                             </span>
                           </div>
                         </td>
@@ -1574,7 +1574,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                           <div>{emp.employee_name}</div>
                           <div className="text-[10px] text-slate-500 font-medium flex items-center gap-1 mt-0.5">
                             <span className="px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 border border-slate-200">
-                              🏫 {emp.branch_name || emp.vahd_branch || 'Main Branch'}
+                              🏫 {emp.branch_name || emp.vahd_branch || ''}
                             </span>
                           </div>
                         </td>

@@ -862,7 +862,7 @@ class SuperAdminService:
 
         return {
             "success": True,
-            "message": f"Organization '{vahd_name}' ({branch_name or 'Main Branch'}) deleted successfully."
+            "message": f"Organization '{vahd_name}'{f' ({branch_name})' if branch_name else ''} deleted successfully."
         }
 
     @staticmethod

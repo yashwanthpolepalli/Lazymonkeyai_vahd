@@ -162,7 +162,7 @@ export function EmployeeProfilePage() {
               </div>
               <div>
                 <div className="text-[10px] font-bold uppercase text-slate-400">Branch Location</div>
-                <div className="text-xs font-bold text-slate-800 truncate mt-0.5">{employeeDetails?.vahd_branch || 'Main Branch'}</div>
+                <div className="text-xs font-bold text-slate-800 truncate mt-0.5">{employeeDetails?.vahd_branch || employeeDetails?.branch_name || ''}</div>
               </div>
             </div>
           </div>

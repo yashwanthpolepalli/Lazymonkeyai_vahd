@@ -111,11 +111,11 @@ export function PosDebitNotes() {
     }
 
     const activeBillingGst = getActiveBillingGst(tenant?.id);
-    const orgName = activeBillingGst?.trade_name || activeBillingGst?.legal_name || tenant?.name || "BusinessOS AI";
+    const orgName = activeBillingGst?.trade_name || activeBillingGst?.legal_name || tenant?.name || "";
     const orgLogo = activeBillingGst?.logo_url || tenant?.logo_url || (tenant as any)?.raw?.logo_url || "";
-    const orgAddress = activeBillingGst?.address || (tenant as any)?.settings?.address || "Store Main Branch";
-    const orgPhone = activeBillingGst?.phone || (tenant as any)?.settings?.phone || "+91 98493 44919";
-    const orgEmail = activeBillingGst?.email || (tenant as any)?.settings?.email || "billing@businessos.ai";
+    const orgAddress = activeBillingGst?.address || (tenant as any)?.settings?.address || "";
+    const orgPhone = activeBillingGst?.phone || (tenant as any)?.settings?.phone || "";
+    const orgEmail = activeBillingGst?.email || (tenant as any)?.settings?.email || "";
     const orgGstin = activeBillingGst?.gstin || (tenant as any)?.settings?.gstin || (tenant as any)?.tax_id || "";
 
     const lines = note.lines || note.items || [];

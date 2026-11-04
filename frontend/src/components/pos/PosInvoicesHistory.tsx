@@ -840,11 +840,11 @@ export function PosInvoicesHistory({ onNewInvoice, onNavigateTab }: PosInvoicesH
     }
 
     const activeBillingGst = getActiveBillingGst(tenant?.id);
-    const orgName = activeBillingGst?.trade_name || activeBillingGst?.legal_name || tenant?.name || "BusinessOS Store";
+    const orgName = activeBillingGst?.trade_name || activeBillingGst?.legal_name || tenant?.name || "";
     const rawLogo = activeBillingGst?.logo_url || tenant?.logo_url || (tenant as any)?.raw?.logo_url || "";
     const orgLogo = resolveImageUrl(rawLogo);
-    const orgGstin = activeBillingGst?.gstin || (tenant as any)?.tax_id || (tenant as any)?.gstin || (tenant as any)?.raw?.tax_id || "37AAAAA0000A1Z5";
-    const orgAddress = activeBillingGst?.address || (tenant as any)?.address || (tenant as any)?.raw?.address || "Main Branch Store";
+    const orgGstin = activeBillingGst?.gstin || (tenant as any)?.tax_id || (tenant as any)?.gstin || (tenant as any)?.raw?.tax_id || "";
+    const orgAddress = activeBillingGst?.address || (tenant as any)?.address || (tenant as any)?.raw?.address || "";
     const orgPhone = activeBillingGst?.phone || (tenant as any)?.phone || (tenant as any)?.raw?.phone || "";
     const googleReviewUrl = activeBillingGst?.google_review_url || (tenant as any)?.raw?.google_review_url || (activeBillingGst?.google_place_id ? `https://search.google.com/local/writereview?placeid=${activeBillingGst.google_place_id}` : null);
     const showReviewQR = activeBillingGst?.google_review_enabled !== false && Boolean(googleReviewUrl);

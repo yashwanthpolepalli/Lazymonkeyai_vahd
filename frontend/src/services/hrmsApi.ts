@@ -626,11 +626,14 @@ export const hrmsApi = {
 
   // Shift Templates (Enterprise Shifts)
   getShiftTemplates: () => apiClient.get<ShiftTemplateItem[]>('/hrms/shifts/templates'),
+  getShiftTemplateById: (templateId: string) => apiClient.get<ShiftTemplateItem>(`/hrms/shifts/templates/${templateId}`),
   saveShiftTemplate: (payload: Partial<ShiftTemplateItem>) => apiClient.post<ShiftTemplateItem>('/hrms/shifts/templates', payload),
   deleteShiftTemplate: (templateId: string) => apiClient.delete<{ status: string; message: string }>(`/hrms/shifts/templates/${templateId}`),
 
   getShiftRoster: (params?: { start_date?: string; end_date?: string; department?: string; search?: string; view?: string; user_type?: 'employee' | 'student'; branch_id?: string; ho_id?: string }) =>
     apiClient.get<ShiftRosterResponse>('/hrms/shifts/roster', { params }),
+  getShiftCell: (employee_id: string, date: string) =>
+    apiClient.get<any>('/hrms/shifts/roster/cell', { params: { employee_id, date } }),
   assignShift: (payload: {
     employee_ids?: string[];
     employee_id?: string;

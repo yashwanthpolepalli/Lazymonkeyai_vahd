@@ -472,7 +472,7 @@ export function EmployeeHrmsPage() {
                             {log.event_type || log.meta_data?.method || 'GPS Geofence'}
                           </td>
                           <td className="py-3 px-4 text-navy-500">
-                            {log.device_name || log.meta_data?.branch || 'Main Branch'}
+                            {log.device_name || log.meta_data?.branch || ''}
                           </td>
                           <td className="py-3 px-4">
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">

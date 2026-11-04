@@ -61,17 +61,52 @@ api_router.include_router(procurement_router, prefix="/inventory")
 
 # System & Branches compatibility endpoints for multi-tenant switcher
 @api_router.get("/system/tenants")
-def list_system_tenants():
-    return [
-        {
+def list_system_tenants(db: Session = Depends(get_db)):
+    from src.models.erp import Company
+    from src.models.settings import Branch, Setting
+    comps = db.query(Company).filter(Company.status == "active").all()
+    if comps:
+        return [
+            {
+                "id": c.id,
+                "name": c.name or c.legal_name,
+                "slug": (c.name or c.legal_name or "").lower().replace(" ", "-"),
+                "industry": c.industry or "",
+                "status": c.status or "active",
+                "logo_url": c.logo_url
+            }
+            for c in comps
+        ]
+    branches = db.query(Branch).filter(Branch.is_active == True).all()
+    if branches:
+        items = []
+        seen = set()
+        for b in branches:
+            b_name = b.vahd_name or b.branch_name or b.name
+            if b_name and b_name not in seen:
+                seen.add(b_name)
+                items.append({
+                    "id": b.id,
+                    "name": b_name,
+                    "slug": b_name.lower().replace(" ", "-"),
+                    "industry": getattr(b, "plan_tier", None) or "",
+                    "status": "active" if b.is_active else "inactive",
+                    "logo_url": None
+                })
+        if items:
+            return items
+    setting = db.query(Setting).first()
+    org_name = (setting.name if setting and setting.name else "")
+    if org_name:
+        return [{
             "id": "default",
-            "name": "VAHD",
-            "slug": "vahd",
-            "industry": "Fitness & Wellness",
+            "name": org_name,
+            "slug": org_name.lower().replace(" ", "-"),
+            "industry": "",
             "status": "active",
             "logo_url": None
-        }
-    ]
+        }]
+    return []
 
 @api_router.get("/erp/branches")
 @api_router.get("/branches")
@@ -81,9 +116,9 @@ def list_erp_branches(db: Session = Depends(get_db)):
     for b in branches:
         items.append({
             "id": b.id,
-            "name": b.branch_name or b.vahd_name or "Branch",
-            "code": getattr(b, "code", None) or b.id[:8],
-            "company_id": b.ho_id or b.owner_id or "default",
+            "name": b.branch_name or b.vahd_name or "",
+            "code": getattr(b, "code", None) or b.id,
+            "company_id": b.ho_id or b.owner_id or "",
             "status": "Active" if b.is_active else "Inactive"
         })
     return {"items": items, "total": len(items)}

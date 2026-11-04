@@ -649,7 +649,7 @@ export function PosSalesInvoice({ initialDocType = "TAX_INVOICE", editingInvoice
   const [salesEmployees, setSalesEmployees] = useState<any[]>([]);
 
   useEffect(() => {
-    if (selectedStore && (!selectedLocation || selectedLocation === "Store Main Branch")) {
+    if (selectedStore && !selectedLocation) {
       setSelectedLocation(selectedStore);
     }
   }, [selectedStore]);

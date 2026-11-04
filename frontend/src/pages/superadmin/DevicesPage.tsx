@@ -238,7 +238,7 @@ export function DevicesPage() {
                         </Badge>
                       </td>
                       <td className="px-3 py-3 font-medium text-slate-600">{d.lastHeartbeat || 'Just now'}</td>
-                      <td className="px-3 py-3 text-slate-600 font-medium">{d.location || 'Main Branch'}</td>
+                      <td className="px-3 py-3 text-slate-600 font-medium">{d.location || ''}</td>
                       <td className="px-3 py-3">
                         <div className="flex items-center gap-1.5 text-slate-700 font-medium">
                           <Icon name={d.network === 'WiFi' ? 'wifi' : 'server'} size={13} className="text-slate-400" />

@@ -917,7 +917,9 @@ def _gather_ho_branch_attendance(
                 known_branch_names.add(s[0].strip())
 
         if not known_branch_names:
-            known_branch_names.add("Main Branch")
+            db_br = db.query(vahdBranch).filter(vahdBranch.is_active == True).first()
+            if db_br and (db_br.branch_name or db_br.vahd_name):
+                known_branch_names.add((db_br.branch_name or db_br.vahd_name).strip())
 
         class _DynamicBranchWrapper:
             def __init__(self, name):
@@ -956,21 +958,24 @@ def _gather_ho_branch_attendance(
         if not primary_owner and branch_owners:
             primary_owner = branch_owners[0]
 
-        # Fetch employees
+        # Fetch employees dynamically linked to this branch
         b_conds = [
             Employee.branch_id == b.id,
             Employee.vahd_branch == b.branch_name,
-            Employee.vahd_branch.ilike(f"%{b.branch_name}%") if b.branch_name else False,
-            Employee.vahd_branch.ilike(f"%{b.vahd_name}%") if getattr(b, 'vahd_name', None) else False,
         ]
+        if getattr(b, 'branch_name', None):
+            b_conds.append(Employee.vahd_branch.ilike(f"%{b.branch_name}%"))
+        if getattr(b, 'vahd_name', None):
+            b_conds.append(Employee.vahd_branch == b.vahd_name)
+            b_conds.append(Employee.vahd_branch.ilike(f"%{b.vahd_name}%"))
+
         if target_branch_id and str(target_branch_id).lower() not in ["all", "", "none"]:
             b_conds.extend([
                 Employee.branch_id == target_branch_id,
                 Employee.vahd_branch == target_branch_id,
                 Employee.vahd_branch.ilike(f"%{target_branch_id}%")
             ])
-        if b.branch_name in ["Main Branch", "srd"] or b.id in ["Main Branch", "srd"]:
-            b_conds.append(True)
+
         emps = db.query(Employee).filter(
             or_(*b_conds),
             or_(func.upper(Employee.status) == "ACTIVE", Employee.status == "ACTIVE", Employee.status == "Active", Employee.status.is_(None))
@@ -1010,21 +1015,24 @@ def _gather_ho_branch_attendance(
 
         avg_emp_pct = round(b_emp_pct_sum / len(emps), 1) if emps else 0.0
 
-        # Fetch students
+        # Fetch students dynamically linked to this branch
         s_conds = [
             student.branch_id == b.id,
             student.primary_vahd_location == b.branch_name,
-            student.primary_vahd_location.ilike(f"%{b.branch_name}%") if b.branch_name else False,
-            student.primary_vahd_location.ilike(f"%{b.vahd_name}%") if getattr(b, 'vahd_name', None) else False,
         ]
+        if getattr(b, 'branch_name', None):
+            s_conds.append(student.primary_vahd_location.ilike(f"%{b.branch_name}%"))
+        if getattr(b, 'vahd_name', None):
+            s_conds.append(student.primary_vahd_location == b.vahd_name)
+            s_conds.append(student.primary_vahd_location.ilike(f"%{b.vahd_name}%"))
+
         if target_branch_id and str(target_branch_id).lower() not in ["all", "", "none"]:
             s_conds.extend([
                 student.branch_id == target_branch_id,
                 student.primary_vahd_location == target_branch_id,
                 student.primary_vahd_location.ilike(f"%{target_branch_id}%")
             ])
-        if b.branch_name in ["Main Branch", "srd"] or b.id in ["Main Branch", "srd"]:
-            s_conds.append(True)
+
         students = db.query(student).filter(
             or_(*s_conds),
             or_(func.upper(student.status) == "ACTIVE", student.status == "ACTIVE", student.status == "Active", student.status.is_(None))

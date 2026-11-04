@@ -1225,8 +1225,9 @@ export function EmployeeEnrollmentModal({
       setErrorMsg('Personal Email ID is required.');
       return;
     }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(personalEmail.trim())) {
+    // Permissive email check — accept any format including legacy emails like karnisujata@21@gmail.com
+    const emailVal = personalEmail.trim();
+    if (!emailVal || !emailVal.includes('@') || emailVal.length < 3) {
       setErrorMsg('Please enter a valid Email address.');
       return;
     }
@@ -1742,8 +1743,7 @@ export function EmployeeEnrollmentModal({
                   <div className="p-1.5 flex items-center gap-2">
                     <span className="font-bold text-blue-950 shrink-0">Personal Email ID:<span className="text-rose-500 ml-0.5">*</span></span>
                     <input
-                      type="email"
-                      required
+                      type="text"
                       value={personalEmail}
                       onChange={(e) => setPersonalEmail(e.target.value)}
                       placeholder="email@domain.com"

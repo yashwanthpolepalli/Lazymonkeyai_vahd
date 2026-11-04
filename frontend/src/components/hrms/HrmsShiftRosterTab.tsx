@@ -646,6 +646,26 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
 
       showToast(`Shift template "${templateName}" saved successfully.`);
       setShowTemplateModal(false);
+
+      // Navigate roster view to the week containing templateFromDate so user sees the saved shifts
+      if (templateFromDate) {
+        const savedDate = new Date(templateFromDate);
+        const today = new Date();
+        // Find Monday of savedDate's week
+        const savedDay = savedDate.getDay();
+        const savedMonday = new Date(savedDate);
+        savedMonday.setDate(savedDate.getDate() - savedDay + (savedDay === 0 ? -6 : 1));
+        // Find Monday of today's week
+        const todayDay = today.getDay();
+        const todayMonday = new Date(today);
+        todayMonday.setDate(today.getDate() - todayDay + (todayDay === 0 ? -6 : 1));
+        // Calculate week offset
+        const diffMs = savedMonday.getTime() - todayMonday.getTime();
+        const diffWeeks = Math.round(diffMs / (7 * 24 * 60 * 60 * 1000));
+        setSelectedWeekOffset(diffWeeks);
+      }
+      // Switch to roster tab so user sees the assignments
+      setActiveTabMode('roster');
       fetchRoster();
       fetchTemplatesAndCalendars();
     } catch (err: any) {
@@ -2109,7 +2129,7 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
 
                   {/* Scroll-down Checkbox Menu */}
                   {showDaysDropdown && (
-                    <div className="absolute left-0 top-full mt-1.5 z-50 bg-white border border-slate-200 rounded-2xl shadow-2xl p-2.5 space-y-2 animate-fade-in w-64 sm:w-72">
+                    <div className="absolute left-0 bottom-full mb-1.5 z-[9999] bg-white border border-slate-200 rounded-2xl shadow-2xl p-2.5 space-y-2 animate-fade-in w-64 sm:w-72">
                       <div className="flex items-center justify-between pb-1.5 border-b border-slate-100">
                         <span className="text-[11px] font-black uppercase text-slate-500 tracking-wider">
                           Select Days

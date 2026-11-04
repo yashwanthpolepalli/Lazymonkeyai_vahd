@@ -860,8 +860,9 @@ export function StudentEnrollmentModal({
       setErrorMsg('Student Email Address is required.');
       return;
     }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(studentEmail.trim())) {
+    // Permissive email check — accept any format including legacy emails like karnisujata@21@gmail.com
+    const emailVal = studentEmail.trim();
+    if (!emailVal || !emailVal.includes('@') || emailVal.length < 3) {
       setErrorMsg('Please enter a valid Student Email address.');
       return;
     }
@@ -1592,8 +1593,7 @@ export function StudentEnrollmentModal({
                     <Icon name="mail" size={15} />
                   </div>
                   <input
-                    type="email"
-                    required
+                    type="text"
                     value={studentEmail}
                     onChange={(e) => setStudentEmail(e.target.value)}
                     placeholder="student.email@example.com"

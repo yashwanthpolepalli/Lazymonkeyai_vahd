@@ -36,6 +36,19 @@ export function employeesPage() {
   const [members, setMembers] = useState<Member[]>([]);
   const [employees, setemployees] = useState<Array<Partial<employee> & { email?: string; full_name?: string; specialty?: string; base_monthly_salary?: number; pt_session_rate?: number; is_active?: boolean; created_at?: string; assigned_students_count?: number }>>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedBranch, setSelectedBranch] = useState<string>(() => {
+    return localStorage.getItem('vahd_selected_org_id') || 'all';
+  });
+
+  useEffect(() => {
+    const handleOrgChange = (e: any) => {
+      const orgId = e?.detail?.id ?? localStorage.getItem('vahd_selected_org_id') ?? 'all';
+      setSelectedBranch(orgId);
+    };
+    window.addEventListener('vahd:org_changed', handleOrgChange);
+    return () => window.removeEventListener('vahd:org_changed', handleOrgChange);
+  }, []);
+
   const [enrollOpen, setEnrollOpen] = useState(false);
   const [editingemployee, setEditingemployee] = useState<any>(null);
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
@@ -183,11 +196,13 @@ export function employeesPage() {
     }
   };
 
-  const fetchemployeesData = () => {
+  const fetchemployeesData = (branchId?: string) => {
     setLoading(true);
+    const bId = typeof branchId === 'string' ? branchId : (localStorage.getItem('vahd_selected_org_id') || 'all');
+    const branchParams = bId && bId !== 'all' ? { branch_id: bId } : undefined;
     Promise.all([
-      api.students.list().catch(() => []),
-      employeesApi.list().catch(() => []),
+      api.students.list(branchParams).catch(() => []),
+      employeesApi.list(branchParams).catch(() => []),
     ])
       .then(([mList, tList]) => {
         setMembers(mList || []);
@@ -199,8 +214,8 @@ export function employeesPage() {
   };
 
   useEffect(() => {
-    fetchemployeesData();
-  }, []);
+    fetchemployeesData(selectedBranch);
+  }, [selectedBranch]);
 
   const handleDeleteemployee = async (employeeId: string, employeeName: string) => {
     if (!window.confirm(`Are you sure you want to delete employee "${employeeName}"?`)) {

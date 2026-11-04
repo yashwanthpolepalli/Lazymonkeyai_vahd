@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/utils/cn';
+import { apiClient } from '@/services/apiClient';
 import {
   hrmsApi,
   type ShiftRosterResponse,
@@ -92,6 +93,17 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
   const [templateIsNight, setTemplateIsNight] = useState(false);
   const [templateColor, setTemplateColor] = useState('#7c3aed');
   const [submittingTemplate, setSubmittingTemplate] = useState(false);
+  // New assignment / schedule fields
+  const [templateAssignType, setTemplateAssignType] = useState<'employee' | 'student' | 'both'>('both');
+  const [templateFromDate, setTemplateFromDate] = useState('');
+  const [templateToDate, setTemplateToDate] = useState('');
+  const [templateNumMembers, setTemplateNumMembers] = useState<number | ''>('');
+  // Organization members for shift template assignment dropdown
+  const [orgEmployees, setOrgEmployees] = useState<any[]>([]);
+  const [orgStudents, setOrgStudents] = useState<any[]>([]);
+  const [templateSelectedMemberIds, setTemplateSelectedMemberIds] = useState<string[]>([]);
+  const [showMemberDropdown, setShowMemberDropdown] = useState(false);
+  const [memberSearchQuery, setMemberSearchQuery] = useState('');
 
   // Helper toast
   const showToast = (msg: string) => {
@@ -155,6 +167,76 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
       fetchTemplatesAndCalendars();
     }
   }, [activeTabMode]);
+
+  // Fetch employees and students under the selected organisation for shift assignment
+  useEffect(() => {
+    const branchParam = selectedBranch && selectedBranch !== 'all' ? selectedBranch : undefined;
+    Promise.all([
+      hrmsApi.getEmployees({ branch_id: branchParam }).catch(() => []),
+      apiClient.get<any[]>('/students', { params: branchParam ? { branch_id: branchParam } : undefined }).catch(() => [])
+    ]).then(([emps, studs]) => {
+      setOrgEmployees(Array.isArray(emps) ? emps : []);
+      setOrgStudents(Array.isArray(studs) ? studs : []);
+    });
+  }, [selectedBranch]);
+
+  // Compute candidate members for shift assignment based on assign_type and organisation
+  const candidateMembers = useMemo(() => {
+    let list: Array<{ id: string; name: string; code: string; desg: string; type: 'employee' | 'student' }> = [];
+    if (templateAssignType === 'employee' || templateAssignType === 'both') {
+      const empItems = orgEmployees.map((e, idx) => {
+        const fullName = [e.first_name, e.last_name].filter(Boolean).join(' ') || e.name || `Employee ${idx + 1}`;
+        const code = e.code || e.employee_id || e.id || '';
+        const desg = e.designation || e.department || 'Staff';
+        return {
+          id: String(e.id || code),
+          name: fullName,
+          code: String(code),
+          desg,
+          type: 'employee' as const,
+        };
+      });
+      list = [...list, ...empItems];
+    }
+    if (templateAssignType === 'student' || templateAssignType === 'both') {
+      const stuItems = orgStudents.map((s, idx) => {
+        const fullName = s.full_name || s.name || `Student ${idx + 1}`;
+        const code = s.member_code || s.roll_number || s.student_number || s.code || (s.id && !s.id.startsWith('cust_') ? s.id : `stu${String(idx + 1).padStart(4, '0')}`);
+        const desg = s.course || s.specialization || s.qualification || 'Student';
+        return {
+          id: String(s.id || code),
+          name: fullName,
+          code: String(code),
+          desg,
+          type: 'student' as const,
+        };
+      });
+      list = [...list, ...stuItems];
+    }
+    return list;
+  }, [orgEmployees, orgStudents, templateAssignType]);
+
+  const filteredCandidateMembers = useMemo(() => {
+    if (!memberSearchQuery.trim()) return candidateMembers;
+    const q = memberSearchQuery.toLowerCase();
+    return candidateMembers.filter(
+      (m) => m.name.toLowerCase().includes(q) || m.code.toLowerCase().includes(q) || m.desg.toLowerCase().includes(q)
+    );
+  }, [candidateMembers, memberSearchQuery]);
+
+  const handleToggleSelectAllMembers = () => {
+    if (templateSelectedMemberIds.length === candidateMembers.length) {
+      setTemplateSelectedMemberIds([]);
+    } else {
+      setTemplateSelectedMemberIds(candidateMembers.map((m) => m.id));
+    }
+  };
+
+  const handleToggleMember = (id: string) => {
+    setTemplateSelectedMemberIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
 
   // Debounced search for roster
   useEffect(() => {
@@ -466,6 +548,13 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
     setTemplateGraceMins('');
     setTemplateIsNight(false);
     setTemplateColor('#7c3aed');
+    setTemplateAssignType('both');
+    setTemplateFromDate('');
+    setTemplateToDate('');
+    setTemplateNumMembers('');
+    setTemplateSelectedMemberIds([]);
+    setShowMemberDropdown(false);
+    setMemberSearchQuery('');
     setShowTemplateModal(true);
   };
 
@@ -479,6 +568,13 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
     setTemplateGraceMins(tpl.grace_period_mins ?? '');
     setTemplateIsNight(Boolean(tpl.is_night_shift));
     setTemplateColor(tpl.color || '#7c3aed');
+    setTemplateAssignType((tpl.assign_type as 'employee' | 'student' | 'both') || 'both');
+    setTemplateFromDate(tpl.from_date || '');
+    setTemplateToDate(tpl.to_date || '');
+    setTemplateNumMembers(tpl.num_members ?? '');
+    setTemplateSelectedMemberIds(tpl.member_ids || []);
+    setShowMemberDropdown(false);
+    setMemberSearchQuery('');
     setShowTemplateModal(true);
   };
 
@@ -490,7 +586,11 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
     }
     setSubmittingTemplate(true);
     try {
-      await hrmsApi.saveShiftTemplate({
+      const finalMemberCount = templateSelectedMemberIds.length > 0
+        ? templateSelectedMemberIds.length
+        : (templateNumMembers !== '' ? Number(templateNumMembers) : 0);
+
+      const saved = await hrmsApi.saveShiftTemplate({
         id: editingTemplateId || undefined,
         code: templateCode.trim().toUpperCase(),
         name: templateName.trim(),
@@ -501,9 +601,41 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
         is_night_shift: templateIsNight,
         color: templateColor,
         is_active: true,
+        assign_type: templateAssignType,
+        from_date: templateFromDate || undefined,
+        to_date: templateToDate || undefined,
+        num_members: finalMemberCount,
+        member_ids: templateSelectedMemberIds,
+        branch_id: selectedBranch !== 'all' ? selectedBranch : undefined,
       });
+
+      // If dates and members are selected, apply shift to roster directly
+      if (templateSelectedMemberIds.length > 0 && templateFromDate) {
+        const datesList: string[] = [];
+        const startD = new Date(templateFromDate);
+        const endD = new Date(templateToDate || templateFromDate);
+        for (let cur = new Date(startD); cur <= endD; cur.setDate(cur.getDate() + 1)) {
+          const y = cur.getFullYear();
+          const m = String(cur.getMonth() + 1).padStart(2, '0');
+          const day = String(cur.getDate()).padStart(2, '0');
+          datesList.push(`${y}-${m}-${day}`);
+        }
+        if (datesList.length > 0) {
+          await hrmsApi.assignShift({
+            employee_ids: templateSelectedMemberIds,
+            dates: datesList,
+            shift_code: templateCode.trim().toUpperCase(),
+            shift_name: templateName.trim(),
+            start_time: templateStartTime.trim(),
+            end_time: templateEndTime.trim(),
+            shift_id: (saved as any)?.id,
+          }).catch(() => null);
+        }
+      }
+
       showToast(`Shift template "${templateName}" saved successfully.`);
       setShowTemplateModal(false);
+      fetchRoster();
       fetchTemplatesAndCalendars();
     } catch (err: any) {
       showToast(err?.response?.data?.detail || err?.message || 'Failed to save shift template');
@@ -1654,7 +1786,7 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
       {/* ───────────────────────────────────────────────────────────── */}
       {showTemplateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 backdrop-blur-xs p-4 animate-fade-in">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 space-y-4">
             <div className="flex items-center justify-between pb-1">
               <h3 className="text-base font-bold text-slate-900">
                 {editingTemplateId ? 'Edit Shift Template' : 'Add Shift Template'}
@@ -1669,6 +1801,7 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
             </div>
 
             <form onSubmit={handleSaveShiftTemplate} className="space-y-3.5">
+              {/* Row 1: Shift Code + Shift Name */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-[11px] font-black uppercase text-slate-500 tracking-wider block">
@@ -1683,7 +1816,6 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
                     className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
                   />
                 </div>
-
                 <div className="space-y-1">
                   <label className="text-[11px] font-black uppercase text-slate-500 tracking-wider block">
                     SHIFT NAME *
@@ -1699,6 +1831,7 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
                 </div>
               </div>
 
+              {/* Row 2: Start Time + End Time */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-[11px] font-black uppercase text-slate-500 tracking-wider block">
@@ -1712,7 +1845,6 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
                     className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
                   />
                 </div>
-
                 <div className="space-y-1">
                   <label className="text-[11px] font-black uppercase text-slate-500 tracking-wider block">
                     END TIME
@@ -1727,6 +1859,7 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
                 </div>
               </div>
 
+              {/* Row 3: Break + Grace Period */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-[11px] font-black uppercase text-slate-500 tracking-wider block">
@@ -1740,7 +1873,6 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
                     className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
                   />
                 </div>
-
                 <div className="space-y-1">
                   <label className="text-[11px] font-black uppercase text-slate-500 tracking-wider block">
                     GRACE PERIOD (MINS)
@@ -1755,19 +1887,174 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-1">
-                <label className="flex items-center gap-2 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={templateIsNight}
-                    onChange={(e) => setTemplateIsNight(e.target.checked)}
-                    className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 border-slate-300"
-                  />
-                  <span className="text-xs font-bold text-slate-700">Night Shift</span>
-                </label>
+              {/* Row 4: Assign To + No. of Members */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-black uppercase text-slate-500 tracking-wider block">
+                    ASSIGN TO
+                  </label>
+                  <select
+                    value={templateAssignType}
+                    onChange={(e) => setTemplateAssignType(e.target.value as 'employee' | 'student' | 'both')}
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500/20 cursor-pointer"
+                  >
+                    <option value="both">Employees &amp; Students</option>
+                    <option value="employee">Employees Only</option>
+                    <option value="student">Students Only</option>
+                  </select>
+                </div>
+                <div className="space-y-1 relative">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-black uppercase text-slate-500 tracking-wider block">
+                      ASSIGN TO {templateAssignType === 'student' ? 'STUDENTS' : templateAssignType === 'employee' ? 'EMPLOYEES' : 'MEMBERS'}
+                    </label>
+                    <span className="text-[10px] font-extrabold text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded-md">
+                      {templateSelectedMemberIds.length} of {candidateMembers.length}
+                    </span>
+                  </div>
 
+                  {/* Dropdown Trigger */}
+                  <button
+                    type="button"
+                    onClick={() => setShowMemberDropdown((prev) => !prev)}
+                    className="w-full px-3 py-2 bg-white border border-slate-200 hover:border-purple-300 rounded-xl text-xs font-bold text-slate-900 flex items-center justify-between transition focus:outline-none focus:ring-2 focus:ring-purple-500/20 cursor-pointer text-left"
+                  >
+                    <span className="truncate">
+                      {templateSelectedMemberIds.length === 0
+                        ? `Select ${templateAssignType === 'student' ? 'students' : templateAssignType === 'employee' ? 'employees' : 'members'}...`
+                        : templateSelectedMemberIds.length === candidateMembers.length
+                        ? `All (${candidateMembers.length}) Selected`
+                        : `${templateSelectedMemberIds.length} selected`}
+                    </span>
+                    <Icon
+                      name="chevron-down"
+                      size={14}
+                      className={cn(
+                        "text-slate-400 shrink-0 ml-1 transition-transform duration-200",
+                        showMemberDropdown && "rotate-180"
+                      )}
+                    />
+                  </button>
+
+                  {/* Dropdown Scroll-Down Menu with Checkboxes */}
+                  {showMemberDropdown && (
+                    <div className="absolute right-0 left-auto top-full mt-1.5 z-50 bg-white border border-slate-200 rounded-2xl shadow-2xl p-2.5 space-y-2 animate-fade-in w-72 sm:w-80">
+                      {/* Search Bar + Select All Header */}
+                      <div className="flex items-center gap-1.5 pb-1 border-b border-slate-100">
+                        <div className="relative flex-1">
+                          <Icon name="search" size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                          <input
+                            type="text"
+                            value={memberSearchQuery}
+                            onChange={(e) => setMemberSearchQuery(e.target.value)}
+                            placeholder={`Search ${templateAssignType === 'student' ? 'students' : 'employees'}...`}
+                            className="w-full pl-7 pr-2.5 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleToggleSelectAllMembers}
+                          className="px-2 py-1.5 text-[10px] font-extrabold text-purple-600 bg-purple-50 hover:bg-purple-100 rounded-lg transition whitespace-nowrap cursor-pointer"
+                        >
+                          {templateSelectedMemberIds.length === candidateMembers.length ? 'Clear All' : 'Select All'}
+                        </button>
+                      </div>
+
+                      {/* Scrollable Checkbox List */}
+                      <div className="max-h-52 overflow-y-auto divide-y divide-slate-50 pr-1">
+                        {filteredCandidateMembers.length === 0 ? (
+                          <div className="py-6 text-center text-xs text-slate-400 font-medium">
+                            No {templateAssignType === 'student' ? 'students' : 'employees'} found for this organisation.
+                          </div>
+                        ) : (
+                          filteredCandidateMembers.map((m) => {
+                            const isChecked = templateSelectedMemberIds.includes(m.id);
+                            return (
+                              <label
+                                key={m.id}
+                                className={cn(
+                                  "flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg cursor-pointer transition select-none hover:bg-slate-50",
+                                  isChecked && "bg-purple-50/50"
+                                )}
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={() => handleToggleMember(m.id)}
+                                    className="w-3.5 h-3.5 rounded text-purple-600 focus:ring-purple-500 border-slate-300 cursor-pointer shrink-0"
+                                  />
+                                  <div className="min-w-0">
+                                    <div className="text-xs font-bold text-slate-800 truncate">
+                                      {m.name}
+                                    </div>
+                                    <div className="text-[10px] text-slate-500 truncate flex items-center gap-1">
+                                      <span className="font-mono font-semibold text-slate-600">{m.code}</span>
+                                      <span>•</span>
+                                      <span>{m.desg}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                                <span className={cn(
+                                  "text-[9px] font-black uppercase px-1.5 py-0.2 rounded shrink-0",
+                                  m.type === 'student' ? "bg-blue-100 text-blue-700" : "bg-emerald-100 text-emerald-700"
+                                )}>
+                                  {m.type === 'student' ? 'STU' : 'EMP'}
+                                </span>
+                              </label>
+                            );
+                          })
+                        )}
+                      </div>
+
+                      {/* Footer Actions */}
+                      <div className="flex items-center justify-between pt-1.5 border-t border-slate-100 text-[11px]">
+                        <span className="font-bold text-slate-500">
+                          {templateSelectedMemberIds.length} selected
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setShowMemberDropdown(false)}
+                          className="px-2.5 py-1 text-xs font-bold bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition cursor-pointer"
+                        >
+                          Done
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Row 5: From Date + To Date */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-black uppercase text-slate-500 tracking-wider block">
+                    FROM DATE
+                  </label>
+                  <input
+                    type="date"
+                    value={templateFromDate}
+                    onChange={(e) => setTemplateFromDate(e.target.value)}
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-black uppercase text-slate-500 tracking-wider block">
+                    TO DATE
+                  </label>
+                  <input
+                    type="date"
+                    value={templateToDate}
+                    onChange={(e) => setTemplateToDate(e.target.value)}
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                  />
+                </div>
+              </div>
+
+              {/* Row 6: Shift Color (user-defined — Night Shift checkbox removed) */}
+              <div className="flex items-center justify-end pt-1">
                 <div className="flex items-center gap-2">
-                  <label className="text-xs font-bold text-slate-500">Color</label>
+                  <label className="text-xs font-bold text-slate-500">Shift Color</label>
                   <input
                     type="color"
                     value={templateColor}

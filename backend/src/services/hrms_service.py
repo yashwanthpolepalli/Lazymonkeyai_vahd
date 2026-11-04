@@ -225,8 +225,22 @@ class HrmsService:
 
                 query = query.filter(or_(*conditions))
 
-                if branch_id:
-                    query = query.filter(or_(Employee.branch_id == branch_id, Employee.vahd_branch.ilike(f"%{branch_id}%")))
+                if branch_id and str(branch_id).lower() not in ["all", "", "none", "undefined", "null"]:
+                    matched_b = db.query(vahdBranch).filter(
+                        or_(vahdBranch.id == branch_id, vahdBranch.branch_name == branch_id, vahdBranch.vahd_name == branch_id)
+                    ).first()
+                    b_ids = [branch_id]
+                    b_names = [branch_id]
+                    if matched_b:
+                        b_ids.append(matched_b.id)
+                        if matched_b.branch_name:
+                            b_names.append(matched_b.branch_name)
+                        if matched_b.vahd_name:
+                            b_names.append(matched_b.vahd_name)
+                    b_conds = [Employee.branch_id.in_(b_ids)]
+                    for bn in b_names:
+                        b_conds.append(Employee.vahd_branch.ilike(f"%{bn}%"))
+                    query = query.filter(or_(*b_conds))
             elif user_role in ["OWNER"]:
                 owner_branches = db.query(vahdBranch).filter(
                     or_(
@@ -246,12 +260,40 @@ class HrmsService:
                 conditions.append(Employee.owner_id == "")
                 if conditions:
                     query = query.filter(or_(*conditions))
-                if branch_id:
-                    query = query.filter(or_(Employee.branch_id == branch_id, Employee.vahd_branch.ilike(f"%{branch_id}%")))
+                if branch_id and str(branch_id).lower() not in ["all", "", "none", "undefined", "null"]:
+                    matched_b = db.query(vahdBranch).filter(
+                        or_(vahdBranch.id == branch_id, vahdBranch.branch_name == branch_id, vahdBranch.vahd_name == branch_id)
+                    ).first()
+                    b_ids = [branch_id]
+                    b_names = [branch_id]
+                    if matched_b:
+                        b_ids.append(matched_b.id)
+                        if matched_b.branch_name:
+                            b_names.append(matched_b.branch_name)
+                        if matched_b.vahd_name:
+                            b_names.append(matched_b.vahd_name)
+                    b_conds = [Employee.branch_id.in_(b_ids)]
+                    for bn in b_names:
+                        b_conds.append(Employee.vahd_branch.ilike(f"%{bn}%"))
+                    query = query.filter(or_(*b_conds))
         elif ho_id:
             query = query.filter(Employee.ho_id == ho_id)
-        elif branch_id:
-            query = query.filter(or_(Employee.branch_id == branch_id, Employee.vahd_branch.ilike(f"%{branch_id}%")))
+        elif branch_id and str(branch_id).lower() not in ["all", "", "none", "undefined", "null"]:
+            matched_b = db.query(vahdBranch).filter(
+                or_(vahdBranch.id == branch_id, vahdBranch.branch_name == branch_id, vahdBranch.vahd_name == branch_id)
+            ).first()
+            b_ids = [branch_id]
+            b_names = [branch_id]
+            if matched_b:
+                b_ids.append(matched_b.id)
+                if matched_b.branch_name:
+                    b_names.append(matched_b.branch_name)
+                if matched_b.vahd_name:
+                    b_names.append(matched_b.vahd_name)
+            b_conds = [Employee.branch_id.in_(b_ids)]
+            for bn in b_names:
+                b_conds.append(Employee.vahd_branch.ilike(f"%{bn}%"))
+            query = query.filter(or_(*b_conds))
 
         if department and department != "All Departments":
             query = query.filter(Employee.department == department)
@@ -299,6 +341,7 @@ class HrmsService:
                 "ho_id": e.ho_id or "",
                 "owner_id": getattr(e, "owner_id", None) or "",
                 "emergency_contact": e.emergency_contact or "",
+                "meta_data": getattr(e, "meta_data", None) or {},
                 "created_at": e.created_at.isoformat() if e.created_at else None
             })
         return result
@@ -586,11 +629,14 @@ class HrmsService:
                 emergency_contact=payload.get("emergency_contact") or "",
                 qualification=payload.get("qualification") or "",
                 specialization=payload.get("specialization") or designation or "",
+                meta_data=payload.get("meta_data") if isinstance(payload.get("meta_data"), dict) else None,
             )
             db.add(emp)
             db.commit()
             db.refresh(emp)
         else:
+            if payload.get("meta_data") and isinstance(payload.get("meta_data"), dict):
+                emp.meta_data = payload.get("meta_data")
             if department:
                 emp.department = department
             if designation:
@@ -1488,9 +1534,31 @@ class HrmsService:
                         )
                     ).first()
 
+            stu = None
+            if not emp:
+                from src.models.student import student as StudentModel
+                stu = db.query(StudentModel).filter(
+                    or_(
+                        StudentModel.id == clean_lid,
+                        StudentModel.user_id == clean_lid,
+                        StudentModel.member_code == clean_lid,
+                        StudentModel.id == f"cust_{clean_lid}",
+                        StudentModel.email.ilike(clean_lid)
+                    )
+                ).first()
+                if not stu:
+                    t_usr = db.query(User).filter(User.id == clean_lid).first()
+                    if t_usr:
+                        stu = db.query(StudentModel).filter(
+                            or_(
+                                StudentModel.email.ilike(t_usr.email),
+                                StudentModel.user_id == t_usr.id
+                            )
+                        ).first()
+
             if branch_id and str(branch_id).lower() not in ["all", "", "none", "undefined", "null"]:
-                emp_br_id = getattr(emp, "branch_id", None) if emp else None
-                emp_br_name = getattr(emp, "vahd_branch", None) if emp else None
+                emp_br_id = getattr(emp, "branch_id", None) if emp else (getattr(stu, "branch_id", None) if stu else None)
+                emp_br_name = getattr(emp, "vahd_branch", None) if emp else (getattr(stu, "primary_vahd_location", None) if stu else None)
                 matched_br = (
                     (emp_br_id and emp_br_id in target_branch_ids) or
                     (emp_br_name and any(tn.lower() in emp_br_name.lower() or emp_br_name.lower() in tn.lower() for tn in target_branch_names))
@@ -1498,12 +1566,28 @@ class HrmsService:
                 if not matched_br:
                     continue
 
-            full_name = f"{emp.first_name} {emp.last_name or ''}".strip() if emp else clean_lid
-            emp_code = (emp.code if emp and emp.code else clean_lid)
-            desg = (emp.designation if emp else "")
-            dept = (emp.department if emp else "")
-            parts = full_name.split()
-            initials = "".join([p[0].upper() for p in parts[:2]]) if parts else "EM"
+            if emp:
+                full_name = f"{emp.first_name} {emp.last_name or ''}".strip()
+                emp_code = emp.code or clean_lid
+                desg = emp.designation or ""
+                dept = emp.department or ""
+                parts = full_name.split()
+                initials = "".join([p[0].upper() for p in parts[:2]]) if parts else "EM"
+            elif stu:
+                full_name = stu.full_name
+                emp_code = stu.member_code or (stu.meta_data.get("roll_number") if isinstance(stu.meta_data, dict) else None) or f"stu{stu.id[-4:]}"
+                desg = stu.specialization or stu.qualification or "Student"
+                dept = stu.primary_vahd_location or ""
+                parts = full_name.split()
+                initials = "".join([p[0].upper() for p in parts[:2]]) if parts else "ST"
+            else:
+                full_name = clean_lid
+                emp_code = clean_lid
+                desg = ""
+                dept = ""
+                parts = full_name.split()
+                initials = "".join([p[0].upper() for p in parts[:2]]) if parts else "EM"
+
             clean_in_loc = re.sub(r'\s*\((Face Scanner|Biometric Turnstile|RFID Sensor|Manual Self Check-in|GPS Mobile|Face AI Terminal|Webcam|WEBCAM_FACE_SCANNER)\)', '', getattr(l, "check_in_location", None) or "").strip()
             clean_out_loc = re.sub(r'\s*\((Face Scanner|Biometric Turnstile|RFID Sensor|Manual Self Check-in|GPS Mobile|Face AI Terminal|Webcam|WEBCAM_FACE_SCANNER)\)', '', getattr(l, "check_out_location", None) or "").strip()
             if clean_in_loc.lower() in ["face scanner", "biometric device", "webcam"]:
@@ -1696,12 +1780,41 @@ class HrmsService:
                         )
                     ).first()
 
+            stu = None
+            if not emp:
+                from src.models.student import student as StudentModel
+                stu = db.query(StudentModel).filter(
+                    or_(
+                        StudentModel.id == emp_id,
+                        StudentModel.user_id == emp_id,
+                        StudentModel.member_code == emp_id,
+                        StudentModel.id == f"cust_{emp_id}",
+                        StudentModel.email.ilike(emp_id),
+                        StudentModel.email.ilike(meta_email) if meta_email else False
+                    )
+                ).first()
+                if not stu:
+                    t_usr = db.query(User).filter(User.id == emp_id).first()
+                    if t_usr:
+                        stu = db.query(StudentModel).filter(
+                            or_(
+                                StudentModel.email.ilike(t_usr.email),
+                                StudentModel.user_id == t_usr.id
+                            )
+                        ).first()
+
             if emp:
                 real_emp_id = emp.id
                 emp_name = f"{emp.first_name} {emp.last_name or ''}".strip()
                 emp_code = emp.code or emp.id
                 designation = emp.designation or meta.get("designation") or ""
                 department = emp.department or meta.get("department") or ""
+            elif stu:
+                real_emp_id = stu.id
+                emp_name = stu.full_name
+                emp_code = stu.member_code or (stu.meta_data.get("roll_number") if isinstance(stu.meta_data, dict) else None) or f"stu{stu.id[-4:]}"
+                designation = stu.specialization or stu.qualification or "Student"
+                department = stu.primary_vahd_location or ""
             else:
                 real_emp_id = emp_id
                 emp_name = meta.get("employee_name") or meta.get("user_name") or meta.get("name") or "Staff Member"
@@ -3594,8 +3707,30 @@ class HrmsService:
         return {"status": "success", "message": "Shift timing removed successfully"}
 
     @staticmethod
-    def get_shift_templates(db: Session) -> List[Dict[str, Any]]:
-        templates = db.query(ShiftTemplate).filter(ShiftTemplate.is_active == True).order_by(ShiftTemplate.created_at.asc()).all()
+    def get_shift_templates(
+        db: Session,
+        branch_id: Optional[str] = None,
+        ho_id: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """Return shift templates, filtered by org/branch when supplied."""
+        query = db.query(ShiftTemplate).filter(ShiftTemplate.is_active == True)
+        if branch_id and str(branch_id).lower() not in ("all", "", "none", "undefined", "null"):
+            query = query.filter(
+                or_(
+                    ShiftTemplate.branch_id == branch_id,
+                    ShiftTemplate.branch_id.is_(None),
+                    ShiftTemplate.branch_id == "",
+                )
+            )
+        elif ho_id and str(ho_id).lower() not in ("all", "", "none", "undefined", "null"):
+            query = query.filter(
+                or_(
+                    ShiftTemplate.ho_id == ho_id,
+                    ShiftTemplate.ho_id.is_(None),
+                    ShiftTemplate.ho_id == "",
+                )
+            )
+        templates = query.order_by(ShiftTemplate.created_at.asc()).all()
         return [
             {
                 "id": t.id,
@@ -3609,12 +3744,20 @@ class HrmsService:
                 "is_night_shift": bool(t.is_night_shift),
                 "color": t.color or "#7c3aed",
                 "is_active": bool(t.is_active),
+                "assign_type": t.assign_type or "both",
+                "from_date": t.from_date or "",
+                "to_date": t.to_date or "",
+                "num_members": t.num_members,
+                "member_ids": t.member_ids or [],
+                "branch_id": t.branch_id or "",
+                "ho_id": t.ho_id or "",
             }
             for t in templates
         ]
 
     @staticmethod
     def save_shift_template(db: Session, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Create or update a shift template, persisting all fields including org scope."""
         t_id = payload.get("id")
         template = None
         if t_id:
@@ -3637,15 +3780,58 @@ class HrmsService:
                 grace_period_mins=int(payload.get("grace_period_mins")) if payload.get("grace_period_mins") is not None else None,
                 is_night_shift=bool(payload.get("is_night_shift", False)),
                 color=payload.get("color"),
-                is_active=bool(payload.get("is_active", True))
+                is_active=bool(payload.get("is_active", True)),
+                assign_type=payload.get("assign_type", "both"),
+                from_date=payload.get("from_date") or None,
+                to_date=payload.get("to_date") or None,
+                num_members=int(payload.get("num_members")) if payload.get("num_members") is not None else None,
+                member_ids=payload.get("member_ids") or [],
+                branch_id=payload.get("branch_id") or None,
+                ho_id=payload.get("ho_id") or None,
             )
             db.add(template)
         else:
-            for k in ["name", "start_time", "end_time", "duration_hours", "break_mins", "grace_period_mins", "is_night_shift", "color", "is_active"]:
+            for k in [
+                "name", "start_time", "end_time", "duration_hours", "break_mins",
+                "grace_period_mins", "is_night_shift", "color", "is_active",
+                "assign_type", "from_date", "to_date", "num_members", "member_ids", "branch_id", "ho_id",
+            ]:
                 if k in payload:
-                    setattr(template, k, payload[k])
+                    val = payload[k]
+                    if k == "num_members" and val is not None:
+                        val = int(val)
+                    if k in ("from_date", "to_date", "branch_id", "ho_id") and val == "":
+                        val = None
+                    setattr(template, k, val)
         db.commit()
         db.refresh(template)
+
+        # If member_ids and from_date are supplied, auto-apply this shift to those members in the roster
+        member_ids_to_apply = payload.get("member_ids") or template.member_ids or []
+        f_date_str = template.from_date or payload.get("from_date")
+        t_date_str = template.to_date or payload.get("to_date") or f_date_str
+        if member_ids_to_apply and f_date_str:
+            try:
+                start_dt = datetime.strptime(f_date_str.strip(), "%Y-%m-%d").date()
+                end_dt = datetime.strptime(t_date_str.strip(), "%Y-%m-%d").date() if t_date_str else start_dt
+                dates_list = []
+                cur = start_dt
+                while cur <= end_dt:
+                    dates_list.append(cur.strftime("%Y-%m-%d"))
+                    cur += timedelta(days=1)
+                if dates_list:
+                    HrmsService.assign_shift(db, {
+                        "employee_ids": member_ids_to_apply,
+                        "dates": dates_list,
+                        "shift_code": template.code,
+                        "shift_name": template.name,
+                        "start_time": template.start_time or "",
+                        "end_time": template.end_time or "",
+                        "shift_id": template.id,
+                    })
+            except Exception as sched_err:
+                print(f"[ShiftTemplate] Auto-assign shift roster warning: {sched_err}")
+
         return {
             "id": template.id,
             "code": template.code,
@@ -3657,7 +3843,14 @@ class HrmsService:
             "grace_period_mins": template.grace_period_mins,
             "is_night_shift": bool(template.is_night_shift),
             "color": template.color,
-            "is_active": bool(template.is_active)
+            "is_active": bool(template.is_active),
+            "assign_type": template.assign_type or "both",
+            "from_date": template.from_date or "",
+            "to_date": template.to_date or "",
+            "num_members": template.num_members,
+            "member_ids": template.member_ids or [],
+            "branch_id": template.branch_id or "",
+            "ho_id": template.ho_id or "",
         }
 
     @staticmethod
@@ -3868,8 +4061,22 @@ class HrmsService:
             stus_query = db.query(student)
             if ho_id:
                 stus_query = stus_query.filter(student.ho_id == ho_id)
-            if branch_id:
-                stus_query = stus_query.filter(student.branch_id == branch_id)
+            if branch_id and str(branch_id).lower() not in ["all", "", "none", "undefined", "null"]:
+                matched_b = db.query(vahdBranch).filter(
+                    or_(vahdBranch.id == branch_id, vahdBranch.branch_name == branch_id, vahdBranch.vahd_name == branch_id)
+                ).first()
+                b_ids = [branch_id]
+                b_names = [branch_id]
+                if matched_b:
+                    b_ids.append(matched_b.id)
+                    if matched_b.branch_name:
+                        b_names.append(matched_b.branch_name)
+                    if matched_b.vahd_name:
+                        b_names.append(matched_b.vahd_name)
+                b_conds = [student.branch_id.in_(b_ids)]
+                for bn in b_names:
+                    b_conds.append(student.primary_vahd_location.ilike(f"%{bn}%"))
+                stus_query = stus_query.filter(or_(*b_conds))
             if current_user and (current_user.role or "").strip().upper() == "OWNER":
                 stus_query = stus_query.filter(
                     or_(
@@ -4355,8 +4562,22 @@ class HrmsService:
             stus_query = db.query(student)
             if ho_id:
                 stus_query = stus_query.filter(student.ho_id == ho_id)
-            if branch_id:
-                stus_query = stus_query.filter(student.branch_id == branch_id)
+            if branch_id and str(branch_id).lower() not in ["all", "", "none", "undefined", "null"]:
+                matched_b = db.query(vahdBranch).filter(
+                    or_(vahdBranch.id == branch_id, vahdBranch.branch_name == branch_id, vahdBranch.vahd_name == branch_id)
+                ).first()
+                b_ids = [branch_id]
+                b_names = [branch_id]
+                if matched_b:
+                    b_ids.append(matched_b.id)
+                    if matched_b.branch_name:
+                        b_names.append(matched_b.branch_name)
+                    if matched_b.vahd_name:
+                        b_names.append(matched_b.vahd_name)
+                b_conds = [student.branch_id.in_(b_ids)]
+                for bn in b_names:
+                    b_conds.append(student.primary_vahd_location.ilike(f"%{bn}%"))
+                stus_query = stus_query.filter(or_(*b_conds))
             if current_user and (current_user.role or "").strip().upper() == "OWNER":
                 stus_query = stus_query.filter(
                     or_(

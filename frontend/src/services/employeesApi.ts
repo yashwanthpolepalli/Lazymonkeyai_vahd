@@ -2,17 +2,19 @@ import { apiClient } from './apiClient';
 import type { employee } from '@/types/employee';
 
 export const employeesApi = {
-  list: async (): Promise<employee[]> => {
+  list: async (params?: Record<string, string>): Promise<employee[]> => {
     try {
-      const res = await apiClient.get<employee[]>('/employees');
+      const query = params && Object.keys(params).length > 0 ? `?${new URLSearchParams(params).toString()}` : '';
+      const res = await apiClient.get<employee[]>(`/employees${query}`);
       return Array.isArray(res) ? res : [];
     } catch (_err) {
       return [];
     }
   },
-  getAll: async (): Promise<employee[]> => {
+  getAll: async (params?: Record<string, string>): Promise<employee[]> => {
     try {
-      const res = await apiClient.get<employee[]>('/employees');
+      const query = params && Object.keys(params).length > 0 ? `?${new URLSearchParams(params).toString()}` : '';
+      const res = await apiClient.get<employee[]>(`/employees${query}`);
       return Array.isArray(res) ? res : [];
     } catch (_err) {
       return [];

@@ -399,11 +399,13 @@ export function HrmsemployeesTab() {
     }
   };
 
-  const fetchemployeesData = () => {
+  const fetchemployeesData = (branchId?: string) => {
     setLoading(true);
+    const bId = typeof branchId === 'string' ? branchId : (localStorage.getItem('vahd_selected_org_id') || 'all');
+    const branchParams = bId && bId !== 'all' ? { branch_id: bId } : undefined;
     Promise.all([
-      api.students.list().catch(() => []),
-      employeesApi.list().catch(() => []),
+      api.students.list(branchParams).catch(() => []),
+      employeesApi.list(branchParams).catch(() => []),
       apiClient.get<any[]>('/vahd/branches').catch(() => []),
     ])
       .then(([mList, tList, bList]) => {
@@ -417,8 +419,8 @@ export function HrmsemployeesTab() {
   };
 
   useEffect(() => {
-    fetchemployeesData();
-  }, []);
+    fetchemployeesData(selectedBranch);
+  }, [selectedBranch]);
 
   const handleDeleteemployee = async (employeeId: string, employeeName: string) => {
     if (!window.confirm(`Are you sure you want to delete employee "${employeeName}"?`)) {

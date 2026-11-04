@@ -168,7 +168,7 @@ export function exportStudentsToXlsx(students: any[], filename = 'students_expor
       'Medium of Instruction': meta.medium || s.medium || '',
       'Department': meta.department || s.department || '',
       'Academic Year': meta.academic_year || '',
-      'Student / Roll No': s.member_code || s.code || '',
+      'Student / Roll No': s.member_code || s.roll_number || s.student_number || s.code || (s.id && !s.id.startsWith('cust_') ? s.id : ''),
       'Qualification': s.qualification || meta.qualification || '',
       'Specialization': s.specialization || meta.specialization || '',
 
@@ -245,7 +245,7 @@ export function exportStudentsToCsv(students: any[], filename = 'students_export
       'Medium of Instruction': meta.medium || s.medium || '',
       'Department': meta.department || s.department || '',
       'Academic Year': meta.academic_year || '',
-      'Student / Roll No': s.member_code || s.code || '',
+      'Student / Roll No': s.member_code || s.roll_number || s.student_number || s.code || (s.id && !s.id.startsWith('cust_') ? s.id : ''),
       'Qualification': s.qualification || meta.qualification || '',
       'Specialization': s.specialization || meta.specialization || '',
 

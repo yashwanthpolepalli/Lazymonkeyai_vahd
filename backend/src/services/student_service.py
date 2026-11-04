@@ -1,4 +1,5 @@
 import datetime
+import re
 import uuid
 from typing import List, Optional, Dict, Any
 from sqlalchemy import or_, and_, func
@@ -16,6 +17,89 @@ from src.models.settings import Branch as vahdBranch
 from src.models.biometric_device import BiometricDevice
 
 class studentService:
+
+    @staticmethod
+    def generate_sequential_student_code(db: Session, requested_code: Optional[str] = None) -> str:
+        """
+        Generates a sequential student code strictly formatted as 'stu0001', 'stu0002', etc. in order of creation.
+        If a valid 'stuXXXX' is requested and not already taken by another student, it is preserved.
+        Otherwise, finds the maximum integer sequence from existing students and returns 'stu{max+1:04d}'.
+        """
+        if requested_code and isinstance(requested_code, str):
+            clean_req = requested_code.strip()
+            m = re.match(r'^(?:stu)?(\d+)$', clean_req, re.IGNORECASE)
+            if m:
+                norm_req = f"stu{int(m.group(1)):04d}"
+                exists = db.query(student).filter(
+                    or_(
+                        student.member_code.ilike(norm_req),
+                        student.id == norm_req
+                    )
+                ).first()
+                if not exists:
+                    return norm_req
+
+        # Scan all existing students for highest sequence number
+        all_records = db.query(student.member_code, student.meta_data, student.id).all()
+        max_num = 0
+        for s_code, s_meta, s_id in all_records:
+            candidates = []
+            if s_code:
+                candidates.append(str(s_code).strip())
+            if isinstance(s_meta, dict):
+                for k in ("roll_number", "student_number", "roll_no", "code", "admission_number"):
+                    val = s_meta.get(k)
+                    if val:
+                        candidates.append(str(val).strip())
+            if s_id and not str(s_id).startswith("cust_"):
+                candidates.append(str(s_id).strip())
+
+            for cand in candidates:
+                match = re.match(r'^(?:stu)?(\d+)$', cand, re.IGNORECASE)
+                if match:
+                    try:
+                        n = int(match.group(1))
+                        if n > max_num:
+                            max_num = n
+                    except (ValueError, TypeError):
+                        pass
+
+        next_num = max_num + 1
+        return f"stu{next_num:04d}"
+
+    @staticmethod
+    def ensure_student_roll_code(c: student, db: Session, commit: bool = False) -> str:
+        """
+        Ensures a student object has a valid sequential roll code ('stu0001', etc.).
+        Backfills and persists if missing or if set to internal 'cust_...' ID.
+        """
+        roll_code = getattr(c, "member_code", None)
+        if roll_code and not str(roll_code).startswith("cust_") and re.match(r'^(?:stu)?\d+$', str(roll_code).strip(), re.IGNORECASE):
+            m = re.match(r'^(?:stu)?(\d+)$', str(roll_code).strip(), re.IGNORECASE)
+            if m:
+                clean_code = f"stu{int(m.group(1)):04d}"
+                if c.member_code != clean_code:
+                    c.member_code = clean_code
+                    if commit:
+                        try:
+                            db.commit()
+                        except Exception:
+                            db.rollback()
+                return clean_code
+
+        new_code = studentService.generate_sequential_student_code(db)
+        c.member_code = new_code
+        meta = dict(c.meta_data) if (c.meta_data and isinstance(c.meta_data, dict)) else {}
+        meta["roll_number"] = new_code
+        meta["student_number"] = new_code
+        meta["code"] = new_code
+        c.meta_data = meta
+        if commit:
+            try:
+                db.commit()
+            except Exception:
+                db.rollback()
+        return new_code
 
     @staticmethod
     def _format_student(c: student, db: Session) -> dict:
@@ -177,6 +261,16 @@ class studentService:
         # Dynamic Student Admission Metadata & Course/Medium Resolution
         meta = dict(c.meta_data) if (c.meta_data and isinstance(c.meta_data, dict)) else {}
 
+        # Resolve sequential roll_code (stu0001, stu0002...)
+        roll_code = getattr(c, "member_code", None)
+        if not roll_code or str(roll_code).startswith("cust_"):
+            roll_code = meta.get("roll_number") or meta.get("student_number") or meta.get("code") or meta.get("roll_no")
+        if not roll_code or str(roll_code).startswith("cust_"):
+            try:
+                roll_code = studentService.ensure_student_roll_code(c, db, commit=True)
+            except Exception:
+                roll_code = f"stu{c.id[-4:]}"
+
         course_name = (
             meta.get("course")
             or meta.get("course_name")
@@ -196,6 +290,12 @@ class studentService:
 
         return {
             "id": c.id,
+            "student_id": c.id,
+            "member_code": roll_code,
+            "roll_number": roll_code,
+            "student_number": roll_code,
+            "code": roll_code,
+            "roll_no": roll_code,
             "user_id": c.user_id,
             "employee_id": c.employee_id,
             "employee": employee_name or "",
@@ -342,12 +442,23 @@ class studentService:
                 # Branch specific sub-filter if selected by owner
                 if branch_id or branch:
                     target_b = branch_id or branch
-                    query = query.filter(
-                        or_(
-                            student.branch_id == target_b,
-                            student.primary_vahd_location.ilike(f"%{target_b}%")
-                        )
-                    )
+                    if str(target_b).lower() not in ["all", "", "none", "undefined", "null"]:
+                        matched_b = db.query(vahdBranch).filter(
+                            or_(vahdBranch.id == target_b, vahdBranch.branch_name == target_b, vahdBranch.vahd_name == target_b)
+                        ).first()
+                        b_filter_ids = [target_b]
+                        b_filter_names = [target_b]
+                        if matched_b:
+                            b_filter_ids.append(matched_b.id)
+                            if matched_b.branch_name:
+                                b_filter_names.append(matched_b.branch_name)
+                            if matched_b.vahd_name:
+                                b_filter_names.append(matched_b.vahd_name)
+
+                        conds = [student.branch_id.in_(b_filter_ids)]
+                        for nm in b_filter_names:
+                            conds.append(student.primary_vahd_location.ilike(f"%{nm}%"))
+                        query = query.filter(or_(*conds))
             elif user_role in ["employee", "COACH", "STAFF", "MANAGER"]:
                 # Staff/employee scoped to their assigned students or branch
                 conditions = [student.employee_id == current_user.id]
@@ -369,10 +480,25 @@ class studentService:
             # Unauthenticated or direct filtering via query params
             if owner_id:
                 query = query.filter(student.owner_id == owner_id)
-            if branch_id:
-                query = query.filter(student.branch_id == branch_id)
-            if branch:
-                query = query.filter(student.primary_vahd_location.ilike(f"%{branch}%"))
+            if branch_id or branch:
+                target_b = branch_id or branch
+                if str(target_b).lower() not in ["all", "", "none", "undefined", "null"]:
+                    matched_b = db.query(vahdBranch).filter(
+                        or_(vahdBranch.id == target_b, vahdBranch.branch_name == target_b, vahdBranch.vahd_name == target_b)
+                    ).first()
+                    b_filter_ids = [target_b]
+                    b_filter_names = [target_b]
+                    if matched_b:
+                        b_filter_ids.append(matched_b.id)
+                        if matched_b.branch_name:
+                            b_filter_names.append(matched_b.branch_name)
+                        if matched_b.vahd_name:
+                            b_filter_names.append(matched_b.vahd_name)
+
+                    conds = [student.branch_id.in_(b_filter_ids)]
+                    for nm in b_filter_names:
+                        conds.append(student.primary_vahd_location.ilike(f"%{nm}%"))
+                    query = query.filter(or_(*conds))
 
         students = query.order_by(student.created_at.desc()).all()
         return [studentService._format_student(c, db) for c in students]
@@ -738,12 +864,23 @@ class studentService:
                 except Exception:
                     db.rollback()
 
+        req_code = data.get("roll_no") or data.get("roll_number") or data.get("member_code") or data.get("student_number") or data.get("code")
+        assigned_roll_code = studentService.generate_sequential_student_code(db, requested_code=req_code)
+
+        if meta_data_payload is None:
+            meta_data_payload = {}
+        meta_data_payload["roll_number"] = assigned_roll_code
+        meta_data_payload["student_number"] = assigned_roll_code
+        meta_data_payload["code"] = assigned_roll_code
+
         existing_cust = db.query(student).filter(student.user_id == user.id).first()
         if existing_cust:
             cust = existing_cust
             cust.full_name = full_name
             cust.email = clean_email
             cust.phone = phone
+            if not cust.member_code or str(cust.member_code).startswith("cust_"):
+                cust.member_code = assigned_roll_code
             if parent_phone:
                 cust.parent_phone = parent_phone
             if gender:
@@ -769,6 +906,7 @@ class studentService:
         else:
             cust = student(
                 id=f"cust_{uuid.uuid4().hex[:8]}",
+                member_code=assigned_roll_code,
                 user_id=user.id,
                 full_name=full_name,
                 email=clean_email,
@@ -875,6 +1013,10 @@ class studentService:
             raise ValueError("student not found")
         if "full_name" in data or "fullName" in data or "name" in data:
             cust.full_name = data.get("full_name") or data.get("fullName") or data.get("name")
+        if "member_code" in data or "roll_number" in data or "roll_no" in data or "student_number" in data:
+            up_code = data.get("member_code") or data.get("roll_number") or data.get("roll_no") or data.get("student_number")
+            if up_code:
+                cust.member_code = str(up_code).strip()
         if "phone" in data:
             cust.phone = data.get("phone")
         if "parent_phone" in data or "parent_mobile" in data or "parentPhone" in data or "parentMobile" in data:

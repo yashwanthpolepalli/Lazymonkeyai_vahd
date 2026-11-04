@@ -207,7 +207,17 @@ class StudentAttendanceReportService:
         course_name = meta.get("course") or "Degree Program"
         medium_name = meta.get("medium") or ""
         college_name = meta.get("college_name") or student.primary_vahd_location or "VAHD Higher Education Academy"
-        roll_number = meta.get("roll_number") or meta.get("admission_number") or student.id
+
+        # Resolve sequential roll code (stu0001, stu0002...)
+        roll_number = getattr(student, "member_code", None)
+        if not roll_number or str(roll_number).startswith("cust_"):
+            roll_number = meta.get("roll_number") or meta.get("student_number") or meta.get("code") or meta.get("roll_no") or meta.get("admission_number")
+        if not roll_number or str(roll_number).startswith("cust_"):
+            from src.services.student_service import studentService
+            try:
+                roll_number = studentService.ensure_student_roll_code(student, db, commit=True)
+            except Exception:
+                roll_number = f"stu{student.id[-4:]}"
 
         return {
             "student_id": student.id,

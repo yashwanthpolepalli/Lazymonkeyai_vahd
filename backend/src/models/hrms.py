@@ -33,6 +33,7 @@ class Employee(Base):
     qualification = Column(String, nullable=True)
     specialization = Column(String, nullable=True)
     skills = Column(JSON, nullable=True)
+    meta_data = Column(JSON, nullable=True)
     shift_code = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -493,6 +494,14 @@ class ShiftTemplate(Base):
     color = Column(String, nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+    # Org-scoped shift assignment fields
+    assign_type = Column(String, nullable=True)       # 'employee', 'student', 'both'
+    from_date = Column(String, nullable=True)          # YYYY-MM-DD
+    to_date = Column(String, nullable=True)            # YYYY-MM-DD
+    num_members = Column(Integer, nullable=True)       # target headcount
+    member_ids = Column(JSON, nullable=True)           # list of assigned employee/student IDs
+    branch_id = Column(String, nullable=True)          # org / branch scope
+    ho_id = Column(String, nullable=True)              # head-office scope
 
 
 class WorkCalendarPolicy(Base):

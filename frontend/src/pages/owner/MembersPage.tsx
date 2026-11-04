@@ -86,7 +86,8 @@ export function MembersPage() {
 
   const navigate = useNavigate();
   const { user } = useAuth();
-  const isEmployeeView = user?.role === 'employee' || window.location.pathname.startsWith('/employee');
+  const roleUpper = (user?.role || '').toUpperCase();
+  const isEmployeeView = roleUpper === 'EMPLOYEE' || roleUpper === 'STAFF' || window.location.pathname.startsWith('/employee');
 
   // Dynamic workout programs structured 100% from database plans
   const workoutPrograms = (() => {

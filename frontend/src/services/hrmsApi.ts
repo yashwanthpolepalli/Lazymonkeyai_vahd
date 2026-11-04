@@ -703,6 +703,13 @@ export interface ShiftTemplateItem {
   is_night_shift: boolean;
   color: string;
   is_active: boolean;
+  assign_type?: string;    // 'employee' | 'student' | 'both'
+  from_date?: string;      // YYYY-MM-DD
+  to_date?: string;        // YYYY-MM-DD
+  num_members?: number;    // headcount for this shift
+  member_ids?: string[];   // list of assigned employee/student IDs
+  branch_id?: string;
+  ho_id?: string;
 }
 
 export interface WorkCalendarItem {

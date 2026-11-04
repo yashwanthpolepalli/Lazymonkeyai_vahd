@@ -996,11 +996,13 @@ def delete_calendar_shift_timing(
 
 @router.get("/shifts/templates")
 def get_shift_templates(
+    branch_id: Optional[str] = None,
+    ho_id: Optional[str] = None,
     current_user: Optional[User] = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     try:
-        return HrmsService.get_shift_templates(db)
+        return HrmsService.get_shift_templates(db, branch_id=branch_id, ho_id=ho_id)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch shift templates: {str(e)}")
 

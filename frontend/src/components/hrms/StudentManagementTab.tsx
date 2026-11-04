@@ -307,12 +307,14 @@ export function StudentManagementTab() {
     }
   };
 
-  const fetchStudents = async () => {
+  const fetchStudents = async (branchId?: string) => {
     setLoading(true);
     setFetchError(null);
     try {
+      const bId = typeof branchId === 'string' ? branchId : (localStorage.getItem('vahd_selected_org_id') || 'all');
+      const query = bId && bId !== 'all' ? `?branch_id=${encodeURIComponent(bId)}` : '';
       const [res, coursesRes, branchesRes] = await Promise.all([
-        apiClient.get<any>('/students').catch((err) => {
+        apiClient.get<any>(`/students${query}`).catch((err) => {
           console.error('Error fetching students:', err);
           return { _error: err?.response?.data?.detail || err?.response?.data?.message || err?.message || 'Failed to load students' };
         }),
@@ -353,8 +355,8 @@ export function StudentManagementTab() {
   };
 
   useEffect(() => {
-    fetchStudents();
-  }, []);
+    fetchStudents(selectedBranch);
+  }, [selectedBranch]);
 
   const handleSyncBiometric = async (studentId: string) => {
     setSyncingId(studentId);
@@ -790,7 +792,7 @@ export function StudentManagementTab() {
 
             <button
               type="button"
-              onClick={fetchStudents}
+              onClick={() => fetchStudents()}
               className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 dark:border-slate-700 text-slate-600 dark:text-slate-300 transition shadow-2xs"
               title="Refresh Student Directory"
             >
@@ -883,7 +885,7 @@ export function StudentManagementTab() {
           </div>
           <button
             type="button"
-            onClick={fetchStudents}
+            onClick={() => fetchStudents()}
             className="px-3.5 py-1.5 bg-rose-600 text-white rounded-xl text-xs font-bold hover:bg-rose-700 transition shrink-0"
           >
             Retry

@@ -272,6 +272,8 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
   const [employees, setEmployees] = useState<EmployeeItem[]>([]);
   const [departments, setDepartments] = useState<DepartmentItem[]>([]);
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
+  const [students, setStudents] = useState<any[]>([]);
+  const [dailyAttendeeType, setDailyAttendeeType] = useState<'all' | 'employees' | 'students'>('all');
   const [loading, setLoading] = useState(true);
 
   const getTodayDateStr = () => {
@@ -389,14 +391,16 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
       const m = parseInt(dateParts[1], 10);
 
       const branchIdParam = selectedBranch && selectedBranch !== 'all' ? selectedBranch : undefined;
-      const [empRes, deptRes, attRes, matrixRes] = await Promise.all([
+      const [empRes, deptRes, attRes, matrixRes, stuRes] = await Promise.all([
         hrmsApi.getEmployees({ branch_id: branchIdParam }).catch(() => []),
         hrmsApi.getDepartments().catch(() => []),
         hrmsApi.getAttendance(targetDate, branchIdParam).catch(() => []),
-        (y && m) ? hrmsApi.getAttendanceMatrix({ year: y, month: m, user_type: 'employee', branch_id: branchIdParam }).catch(() => null) : Promise.resolve(null)
+        (y && m) ? hrmsApi.getAttendanceMatrix({ year: y, month: m, user_type: 'all', branch_id: branchIdParam }).catch(() => null) : Promise.resolve(null),
+        apiClient.get<any[]>('/students', { params: branchIdParam ? { branch_id: branchIdParam } : undefined }).catch(() => [])
       ]);
       setEmployees(Array.isArray(empRes) ? empRes : []);
       setDepartments(Array.isArray(deptRes) ? deptRes : []);
+      setStudents(Array.isArray(stuRes) ? stuRes : []);
 
       const combinedAtt = Array.isArray(attRes) ? [...attRes] : [];
       // Merge verified punches from monthly matrix if any are missing or have status mismatch
@@ -690,9 +694,112 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
       }
 
       return {
+        attendee_type: 'employee',
         name: fullName,
         id: empId,
         desg: emp.designation || '—',
+        place: branchOrDept,
+        dist: dist,
+        in: inTime,
+        out: outTime,
+        in_loc: inLoc,
+        out_loc: outLoc,
+        in_lat: att?.check_in_latitude,
+        in_lng: att?.check_in_longitude,
+        out_lat: att?.check_out_latitude,
+        out_lng: att?.check_out_longitude,
+        loc: inLoc,
+        status: status
+      };
+    });
+
+    const rowsFromStudents = students.map((s, idx) => {
+      const fullName = s.full_name || s.name || 'Student';
+      const studentRoll = s.member_code || s.roll_number || s.student_number || s.code || (s.id && !s.id.startsWith('cust_') ? s.id : `stu${String(idx + 1).padStart(4, '0')}`);
+
+      const lookupKeys = [
+        s.id,
+        s.user_id,
+        s.member_code,
+        s.roll_number,
+        s.student_number,
+        s.code,
+        studentRoll,
+        fullName,
+        s.email,
+        s.phone,
+      ].filter(Boolean) as string[];
+
+      let att: AttendanceRecord | undefined;
+      for (const k of lookupKeys) {
+        const cleanK = String(k).trim().toLowerCase();
+        if (attMap.has(cleanK)) {
+          att = attMap.get(cleanK);
+          break;
+        }
+      }
+
+      if (s.id) recordedEmpIds.add(s.id.toLowerCase());
+      if (s.user_id) recordedEmpIds.add(String(s.user_id).toLowerCase());
+      if (s.member_code) recordedEmpIds.add(String(s.member_code).toLowerCase());
+      if (studentRoll) recordedEmpIds.add(studentRoll.toLowerCase());
+      if (fullName) recordedEmpIds.add(fullName.toLowerCase());
+
+      const inTime = att?.check_in && att.check_in !== '--:--' && att.check_in !== '-'
+        ? att.check_in
+        : (s.today_punch?.in_time || s.punch_in || s.in_time || '—');
+      const outTime = att?.check_out && att.check_out !== '--:--' && att.check_out !== '-'
+        ? att.check_out
+        : (s.today_punch?.out_time || s.punch_out || s.out_time || '—');
+      const hasInPunch = inTime !== '—';
+      const hasOutPunch = outTime !== '—';
+
+      let status = 'Absent';
+      if (att?.status) {
+        status = att.status;
+      } else if (hasInPunch) {
+        status = 'Present';
+      } else if (s.today_status && s.today_status !== 'Absent') {
+        status = s.today_status;
+      } else if (s.is_present || s.isPresentToday) {
+        status = 'Present';
+      } else if (s.status && s.status.toLowerCase() !== 'active') {
+        status = s.status;
+      }
+
+      const branchOrDept = s.primary_vahd_location || s.branch || s.branch_name || s.course || '—';
+      const meta = s.meta_data || {};
+      const dist = meta.district || meta.city || meta.permanent_address?.district || s.primary_vahd_location || s.branch || '—';
+
+      let inLoc = '—';
+      if (hasInPunch) {
+        const cleaned = cleanLocation(att?.check_in_location);
+        if (cleaned !== '—') {
+          inLoc = cleaned;
+        } else if (att?.check_in_latitude && att?.check_in_longitude) {
+          inLoc = `${Number(att.check_in_latitude).toFixed(4)}, ${Number(att.check_in_longitude).toFixed(4)}`;
+        } else if (s.primary_vahd_location) {
+          inLoc = s.primary_vahd_location;
+        }
+      }
+
+      let outLoc = '—';
+      if (hasOutPunch) {
+        const cleaned = cleanLocation(att?.check_out_location);
+        if (cleaned !== '—') {
+          outLoc = cleaned;
+        } else if (att?.check_out_latitude && att?.check_out_longitude) {
+          outLoc = `${Number(att.check_out_latitude).toFixed(4)}, ${Number(att.check_out_longitude).toFixed(4)}`;
+        } else if (s.primary_vahd_location) {
+          outLoc = s.primary_vahd_location;
+        }
+      }
+
+      return {
+        attendee_type: 'student',
+        name: fullName,
+        id: studentRoll,
+        desg: s.course || s.specialization || s.qualification || 'Student',
         place: branchOrDept,
         dist: dist,
         in: inTime,
@@ -745,6 +852,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
         const defaultPlace = att.department || '—';
 
         return {
+          attendee_type: 'employee',
           name: att.employee_name || att.employee_code || att.employee_id || `STAFF-${idx + 1}`,
           id: att.employee_code || att.employee_id || `STAFF-${idx + 1}`,
           desg: att.designation || '—',
@@ -763,8 +871,14 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
         };
       });
 
-    return [...rowsFromEmployees, ...extraRows];
-  }, [employees, attendance]);
+    if (dailyAttendeeType === 'employees') {
+      return [...rowsFromEmployees, ...extraRows];
+    } else if (dailyAttendeeType === 'students') {
+      return rowsFromStudents;
+    } else {
+      return [...rowsFromEmployees, ...rowsFromStudents, ...extraRows];
+    }
+  }, [employees, attendance, students, dailyAttendeeType]);
 
   // Dynamic filter lists from live records (100% dynamic from DB via backend)
   const dynamicDistrictsList = useMemo(() => {
@@ -1018,7 +1132,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                     ['#', 'ROLL NO', 'STUDENT NAME', 'DEGREE / COURSE', 'REGISTERED MOBILE', 'WORKING DAYS', 'PRESENT', 'ABSENT', 'ATTENDANCE %', 'ACADEMIC STANDING'],
                     filteredStudents.map((s: any, idx: number) => [
                       idx + 1,
-                      s.roll_number || s.student_id,
+                      s.roll_number || s.member_code || s.student_number || s.code || (s.student_id?.startsWith('cust_') ? `stu${s.student_id.slice(-4)}` : s.student_id),
                       s.student_name,
                       s.degree || '--',
                       s.parent_phone || '--',
@@ -1111,7 +1225,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                     const pct = s.attendance_percentage ?? 0;
                     return (
                       <tr key={s.student_id} className="hover:bg-slate-50/80 transition-colors">
-                        <td className="py-3 px-3 font-mono font-bold text-slate-900">{s.roll_number || s.student_id}</td>
+                        <td className="py-3 px-3 font-mono font-bold text-slate-900">{s.roll_number || s.member_code || s.student_number || s.code || (s.student_id?.startsWith('cust_') ? `stu${s.student_id.slice(-4)}` : s.student_id)}</td>
                         <td className="py-3 px-3 font-extrabold text-slate-900">
                           <div>{s.student_name}</div>
                           <div className="text-[10px] text-slate-500 font-medium flex items-center gap-1 mt-0.5">
@@ -1723,7 +1837,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
             <h1 className="text-2xl font-black tracking-tight text-navy-900 uppercase">
               DAILY ATTENDANCE REPORT
             </h1>
-            <p className="text-xs text-navy-500 font-medium">Employee-level daily attendance records</p>
+            <p className="text-xs text-navy-500 font-medium">Employee &amp; Student daily attendance records with organisation mapping</p>
           </div>
 
           <button
@@ -1738,7 +1852,20 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
 
         {/* Filter Toolbar Box */}
         <div className="bg-white p-4 rounded-2xl border border-navy-100 shadow-sm space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-2.5 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2.5 text-xs">
+            <div>
+              <label className="block text-[11px] font-bold text-navy-600 mb-1">Attendee Type</label>
+              <select
+                value={dailyAttendeeType}
+                onChange={(e) => setDailyAttendeeType(e.target.value as 'all' | 'employees' | 'students')}
+                className="w-full px-2.5 py-1.5 rounded-xl border border-navy-200 bg-white font-bold text-navy-800 text-xs focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
+              >
+                <option value="all">All Attendees</option>
+                <option value="employees">Employees Only</option>
+                <option value="students">Students Only</option>
+              </select>
+            </div>
+
             <div>
               <label className="block text-[11px] font-bold text-navy-600 mb-1">District</label>
               <select
@@ -1837,6 +1964,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
             <button
               type="button"
               onClick={() => {
+                setDailyAttendeeType('all');
                 setFilterDistrict('All Districts');
                 setFilterPlace('All Places');
                 setFilterStatus('All');
@@ -1871,8 +1999,8 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                 onClick={() =>
                   handleExportCSV(
                     'Daily_Attendance_Report',
-                    ['#', 'DISTRICT', 'EMPLOYEE ID', 'NAME', 'DESIGNATION', 'INSTITUTION', 'ATTENDANCE DATE', 'CHECK-IN TIME', 'CHECK-IN LOCATION', 'CHECK-OUT TIME', 'CHECK-OUT LOCATION', 'STATUS'],
-                    filteredDailyAttendance.map((r, i) => [i + 1, r.dist, r.id, r.name, r.desg, r.place, filterDate, r.in, r.in_loc, r.out, r.out_loc, r.status])
+                    ['#', 'DISTRICT', 'ID / ROLL NO.', 'NAME', 'TYPE', 'DESIGNATION / COURSE', 'INSTITUTION', 'ATTENDANCE DATE', 'CHECK-IN TIME', 'CHECK-IN LOCATION', 'CHECK-OUT TIME', 'CHECK-OUT LOCATION', 'STATUS'],
+                    filteredDailyAttendance.map((r, i) => [i + 1, r.dist, r.id, r.name, r.attendee_type === 'student' ? 'Student' : 'Employee', r.desg, r.place, filterDate, r.in, r.in_loc, r.out, r.out_loc, r.status])
                   )
                 }
                 className="px-3 py-1.5 rounded-xl text-xs font-bold border border-navy-200 bg-white hover:bg-navy-50 text-navy-700 flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
@@ -1898,7 +2026,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                 <tr>
                   <th className="py-3 px-3.5">#</th>
                   <th className="py-3 px-3.5">DISTRICT</th>
-                  <th className="py-3 px-3.5">EMPLOYEE ID</th>
+                  <th className="py-3 px-3.5">ID / ROLL NO.</th>
                   <th className="py-3 px-3.5">NAME</th>
                   <th className="py-3 px-3.5">DESIGNATION</th>
                   <th className="py-3 px-3.5">INSTITUTION</th>

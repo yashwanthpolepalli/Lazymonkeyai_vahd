@@ -22,6 +22,20 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
   const [subTab, setSubTab] = useState<SubTabType>('applications');
   const [loading, setLoading] = useState(true);
 
+  // Org / Branch filter — synced with Topbar
+  const [selectedBranch, setSelectedBranch] = useState<string>(() =>
+    localStorage.getItem('vahd_selected_org_id') || 'all'
+  );
+
+  useEffect(() => {
+    const handleOrgChange = (e: any) => {
+      const orgId = e?.detail?.id ?? localStorage.getItem('vahd_selected_org_id') ?? 'all';
+      setSelectedBranch(orgId);
+    };
+    window.addEventListener('vahd:org_changed', handleOrgChange);
+    return () => window.removeEventListener('vahd:org_changed', handleOrgChange);
+  }, []);
+
   // Core Data
   const [leaves, setLeaves] = useState<LeaveItem[]>([]);
   const [employees, setEmployees] = useState<EmployeeItem[]>([]);
@@ -130,12 +144,14 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
   // ─────────────────────────────────────────────────────────────
   // 1. DATA FETCHING
   // ─────────────────────────────────────────────────────────────
-  const fetchAllData = async () => {
+  const fetchAllData = async (branchId?: string) => {
     setLoading(true);
     try {
+      const bId = typeof branchId === 'string' ? branchId : (localStorage.getItem('vahd_selected_org_id') || 'all');
+      const branchFilter = bId && bId !== 'all' ? bId : undefined;
       const [leavesRes, empRes, typesRes, balRes] = await Promise.all([
-        hrmsApi.getLeaves(),
-        hrmsApi.getEmployees(),
+        hrmsApi.getLeaves(undefined, branchFilter),
+        hrmsApi.getEmployees({ branch_id: branchFilter }),
         hrmsApi.getLeaveTypes(),
         hrmsApi.getLeaveBalances(),
       ]);
@@ -155,8 +171,8 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
   };
 
   useEffect(() => {
-    fetchAllData();
-  }, []);
+    fetchAllData(selectedBranch);
+  }, [selectedBranch]);
 
   // Fetch eligible leave types when employee changes in Apply Modal
   useEffect(() => {

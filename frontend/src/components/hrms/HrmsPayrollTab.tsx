@@ -37,6 +37,20 @@ export function HrmsPayrollTab({ onSuccessToast }: HrmsPayrollTabProps) {
   const [selectedMonthIndex, setSelectedMonthIndex] = useState<number>(currentDate.getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState<number>(currentDate.getFullYear());
 
+  // Org / Branch filter — synced with Topbar
+  const [selectedBranch, setSelectedBranch] = useState<string>(() =>
+    localStorage.getItem('vahd_selected_org_id') || 'all'
+  );
+
+  useEffect(() => {
+    const handleOrgChange = (e: any) => {
+      const orgId = e?.detail?.id ?? localStorage.getItem('vahd_selected_org_id') ?? 'all';
+      setSelectedBranch(orgId);
+    };
+    window.addEventListener('vahd:org_changed', handleOrgChange);
+    return () => window.removeEventListener('vahd:org_changed', handleOrgChange);
+  }, []);
+
   const [employees, setEmployees] = useState<EmployeeItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
@@ -111,11 +125,13 @@ export function HrmsPayrollTab({ onSuccessToast }: HrmsPayrollTabProps) {
   const [commForm, setCommForm] = useState({ employee_id: '', target_quota: '', achieved_volume: '', commission_rate: '5', notes: '' });
 
   // Load Main Data
-  const loadData = async () => {
+  const loadData = async (branchId?: string) => {
     setLoading(true);
     try {
+      const bId = typeof branchId === 'string' ? branchId : (localStorage.getItem('vahd_selected_org_id') || 'all');
+      const branchFilter = bId && bId !== 'all' ? bId : undefined;
       const [empRes, structRes, procRes, tmplRes] = await Promise.all([
-        hrmsApi.getEmployees().catch(() => []),
+        hrmsApi.getEmployees({ branch_id: branchFilter }).catch(() => []),
         hrmsApi.getSalaryStructures().catch(() => []),
         hrmsApi.getPayrollProcessing(selectedMonthIndex, selectedYear).catch(() => null),
         hrmsApi.getPayslipTemplates().catch(() => [])
@@ -137,8 +153,8 @@ export function HrmsPayrollTab({ onSuccessToast }: HrmsPayrollTabProps) {
   };
 
   useEffect(() => {
-    loadData();
-  }, [selectedMonthIndex, selectedYear]);
+    loadData(selectedBranch);
+  }, [selectedMonthIndex, selectedYear, selectedBranch]);
 
   // Load Subtab Specific Data
   useEffect(() => {

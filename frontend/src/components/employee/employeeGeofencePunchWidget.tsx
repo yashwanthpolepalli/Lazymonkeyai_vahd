@@ -377,7 +377,7 @@ export function EmployeeGeofencePunchWidget({ onPunchSuccess }: employeeGeofence
               <span>employee Shift Punch</span>
             </h3>
             <p className="text-[11px] text-slate-300 font-medium">
-              {activeScheme?.branch_name || user?.branchName || 'Main Branch'} •{' '}
+              {activeScheme?.branch_name || user?.branchName || ''}{activeScheme?.branch_name || user?.branchName ? ' • ' : ''}
               {distanceTovahd !== null ? `${distanceTovahd}m from vahd` : 'GPS Active'}
             </p>
           </div>

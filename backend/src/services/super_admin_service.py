@@ -1319,7 +1319,7 @@ class SuperAdminService:
         dev_type = payload.get("type") or "biometric"
         ip_addr = payload.get("ip") or "192.168.1.100"
         port_num = int(payload.get("port") or 4370)
-        location = payload.get("location") or "Main Branch"
+        location = payload.get("location") or payload.get("branch") or ""
         is_wireless = payload.get("network") == "WiFi" or payload.get("is_wireless", False)
 
         dev = BiometricDevice(

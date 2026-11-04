@@ -1,4 +1,7 @@
-from fastapi import APIRouter, HTTPException, Body
+from fastapi import APIRouter, HTTPException, Body, Depends
+from sqlalchemy.orm import Session
+from src.database.session import get_db
+from src.models.settings import vahdBranch
 from src.api.v1.auth import router as auth_router
 from src.api.v1.students import router as students_main_router, members_router, crm_students_router, students_router as students_reports_router
 from src.api.v1.courses import router as courses_router
@@ -72,19 +75,18 @@ def list_system_tenants():
 
 @api_router.get("/erp/branches")
 @api_router.get("/branches")
-def list_erp_branches():
-    return {
-        "items": [
-            {
-                "id": "br_01",
-                "name": "Main Branch",
-                "code": "MAIN",
-                "company_id": "default",
-                "status": "Active"
-            }
-        ],
-        "total": 1
-    }
+def list_erp_branches(db: Session = Depends(get_db)):
+    branches = db.query(vahdBranch).filter(vahdBranch.is_active == True).order_by(vahdBranch.branch_name.asc()).all()
+    items = []
+    for b in branches:
+        items.append({
+            "id": b.id,
+            "name": b.branch_name or b.vahd_name or "Branch",
+            "code": getattr(b, "code", None) or b.id[:8],
+            "company_id": b.ho_id or b.owner_id or "default",
+            "status": "Active" if b.is_active else "Inactive"
+        })
+    return {"items": items, "total": len(items)}
 
 @api_router.post("/system/send-enrollment-email")
 def dispatch_enrollment_email_endpoint(payload: dict = Body(...)):

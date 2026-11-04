@@ -416,8 +416,16 @@ def register_staff_face(payload: dict, db: Session = Depends(get_db)):
         payload.get("branch")
         or (employee.primary_vahd_location if employee else None)
         or (emp.vahd_branch if emp else None)
-        or "Main Branch"
     )
+    if not branch_name:
+        b_id = (employee.branch_id if employee else None) or (emp.branch_id if emp else None)
+        if b_id:
+            db_br = db.query(vahdBranch).filter(vahdBranch.id == b_id).first()
+            if db_br:
+                branch_name = db_br.branch_name or db_br.vahd_name
+    if not branch_name:
+        db_br = db.query(vahdBranch).filter(vahdBranch.is_active == True).first()
+        branch_name = (db_br.branch_name or db_br.vahd_name) if db_br else "Campus"
 
     event_type = payload.get("event_type") or "FACE_SCAN"
     device_type = payload.get("device_type") or payload.get("channel") or "AI_FACE_PORTAL"
@@ -533,8 +541,16 @@ def verify_staff_face_punch(payload: dict, db: Session = Depends(get_db)):
         branch
         or (employee.primary_vahd_location if employee else None)
         or (emp.vahd_branch if emp else None)
-        or "Main Branch"
     )
+    if not branch_name:
+        b_id = (employee.branch_id if employee else None) or (emp.branch_id if emp else None)
+        if b_id:
+            db_br = db.query(vahdBranch).filter(vahdBranch.id == b_id).first()
+            if db_br:
+                branch_name = db_br.branch_name or db_br.vahd_name
+    if not branch_name:
+        db_br = db.query(vahdBranch).filter(vahdBranch.is_active == True).first()
+        branch_name = (db_br.branch_name or db_br.vahd_name) if db_br else "Campus"
 
     punch_res = HrmsService.record_punch(
         db=db,

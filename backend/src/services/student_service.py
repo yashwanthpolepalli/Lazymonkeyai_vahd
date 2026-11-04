@@ -587,7 +587,7 @@ class studentService:
                 meta["latitude"] = lat_val
                 meta["longitude"] = lng_val
                 meta["scheme_name"] = scheme.name
-                meta["branch"] = scheme.branch_name or "Main Branch"
+                meta["branch"] = scheme.branch_name or ""
 
             bio_log = BiometricLog(
                 id=f"bio_{uuid.uuid4().hex[:8]}",

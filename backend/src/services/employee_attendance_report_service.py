@@ -78,11 +78,14 @@ class EmployeeAttendanceReportService:
             raise ValueError(f"Employee with ID '{employee_id}' not found.")
 
         # Resolve organization/branch name
-        org_name = emp.vahd_branch or "Main Branch"
+        org_name = emp.vahd_branch or ""
         if emp.branch_id:
             branch = db.query(vahdBranch).filter(vahdBranch.id == emp.branch_id).first()
             if branch:
                 org_name = branch.vahd_name or branch.branch_name or org_name
+        if not org_name:
+            db_b = db.query(vahdBranch).filter(vahdBranch.is_active == True).first()
+            org_name = (db_b.vahd_name or db_b.branch_name) if db_b else (settings.vahd_NAME or "")
 
         # Build exhaustive match keys for this employee across models and formats
         emp_match_ids = {str(emp.id), str(emp.id).replace("emp_", ""), f"emp_{emp.id}"}
@@ -1021,7 +1024,7 @@ class EmployeeAttendanceReportService:
 
             full_name = f"{emp.first_name} {emp.last_name or ''}".strip()
             branch_obj = branches_dict.get(emp.branch_id)
-            branch_label = branch_obj.branch_name if branch_obj else (emp.vahd_branch or "Main Branch")
+            branch_label = branch_obj.branch_name if branch_obj else (emp.vahd_branch or "")
             vahd_label = branch_obj.vahd_name if branch_obj else ""
 
             items.append({

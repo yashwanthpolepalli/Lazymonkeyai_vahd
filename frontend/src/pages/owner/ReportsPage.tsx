@@ -495,7 +495,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
 
   useEffect(() => {
     fetchData(filterDate);
-  }, [filterDate]);
+  }, [filterDate, selectedBranch]);
 
   // Dynamic district rollup computed live from employee attendance records
   const dynamicDistricts = useMemo(() => {
@@ -920,7 +920,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
     });
   }, [employeeAttendanceRows, filterDistrict, filterPlace, filterStatus, searchTableQuery, filterCheckinTime, filterCheckoutTime]);
 
-  // Export to CSV helper
+  // Export to CSV helper with UTF-8 BOM so Microsoft Excel opens it cleanly with full columns and data
   const handleExportCSV = (filename: string, headers: string[], rows: (string | number | undefined | null)[][]) => {
     const escapeCell = (cell: string | number | undefined | null) => {
       if (cell === null || cell === undefined) return '""';
@@ -929,19 +929,21 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
     };
 
     const csvContent =
-      'data:text/csv;charset=utf-8,' +
+      '\uFEFF' +
       [
         headers.map(escapeCell).join(','),
         ...rows.map((row) => row.map(escapeCell).join(','))
-      ].join('\n');
+      ].join('\r\n');
 
-    const encodedUri = encodeURI(csvContent);
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
+    link.href = url;
     link.setAttribute('download', `${filename}_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
   const handlePrint = () => {

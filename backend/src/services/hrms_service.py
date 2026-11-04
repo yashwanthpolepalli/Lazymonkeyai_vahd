@@ -3808,32 +3808,91 @@ class HrmsService:
         db.commit()
         db.refresh(template)
 
-        # If member_ids and from_date are supplied, auto-apply this shift to those members in the roster
+        # 1. Update existing EmployeeShiftRoster records referencing this template so time/name changes overwrite live
+        try:
+            db.query(EmployeeShiftRoster).filter(
+                or_(
+                    EmployeeShiftRoster.shift_id == template.id,
+                    EmployeeShiftRoster.shift_code == template.code
+                )
+            ).update({
+                EmployeeShiftRoster.shift_name: template.name,
+                EmployeeShiftRoster.start_time: template.start_time or "",
+                EmployeeShiftRoster.end_time: template.end_time or "",
+            }, synchronize_session=False)
+            db.commit()
+        except Exception as sync_err:
+            db.rollback()
+            print(f"[ShiftTemplate] Failed to sync existing rosters with updated template: {sync_err}")
+
+        # 2. If member_ids are supplied, auto-apply and OVERWRITE roster for those members across their work days
         member_ids_to_apply = payload.get("member_ids") or template.member_ids or []
         f_date_str = template.from_date or payload.get("from_date")
-        t_date_str = template.to_date or payload.get("to_date") or f_date_str
-        if member_ids_to_apply and f_date_str:
+        t_date_str = template.to_date or payload.get("to_date")
+        if member_ids_to_apply:
             try:
-                start_dt = datetime.strptime(f_date_str.strip(), "%Y-%m-%d").date()
-                end_dt = datetime.strptime(t_date_str.strip(), "%Y-%m-%d").date() if t_date_str else start_dt
+                today = datetime.now(IST).date()
+                start_dt = None
+                if f_date_str:
+                    for fmt in ["%Y-%m-%d", "%d/%m/%Y", "%m/%d/%Y", "%Y/%m/%d", "%d-%m-%Y"]:
+                        try:
+                            start_dt = datetime.strptime(str(f_date_str).strip()[:10], fmt).date()
+                            break
+                        except Exception:
+                            pass
+                if not start_dt:
+                    # Default to current week's Monday
+                    start_dt = today - timedelta(days=today.weekday())
+
+                end_dt = None
+                if t_date_str:
+                    for fmt in ["%Y-%m-%d", "%d/%m/%Y", "%m/%d/%Y", "%Y/%m/%d", "%d-%m-%Y"]:
+                        try:
+                            end_dt = datetime.strptime(str(t_date_str).strip()[:10], fmt).date()
+                            break
+                        except Exception:
+                            pass
+                if not end_dt or end_dt < start_dt:
+                    # By default cover at least 35 days from start_dt
+                    end_dt = start_dt + timedelta(days=35)
+
                 DAY_NAME_MAP = {0: "Mon", 1: "Tue", 2: "Wed", 3: "Thu", 4: "Fri", 5: "Sat", 6: "Sun"}
-                allowed_days = template.work_days or payload.get("work_days") or []
-                dates_list = []
+                allowed_days = template.work_days or payload.get("work_days") or ["Mon", "Tue", "Wed", "Thu", "Fri"]
+                work_dates_list = []
+                off_dates_list = []
                 cur = start_dt
                 while cur <= end_dt:
                     day_abbr = DAY_NAME_MAP.get(cur.weekday())
-                    if not allowed_days or day_abbr in allowed_days:
-                        dates_list.append(cur.strftime("%Y-%m-%d"))
+                    d_str = cur.strftime("%Y-%m-%d")
+                    if day_abbr in allowed_days:
+                        work_dates_list.append(d_str)
+                    else:
+                        off_dates_list.append(d_str)
                     cur += timedelta(days=1)
-                if dates_list:
+
+                # Overwrite work days with the shift template
+                if work_dates_list:
                     HrmsService.assign_shift(db, {
                         "employee_ids": member_ids_to_apply,
-                        "dates": dates_list,
+                        "dates": work_dates_list,
                         "shift_code": template.code,
                         "shift_name": template.name,
                         "start_time": template.start_time or "",
                         "end_time": template.end_time or "",
                         "shift_id": template.id,
+                        "is_off": False
+                    })
+                # Overwrite non-work days with Rest Day (OFF)
+                if off_dates_list:
+                    HrmsService.assign_shift(db, {
+                        "employee_ids": member_ids_to_apply,
+                        "dates": off_dates_list,
+                        "shift_code": "OFF",
+                        "shift_name": "Rest Day",
+                        "start_time": "",
+                        "end_time": "",
+                        "shift_id": None,
+                        "is_off": True
                     })
             except Exception as sched_err:
                 print(f"[ShiftTemplate] Auto-assign shift roster warning: {sched_err}")
@@ -4234,6 +4293,20 @@ class HrmsService:
                 r = roster_map.get((e_id, d_key))
                 att = att_map.get((e_id, d_key))
 
+                # Check if this employee is explicitly assigned to any active ShiftTemplate
+                emp_candidate_keys = {str(e_id), str(e_id).replace("emp_", "").replace("cust_", ""), f"emp_{e_id}", f"cust_{e_id}"}
+                if emp.get("code"):
+                    emp_candidate_keys.add(str(emp["code"]).strip())
+
+                assigned_tpl = None
+                for tpl in db_shift_templates:
+                    tpl_members = set(str(m).strip() for m in (tpl.member_ids or []))
+                    if emp_candidate_keys & tpl_members:
+                        assigned_tpl = tpl
+                        break
+
+                DAY_ABBR = d.strftime("%a")
+
                 if r:
                     s_code = r.shift_code
                     is_off = bool(r.is_weekly_off or s_code == "OFF")
@@ -4242,6 +4315,22 @@ class HrmsService:
                     s_start = "" if is_off else (r.start_time or meta.get("start_time", ""))
                     s_end = "" if is_off else (r.end_time or meta.get("end_time", ""))
                     color = "#64748b" if is_off else (r.color if hasattr(r, 'color') and r.color else meta.get("color", "#7c3aed"))
+                elif assigned_tpl:
+                    tpl_work_days = assigned_tpl.work_days or ["Mon", "Tue", "Wed", "Thu", "Fri"]
+                    if DAY_ABBR in tpl_work_days:
+                        s_code = assigned_tpl.code
+                        is_off = False
+                        s_name = assigned_tpl.name or f"{assigned_tpl.code} Shift"
+                        s_start = assigned_tpl.start_time or ""
+                        s_end = assigned_tpl.end_time or ""
+                        color = assigned_tpl.color or "#7c3aed"
+                    else:
+                        s_code = "OFF"
+                        is_off = True
+                        s_name = "Rest Day"
+                        s_start = ""
+                        s_end = ""
+                        color = "#64748b"
                 elif emp_cal and emp_cal.weekly_off_days and day_of_week in emp_cal.weekly_off_days:
                     s_code = "OFF"
                     is_off = True
@@ -4418,8 +4507,15 @@ class HrmsService:
                     except Exception:
                         continue
 
+                    clean_sid = str(emp_id).replace("cust_", "").replace("emp_", "")
                     roster = db.query(EmployeeShiftRoster).filter(
-                        EmployeeShiftRoster.employee_id == emp_id,
+                        or_(
+                            EmployeeShiftRoster.employee_id == str(emp_id),
+                            EmployeeShiftRoster.employee_id == clean_sid,
+                            EmployeeShiftRoster.employee_id == f"cust_{emp_id}",
+                            EmployeeShiftRoster.employee_id == f"cust_{clean_sid}",
+                            EmployeeShiftRoster.employee_id == f"emp_{clean_sid}"
+                        ),
                         EmployeeShiftRoster.date == d_obj
                     ).first()
 

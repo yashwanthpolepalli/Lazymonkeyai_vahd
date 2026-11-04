@@ -616,57 +616,82 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
         branch_id: selectedBranch !== 'all' ? selectedBranch : undefined,
       });
 
-      // If dates and members are selected, apply shift to roster directly
-      if (templateSelectedMemberIds.length > 0 && templateFromDate) {
-        const datesList: string[] = [];
-        const startD = new Date(templateFromDate);
-        const endD = new Date(templateToDate || templateFromDate);
+      // If members are selected, apply shift to roster and overwrite matching days
+      if (templateSelectedMemberIds.length > 0) {
+        const workDates: string[] = [];
+        const offDates: string[] = [];
+        const startD = templateFromDate ? new Date(templateFromDate) : new Date();
+        const endD = templateToDate
+          ? new Date(templateToDate)
+          : new Date(startD.getTime() + 35 * 24 * 60 * 60 * 1000); // Default to 35-day window so weekly roster is fully populated
         const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         for (let cur = new Date(startD); cur <= endD; cur.setDate(cur.getDate() + 1)) {
           const dayName = dayNames[cur.getDay()];
+          const y = cur.getFullYear();
+          const m = String(cur.getMonth() + 1).padStart(2, '0');
+          const day = String(cur.getDate()).padStart(2, '0');
+          const dStr = `${y}-${m}-${day}`;
           if (templateWorkDays.length === 0 || templateWorkDays.includes(dayName)) {
-            const y = cur.getFullYear();
-            const m = String(cur.getMonth() + 1).padStart(2, '0');
-            const day = String(cur.getDate()).padStart(2, '0');
-            datesList.push(`${y}-${m}-${day}`);
+            workDates.push(dStr);
+          } else {
+            offDates.push(dStr);
           }
         }
-        if (datesList.length > 0) {
+        if (workDates.length > 0) {
           await hrmsApi.assignShift({
             employee_ids: templateSelectedMemberIds,
-            dates: datesList,
+            dates: workDates,
             shift_code: templateCode.trim().toUpperCase(),
             shift_name: templateName.trim(),
             start_time: templateStartTime.trim(),
             end_time: templateEndTime.trim(),
             shift_id: (saved as any)?.id,
+            is_off: false,
+          }).catch(() => null);
+        }
+        if (offDates.length > 0) {
+          await hrmsApi.assignShift({
+            employee_ids: templateSelectedMemberIds,
+            dates: offDates,
+            shift_code: 'OFF',
+            shift_name: 'Rest Day',
+            start_time: '',
+            end_time: '',
+            is_off: true,
           }).catch(() => null);
         }
       }
 
-      showToast(`Shift template "${templateName}" saved successfully.`);
+      showToast(`Shift template "${templateName}" saved and roster updated.`);
       setShowTemplateModal(false);
 
-      // Navigate roster view to the week containing templateFromDate so user sees the saved shifts
+      // Navigate roster view to the week containing templateFromDate so user sees the saved shifts immediately
+      let targetMondayStr = currentWeekMondayStr;
       if (templateFromDate) {
         const savedDate = new Date(templateFromDate);
         const today = new Date();
-        // Find Monday of savedDate's week
         const savedDay = savedDate.getDay();
         const savedMonday = new Date(savedDate);
         savedMonday.setDate(savedDate.getDate() - savedDay + (savedDay === 0 ? -6 : 1));
-        // Find Monday of today's week
         const todayDay = today.getDay();
         const todayMonday = new Date(today);
         todayMonday.setDate(today.getDate() - todayDay + (todayDay === 0 ? -6 : 1));
-        // Calculate week offset
         const diffMs = savedMonday.getTime() - todayMonday.getTime();
         const diffWeeks = Math.round(diffMs / (7 * 24 * 60 * 60 * 1000));
         setSelectedWeekOffset(diffWeeks);
+        targetMondayStr = savedMonday.toISOString().split('T')[0];
       }
       // Switch to roster tab so user sees the assignments
       setActiveTabMode('roster');
-      fetchRoster();
+      const branchId = selectedBranch && selectedBranch !== 'all' ? selectedBranch : undefined;
+      hrmsApi.getShiftRoster({
+        start_date: targetMondayStr,
+        department: selectedDepartment !== 'ALL' ? selectedDepartment : undefined,
+        search: searchQuery.trim() || undefined,
+        view: viewMode,
+        user_type: rosterScope,
+        branch_id: branchId,
+      }).then((res) => setRosterData(res)).catch(() => {});
       fetchTemplatesAndCalendars();
     } catch (err: any) {
       showToast(err?.response?.data?.detail || err?.message || 'Failed to save shift template');

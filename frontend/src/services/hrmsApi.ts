@@ -708,6 +708,7 @@ export interface ShiftTemplateItem {
   to_date?: string;        // YYYY-MM-DD
   num_members?: number;    // headcount for this shift
   member_ids?: string[];   // list of assigned employee/student IDs
+  work_days?: string[];    // ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
   branch_id?: string;
   ho_id?: string;
 }

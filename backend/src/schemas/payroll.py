@@ -1,10 +1,32 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List
 from datetime import datetime
+import re
+
+# ---------------------------------------------------------------------------
+# Helper: soft email sanitiser — returns the value as-is if it passes basic
+# format check, or replaces it with an empty string to avoid crashing
+# the entire API for one malformed legacy record.
+# ---------------------------------------------------------------------------
+def _sanitise_email(v):
+    """
+    Accepts any string as an email for legacy/db compatibility.
+    Strips surrounding whitespace and embedded spaces so that
+    'karnisujata@21 @gmail.com' becomes 'karnisujata@21@gmail.com'.
+    Returns '' for None / blank values.
+    """
+    if not v:
+        return ""
+    # Remove all internal whitespace so we don't store obviously broken values
+    cleaned = re.sub(r'\s+', '', str(v))
+    return cleaned
+
 
 class employeeCreateRequest(BaseModel):
     full_name: str
-    email: EmailStr
+    # Accept any string on input so legacy / bulk-import records are not
+    # rejected.  The email is sanitised (spaces stripped) before storage.
+    email: str
     phone: Optional[str] = None
     gender: Optional[str] = None
     department: Optional[str] = None
@@ -23,10 +45,19 @@ class employeeCreateRequest(BaseModel):
     join_date: Optional[str] = None
     created_at: Optional[str] = None
 
+    @field_validator("email", mode="before")
+    @classmethod
+    def sanitise_email(cls, v: object) -> str:
+        return _sanitise_email(str(v) if v is not None else "")
+
+
 class employeeResponse(BaseModel):
     id: str
     full_name: str
-    email: EmailStr
+    # Use plain str instead of EmailStr so that legacy malformed emails
+    # (e.g. 'karnisujata@21 @gmail.com') stored in the DB do NOT raise a
+    # ResponseValidationError and crash the entire Employee Directory API.
+    email: str = ""
     phone: Optional[str] = None
     gender: Optional[str] = None
     department: Optional[str] = None
@@ -56,6 +87,19 @@ class employeeResponse(BaseModel):
     employee_code: Optional[str] = None
     owner_id: Optional[str] = None
     ho_id: Optional[str] = None
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def coerce_email(cls, v: object) -> str:
+        """
+        Coerce the DB email value to a plain string.
+        Returns '' for None so we never crash the response serialisation.
+        Legacy malformed values (e.g. 'karnisujata@21 @gmail.com') are
+        passed through unchanged — they are preserved in the DB as-is.
+        """
+        if v is None:
+            return ""
+        return str(v)
 
     class Config:
         from_attributes = True

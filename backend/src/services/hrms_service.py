@@ -3749,6 +3749,7 @@ class HrmsService:
                 "to_date": t.to_date or "",
                 "num_members": t.num_members,
                 "member_ids": t.member_ids or [],
+                "work_days": t.work_days or ["Mon", "Tue", "Wed", "Thu", "Fri"],
                 "branch_id": t.branch_id or "",
                 "ho_id": t.ho_id or "",
             }
@@ -3786,6 +3787,7 @@ class HrmsService:
                 to_date=payload.get("to_date") or None,
                 num_members=int(payload.get("num_members")) if payload.get("num_members") is not None else None,
                 member_ids=payload.get("member_ids") or [],
+                work_days=payload.get("work_days") or ["Mon", "Tue", "Wed", "Thu", "Fri"],
                 branch_id=payload.get("branch_id") or None,
                 ho_id=payload.get("ho_id") or None,
             )
@@ -3794,7 +3796,7 @@ class HrmsService:
             for k in [
                 "name", "start_time", "end_time", "duration_hours", "break_mins",
                 "grace_period_mins", "is_night_shift", "color", "is_active",
-                "assign_type", "from_date", "to_date", "num_members", "member_ids", "branch_id", "ho_id",
+                "assign_type", "from_date", "to_date", "num_members", "member_ids", "work_days", "branch_id", "ho_id",
             ]:
                 if k in payload:
                     val = payload[k]
@@ -3814,10 +3816,14 @@ class HrmsService:
             try:
                 start_dt = datetime.strptime(f_date_str.strip(), "%Y-%m-%d").date()
                 end_dt = datetime.strptime(t_date_str.strip(), "%Y-%m-%d").date() if t_date_str else start_dt
+                DAY_NAME_MAP = {0: "Mon", 1: "Tue", 2: "Wed", 3: "Thu", 4: "Fri", 5: "Sat", 6: "Sun"}
+                allowed_days = template.work_days or payload.get("work_days") or []
                 dates_list = []
                 cur = start_dt
                 while cur <= end_dt:
-                    dates_list.append(cur.strftime("%Y-%m-%d"))
+                    day_abbr = DAY_NAME_MAP.get(cur.weekday())
+                    if not allowed_days or day_abbr in allowed_days:
+                        dates_list.append(cur.strftime("%Y-%m-%d"))
                     cur += timedelta(days=1)
                 if dates_list:
                     HrmsService.assign_shift(db, {
@@ -3849,6 +3855,7 @@ class HrmsService:
             "to_date": template.to_date or "",
             "num_members": template.num_members,
             "member_ids": template.member_ids or [],
+            "work_days": template.work_days or ["Mon", "Tue", "Wed", "Thu", "Fri"],
             "branch_id": template.branch_id or "",
             "ho_id": template.ho_id or "",
         }

@@ -500,6 +500,7 @@ class ShiftTemplate(Base):
     to_date = Column(String, nullable=True)            # YYYY-MM-DD
     num_members = Column(Integer, nullable=True)       # target headcount
     member_ids = Column(JSON, nullable=True)           # list of assigned employee/student IDs
+    work_days = Column(JSON, nullable=True)            # ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
     branch_id = Column(String, nullable=True)          # org / branch scope
     ho_id = Column(String, nullable=True)              # head-office scope
 

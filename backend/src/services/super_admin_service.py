@@ -799,10 +799,16 @@ class SuperAdminService:
         emp_emails = [e.email for e in emps if e.email]
 
         if emp_ids:
+            emp_codes = [e.code for e in emps if getattr(e, 'code', None)]
             db.query(EmployeeAttendance).filter(EmployeeAttendance.employee_id.in_(emp_ids)).delete(synchronize_session=False)
             db.query(LeaveRequest).filter(LeaveRequest.employee_id.in_(emp_ids)).delete(synchronize_session=False)
             db.query(EmployeeLeaveBalance).filter(EmployeeLeaveBalance.employee_id.in_(emp_ids)).delete(synchronize_session=False)
-            db.query(AttendanceCorrection).filter(AttendanceCorrection.employee_id.in_(emp_ids)).delete(synchronize_session=False)
+            db.query(AttendanceCorrection).filter(
+                or_(
+                    AttendanceCorrection.person_id.in_(emp_ids),
+                    AttendanceCorrection.person_code.in_(emp_codes) if emp_codes else False
+                )
+            ).delete(synchronize_session=False)
             db.query(PayrollRecord).filter(PayrollRecord.employee_id.in_(emp_ids)).delete(synchronize_session=False)
             db.query(EmployeeDocument).filter(EmployeeDocument.employee_id.in_(emp_ids)).delete(synchronize_session=False)
             db.query(EmployeePerformance).filter(EmployeePerformance.employee_id.in_(emp_ids)).delete(synchronize_session=False)
@@ -838,6 +844,15 @@ class SuperAdminService:
                 BiometricDevice.location == vahd_name
             )
         ).delete(synchronize_session=False)
+
+        # Clean branch foreign key references across tables
+        db.execute(text("DELETE FROM employee_attendance_report_logs WHERE branch_id = :bid"), {"bid": clean_id})
+        db.execute(text("DELETE FROM student_attendance_report_logs WHERE branch_id = :bid"), {"bid": clean_id})
+        db.execute(text("DELETE FROM hrms_shift_templates WHERE branch_id = :bid"), {"bid": clean_id})
+        db.execute(text("DELETE FROM membership_plans WHERE branch_id = :bid"), {"bid": clean_id})
+        db.execute(text("DELETE FROM student_courses WHERE branch_id = :bid"), {"bid": clean_id})
+        db.execute(text("DELETE FROM students WHERE branch_id = :bid"), {"bid": clean_id})
+        db.execute(text("UPDATE users SET branch_id = NULL WHERE branch_id = :bid"), {"bid": clean_id})
 
         # 5. Delete the branch itself
         db.delete(branch)
@@ -1006,10 +1021,16 @@ class SuperAdminService:
             ho_e_ids = [e.id for e in ho_emps if e.id]
             ho_e_emails = [e.email for e in ho_emps if e.email]
             if ho_e_ids:
+                ho_e_codes = [e.code for e in ho_emps if getattr(e, 'code', None)]
                 db.query(EmployeeAttendance).filter(EmployeeAttendance.employee_id.in_(ho_e_ids)).delete(synchronize_session=False)
                 db.query(LeaveRequest).filter(LeaveRequest.employee_id.in_(ho_e_ids)).delete(synchronize_session=False)
                 db.query(EmployeeLeaveBalance).filter(EmployeeLeaveBalance.employee_id.in_(ho_e_ids)).delete(synchronize_session=False)
-                db.query(AttendanceCorrection).filter(AttendanceCorrection.employee_id.in_(ho_e_ids)).delete(synchronize_session=False)
+                db.query(AttendanceCorrection).filter(
+                    or_(
+                        AttendanceCorrection.person_id.in_(ho_e_ids),
+                        AttendanceCorrection.person_code.in_(ho_e_codes) if ho_e_codes else False
+                    )
+                ).delete(synchronize_session=False)
                 db.query(PayrollRecord).filter(PayrollRecord.employee_id.in_(ho_e_ids)).delete(synchronize_session=False)
                 db.query(EmployeeDocument).filter(EmployeeDocument.employee_id.in_(ho_e_ids)).delete(synchronize_session=False)
                 db.query(EmployeePerformance).filter(EmployeePerformance.employee_id.in_(ho_e_ids)).delete(synchronize_session=False)
@@ -1027,9 +1048,16 @@ class SuperAdminService:
                 or_(User.ho_id == ho_id, User.ho_id == ho_user.id)
             ).delete(synchronize_session=False)
 
+            # Clean report logs and shift templates
+            db.execute(text("DELETE FROM employee_attendance_report_logs WHERE ho_id = :hid"), {"hid": ho_id})
+            db.execute(text("DELETE FROM hrms_shift_templates WHERE ho_id = :hid"), {"hid": ho_id})
+
             # Clean foreign key references in employee_profiles and students for ho_user.id
             db.execute(text("DELETE FROM employee_profiles WHERE user_id = :uid"), {"uid": ho_user.id})
             db.execute(text("DELETE FROM students WHERE user_id = :uid OR owner_id = :uid OR employee_id = :uid"), {"uid": ho_user.id})
+
+            # Unlink any users tied to this ho_id
+            db.execute(text("UPDATE users SET ho_id = NULL WHERE ho_id = :hid"), {"hid": ho_id})
 
             # Delete the HO user account
             db.query(User).filter(

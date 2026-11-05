@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import { apiClient } from '@/services/apiClient';
 import { hrmsApi, DepartmentItem, DesignationItem } from '@/services/hrmsApi';
@@ -167,15 +167,55 @@ export function EmployeeEnrollmentModal({
   const [secondarySearchQuery, setSecondarySearchQuery] = useState('');
   const secondaryDropdownRef = useRef<HTMLDivElement | null>(null);
 
+  // Dynamic Technical Skills from DB Master Data
+  const [dynamicSkillsList, setDynamicSkillsList] = useState<Array<{ id: string; name: string; code?: string; extra_info?: string; description?: string }>>([]);
+  const [showSkillsDropdown, setShowSkillsDropdown] = useState(false);
+  const [skillSearchQuery, setSkillSearchQuery] = useState('');
+  const [customSkillInput, setCustomSkillInput] = useState('');
+  const skillsDropdownRef = useRef<HTMLDivElement | null>(null);
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (secondaryDropdownRef.current && !secondaryDropdownRef.current.contains(event.target as Node)) {
         setShowSecondaryDropdown(false);
       }
+      if (skillsDropdownRef.current && !skillsDropdownRef.current.contains(event.target as Node)) {
+        setShowSkillsDropdown(false);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const selectedSkillsArray = useMemo(() => {
+    return technicalSkills ? technicalSkills.split(',').map((s) => s.trim()).filter(Boolean) : [];
+  }, [technicalSkills]);
+
+  const toggleSkill = (skillName: string) => {
+    const current = selectedSkillsArray;
+    let next: string[];
+    if (current.includes(skillName)) {
+      next = current.filter((s) => s !== skillName);
+    } else {
+      next = [...current, skillName];
+    }
+    setTechnicalSkills(next.join(', '));
+  };
+
+  const removeSkill = (skillName: string) => {
+    const next = selectedSkillsArray.filter((s) => s !== skillName);
+    setTechnicalSkills(next.join(', '));
+  };
+
+  const addCustomSkill = () => {
+    const trimmed = customSkillInput.trim();
+    if (!trimmed) return;
+    if (!selectedSkillsArray.includes(trimmed)) {
+      const next = [...selectedSkillsArray, trimmed];
+      setTechnicalSkills(next.join(', '));
+    }
+    setCustomSkillInput('');
+  };
 
   // Dynamic Master Data options (Gender, Blood Groups, Caste, Roles, Locations, Service Areas)
   const [dynamicBloodGroups, setDynamicBloodGroups] = useState<string[]>(() => {
@@ -311,6 +351,16 @@ export function EmployeeEnrollmentModal({
       }
       if (serviceOptions.length > 0) {
         setMasterAreaOfServiceList(serviceOptions);
+      }
+
+      // Technical Skills from Master Data (Filtered for Employee or Shared Both)
+      if (Array.isArray(parsed.technical_skills)) {
+        const empSkills = parsed.technical_skills.filter((s: any) => {
+          if (s.is_active === false) return false;
+          const extra = (s.extra_info || '').toLowerCase().trim();
+          return extra === 'employee' || extra === 'both' || !extra || extra === 'all';
+        });
+        setDynamicSkillsList(empSkills);
       }
 
       // 5. Departments (HRMS API + Settings masterStore) - Filtered specifically for Employee / Staff View
@@ -1946,34 +1996,46 @@ export function EmployeeEnrollmentModal({
                   </div>
                 </div>
 
-                {/* Row 1B: Secondary Organisation(s) Multi-Select Checkbox Dropdown */}
-                <div className="p-2 bg-purple-50/40 relative">
-                  <div className="flex flex-col sm:flex-row sm:items-start gap-2">
-                    <div className="flex items-center gap-1.5 shrink-0 pt-1">
-                      <span className="font-bold text-purple-950">Secondary Organisation(s):</span>
-                      <span className="text-[10px] text-purple-700 bg-purple-200/80 px-2 py-0.5 rounded-full font-bold">
-                        {selectedSecondaryBranches.length} Selected
-                      </span>
+                {/* Row 2: Secondary Organisation(s) & Technical Skills Side-by-Side in Same Lane */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-purple-200 border-t border-purple-200 bg-purple-50/20">
+                  {/* Left Column: Secondary Organisation(s) */}
+                  <div className="p-2 relative flex flex-col justify-between">
+                    <div className="flex items-center justify-between gap-1.5 mb-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold text-purple-950 text-xs">Secondary Organisation(s):</span>
+                        <span className="text-[10px] text-purple-700 bg-purple-200/80 px-2 py-0.5 rounded-full font-bold">
+                          {selectedSecondaryBranches.length} Selected
+                        </span>
+                      </div>
+                      {selectedSecondaryBranches.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedSecondaryBranches([])}
+                          className="text-[10px] text-purple-600 hover:text-red-600 font-semibold cursor-pointer"
+                        >
+                          Clear
+                        </button>
+                      )}
                     </div>
 
-                    <div className="flex-1 relative" ref={secondaryDropdownRef}>
+                    <div className="relative" ref={secondaryDropdownRef}>
                       {/* Dropdown Toggle Button */}
                       <div
                         onClick={() => setShowSecondaryDropdown((prev) => !prev)}
                         className="min-h-[34px] w-full bg-white border border-purple-300 rounded-lg px-2.5 py-1.5 cursor-pointer hover:border-purple-500 focus-within:ring-2 focus-within:ring-purple-400/40 transition flex items-center justify-between gap-2 shadow-xs"
                       >
-                        <div className="flex flex-wrap items-center gap-1.5 flex-1 overflow-hidden">
+                        <div className="flex flex-wrap items-center gap-1 flex-1 overflow-hidden">
                           {selectedSecondaryBranches.length === 0 ? (
                             <span className="text-purple-400 font-medium text-xs select-none">
-                              Click to select one or multiple secondary institutions / organisations...
+                              Select secondary organisations...
                             </span>
                           ) : (
                             selectedSecondaryBranches.map((branchName) => (
                               <span
                                 key={branchName}
-                                className="inline-flex items-center gap-1 bg-purple-100 text-purple-900 border border-purple-300 rounded-md px-2 py-0.5 text-xs font-semibold shadow-2xs"
+                                className="inline-flex items-center gap-1 bg-purple-100 text-purple-900 border border-purple-300 rounded-md px-1.5 py-0.5 text-[11px] font-semibold shadow-2xs"
                               >
-                                <span className="truncate max-w-[220px]">{branchName}</span>
+                                <span className="truncate max-w-[140px]">{branchName}</span>
                                 <button
                                   type="button"
                                   onClick={(e) => {
@@ -1994,7 +2056,7 @@ export function EmployeeEnrollmentModal({
                             {showSecondaryDropdown ? 'Close' : 'Select'}
                           </span>
                           <svg
-                            className={`w-4 h-4 transition-transform duration-200 ${showSecondaryDropdown ? 'rotate-180' : ''}`}
+                            className={`w-3.5 h-3.5 transition-transform duration-200 ${showSecondaryDropdown ? 'rotate-180' : ''}`}
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -2013,7 +2075,7 @@ export function EmployeeEnrollmentModal({
                               type="text"
                               value={secondarySearchQuery}
                               onChange={(e) => setSecondarySearchQuery(e.target.value)}
-                              placeholder="Search organisations / institutions..."
+                              placeholder="Search organisations..."
                               className="flex-1 bg-white border border-purple-200 rounded-md px-2.5 py-1 text-xs outline-none focus:border-purple-500 text-purple-950 font-medium placeholder-purple-300"
                               autoFocus
                             />
@@ -2055,7 +2117,7 @@ export function EmployeeEnrollmentModal({
                               if (filteredBranches.length === 0) {
                                 return (
                                   <div className="p-3 text-center text-purple-400 font-medium">
-                                    No other organisations / institutions found
+                                    No other organisations found
                                   </div>
                                 );
                               }
@@ -2087,6 +2149,195 @@ export function EmployeeEnrollmentModal({
                                           {b.city}
                                         </span>
                                       )}
+                                    </div>
+                                  </label>
+                                );
+                              });
+                            })()}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Right Column: Technical Skills Side-by-Side in Same Lane */}
+                  <div className="p-2 relative flex flex-col justify-between">
+                    <div className="flex items-center justify-between gap-1.5 mb-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold text-purple-950 text-xs">Technical Skills:</span>
+                        <span className="text-[10px] text-purple-700 bg-purple-200/80 px-2 py-0.5 rounded-full font-bold">
+                          {selectedSkillsArray.length} Selected
+                        </span>
+                      </div>
+                      {selectedSkillsArray.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setTechnicalSkills('')}
+                          className="text-[10px] text-purple-600 hover:text-red-600 font-semibold cursor-pointer"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="relative" ref={skillsDropdownRef}>
+                      {/* Dropdown Toggle Button */}
+                      <div
+                        onClick={() => setShowSkillsDropdown((prev) => !prev)}
+                        className="min-h-[34px] w-full bg-white border border-purple-300 rounded-lg px-2.5 py-1.5 cursor-pointer hover:border-purple-500 focus-within:ring-2 focus-within:ring-purple-400/40 transition flex items-center justify-between gap-2 shadow-xs"
+                      >
+                        <div className="flex flex-wrap items-center gap-1 flex-1 overflow-hidden">
+                          {selectedSkillsArray.length === 0 ? (
+                            <span className="text-purple-400 font-medium text-xs select-none">
+                              Select or add technical skills...
+                            </span>
+                          ) : (
+                            selectedSkillsArray.map((skillName) => (
+                              <span
+                                key={skillName}
+                                className="inline-flex items-center gap-1 bg-violet-100 text-violet-900 border border-violet-300 rounded-md px-1.5 py-0.5 text-[11px] font-semibold shadow-2xs"
+                              >
+                                <span className="truncate max-w-[140px]">{skillName}</span>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    removeSkill(skillName);
+                                  }}
+                                  className="text-violet-600 hover:text-red-600 rounded-full hover:bg-violet-200 p-0.5 leading-none font-bold"
+                                  title="Remove"
+                                >
+                                  ✕
+                                </button>
+                              </span>
+                            ))
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1 text-purple-600 shrink-0">
+                          <span className="text-[10px] uppercase font-bold text-purple-500">
+                            {showSkillsDropdown ? 'Close' : 'Select'}
+                          </span>
+                          <svg
+                            className={`w-3.5 h-3.5 transition-transform duration-200 ${showSkillsDropdown ? 'rotate-180' : ''}`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </div>
+                      </div>
+
+                      {/* Dropdown Menu Container */}
+                      {showSkillsDropdown && (
+                        <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-purple-300 rounded-xl shadow-xl z-50 overflow-hidden text-xs divide-y divide-purple-100">
+                          {/* Search & Custom Input Bar */}
+                          <div className="p-2 bg-purple-50/70 space-y-1.5">
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={skillSearchQuery}
+                                onChange={(e) => setSkillSearchQuery(e.target.value)}
+                                placeholder="Search technical skills..."
+                                className="flex-1 bg-white border border-purple-200 rounded-md px-2.5 py-1 text-xs outline-none focus:border-purple-500 text-purple-950 font-medium placeholder-purple-300"
+                                autoFocus
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const allNames = dynamicSkillsList.map((s) => s.name);
+                                  const merged = Array.from(new Set([...selectedSkillsArray, ...allNames]));
+                                  setTechnicalSkills(merged.join(', '));
+                                }}
+                                className="text-[11px] font-bold text-purple-700 hover:text-purple-900 bg-purple-100 hover:bg-purple-200 px-2 py-1 rounded transition"
+                              >
+                                All
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setTechnicalSkills('')}
+                                className="text-[11px] font-bold text-slate-600 hover:text-red-700 bg-slate-100 hover:bg-red-50 px-2 py-1 rounded transition"
+                              >
+                                Clear
+                              </button>
+                            </div>
+
+                            {/* Add Custom Skill input */}
+                            <div className="flex items-center gap-1.5 pt-0.5">
+                              <input
+                                type="text"
+                                value={customSkillInput}
+                                onChange={(e) => setCustomSkillInput(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    addCustomSkill();
+                                  }
+                                }}
+                                placeholder="Type custom skill..."
+                                className="flex-1 bg-white border border-purple-200 rounded-md px-2 py-0.5 text-[11px] outline-none focus:border-purple-500 text-slate-900 placeholder-slate-400"
+                              />
+                              <button
+                                type="button"
+                                onClick={addCustomSkill}
+                                disabled={!customSkillInput.trim()}
+                                className="text-[10px] font-bold bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white px-2 py-1 rounded shadow-2xs cursor-pointer"
+                              >
+                                + Add
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Scrollable Checkbox List */}
+                          <div className="max-h-56 overflow-y-auto p-1 divide-y divide-purple-50">
+                            {(() => {
+                              const filteredSkills = dynamicSkillsList.filter((s) => {
+                                if (!skillSearchQuery.trim()) return true;
+                                const q = skillSearchQuery.toLowerCase();
+                                return (
+                                  s.name.toLowerCase().includes(q) ||
+                                  (s.code && s.code.toLowerCase().includes(q)) ||
+                                  (s.description && s.description.toLowerCase().includes(q))
+                                );
+                              });
+
+                              if (filteredSkills.length === 0) {
+                                return (
+                                  <div className="p-3 text-center text-purple-400 font-medium">
+                                    {dynamicSkillsList.length === 0 ? 'No skills configured in Settings yet' : 'No matching skills found'}
+                                  </div>
+                                );
+                              }
+
+                              return filteredSkills.map((s) => {
+                                const isChecked = selectedSkillsArray.includes(s.name);
+                                return (
+                                  <label
+                                    key={s.id || s.name}
+                                    className={`flex items-center gap-2.5 px-3 py-2 cursor-pointer rounded-md transition select-none ${
+                                      isChecked ? 'bg-purple-100/70 font-bold text-purple-950' : 'hover:bg-purple-50 text-slate-800'
+                                    }`}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={isChecked}
+                                      onChange={() => toggleSkill(s.name)}
+                                      className="w-4 h-4 text-purple-600 rounded border-purple-300 focus:ring-purple-400 cursor-pointer"
+                                    />
+                                    <div className="flex-1 flex items-center justify-between gap-1">
+                                      <span className="text-xs">{s.name}</span>
+                                      <div className="flex items-center gap-1 shrink-0">
+                                        {s.code && (
+                                          <span className="text-[9px] font-mono text-purple-600 bg-purple-50 px-1 py-0.2 rounded border border-purple-200">
+                                            {s.code}
+                                          </span>
+                                        )}
+                                        {s.extra_info && s.extra_info !== 'both' && (
+                                          <span className="text-[9px] text-slate-500 bg-slate-100 px-1 py-0.2 rounded font-normal">
+                                            {s.extra_info}
+                                          </span>
+                                        )}
+                                      </div>
                                     </div>
                                   </label>
                                 );
@@ -2206,18 +2457,6 @@ export function EmployeeEnrollmentModal({
                       className="w-full bg-transparent outline-none font-black text-emerald-700 px-1 py-0.5 focus:bg-purple-100/50"
                     />
                   </div>
-                </div>
-
-                {/* Row 5: Technical Skills */}
-                <div className="p-1.5 flex items-center gap-2">
-                  <span className="font-bold text-purple-950 shrink-0">Technical Skills:</span>
-                  <input
-                    type="text"
-                    value={technicalSkills}
-                    onChange={(e) => setTechnicalSkills(e.target.value)}
-                    placeholder="Certifications, Special Skills, Domains"
-                    className="w-full bg-transparent outline-none text-slate-900 px-1 py-0.5 focus:bg-purple-100/50"
-                  />
                 </div>
 
               </div>

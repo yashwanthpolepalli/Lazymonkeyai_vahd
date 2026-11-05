@@ -137,6 +137,17 @@ export const SETTING_CARDS: SettingCardConfig[] = [
     description: ' admin divisions'
   },
   {
+    id: 'technical_skills',
+    title: 'Technical Skills',
+    type: 'master',
+    categoryKey: 'technical_skills',
+    icon: 'code',
+    bgLight: 'bg-violet-50 dark:bg-violet-950/40',
+    textColor: 'text-violet-600',
+    borderLight: 'border-violet-200/70',
+    description: 'Technical skills, certifications & student/employee mapping'
+  },
+  {
     id: 'qualifications',
     title: 'Qualification',
     type: 'master',

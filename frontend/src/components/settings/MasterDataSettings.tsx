@@ -48,6 +48,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
   { id: 'designations', title: 'Designation', icon: 'award', bgLight: 'bg-blue-100', textColor: 'text-blue-700', codePrefix: 'DES' },
   { id: 'roles', title: 'Role', icon: 'shield', bgLight: 'bg-purple-100', textColor: 'text-purple-700', codePrefix: 'ROL' },
   { id: 'departments', title: 'Departments', icon: 'layers', bgLight: 'bg-teal-100', textColor: 'text-teal-700', codePrefix: 'DEPT' },
+  { id: 'technical_skills', title: 'Technical Skills', icon: 'code', bgLight: 'bg-violet-100', textColor: 'text-violet-700', codePrefix: 'SKL' },
   { id: 'posting_types', title: 'Type of Posting', icon: 'arrow-left-right', bgLight: 'bg-cyan-100', textColor: 'text-cyan-700', codePrefix: 'TOP' },
   { id: 'diagnostics', title: 'Diagnostics', icon: 'microscope', bgLight: 'bg-emerald-100', textColor: 'text-emerald-700', codePrefix: 'DX' },
   { id: 'animal_types', title: 'Animal Type', icon: 'tag', bgLight: 'bg-slate-100', textColor: 'text-slate-700', codePrefix: 'ANI' },
@@ -103,6 +104,14 @@ export function getDepartmentType(item: Partial<MasterDataItem> | { name?: strin
   if (isEmp && !isStud) return 'employee';
   if (isStud && !isEmp) return 'student';
 
+  return 'both';
+}
+
+export function getTechnicalSkillType(item: Partial<MasterDataItem> | { name?: string; extra_info?: string }): 'student' | 'employee' | 'both' {
+  const extra = (item.extra_info || '').toLowerCase().trim();
+  if (extra === 'student' || extra === 'students') return 'student';
+  if (extra === 'employee' || extra === 'employees' || extra === 'staff') return 'employee';
+  if (extra === 'both' || extra === 'all') return 'both';
   return 'both';
 }
 
@@ -294,6 +303,10 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
   const [deptTab, setDeptTab] = useState<'students' | 'employees' | 'all'>('students');
   const [deptTypeInModal, setDeptTypeInModal] = useState<'student' | 'employee' | 'both'>('student');
 
+  // Technical Skills Sub-View State (All Technical Skills vs Employees Skills vs Students Skills)
+  const [skillTab, setSkillTab] = useState<'all' | 'employees' | 'students'>('all');
+  const [skillTypeInModal, setSkillTypeInModal] = useState<'student' | 'employee' | 'both'>('both');
+
   // Modal State
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'add' | 'edit' | 'view'>('add');
@@ -331,7 +344,19 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
     return { students, employees, all: items.length };
   }, [selectedCatId, masterStore]);
 
-
+  // Technical Skills count metrics for the view switcher
+  const skillCounts = useMemo(() => {
+    if (selectedCatId !== 'technical_skills') return { all: 0, employees: 0, students: 0 };
+    const items = masterStore['technical_skills'] || [];
+    let employees = 0;
+    let students = 0;
+    items.forEach((it) => {
+      const t = getTechnicalSkillType(it);
+      if (t === 'employee' || t === 'both') employees++;
+      if (t === 'student' || t === 'both') students++;
+    });
+    return { all: items.length, employees, students };
+  }, [selectedCatId, masterStore]);
 
   // Status counts for the currently selected category & subtab
   const statusCounts = useMemo(() => {
@@ -348,13 +373,25 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
           return t === 'employee' || t === 'both';
         });
       }
+    } else if (selectedCatId === 'technical_skills') {
+      if (skillTab === 'students') {
+        base = base.filter((item) => {
+          const t = getTechnicalSkillType(item);
+          return t === 'student' || t === 'both';
+        });
+      } else if (skillTab === 'employees') {
+        base = base.filter((item) => {
+          const t = getTechnicalSkillType(item);
+          return t === 'employee' || t === 'both';
+        });
+      }
     }
     const active = base.filter((i) => i.is_active).length;
     const inactive = base.filter((i) => !i.is_active).length;
     return { all: base.length, active, inactive };
-  }, [categoryItems, selectedCatId, deptTab]);
+  }, [categoryItems, selectedCatId, deptTab, skillTab]);
 
-  // Filtered rows (respects department view tab + dynamic active/inactive filter + search)
+  // Filtered rows (respects department/skill view tab + dynamic active/inactive filter + search)
   const filteredItems = useMemo(() => {
     let base = categoryItems;
     if (selectedCatId === 'departments') {
@@ -366,6 +403,18 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
       } else if (deptTab === 'employees') {
         base = base.filter((item) => {
           const t = getDepartmentType(item);
+          return t === 'employee' || t === 'both';
+        });
+      }
+    } else if (selectedCatId === 'technical_skills') {
+      if (skillTab === 'students') {
+        base = base.filter((item) => {
+          const t = getTechnicalSkillType(item);
+          return t === 'student' || t === 'both';
+        });
+      } else if (skillTab === 'employees') {
+        base = base.filter((item) => {
+          const t = getTechnicalSkillType(item);
           return t === 'employee' || t === 'both';
         });
       }
@@ -388,7 +437,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
         (item.extra_info && item.extra_info.toLowerCase().includes(q)) ||
         (item.description && item.description.toLowerCase().includes(q))
     );
-  }, [categoryItems, selectedCatId, deptTab, statusFilter, searchQuery]);
+  }, [categoryItems, selectedCatId, deptTab, skillTab, statusFilter, searchQuery]);
 
   // Dynamically set status for a single item (with backend DB & domain sync)
   const handleSetItemStatus = (item: MasterDataItem, nextActive: boolean) => {
@@ -517,7 +566,18 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
     // Automatically pre-select Students View or Employee View based on the active tab
     const initialDeptType = deptTab === 'employees' ? 'employee' : 'student';
     setDeptTypeInModal(initialDeptType);
-    setFormExtra(selectedCatId === 'departments' ? initialDeptType : '');
+
+    // Automatically pre-select Technical Skills mapping
+    const initialSkillType = skillTab === 'employees' ? 'employee' : skillTab === 'students' ? 'student' : 'both';
+    setSkillTypeInModal(initialSkillType);
+
+    setFormExtra(
+      selectedCatId === 'departments'
+        ? initialDeptType
+        : selectedCatId === 'technical_skills'
+          ? initialSkillType
+          : ''
+    );
 
     setFormCheckIn('');
     setFormCheckOut('');
@@ -539,7 +599,17 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
     
     const dType = getDepartmentType(item);
     setDeptTypeInModal(dType);
-    setFormExtra(item.extra_info || dType);
+
+    const sType = getTechnicalSkillType(item);
+    setSkillTypeInModal(sType);
+
+    setFormExtra(
+      selectedCatId === 'departments'
+        ? (item.extra_info || dType)
+        : selectedCatId === 'technical_skills'
+          ? (item.extra_info || sType)
+          : (item.extra_info || '')
+    );
 
     setFormCheckIn(item.check_in_time || '');
     setFormCheckOut(item.check_out_time || '');
@@ -561,7 +631,17 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
 
     const dType = getDepartmentType(item);
     setDeptTypeInModal(dType);
-    setFormExtra(item.extra_info || dType);
+
+    const sType = getTechnicalSkillType(item);
+    setSkillTypeInModal(sType);
+
+    setFormExtra(
+      selectedCatId === 'departments'
+        ? (item.extra_info || dType)
+        : selectedCatId === 'technical_skills'
+          ? (item.extra_info || sType)
+          : (item.extra_info || '')
+    );
 
     setFormCheckIn(item.check_in_time || '');
     setFormCheckOut(item.check_out_time || '');
@@ -593,7 +673,9 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
 
     const finalExtra = selectedCatId === 'departments'
       ? deptTypeInModal
-      : (formExtra.trim() || resolvedParentCode || undefined);
+      : selectedCatId === 'technical_skills'
+        ? skillTypeInModal
+        : (formExtra.trim() || resolvedParentCode || undefined);
 
     if (modalMode === 'edit' && editingItem) {
       if (selectedCatId === 'leave_reasons') {
@@ -787,25 +869,137 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
   const handleDownloadSampleCsv = () => {
     if (!selectedCategory) return;
     let headers: string[] = [];
+    let sampleRows: string[][] = [];
 
-    if (selectedCategory.id === 'departments') {
+    if (selectedCategory.id === 'technical_skills') {
+      headers = ['NAME', 'CODE', 'MAPPING', 'IS_ACTIVE', 'DESCRIPTION'];
+      sampleRows = [
+        ['Veterinary Surgery & Clinical Care', 'SKL-101', 'Both', 'TRUE', 'Major/minor surgical interventions'],
+        ['Artificial Insemination & Theriogenology', 'SKL-102', 'Employee', 'TRUE', 'Bovine AI and reproductive tech'],
+        ['Ultrasonography & Diagnostic Imaging', 'SKL-103', 'Both', 'TRUE', 'Soft tissue and abdominal scans'],
+        ['Veterinary Clinical Pathology', 'SKL-104', 'Student', 'TRUE', 'Hematology and biochemistry diagnostics'],
+      ];
+    } else if (selectedCategory.id === 'departments') {
       headers = ['NAME', 'CODE', 'IS_ACTIVE', 'TYPE', 'DESCRIPTION'];
+      sampleRows = [
+        ['Animal Nutrition', 'ANUT', 'TRUE', 'Both', 'Nutrition & Feed tech department'],
+        ['Veterinary Anatomy', 'VANAT', 'TRUE', 'Student', 'Academic anatomy department'],
+        ['Administrative Office', 'ADMIN', 'TRUE', 'Employee', 'Central administration'],
+      ];
     } else if (selectedCategory.id === 'institution_types') {
       headers = ['NAME', 'CODE', 'CHECK_IN', 'CHECK_OUT', 'LEVEL', 'DISPLAY_ORDER', 'IS_ACTIVE'];
+      sampleRows = [['Veterinary Polyclinic', 'VPC', '09:00 AM', '05:00 PM', '1', '1', 'TRUE']];
     } else if (selectedCategory.id === 'leave_reasons') {
       headers = ['NAME', 'DAYS', 'IS_ACTIVE'];
+      sampleRows = [['Casual Leave', '15', 'TRUE']];
     } else if (selectedCategory.parentCategory) {
       headers = ['NAME', 'CODE', 'IS_ACTIVE', 'PARENT_NAME'];
+      sampleRows = [['Sample Name', `${selectedCategory.codePrefix}-001`, 'TRUE', 'Parent Category']];
     } else {
       headers = ['NAME', 'CODE', 'IS_ACTIVE'];
+      sampleRows = [['Sample Name', `${selectedCategory.codePrefix}-001`, 'TRUE']];
     }
 
-    const csvContent = headers.join(',') + '\n';
+    const csvLines = [headers.join(','), ...sampleRows.map((r) => r.map((c) => `"${c}"`).join(','))];
+    const csvContent = csvLines.join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
     link.setAttribute('download', `template_${selectedCategory.id}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  // Dynamic Template Excel (.xlsx / .xls) Download
+  const handleDownloadSampleXlsx = () => {
+    if (!selectedCategory) return;
+    let headers: string[] = [];
+    let sampleRows: string[][] = [];
+
+    if (selectedCategory.id === 'technical_skills') {
+      headers = ['NAME', 'CODE', 'MAPPING', 'IS_ACTIVE', 'DESCRIPTION'];
+      sampleRows = [
+        ['Veterinary Surgery & Clinical Care', 'SKL-101', 'Both', 'TRUE', 'Major/minor surgical interventions'],
+        ['Artificial Insemination & Theriogenology', 'SKL-102', 'Employee', 'TRUE', 'Bovine AI and reproductive tech'],
+        ['Ultrasonography & Diagnostic Imaging', 'SKL-103', 'Both', 'TRUE', 'Soft tissue and abdominal scans'],
+        ['Veterinary Clinical Pathology', 'SKL-104', 'Student', 'TRUE', 'Hematology and biochemistry diagnostics'],
+      ];
+    } else if (selectedCategory.id === 'departments') {
+      headers = ['NAME', 'CODE', 'IS_ACTIVE', 'TYPE', 'DESCRIPTION'];
+      sampleRows = [
+        ['Animal Nutrition', 'ANUT', 'TRUE', 'Both', 'Nutrition & Feed tech department'],
+        ['Veterinary Anatomy', 'VANAT', 'TRUE', 'Student', 'Academic anatomy department'],
+        ['Administrative Office', 'ADMIN', 'TRUE', 'Employee', 'Central administration'],
+      ];
+    } else {
+      headers = ['NAME', 'CODE', 'IS_ACTIVE'];
+      sampleRows = [['Sample Item', `${selectedCategory.codePrefix}-001`, 'TRUE']];
+    }
+
+    const tsvContent = [headers.join('\t'), ...sampleRows.map((r) => r.join('\t'))].join('\n');
+    const blob = new Blob([tsvContent], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `template_${selectedCategory.id}.xls`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  // Export current filtered master data to CSV or Excel
+  const handleExportData = (format: 'csv' | 'xlsx') => {
+    if (!selectedCategory) return;
+    const items = filteredItems;
+    let headers: string[] = [];
+    let rows: string[][] = [];
+
+    if (selectedCategory.id === 'technical_skills') {
+      headers = ['NAME', 'CODE', 'MAPPING', 'IS_ACTIVE', 'DESCRIPTION'];
+      rows = items.map((it) => [
+        it.name,
+        it.code || '',
+        getTechnicalSkillType(it) === 'employee' ? 'Employee' : getTechnicalSkillType(it) === 'student' ? 'Student' : 'Both',
+        it.is_active ? 'TRUE' : 'FALSE',
+        it.description || '',
+      ]);
+    } else if (selectedCategory.id === 'departments') {
+      headers = ['NAME', 'CODE', 'TYPE', 'IS_ACTIVE', 'DESCRIPTION'];
+      rows = items.map((it) => [
+        it.name,
+        it.code || '',
+        getDepartmentType(it),
+        it.is_active ? 'TRUE' : 'FALSE',
+        it.description || '',
+      ]);
+    } else {
+      headers = ['NAME', 'CODE', 'IS_ACTIVE', 'DESCRIPTION'];
+      rows = items.map((it) => [
+        it.name,
+        it.code || '',
+        it.is_active ? 'TRUE' : 'FALSE',
+        it.description || it.parent_name || '',
+      ]);
+    }
+
+    const separator = format === 'csv' ? ',' : '\t';
+    const mime = format === 'csv' ? 'text/csv;charset=utf-8;' : 'application/vnd.ms-excel;charset=utf-8;';
+    const ext = format === 'csv' ? 'csv' : 'xls';
+
+    const text = [
+      headers.join(separator),
+      ...rows.map((r) => r.map((c) => (format === 'csv' ? `"${(c || '').replace(/"/g, '""')}"` : c)).join(separator)),
+    ].join('\n');
+
+    const blob = new Blob([text], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `${selectedCategory.id}_export.${ext}`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -836,24 +1030,40 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                   : (rawType === 'student' || rawType === 'students' || rawType === 'academic')
                     ? 'student'
                     : getDepartmentType({ name: cols[0], extra_info: rawType });
+            } else if (selectedCatId === 'technical_skills') {
+              const rawMapping = cols[2] ? cols[2].toLowerCase() : '';
+              extraVal = (rawMapping === 'employee' || rawMapping === 'staff')
+                ? 'employee'
+                : (rawMapping === 'student' || rawMapping === 'students')
+                  ? 'student'
+                  : 'both';
             }
 
-            newRecords.push({
+            const recItem: MasterDataItem = {
               id: `${selectedCatId}_imp_${Date.now()}_${i}`,
               name: cols[0],
               code: cols[1] || `${selectedCategory?.codePrefix || 'CD'}-${Math.floor(100 + Math.random() * 900)}`,
               is_active: cols[2] ? cols[2].toUpperCase() !== 'FALSE' : true,
               extra_info: extraVal,
-              parent_name: selectedCatId !== 'departments' ? cols[3] || undefined : undefined,
-              description: selectedCatId === 'departments' ? cols[4] || undefined : undefined,
-            });
+              parent_name: selectedCatId !== 'departments' && selectedCatId !== 'technical_skills' ? cols[3] || undefined : undefined,
+              description: selectedCatId === 'departments' ? cols[4] || undefined : selectedCatId === 'technical_skills' ? cols[4] || undefined : undefined,
+            };
+            newRecords.push(recItem);
 
-            // Also persist imported department to backend DB
+            // Also persist imported department or skill to backend DB
             if (selectedCatId === 'departments') {
               masterDataApi.create('departments', {
                 name: cols[0],
-                code: cols[1] || `${selectedCategory?.codePrefix || 'CD'}-${Math.floor(100 + Math.random() * 900)}`,
-                is_active: cols[2] ? cols[2].toUpperCase() !== 'FALSE' : true,
+                code: recItem.code,
+                is_active: recItem.is_active,
+                extra_info: extraVal,
+                description: cols[4] || undefined,
+              }).catch(() => {});
+            } else if (selectedCatId === 'technical_skills') {
+              masterDataApi.create('technical_skills', {
+                name: cols[0],
+                code: recItem.code,
+                is_active: cols[3] ? cols[3].toUpperCase() !== 'FALSE' : true,
                 extra_info: extraVal,
                 description: cols[4] || undefined,
               }).catch(() => {});
@@ -937,7 +1147,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
               <span>Back</span>
             </button>
 
-            {/* Import Button */}
+            {/* Import & Export Buttons */}
             {canImport && (
               <>
                 <button
@@ -949,11 +1159,32 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                   <span>Import Excel / CSV</span>
                 </button>
 
+                {/* Export Buttons */}
+                <button
+                  type="button"
+                  onClick={() => handleExportData('csv')}
+                  className="px-3 py-1.5 rounded-xl border border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100 text-emerald-700 dark:text-emerald-400 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                  title="Export records to CSV"
+                >
+                  <Icon name="download" size={13} />
+                  <span>Export CSV</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleExportData('xlsx')}
+                  className="px-3 py-1.5 rounded-xl border border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100 text-emerald-700 dark:text-emerald-400 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                  title="Export records to Excel"
+                >
+                  <Icon name="download" size={13} />
+                  <span>Export Excel</span>
+                </button>
+
                 {/* Sample Files */}
                 <button
                   type="button"
-                  onClick={handleDownloadSampleCsv}
+                  onClick={handleDownloadSampleXlsx}
                   className="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline px-1 cursor-pointer"
+                  title="Download sample template for Excel"
                 >
                   Sample .xlsx
                 </button>
@@ -961,6 +1192,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                   type="button"
                   onClick={handleDownloadSampleCsv}
                   className="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline px-1 cursor-pointer"
+                  title="Download sample template for CSV"
                 >
                   Sample .csv
                 </button>
@@ -1027,12 +1259,81 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                 <span>
                   {selectedCategory.id === 'departments'
                     ? `+ Add ${deptTab === 'students' ? 'Student' : deptTab === 'employees' ? 'Employee' : ''} Department`
-                    : `+ Add ${selectedCategory.title}`}
+                    : selectedCategory.id === 'technical_skills'
+                      ? `+ Add ${skillTab === 'students' ? 'Student' : skillTab === 'employees' ? 'Employee' : ''} Skill`
+                      : `+ Add ${selectedCategory.title}`}
                 </span>
               </button>
             )}
           </div>
         </div>
+
+        {/* Technical Skills Sub-Views Switcher (All vs Employees Skills vs Students Skills) */}
+        {selectedCategory.id === 'technical_skills' && (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-2.5 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-2xs">
+            <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-100/90 dark:bg-slate-800/90 rounded-xl border border-slate-200/80 dark:border-slate-700/80">
+              <button
+                type="button"
+                onClick={() => setSkillTab('all')}
+                className={cn(
+                  'flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer',
+                  skillTab === 'all'
+                    ? 'bg-white dark:bg-slate-900 text-violet-700 dark:text-violet-400 shadow-xs border border-violet-200 dark:border-violet-900/60'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                )}
+              >
+                <Icon name="code" size={15} className={skillTab === 'all' ? 'text-violet-600' : 'text-slate-400'} />
+                <span>All Technical Skills</span>
+                <span className={cn(
+                  'text-[10px] px-2 py-0.5 rounded-full font-black',
+                  skillTab === 'all' ? 'bg-violet-100 dark:bg-violet-950/80 text-violet-700 dark:text-violet-300' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                )}>
+                  {skillCounts.all}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSkillTab('employees')}
+                className={cn(
+                  'flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer',
+                  skillTab === 'employees'
+                    ? 'bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-xs border border-emerald-200 dark:border-emerald-900/60'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                )}
+              >
+                <Icon name="briefcase" size={15} className={skillTab === 'employees' ? 'text-emerald-600' : 'text-slate-400'} />
+                <span>Employees Skills</span>
+                <span className={cn(
+                  'text-[10px] px-2 py-0.5 rounded-full font-black',
+                  skillTab === 'employees' ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                )}>
+                  {skillCounts.employees}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSkillTab('students')}
+                className={cn(
+                  'flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer',
+                  skillTab === 'students'
+                    ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-400 shadow-xs border border-indigo-200 dark:border-indigo-900/60'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                )}
+              >
+                <Icon name="graduation-cap" size={15} className={skillTab === 'students' ? 'text-indigo-600' : 'text-slate-400'} />
+                <span>Students Skills</span>
+                <span className={cn(
+                  'text-[10px] px-2 py-0.5 rounded-full font-black',
+                  skillTab === 'students' ? 'bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                )}>
+                  {skillCounts.students}
+                </span>
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Department Sub-Views Switcher (Students Departments vs Employee Departments vs All) */}
         {selectedCategory.id === 'departments' && (
@@ -1240,6 +1541,14 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                       <th className="py-3.5 px-4">DESCRIPTION</th>
                       <th className="py-3.5 px-4">IS ACTIVE</th>
                     </>
+                  ) : selectedCategory.id === 'technical_skills' ? (
+                    <>
+                      <th className="py-3.5 px-4">SKILL NAME</th>
+                      <th className="py-3.5 px-4">CODE</th>
+                      <th className="py-3.5 px-4">MAPPING / APPLICABLE FOR</th>
+                      <th className="py-3.5 px-4">DESCRIPTION</th>
+                      <th className="py-3.5 px-4">IS ACTIVE</th>
+                    </>
                   ) : isQualification ? (
                     <>
                       <th className="py-3.5 px-4">NAME</th>
@@ -1292,6 +1601,40 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                             >
                               <Icon name="plus" size={13} />
                               <span>+ Add Department</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => fileInputRef.current?.click()}
+                              className="px-3.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                            >
+                              <Icon name="upload" size={13} />
+                              <span>Import CSV</span>
+                            </button>
+                          </div>
+                        </div>
+                      ) : selectedCategory.id === 'technical_skills' ? (
+                        <div className="max-w-md mx-auto space-y-3">
+                          <div className="w-12 h-12 mx-auto rounded-2xl bg-violet-50 dark:bg-violet-950/60 border border-violet-200 dark:border-violet-800 flex items-center justify-center text-violet-600 dark:text-violet-400">
+                            <Icon name={skillTab === 'students' ? 'graduation-cap' : skillTab === 'employees' ? 'briefcase' : 'code'} size={24} />
+                          </div>
+                          <div className="text-sm font-black text-slate-800 dark:text-slate-200">
+                            No {skillTab === 'students' ? 'Students' : skillTab === 'employees' ? 'Employees' : ''} Technical Skills Found
+                          </div>
+                          <p className="text-xs text-slate-400">
+                            {skillTab === 'students'
+                              ? 'Academic & research technical skills for student enrollment.'
+                              : skillTab === 'employees'
+                                ? 'Clinical, operational & staff technical skills appear during employee enrollment.'
+                                : 'Configure clinical and specialized technical skills for your organization.'}
+                          </p>
+                          <div className="flex items-center justify-center gap-2 pt-1">
+                            <button
+                              type="button"
+                              onClick={handleOpenAdd}
+                              className="px-3.5 py-1.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+                            >
+                              <Icon name="plus" size={13} />
+                              <span>+ Add Technical Skill</span>
                             </button>
                             <button
                               type="button"
@@ -1460,6 +1803,69 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200/80 dark:border-blue-800">
                                     <Icon name="layers" size={12} className="text-blue-600 dark:text-blue-400" />
                                     <span>Both (Shared)</span>
+                                  </span>
+                                );
+                              })()}
+                            </td>
+                            <td className="py-3.5 px-4 text-slate-500 font-medium line-clamp-1 max-w-xs">
+                              {item.description || '—'}
+                            </td>
+                            <td className="py-3.5 px-4">
+                              {renderActiveStatusSelector(item)}
+                            </td>
+                          </>
+                        ) : selectedCategory.id === 'technical_skills' ? (
+                          <>
+                            <td className="py-3.5 px-4 font-bold text-slate-900 dark:text-white">
+                              <div className="flex items-center gap-2">
+                                <span className={cn(
+                                  'w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-xs',
+                                  getTechnicalSkillType(item) === 'student'
+                                    ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950/80 dark:text-indigo-300'
+                                    : getTechnicalSkillType(item) === 'employee'
+                                      ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-300'
+                                      : 'bg-violet-100 text-violet-700 dark:bg-violet-950/80 dark:text-violet-300'
+                                )}>
+                                  <Icon
+                                    name={
+                                      getTechnicalSkillType(item) === 'student'
+                                        ? 'graduation-cap'
+                                        : getTechnicalSkillType(item) === 'employee'
+                                          ? 'briefcase'
+                                          : 'code'
+                                    }
+                                    size={14}
+                                  />
+                                </span>
+                                <span>{item.name}</span>
+                              </div>
+                            </td>
+                            <td className="py-3.5 px-4 font-mono font-bold text-slate-700 dark:text-slate-300">
+                              {item.code || '—'}
+                            </td>
+                            <td className="py-3.5 px-4">
+                              {(() => {
+                                const t = getTechnicalSkillType(item);
+                                if (t === 'student') {
+                                  return (
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800">
+                                      <Icon name="graduation-cap" size={12} className="text-indigo-600 dark:text-indigo-400" />
+                                      <span>Students Skills</span>
+                                    </span>
+                                  );
+                                }
+                                if (t === 'employee') {
+                                  return (
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800">
+                                      <Icon name="briefcase" size={12} className="text-emerald-600 dark:text-emerald-400" />
+                                      <span>Employees Skills</span>
+                                    </span>
+                                  );
+                                }
+                                return (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black bg-violet-50 text-violet-700 dark:bg-violet-950/60 dark:text-violet-300 border border-violet-200/80 dark:border-violet-800">
+                                    <Icon name="layers" size={12} className="text-violet-600 dark:text-violet-400" />
+                                    <span>Both (Employee & Student)</span>
                                   </span>
                                 );
                               })()}
@@ -1886,6 +2292,104 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                         value={formDescription}
                         onChange={(e) => setFormDescription(e.target.value)}
                         placeholder="e.g. Undergraduate computing, HR & payroll operations, etc."
+                        disabled={modalMode === 'view'}
+                        className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
+                      />
+                    </div>
+                  </>
+                )}
+
+                {/* Technical Skill Applicability / Mapping Selection */}
+                {selectedCategory.id === 'technical_skills' && (
+                  <>
+                    <div className="space-y-1.5 p-3 bg-violet-50/60 dark:bg-violet-950/40 rounded-xl border border-violet-200 dark:border-violet-800">
+                      <label className="block font-black uppercase text-[10px] tracking-wider text-violet-950 dark:text-violet-300">
+                        SKILL MAPPING / APPLICABLE FOR *
+                      </label>
+                      <p className="text-[11px] text-slate-500 font-medium leading-tight">
+                        Choose whether this technical skill applies to employees, students, or both.
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+                        <button
+                          type="button"
+                          disabled={modalMode === 'view'}
+                          onClick={() => setSkillTypeInModal('both')}
+                          className={cn(
+                            'flex items-center gap-2 p-2.5 rounded-xl border text-left transition-all cursor-pointer',
+                            skillTypeInModal === 'both'
+                              ? 'bg-violet-50 border-violet-400 text-violet-900 dark:bg-violet-950/70 dark:border-violet-600 dark:text-violet-200 font-bold ring-2 ring-violet-500/20 shadow-2xs'
+                              : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-300'
+                          )}
+                        >
+                          <div className={cn(
+                            'w-7 h-7 rounded-lg flex items-center justify-center shrink-0',
+                            skillTypeInModal === 'both' ? 'bg-violet-600 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-500'
+                          )}>
+                            <Icon name="layers" size={14} />
+                          </div>
+                          <div>
+                            <div className="text-xs font-black">Both Views</div>
+                            <div className="text-[10px] text-slate-400 font-normal">Employee & Student</div>
+                          </div>
+                        </button>
+
+                        <button
+                          type="button"
+                          disabled={modalMode === 'view'}
+                          onClick={() => setSkillTypeInModal('employee')}
+                          className={cn(
+                            'flex items-center gap-2 p-2.5 rounded-xl border text-left transition-all cursor-pointer',
+                            skillTypeInModal === 'employee'
+                              ? 'bg-emerald-50 border-emerald-400 text-emerald-900 dark:bg-emerald-950/70 dark:border-emerald-600 dark:text-emerald-200 font-bold ring-2 ring-emerald-500/20 shadow-2xs'
+                              : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-300'
+                          )}
+                        >
+                          <div className={cn(
+                            'w-7 h-7 rounded-lg flex items-center justify-center shrink-0',
+                            skillTypeInModal === 'employee' ? 'bg-emerald-600 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-500'
+                          )}>
+                            <Icon name="briefcase" size={14} />
+                          </div>
+                          <div>
+                            <div className="text-xs font-black">Employee View</div>
+                            <div className="text-[10px] text-slate-400 font-normal">Staff & Enrollment</div>
+                          </div>
+                        </button>
+
+                        <button
+                          type="button"
+                          disabled={modalMode === 'view'}
+                          onClick={() => setSkillTypeInModal('student')}
+                          className={cn(
+                            'flex items-center gap-2 p-2.5 rounded-xl border text-left transition-all cursor-pointer',
+                            skillTypeInModal === 'student'
+                              ? 'bg-indigo-50 border-indigo-400 text-indigo-900 dark:bg-indigo-950/70 dark:border-indigo-600 dark:text-indigo-200 font-bold ring-2 ring-indigo-500/20 shadow-2xs'
+                              : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-300'
+                          )}
+                        >
+                          <div className={cn(
+                            'w-7 h-7 rounded-lg flex items-center justify-center shrink-0',
+                            skillTypeInModal === 'student' ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-500'
+                          )}>
+                            <Icon name="graduation-cap" size={14} />
+                          </div>
+                          <div>
+                            <div className="text-xs font-black">Students View</div>
+                            <div className="text-[10px] text-slate-400 font-normal">Student Enrollment</div>
+                          </div>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block font-black uppercase text-[10px] tracking-wider text-slate-700 dark:text-slate-300">
+                        DESCRIPTION / DOMAIN
+                      </label>
+                      <input
+                        type="text"
+                        value={formDescription}
+                        onChange={(e) => setFormDescription(e.target.value)}
+                        placeholder="e.g. Clinical diagnosis, laparoscopic surgery, ultrasound imaging"
                         disabled={modalMode === 'view'}
                         className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
                       />

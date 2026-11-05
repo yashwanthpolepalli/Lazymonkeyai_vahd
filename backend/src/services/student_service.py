@@ -1066,45 +1066,64 @@ class studentService:
         cust = db.query(student).filter(student.id == student_id).first()
         if not cust:
             return False
-        
-        # 1. Clean up related courses & student enrollment mappings
-        try:
-            from src.models.course import StudentCourse
-            db.query(StudentCourse).filter(StudentCourse.student_id == student_id).delete(synchronize_session=False)
-        except Exception:
-            pass
 
-        # 2. Clean up biometric logs
-        try:
-            from src.models.biometric import BiometricLog
-            db.query(BiometricLog).filter(BiometricLog.student_id == student_id).delete(synchronize_session=False)
-        except Exception:
-            pass
-
-        # 3. Clean up memberships
-        try:
-            db.query(Membership).filter(Membership.student_id == student_id).delete(synchronize_session=False)
-        except Exception:
-            pass
-        
         user_id = cust.user_id
 
-        # 4. Delete student record and flush so foreign keys on users table are removed
-        db.delete(cust)
-        db.flush()
-        
-        # 5. Delete linked user account if exists
-        if user_id:
+        try:
+            # 1. Clean up related courses & student enrollment mappings
             try:
-                user_obj = db.query(User).filter(User.id == user_id).first()
-                if user_obj:
-                    db.delete(user_obj)
-                    db.flush()
+                from src.models.course import StudentCourse
+                db.query(StudentCourse).filter(StudentCourse.student_id == student_id).delete(synchronize_session=False)
             except Exception:
-                pass
+                db.rollback()
 
-        db.commit()
-        return True
+            # 2. Clean up biometric logs
+            try:
+                from src.models.biometric import BiometricLog
+                db.query(BiometricLog).filter(BiometricLog.student_id == student_id).delete(synchronize_session=False)
+            except Exception:
+                db.rollback()
+
+            # 3. Clean up memberships
+            try:
+                db.query(Membership).filter(Membership.student_id == student_id).delete(synchronize_session=False)
+            except Exception:
+                db.rollback()
+
+            # 4. Delete student record first, flush to release FK constraints on users table
+            db.delete(cust)
+            db.flush()
+
+            # 5. Conditionally delete the linked user account.
+            # Skip deletion if the same user_id is referenced by employee_profiles
+            # (ForeignKeyViolation: employee_profiles_user_id_fkey).
+            if user_id:
+                try:
+                    from src.models.employee import employeeProfile
+                    is_emp_profile = db.query(employeeProfile).filter(
+                        employeeProfile.user_id == user_id
+                    ).first()
+                    if not is_emp_profile:
+                        user_obj = db.query(User).filter(User.id == user_id).first()
+                        if user_obj and (user_obj.role or '').upper() in ['STUDENT', 'MEMBER', '']:
+                            db.delete(user_obj)
+                            db.flush()
+                        # else: user is shared (employee / owner / etc.) — do NOT delete
+                except Exception:
+                    # FK violation or any error during user deletion must not block student deletion.
+                    # Rollback only the user delete and re-delete the student if needed.
+                    db.rollback()
+                    cust_check = db.query(student).filter(student.id == student_id).first()
+                    if cust_check:
+                        db.delete(cust_check)
+                        db.flush()
+
+            db.commit()
+            return True
+
+        except Exception:
+            db.rollback()
+            raise
 
     @staticmethod
     def onboard_student(db: Session, data: dict) -> dict:

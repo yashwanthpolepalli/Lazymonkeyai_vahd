@@ -3732,6 +3732,17 @@ class HrmsService:
         return {"status": "success", "message": "Shift timing removed successfully"}
 
     @staticmethod
+    def _normalize_time_str(val: Optional[str]) -> str:
+        if not val:
+            return ""
+        s = str(val).strip()
+        if re.match(r'^\d{2}:\d{2}', s):
+            return s[:5]
+        if re.match(r'^\d{1}:\d{2}', s):
+            return f"0{s[:4]}"
+        return s
+
+    @staticmethod
     def get_shift_templates(
         db: Session,
         branch_id: Optional[str] = None,
@@ -3761,8 +3772,8 @@ class HrmsService:
                 "id": t.id,
                 "code": t.code,
                 "name": t.name,
-                "start_time": t.start_time or "",
-                "end_time": t.end_time or "",
+                "start_time": HrmsService._normalize_time_str(t.start_time),
+                "end_time": HrmsService._normalize_time_str(t.end_time),
                 "duration_hours": t.duration_hours,
                 "break_mins": t.break_mins,
                 "grace_period_mins": t.grace_period_mins,
@@ -3795,8 +3806,8 @@ class HrmsService:
             "id": tmpl.id,
             "code": tmpl.code,
             "name": tmpl.name,
-            "start_time": tmpl.start_time or "",
-            "end_time": tmpl.end_time or "",
+            "start_time": HrmsService._normalize_time_str(tmpl.start_time),
+            "end_time": HrmsService._normalize_time_str(tmpl.end_time),
             "duration_hours": tmpl.duration_hours,
             "break_mins": tmpl.break_mins,
             "grace_period_mins": tmpl.grace_period_mins,
@@ -3868,8 +3879,8 @@ class HrmsService:
                 "shift_id": roster.shift_id or (meta.id if meta else None),
                 "shift_code": roster.shift_code,
                 "shift_name": roster.shift_name,
-                "start_time": roster.start_time or (meta.start_time if meta else ""),
-                "end_time": roster.end_time or (meta.end_time if meta else ""),
+                "start_time": HrmsService._normalize_time_str(roster.start_time or (meta.start_time if meta else "")),
+                "end_time": HrmsService._normalize_time_str(roster.end_time or (meta.end_time if meta else "")),
                 "is_off": bool(roster.is_weekly_off or roster.shift_code == "OFF"),
                 "break_mins": meta.break_mins if meta else None,
                 "grace_period_mins": meta.grace_period_mins if meta else None,
@@ -3885,8 +3896,8 @@ class HrmsService:
                 "shift_id": assigned_tpl.id if is_work_day else None,
                 "shift_code": assigned_tpl.code if is_work_day else "OFF",
                 "shift_name": assigned_tpl.name if is_work_day else "Rest Day",
-                "start_time": assigned_tpl.start_time if is_work_day else "",
-                "end_time": assigned_tpl.end_time if is_work_day else "",
+                "start_time": HrmsService._normalize_time_str(assigned_tpl.start_time) if is_work_day else "",
+                "end_time": HrmsService._normalize_time_str(assigned_tpl.end_time) if is_work_day else "",
                 "is_off": not is_work_day,
                 "break_mins": assigned_tpl.break_mins if is_work_day else None,
                 "grace_period_mins": assigned_tpl.grace_period_mins if is_work_day else None,
@@ -3901,8 +3912,8 @@ class HrmsService:
                 "shift_id": first_tpl.id if first_tpl else None,
                 "shift_code": first_tpl.code if first_tpl else "",
                 "shift_name": first_tpl.name if first_tpl else "",
-                "start_time": first_tpl.start_time if first_tpl else "",
-                "end_time": first_tpl.end_time if first_tpl else "",
+                "start_time": HrmsService._normalize_time_str(first_tpl.start_time) if first_tpl else "",
+                "end_time": HrmsService._normalize_time_str(first_tpl.end_time) if first_tpl else "",
                 "is_off": False,
                 "break_mins": first_tpl.break_mins if first_tpl else None,
                 "grace_period_mins": first_tpl.grace_period_mins if first_tpl else None,
@@ -3927,8 +3938,8 @@ class HrmsService:
                 id=f"shift_{uuid.uuid4().hex[:8]}",
                 code=code,
                 name=name,
-                start_time=payload.get("start_time"),
-                end_time=payload.get("end_time"),
+                start_time=HrmsService._normalize_time_str(payload.get("start_time")),
+                end_time=HrmsService._normalize_time_str(payload.get("end_time")),
                 duration_hours=float(payload.get("duration_hours")) if payload.get("duration_hours") is not None else None,
                 break_mins=int(payload.get("break_mins")) if payload.get("break_mins") is not None else None,
                 grace_period_mins=int(payload.get("grace_period_mins")) if payload.get("grace_period_mins") is not None else None,
@@ -3953,6 +3964,8 @@ class HrmsService:
             ]:
                 if k in payload:
                     val = payload[k]
+                    if k in ("start_time", "end_time") and val is not None:
+                        val = HrmsService._normalize_time_str(val)
                     if k == "num_members" and val is not None:
                         val = int(val)
                     if k in ("from_date", "to_date", "branch_id", "ho_id") and val == "":
@@ -4666,8 +4679,8 @@ class HrmsService:
             shift_id = None
         else:
             shift_name = payload.get("shift_name") or (tmpl.name if tmpl else std.get("name", f"{shift_code} Shift" if shift_code else "Custom Shift"))
-            start_time = payload.get("start_time") or (tmpl.start_time if tmpl else std.get("start_time", ""))
-            end_time = payload.get("end_time") or (tmpl.end_time if tmpl else std.get("end_time", ""))
+            start_time = HrmsService._normalize_time_str(payload.get("start_time") or (tmpl.start_time if tmpl else std.get("start_time", "")))
+            end_time = HrmsService._normalize_time_str(payload.get("end_time") or (tmpl.end_time if tmpl else std.get("end_time", "")))
             shift_id = payload.get("shift_id") or (tmpl.id if tmpl else None)
 
         # Proactively ensure foreign key constraint that blocks students/custom IDs is dropped

@@ -375,7 +375,12 @@ export function StudentManagementTab() {
     const name = studentName || 'this student';
     if (!window.confirm(`Are you sure you want to delete ${name}? This action cannot be undone.`)) return;
     try {
-      await apiClient.delete(`/students/${studentId}`);
+      const res = await apiClient.delete(`/students/${studentId}`);
+      // Check explicit success field if present
+      if (res && res.success === false) {
+        showToast(res.message || 'Failed to delete student.');
+        return;
+      }
       showToast('Student record deleted successfully.');
       setSelectedIds((prev) => {
         const next = new Set(prev);
@@ -384,7 +389,8 @@ export function StudentManagementTab() {
       });
       fetchStudents();
     } catch (err: any) {
-      showToast('Failed to delete student.');
+      const detail = err?.response?.data?.detail || err?.response?.data?.message || err?.message || '';
+      showToast(detail ? `Failed to delete student: ${detail}` : 'Failed to delete student.');
       fetchStudents();
     }
   };

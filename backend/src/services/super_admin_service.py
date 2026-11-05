@@ -823,9 +823,42 @@ class SuperAdminService:
                     ).delete(synchronize_session=False)
 
     @staticmethod
+    def _resolve_branch_for_deletion(db: Session, clean_id: str):
+        """
+        Resolve the primary vahdBranch for deletion given an identifier that may be:
+        - A vahdBranch.id  (normal case from listing when primary_branch exists)
+        - A User.id of an HO user (edge case from listing when no primary_branch found)
+        Returns (branch, ho_user) tuple or (None, None) if not found.
+        """
+        # 1. Direct branch lookup
+        branch = db.query(vahdBranch).filter(vahdBranch.id == clean_id).first()
+        if branch:
+            return branch
+
+        # 2. The id may be an HO user id — look up branches by HO user id
+        ho_user = db.query(User).filter(
+            User.id == clean_id,
+            or_(func.upper(User.role) == "HEAD_OFFICE", func.upper(User.role) == "HO")
+        ).first()
+        if ho_user:
+            # Find primary branch linked to this HO user
+            branch = db.query(vahdBranch).filter(
+                or_(
+                    vahdBranch.ho_id == ho_user.ho_id if ho_user.ho_id else False,
+                    vahdBranch.id == ho_user.branch_id if ho_user.branch_id else False,
+                )
+            ).order_by(vahdBranch.created_at.asc()).first()
+            if branch:
+                return branch
+
+        return None
+
+    @staticmethod
     def delete_organization(db: Session, vahd_id: str, actor_info: Optional[dict] = None) -> Dict[str, Any]:
         clean_id = (vahd_id or "").strip()
-        branch = db.query(vahdBranch).filter(vahdBranch.id == clean_id).first()
+
+        # Resolve branch using consistent dual-path resolution (branch ID or HO user ID)
+        branch = SuperAdminService._resolve_branch_for_deletion(db, clean_id)
         if not branch:
             return {"success": False, "message": "Organization not found"}
 
@@ -833,16 +866,25 @@ class SuperAdminService:
         branch_name = branch.branch_name or ""
         ho_id = branch.ho_id
 
-        # Cascade delete child branches if this branch is an HO
+        # Cascade delete all child branches under the same HO
         if ho_id:
             child_branches = db.query(vahdBranch).filter(
                 vahdBranch.ho_id == ho_id,
-                vahdBranch.id != clean_id
+                vahdBranch.id != branch.id
             ).all()
             for cb in child_branches:
                 SuperAdminService._cascade_delete_branch_data(db, cb)
 
         SuperAdminService._cascade_delete_branch_data(db, branch)
+
+        # Also delete the HO user account itself if it still exists and has no remaining branches
+        if ho_id:
+            remaining = db.query(vahdBranch).filter(vahdBranch.ho_id == ho_id).count()
+            if remaining == 0:
+                db.query(User).filter(
+                    User.id == ho_id,
+                    or_(func.upper(User.role) == "HEAD_OFFICE", func.upper(User.role) == "HO")
+                ).delete(synchronize_session=False)
 
         # Audit log event
         actor_name, actor_email = SuperAdminService._resolve_actor(db, actor_info)
@@ -872,16 +914,28 @@ class SuperAdminService:
 
         deleted_count = 0
         deleted_names = []
+        seen_ho_ids: set = set()
 
         for gid in org_ids:
             clean_id = (gid or "").strip()
             if not clean_id:
                 continue
-            branch = db.query(vahdBranch).filter(vahdBranch.id == clean_id).first()
+            # Use consistent dual-path resolution (branch ID or HO user ID)
+            branch = SuperAdminService._resolve_branch_for_deletion(db, clean_id)
             if branch:
                 vahd_name = branch.vahd_name or clean_id
                 deleted_names.append(f"{vahd_name} ({clean_id})")
+                ho_id = branch.ho_id
                 SuperAdminService._cascade_delete_branch_data(db, branch)
+                # Also clean up HO user if all their branches are now gone
+                if ho_id and ho_id not in seen_ho_ids:
+                    seen_ho_ids.add(ho_id)
+                    remaining = db.query(vahdBranch).filter(vahdBranch.ho_id == ho_id).count()
+                    if remaining == 0:
+                        db.query(User).filter(
+                            User.id == ho_id,
+                            or_(func.upper(User.role) == "HEAD_OFFICE", func.upper(User.role) == "HO")
+                        ).delete(synchronize_session=False)
                 deleted_count += 1
 
         if deleted_count > 0:

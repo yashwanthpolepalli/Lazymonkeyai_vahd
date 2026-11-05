@@ -426,10 +426,18 @@ export function VahdsPage() {
     if (deleteConfirmModal.orgIds.length === 0) return;
     setDeleting(true);
     try {
+      let result: any;
       if (deleteConfirmModal.orgIds.length === 1) {
-        await api.superAdmin.deleteOrganization(deleteConfirmModal.orgIds[0]);
+        result = await api.superAdmin.deleteOrganization(deleteConfirmModal.orgIds[0]);
       } else {
-        await api.superAdmin.bulkDeleteOrganizations(deleteConfirmModal.orgIds);
+        result = await api.superAdmin.bulkDeleteOrganizations(deleteConfirmModal.orgIds);
+      }
+      // Validate the API success field — a 200 OK with success: false is a failure
+      if (result && result.success === false) {
+        alert(result.message || 'Failed to delete organization. Organization may not have been found.');
+        setDeleteConfirmModal({ open: false, orgIds: [], vahdNames: [] });
+        await fetchvahds();
+        return;
       }
       setSelectedOrgIds((prev) => prev.filter((id) => !deleteConfirmModal.orgIds.includes(id)));
       if (selected && deleteConfirmModal.orgIds.includes(selected.id)) {
@@ -438,8 +446,8 @@ export function VahdsPage() {
       setDeleteConfirmModal({ open: false, orgIds: [], vahdNames: [] });
       await fetchvahds();
     } catch (err: any) {
-      console.error('Failed to delete organization:', err);
-      alert(err?.message || 'Failed to delete organization from database.');
+      const detail = err?.response?.data?.detail || err?.response?.data?.message || err?.message || '';
+      alert(detail ? `Failed to delete organization: ${detail}` : 'Failed to delete organization from database.');
     } finally {
       setDeleting(false);
     }

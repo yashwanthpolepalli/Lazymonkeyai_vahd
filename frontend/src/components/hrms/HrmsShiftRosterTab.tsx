@@ -343,8 +343,11 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
 
   // Handle single cell shift quick change - loads existing data dynamically from DB via backend
   const handleCellClick = async (emp: EmployeeRosterRow, dateStr: string) => {
-    const currentShift = emp.shifts[dateStr]?.shift_code || (shiftTemplates[0]?.code ?? 'GEN');
+    const currentShift = emp.shifts[dateStr]?.shift_code || (shiftTemplates[0]?.code ?? '');
     const tmpl = shiftTemplates.find((t) => t.code.toUpperCase() === currentShift.toUpperCase());
+    // Seed modal with normalized local data as immediate fallback
+    const localStart = normalizeTimeInput(emp.shifts[dateStr]?.start_time || tmpl?.start_time || '');
+    const localEnd = normalizeTimeInput(emp.shifts[dateStr]?.end_time || tmpl?.end_time || '');
     setModalTarget({
       employeeIds: [emp.id],
       dateStr,
@@ -353,8 +356,8 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
     });
     setModalDate(dateStr);
     setModalShiftCode(currentShift);
-    setModalStartTime(emp.shifts[dateStr]?.start_time || tmpl?.start_time || '');
-    setModalEndTime(emp.shifts[dateStr]?.end_time || tmpl?.end_time || '');
+    setModalStartTime(localStart);
+    setModalEndTime(localEnd);
     setShowAssignModal(true);
 
     // Dynamically fetch exact live record from database via backend
@@ -362,8 +365,9 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
       const live = await hrmsApi.getShiftCell(emp.id, dateStr);
       if (live) {
         if (live.shift_code) setModalShiftCode(live.shift_code);
-        if (live.start_time !== undefined) setModalStartTime(live.start_time || '');
-        if (live.end_time !== undefined) setModalEndTime(live.end_time || '');
+        // Normalize and prefer live value; fall back to local seed if live is empty
+        if (live.start_time !== undefined) setModalStartTime(normalizeTimeInput(live.start_time) || localStart);
+        if (live.end_time !== undefined) setModalEndTime(normalizeTimeInput(live.end_time) || localEnd);
         if (live.date) setModalDate(live.date);
       }
     } catch (err) {
@@ -395,8 +399,8 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
     });
     setModalDate(d.date);
     setModalShiftCode(initialCode);
-    setModalStartTime(firstShift?.start_time || tmpl?.start_time || '');
-    setModalEndTime(firstShift?.end_time || tmpl?.end_time || '');
+    setModalStartTime(normalizeTimeInput(firstShift?.start_time || tmpl?.start_time || ''));
+    setModalEndTime(normalizeTimeInput(firstShift?.end_time || tmpl?.end_time || ''));
     setShowAssignModal(true);
   };
 
@@ -608,12 +612,27 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
     return '';
   };
 
+  /**
+   * Normalize a time string to HH:mm format expected by <input type="time">.
+   * Handles: "9:00" → "09:00", "22:00" → "22:00", "06:30" → "06:30".
+   * Returns '' for null / undefined / empty input.
+   */
+  const normalizeTimeInput = (val: any): string => {
+    if (!val) return '';
+    const str = String(val).trim();
+    // Already HH:mm or HH:mm:ss
+    if (/^\d{2}:\d{2}(:\d{2})?$/.test(str)) return str.slice(0, 5);
+    // Single-digit hour: "9:00" → "09:00"
+    if (/^\d{1}:\d{2}$/.test(str)) return `0${str}`;
+    return str;
+  };
+
   const handleOpenEditTemplate = async (tpl: ShiftTemplateItem) => {
     setEditingTemplateId(tpl.id);
     setTemplateCode(tpl.code);
     setTemplateName(tpl.name);
-    setTemplateStartTime(tpl.start_time || '');
-    setTemplateEndTime(tpl.end_time || '');
+    setTemplateStartTime(normalizeTimeInput(tpl.start_time));
+    setTemplateEndTime(normalizeTimeInput(tpl.end_time));
     setTemplateBreakMins(tpl.break_mins ?? '');
     setTemplateGraceMins(tpl.grace_period_mins ?? '');
     setTemplateIsNight(Boolean(tpl.is_night_shift));
@@ -635,12 +654,13 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
       if (live) {
         if (live.code) setTemplateCode(live.code);
         if (live.name) setTemplateName(live.name);
-        if (live.start_time !== undefined) setTemplateStartTime(live.start_time || '');
-        if (live.end_time !== undefined) setTemplateEndTime(live.end_time || '');
+        // Normalize times and only overwrite if the live value is non-empty
+        if (live.start_time !== undefined) setTemplateStartTime(normalizeTimeInput(live.start_time) || normalizeTimeInput(tpl.start_time));
+        if (live.end_time !== undefined) setTemplateEndTime(normalizeTimeInput(live.end_time) || normalizeTimeInput(tpl.end_time));
         if (live.break_mins !== undefined) setTemplateBreakMins(live.break_mins ?? '');
         if (live.grace_period_mins !== undefined) setTemplateGraceMins(live.grace_period_mins ?? '');
         if (live.is_night_shift !== undefined) setTemplateIsNight(Boolean(live.is_night_shift));
-        if (live.color) setTemplateColor(live.color || '#7c3aed');
+        if (live.color) setTemplateColor(live.color);
         if (live.assign_type) setTemplateAssignType(live.assign_type as any);
         if (live.from_date !== undefined) setTemplateFromDate(formatToDateInput(live.from_date));
         if (live.to_date !== undefined) setTemplateToDate(formatToDateInput(live.to_date));
@@ -1714,8 +1734,8 @@ export function HrmsShiftRosterTab({ onSuccessToast }: HrmsShiftRosterTabProps) 
                   key={s.id}
                   onClick={() => {
                     setModalShiftCode(s.code);
-                    if (s.start_time) setModalStartTime(s.start_time);
-                    if (s.end_time) setModalEndTime(s.end_time);
+                    if (s.start_time) setModalStartTime(normalizeTimeInput(s.start_time));
+                    if (s.end_time) setModalEndTime(normalizeTimeInput(s.end_time));
                   }}
                   className={cn(
                     'p-3 rounded-xl border flex items-center justify-between cursor-pointer transition',

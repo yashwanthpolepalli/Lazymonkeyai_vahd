@@ -237,10 +237,16 @@ def send_student_monthly_attendance_whatsapp(
 
 @router.delete("/{student_id}")
 def delete_student(student_id: str, db: Session = Depends(get_db)):
-    success = studentService.delete_student(db, student_id)
-    if not success:
-        raise HTTPException(status_code=404, detail="student not found")
-    return {"message": "student deleted successfully", "deleted_id": student_id}
+    try:
+        success = studentService.delete_student(db, student_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Student not found")
+        return {"success": True, "message": "Student deleted successfully", "deleted_id": student_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to delete student: {str(e)}")
 
 
 # Alias router for /students
@@ -356,7 +362,13 @@ def update_crm_student(student_id: str, payload: dict = Body(...), db: Session =
 
 @crm_students_router.delete("/{student_id}")
 def delete_crm_student(student_id: str, db: Session = Depends(get_db)):
-    success = studentService.delete_student(db, student_id)
-    if not success:
-        raise HTTPException(status_code=404, detail="student not found")
-    return {"status": "success", "message": "student deleted successfully", "deleted_id": student_id}
+    try:
+        success = studentService.delete_student(db, student_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Student not found")
+        return {"success": True, "status": "success", "message": "Student deleted successfully", "deleted_id": student_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to delete student: {str(e)}")

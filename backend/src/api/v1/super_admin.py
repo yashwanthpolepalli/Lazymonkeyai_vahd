@@ -91,7 +91,12 @@ def update_organization_status(vahd_id: str, payload: dict = Body(...), db: Sess
 def delete_organization(vahd_id: str, db: Session = Depends(get_db)):
     """Delete an organization and its associated branch record dynamically from PostgreSQL DB."""
     try:
-        return SuperAdminService.delete_organization(db, vahd_id)
+        result = SuperAdminService.delete_organization(db, vahd_id)
+        if not result.get("success"):
+            raise HTTPException(status_code=404, detail=result.get("message", "Organization not found"))
+        return result
+    except HTTPException:
+        raise
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))

@@ -9,7 +9,7 @@ from email.mime.application import MIMEApplication
 from datetime import datetime, date, timedelta
 from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session
-from sqlalchemy import or_, and_, func, desc, extract, String
+from sqlalchemy import or_, and_, func, desc, extract, String, cast
 
 from src.models.hrms import Employee, EmployeeAttendance, LeaveRequest, Department
 from src.models.biometric import BiometricLog
@@ -872,7 +872,28 @@ class EmployeeAttendanceReportService:
         )
 
         if branch_id and branch_id != "all":
-            query = query.filter(Employee.branch_id == branch_id)
+            matched_b = db.query(vahdBranch).filter(
+                or_(vahdBranch.id == branch_id, vahdBranch.branch_name == branch_id, vahdBranch.vahd_name == branch_id)
+            ).first()
+            b_ids = [branch_id]
+            b_names = [branch_id]
+            if matched_b:
+                b_ids.append(matched_b.id)
+                if matched_b.branch_name:
+                    b_names.append(matched_b.branch_name)
+                if matched_b.vahd_name:
+                    b_names.append(matched_b.vahd_name)
+
+            b_conds = [
+                Employee.branch_id.in_(b_ids),
+                cast(Employee.secondary_branches, String).ilike(f"%{branch_id}%"),
+                cast(Employee.meta_data, String).ilike(f"%{branch_id}%")
+            ]
+            for bn in b_names:
+                b_conds.append(Employee.vahd_branch.ilike(f"%{bn}%"))
+                b_conds.append(cast(Employee.secondary_branches, String).ilike(f"%{bn}%"))
+                b_conds.append(cast(Employee.meta_data, String).ilike(f"%{bn}%"))
+            query = query.filter(or_(*b_conds))
         elif owner_id:
             query = query.filter(Employee.owner_id == owner_id)
         elif ho_id:
@@ -952,7 +973,28 @@ class EmployeeAttendanceReportService:
             )
         )
         if branch_id and branch_id != "all":
-            query = query.filter(Employee.branch_id == branch_id)
+            matched_b = db.query(vahdBranch).filter(
+                or_(vahdBranch.id == branch_id, vahdBranch.branch_name == branch_id, vahdBranch.vahd_name == branch_id)
+            ).first()
+            b_ids = [branch_id]
+            b_names = [branch_id]
+            if matched_b:
+                b_ids.append(matched_b.id)
+                if matched_b.branch_name:
+                    b_names.append(matched_b.branch_name)
+                if matched_b.vahd_name:
+                    b_names.append(matched_b.vahd_name)
+
+            b_conds = [
+                Employee.branch_id.in_(b_ids),
+                cast(Employee.secondary_branches, String).ilike(f"%{branch_id}%"),
+                cast(Employee.meta_data, String).ilike(f"%{branch_id}%")
+            ]
+            for bn in b_names:
+                b_conds.append(Employee.vahd_branch.ilike(f"%{bn}%"))
+                b_conds.append(cast(Employee.secondary_branches, String).ilike(f"%{bn}%"))
+                b_conds.append(cast(Employee.meta_data, String).ilike(f"%{bn}%"))
+            query = query.filter(or_(*b_conds))
         elif owner_id:
             query = query.filter(Employee.owner_id == owner_id)
         elif ho_id:

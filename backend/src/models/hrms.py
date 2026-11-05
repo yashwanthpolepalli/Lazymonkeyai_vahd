@@ -26,6 +26,7 @@ class Employee(Base):
     avatar = Column(String, nullable=True)
     vahd_branch = Column(String, nullable=True)
     branch_id = Column(String, nullable=True, index=True)
+    secondary_branches = Column(JSON, nullable=True)
     ho_id = Column(String, nullable=True, index=True)
     owner_id = Column(String, nullable=True, index=True)
     address = Column(String, nullable=True)

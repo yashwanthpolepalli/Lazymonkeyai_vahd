@@ -162,6 +162,20 @@ export function EmployeeEnrollmentModal({
   const [designationsList, setDesignationsList] = useState<DesignationItem[]>([]);
   const [branchesList, setBranchesList] = useState<Array<{ id: string; branch_name: string; name?: string; vahd_name?: string; city?: string }>>([]);
   const [selectedBranchId, setSelectedBranchId] = useState<string>('');
+  const [selectedSecondaryBranches, setSelectedSecondaryBranches] = useState<string[]>([]);
+  const [showSecondaryDropdown, setShowSecondaryDropdown] = useState(false);
+  const [secondarySearchQuery, setSecondarySearchQuery] = useState('');
+  const secondaryDropdownRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (secondaryDropdownRef.current && !secondaryDropdownRef.current.contains(event.target as Node)) {
+        setShowSecondaryDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Dynamic Master Data options (Gender, Blood Groups, Caste, Roles, Locations, Service Areas)
   const [dynamicBloodGroups, setDynamicBloodGroups] = useState<string[]>(() => {
@@ -479,6 +493,10 @@ export function EmployeeEnrollmentModal({
       if (employeeToEdit.branch_id || meta.branch_id) {
         setSelectedBranchId(employeeToEdit.branch_id || meta.branch_id);
       }
+      const rawSecondary = (employeeToEdit as any).secondary_branches || meta.secondary_branches || post.secondary_branches || [];
+      setSelectedSecondaryBranches(Array.isArray(rawSecondary) ? rawSecondary : []);
+      setShowSecondaryDropdown(false);
+      setSecondarySearchQuery('');
       setTechnicalSkills(post.technical_skills || (Array.isArray(employeeToEdit.skills) ? employeeToEdit.skills.join(', ') : ''));
       setBaseSalary(employeeToEdit.salary ? String(employeeToEdit.salary) : (employeeToEdit.base_monthly_salary ? String(employeeToEdit.base_monthly_salary) : ''));
       const rawStatus = employeeToEdit.status || (employeeToEdit.is_active === false ? 'Inactive' : 'Active');
@@ -539,6 +557,9 @@ export function EmployeeEnrollmentModal({
       setEmergencyContactNo('');
       setEmergencyNote('');
       setLocation('');
+      setSelectedSecondaryBranches([]);
+      setShowSecondaryDropdown(false);
+      setSecondarySearchQuery('');
       setDepartment('');
       setJobDesignation('');
       setJoiningDate(new Date().toISOString().split('T')[0]);
@@ -986,6 +1007,14 @@ export function EmployeeEnrollmentModal({
                   <span class="val">${safeVal(department)}</span>
                 </td>
               </tr>
+              ${selectedSecondaryBranches.length > 0 ? `
+              <tr style="background-color: #ffffff;">
+                <td colspan="2" style="border-left: none; border-right: none;">
+                  <span class="label">Secondary Organisation(s): </span>
+                  <span class="val" style="color: #6b21a8; font-weight: 600;">${safeVal(selectedSecondaryBranches.join(', '))}</span>
+                </td>
+              </tr>
+              ` : ''}
               <tr style="background-color: #ffffff;">
                 <td style="border-left: none;">
                   <span class="label">Job Designation: </span>
@@ -1254,6 +1283,7 @@ export function EmployeeEnrollmentModal({
       salary: parseFloat(baseSalary || '0') || 0,
       vahd_branch: location,
       branch_id: selectedBranchId || undefined,
+      secondary_branches: selectedSecondaryBranches,
       joined_date: joiningDate,
       avatar: photoBase64 || undefined,
       face_image: photoBase64 || undefined,
@@ -1266,6 +1296,7 @@ export function EmployeeEnrollmentModal({
       meta_data: {
         form_title: 'PERSONAL DETAILS FORM',
         employee_code: employeeCode,
+        secondary_branches: selectedSecondaryBranches,
         father_name: fatherName,
         dob,
         age,
@@ -1287,6 +1318,7 @@ export function EmployeeEnrollmentModal({
         },
         post_details: {
           location,
+          secondary_branches: selectedSecondaryBranches,
           department,
           designation: jobDesignation,
           joining_date: joiningDate,
@@ -1911,6 +1943,159 @@ export function EmployeeEnrollmentModal({
                         <option value={department}>{department}</option>
                       )}
                     </select>
+                  </div>
+                </div>
+
+                {/* Row 1B: Secondary Organisation(s) Multi-Select Checkbox Dropdown */}
+                <div className="p-2 bg-purple-50/40 relative">
+                  <div className="flex flex-col sm:flex-row sm:items-start gap-2">
+                    <div className="flex items-center gap-1.5 shrink-0 pt-1">
+                      <span className="font-bold text-purple-950">Secondary Organisation(s):</span>
+                      <span className="text-[10px] text-purple-700 bg-purple-200/80 px-2 py-0.5 rounded-full font-bold">
+                        {selectedSecondaryBranches.length} Selected
+                      </span>
+                    </div>
+
+                    <div className="flex-1 relative" ref={secondaryDropdownRef}>
+                      {/* Dropdown Toggle Button */}
+                      <div
+                        onClick={() => setShowSecondaryDropdown((prev) => !prev)}
+                        className="min-h-[34px] w-full bg-white border border-purple-300 rounded-lg px-2.5 py-1.5 cursor-pointer hover:border-purple-500 focus-within:ring-2 focus-within:ring-purple-400/40 transition flex items-center justify-between gap-2 shadow-xs"
+                      >
+                        <div className="flex flex-wrap items-center gap-1.5 flex-1 overflow-hidden">
+                          {selectedSecondaryBranches.length === 0 ? (
+                            <span className="text-purple-400 font-medium text-xs select-none">
+                              Click to select one or multiple secondary institutions / organisations...
+                            </span>
+                          ) : (
+                            selectedSecondaryBranches.map((branchName) => (
+                              <span
+                                key={branchName}
+                                className="inline-flex items-center gap-1 bg-purple-100 text-purple-900 border border-purple-300 rounded-md px-2 py-0.5 text-xs font-semibold shadow-2xs"
+                              >
+                                <span className="truncate max-w-[220px]">{branchName}</span>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedSecondaryBranches((prev) => prev.filter((b) => b !== branchName));
+                                  }}
+                                  className="text-purple-600 hover:text-red-600 rounded-full hover:bg-purple-200 p-0.5 leading-none font-bold"
+                                  title="Remove"
+                                >
+                                  ✕
+                                </button>
+                              </span>
+                            ))
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1 text-purple-600 shrink-0">
+                          <span className="text-[10px] uppercase font-bold text-purple-500">
+                            {showSecondaryDropdown ? 'Close' : 'Select'}
+                          </span>
+                          <svg
+                            className={`w-4 h-4 transition-transform duration-200 ${showSecondaryDropdown ? 'rotate-180' : ''}`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </div>
+                      </div>
+
+                      {/* Dropdown Menu Container */}
+                      {showSecondaryDropdown && (
+                        <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-purple-300 rounded-xl shadow-xl z-50 overflow-hidden text-xs divide-y divide-purple-100">
+                          {/* Search & Actions Bar */}
+                          <div className="p-2 bg-purple-50/70 flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={secondarySearchQuery}
+                              onChange={(e) => setSecondarySearchQuery(e.target.value)}
+                              placeholder="Search organisations / institutions..."
+                              className="flex-1 bg-white border border-purple-200 rounded-md px-2.5 py-1 text-xs outline-none focus:border-purple-500 text-purple-950 font-medium placeholder-purple-300"
+                              autoFocus
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const allLabels = branchesList
+                                  .filter((b) => b.id !== selectedBranchId)
+                                  .map((b) => getOrgBranchLabel(b));
+                                setSelectedSecondaryBranches(Array.from(new Set(allLabels)));
+                              }}
+                              className="text-[11px] font-bold text-purple-700 hover:text-purple-900 bg-purple-100 hover:bg-purple-200 px-2 py-1 rounded transition"
+                            >
+                              All
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedSecondaryBranches([])}
+                              className="text-[11px] font-bold text-slate-600 hover:text-red-700 bg-slate-100 hover:bg-red-50 px-2 py-1 rounded transition"
+                            >
+                              Clear
+                            </button>
+                          </div>
+
+                          {/* Scrollable Checkbox List */}
+                          <div className="max-h-56 overflow-y-auto p-1 divide-y divide-purple-50">
+                            {(() => {
+                              const filteredBranches = branchesList.filter((b) => {
+                                if (b.id && selectedBranchId && b.id === selectedBranchId) return false;
+                                const lbl = getOrgBranchLabel(b);
+                                if (!secondarySearchQuery.trim()) return true;
+                                return (
+                                  lbl.toLowerCase().includes(secondarySearchQuery.toLowerCase()) ||
+                                  (b.branch_name && b.branch_name.toLowerCase().includes(secondarySearchQuery.toLowerCase())) ||
+                                  (b.city && b.city.toLowerCase().includes(secondarySearchQuery.toLowerCase()))
+                                );
+                              });
+
+                              if (filteredBranches.length === 0) {
+                                return (
+                                  <div className="p-3 text-center text-purple-400 font-medium">
+                                    No other organisations / institutions found
+                                  </div>
+                                );
+                              }
+
+                              return filteredBranches.map((b) => {
+                                const label = getOrgBranchLabel(b);
+                                const isChecked = selectedSecondaryBranches.includes(label);
+                                return (
+                                  <label
+                                    key={b.id || label}
+                                    className={`flex items-center gap-2.5 px-3 py-2 cursor-pointer rounded-md transition select-none ${
+                                      isChecked ? 'bg-purple-100/70 font-bold text-purple-950' : 'hover:bg-purple-50 text-slate-800'
+                                    }`}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={isChecked}
+                                      onChange={() => {
+                                        setSelectedSecondaryBranches((prev) =>
+                                          prev.includes(label) ? prev.filter((item) => item !== label) : [...prev, label]
+                                        );
+                                      }}
+                                      className="w-4 h-4 text-purple-600 rounded border-purple-300 focus:ring-purple-400 cursor-pointer"
+                                    />
+                                    <div className="flex-1 flex items-center justify-between">
+                                      <span className="text-xs">{label}</span>
+                                      {b.city && (
+                                        <span className="text-[10px] text-purple-500 bg-purple-50 px-1.5 py-0.5 rounded font-normal">
+                                          {b.city}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </label>
+                                );
+                              });
+                            })()}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 

@@ -103,6 +103,10 @@ def get_ho_organizations(
                 Employee.vahd_branch == b.branch_name,
                 Employee.vahd_branch.ilike(f"%{b.branch_name}%"),
                 Employee.vahd_branch.ilike(f"%{b.vahd_name}%") if b.vahd_name else False,
+                cast(Employee.secondary_branches, String).ilike(f"%{b.id}%"),
+                cast(Employee.secondary_branches, String).ilike(f"%{b.branch_name}%"),
+                cast(Employee.meta_data, String).ilike(f"%{b.id}%"),
+                cast(Employee.meta_data, String).ilike(f"%{b.branch_name}%"),
                 Employee.owner_id.in_(owner_ids) if owner_ids else False
             ),
             or_(func.upper(Employee.status) == "ACTIVE", Employee.status == "ACTIVE", Employee.status == "Active", Employee.status.is_(None))
@@ -962,18 +966,26 @@ def _gather_ho_branch_attendance(
         b_conds = [
             Employee.branch_id == b.id,
             Employee.vahd_branch == b.branch_name,
+            cast(Employee.secondary_branches, String).ilike(f"%{b.id}%"),
+            cast(Employee.secondary_branches, String).ilike(f"%{b.branch_name}%"),
+            cast(Employee.meta_data, String).ilike(f"%{b.id}%"),
+            cast(Employee.meta_data, String).ilike(f"%{b.branch_name}%"),
         ]
         if getattr(b, 'branch_name', None):
             b_conds.append(Employee.vahd_branch.ilike(f"%{b.branch_name}%"))
         if getattr(b, 'vahd_name', None):
             b_conds.append(Employee.vahd_branch == b.vahd_name)
             b_conds.append(Employee.vahd_branch.ilike(f"%{b.vahd_name}%"))
+            b_conds.append(cast(Employee.secondary_branches, String).ilike(f"%{b.vahd_name}%"))
+            b_conds.append(cast(Employee.meta_data, String).ilike(f"%{b.vahd_name}%"))
 
         if target_branch_id and str(target_branch_id).lower() not in ["all", "", "none"]:
             b_conds.extend([
                 Employee.branch_id == target_branch_id,
                 Employee.vahd_branch == target_branch_id,
-                Employee.vahd_branch.ilike(f"%{target_branch_id}%")
+                Employee.vahd_branch.ilike(f"%{target_branch_id}%"),
+                cast(Employee.secondary_branches, String).ilike(f"%{target_branch_id}%"),
+                cast(Employee.meta_data, String).ilike(f"%{target_branch_id}%"),
             ])
 
         emps = db.query(Employee).filter(
@@ -1540,7 +1552,11 @@ def get_ho_organisations_matrix(
                 Employee.branch_id == b.id,
                 Employee.vahd_branch == b.branch_name,
                 Employee.vahd_branch.ilike(f"%{b.branch_name}%"),
-                Employee.vahd_branch.ilike(f"%{b.vahd_name}%") if b.vahd_name else False
+                Employee.vahd_branch.ilike(f"%{b.vahd_name}%") if b.vahd_name else False,
+                cast(Employee.secondary_branches, String).ilike(f"%{b.id}%"),
+                cast(Employee.secondary_branches, String).ilike(f"%{b.branch_name}%"),
+                cast(Employee.meta_data, String).ilike(f"%{b.id}%"),
+                cast(Employee.meta_data, String).ilike(f"%{b.branch_name}%")
             ),
             or_(func.upper(Employee.status) == "ACTIVE", Employee.status == "ACTIVE", Employee.status == "Active", Employee.status.is_(None))
         ).all()

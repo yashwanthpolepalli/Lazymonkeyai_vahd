@@ -240,6 +240,12 @@ class HrmsService:
                     b_conds = [Employee.branch_id.in_(b_ids)]
                     for bn in b_names:
                         b_conds.append(Employee.vahd_branch.ilike(f"%{bn}%"))
+                    for bid in b_ids:
+                        b_conds.append(cast(Employee.secondary_branches, String).ilike(f"%{bid}%"))
+                        b_conds.append(cast(Employee.meta_data, String).ilike(f"%{bid}%"))
+                    for bn in b_names:
+                        b_conds.append(cast(Employee.secondary_branches, String).ilike(f"%{bn}%"))
+                        b_conds.append(cast(Employee.meta_data, String).ilike(f"%{bn}%"))
                     query = query.filter(or_(*b_conds))
             elif user_role in ["OWNER"]:
                 owner_branches = db.query(vahdBranch).filter(
@@ -275,6 +281,12 @@ class HrmsService:
                     b_conds = [Employee.branch_id.in_(b_ids)]
                     for bn in b_names:
                         b_conds.append(Employee.vahd_branch.ilike(f"%{bn}%"))
+                    for bid in b_ids:
+                        b_conds.append(cast(Employee.secondary_branches, String).ilike(f"%{bid}%"))
+                        b_conds.append(cast(Employee.meta_data, String).ilike(f"%{bid}%"))
+                    for bn in b_names:
+                        b_conds.append(cast(Employee.secondary_branches, String).ilike(f"%{bn}%"))
+                        b_conds.append(cast(Employee.meta_data, String).ilike(f"%{bn}%"))
                     query = query.filter(or_(*b_conds))
         elif ho_id:
             query = query.filter(Employee.ho_id == ho_id)
@@ -293,6 +305,12 @@ class HrmsService:
             b_conds = [Employee.branch_id.in_(b_ids)]
             for bn in b_names:
                 b_conds.append(Employee.vahd_branch.ilike(f"%{bn}%"))
+            for bid in b_ids:
+                b_conds.append(cast(Employee.secondary_branches, String).ilike(f"%{bid}%"))
+                b_conds.append(cast(Employee.meta_data, String).ilike(f"%{bid}%"))
+            for bn in b_names:
+                b_conds.append(cast(Employee.secondary_branches, String).ilike(f"%{bn}%"))
+                b_conds.append(cast(Employee.meta_data, String).ilike(f"%{bn}%"))
             query = query.filter(or_(*b_conds))
 
         if department and department != "All Departments":
@@ -341,6 +359,7 @@ class HrmsService:
                 "ho_id": e.ho_id or "",
                 "owner_id": getattr(e, "owner_id", None) or "",
                 "emergency_contact": e.emergency_contact or "",
+                "secondary_branches": getattr(e, "secondary_branches", None) or (e.meta_data.get("secondary_branches") if (e.meta_data and isinstance(e.meta_data, dict)) else []) or [],
                 "meta_data": getattr(e, "meta_data", None) or {},
                 "created_at": e.created_at.isoformat() if e.created_at else None
             })
@@ -605,6 +624,10 @@ class HrmsService:
         })
 
         HrmsService.sync_employees_to_employees(db)
+        sec_branches = payload.get("secondary_branches") or []
+        if not sec_branches and payload.get("meta_data") and isinstance(payload.get("meta_data"), dict):
+            sec_branches = payload["meta_data"].get("secondary_branches") or payload["meta_data"].get("post_details", {}).get("secondary_branches") or []
+
         emp = db.query(Employee).filter(Employee.email == email).first()
         if not emp:
             emp = Employee(
@@ -623,6 +646,7 @@ class HrmsService:
                 salary=salary,
                 vahd_branch=vahd_branch,
                 branch_id=branch_id,
+                secondary_branches=sec_branches,
                 ho_id=ho_id,
                 owner_id=owner_id,
                 address=payload.get("address") or "",
@@ -637,6 +661,8 @@ class HrmsService:
         else:
             if payload.get("meta_data") and isinstance(payload.get("meta_data"), dict):
                 emp.meta_data = payload.get("meta_data")
+            if sec_branches:
+                emp.secondary_branches = sec_branches
             if department:
                 emp.department = department
             if designation:
@@ -708,6 +734,11 @@ class HrmsService:
                     except Exception:
                         val = 0.0
                 setattr(emp, key, val)
+
+        if "secondary_branches" in payload:
+            emp.secondary_branches = payload["secondary_branches"]
+        elif payload.get("meta_data") and isinstance(payload.get("meta_data"), dict) and "secondary_branches" in payload["meta_data"]:
+            emp.secondary_branches = payload["meta_data"]["secondary_branches"]
 
         # Sync back to employeeProfile if exists
         employee_id = emp_id.replace("emp_", "")
@@ -1559,9 +1590,20 @@ class HrmsService:
             if branch_id and str(branch_id).lower() not in ["all", "", "none", "undefined", "null"]:
                 emp_br_id = getattr(emp, "branch_id", None) if emp else (getattr(stu, "branch_id", None) if stu else None)
                 emp_br_name = getattr(emp, "vahd_branch", None) if emp else (getattr(stu, "primary_vahd_location", None) if stu else None)
+                emp_sec = getattr(emp, "secondary_branches", None) or (emp.meta_data.get("secondary_branches") if (emp and emp.meta_data and isinstance(emp.meta_data, dict)) else []) or []
+                sec_match = False
+                if emp_sec:
+                    for s in emp_sec:
+                        s_str = str(s).lower()
+                        if any(t_id.lower() in s_str or s_str in t_id.lower() for t_id in target_branch_ids if t_id) or \
+                           any(tn.lower() in s_str or s_str in tn.lower() for tn in target_branch_names if tn):
+                            sec_match = True
+                            break
+
                 matched_br = (
                     (emp_br_id and emp_br_id in target_branch_ids) or
-                    (emp_br_name and any(tn.lower() in emp_br_name.lower() or emp_br_name.lower() in tn.lower() for tn in target_branch_names))
+                    (emp_br_name and any(tn.lower() in emp_br_name.lower() or emp_br_name.lower() in tn.lower() for tn in target_branch_names)) or
+                    sec_match
                 )
                 if not matched_br:
                     continue
@@ -1802,6 +1844,27 @@ class HrmsService:
                                 StudentModel.user_id == t_usr.id
                             )
                         ).first()
+
+            if branch_id and str(branch_id).lower() not in ["all", "", "none", "undefined", "null"]:
+                emp_br_id = getattr(emp, "branch_id", None) if emp else (getattr(stu, "branch_id", None) if stu else None)
+                emp_br_name = getattr(emp, "vahd_branch", None) if emp else (getattr(stu, "primary_vahd_location", None) if stu else None)
+                emp_sec = getattr(emp, "secondary_branches", None) or (emp.meta_data.get("secondary_branches") if (emp and emp.meta_data and isinstance(emp.meta_data, dict)) else []) or []
+                sec_match = False
+                if emp_sec:
+                    for s in emp_sec:
+                        s_str = str(s).lower()
+                        if any(t_id.lower() in s_str or s_str in t_id.lower() for t_id in target_branch_ids if t_id) or \
+                           any(tn.lower() in s_str or s_str in tn.lower() for tn in target_branch_names if tn):
+                            sec_match = True
+                            break
+
+                matched_br = (
+                    (emp_br_id and emp_br_id in target_branch_ids) or
+                    (emp_br_name and any(tn.lower() in emp_br_name.lower() or emp_br_name.lower() in tn.lower() for tn in target_branch_names)) or
+                    sec_match
+                )
+                if not matched_br:
+                    continue
 
             if emp:
                 real_emp_id = emp.id

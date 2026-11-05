@@ -8,7 +8,7 @@ import uuid
 import datetime
 from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session
-from sqlalchemy import func, desc, or_
+from sqlalchemy import func, desc, or_, text
 
 from src.models.user import User
 from src.models.student import student
@@ -360,9 +360,54 @@ class SuperAdminService:
 
     @staticmethod
     def get_organization_detail(db: Session, org_id: str) -> Optional[Dict[str, Any]]:
-        branch = db.query(vahdBranch).filter(vahdBranch.id == org_id).first()
-        if not branch:
+        branch, ho_user, branches = SuperAdminService._resolve_organization_targets(db, org_id)
+        if not branch and not ho_user:
             return None
+
+        if not branch:
+            # Head Office account without branches
+            recent_audits = db.query(PlatformAuditLog).filter(
+                or_(PlatformAuditLog.organization_id == org_id, PlatformAuditLog.resource_id == ho_user.id)
+            ).order_by(desc(PlatformAuditLog.timestamp)).limit(10).all()
+            return {
+                "id": ho_user.id,
+                "name": getattr(ho_user, "organization_name", None) or (f"{ho_user.full_name}'s Head Office" if ho_user.full_name else "Head Office"),
+                "branch_name": "Main Head Office",
+                "city": "",
+                "address": "",
+                "owner": {
+                    "name": ho_user.full_name or "",
+                    "email": ho_user.email or "",
+                    "phone": ho_user.phone or "",
+                    "status": "Active" if ho_user.is_active else "Inactive"
+                },
+                "status": "Active" if ho_user.is_active else "Suspended",
+                "is_active": ho_user.is_active,
+                "plan": "Standard",
+                "monthly_fee": 0.0,
+                "stats": {
+                    "total_members": 0,
+                    "active_members": 0,
+                    "total_employees": 0,
+                    "branches_count": 0,
+                    "monthly_revenue": 0.0,
+                    "ai_credits_used": 0,
+                    "ai_credits_quota": 0,
+                    "storage_used_gb": 0.0,
+                    "storage_quota_gb": 0.0,
+                    "api_requests_monthly": 0
+                },
+                "devices": [],
+                "audit_history": [
+                    {
+                        "id": a.id,
+                        "action": a.action,
+                        "actor": a.actor_name or "System",
+                        "time": a.timestamp.strftime("%b %d, %H:%M:%S") if a.timestamp else ""
+                    }
+                    for a in recent_audits
+                ]
+            }
 
         owner = None
         if branch.owner_id:
@@ -817,74 +862,190 @@ class SuperAdminService:
                     if rem_c_uids:
                         db.query(User).filter(User.id.in_(rem_c_uids)).delete(synchronize_session=False)
 
+                    db.execute(text("DELETE FROM employee_profiles WHERE user_id = :uid"), {"uid": owner_id})
+                    db.execute(text("DELETE FROM students WHERE user_id = :uid OR owner_id = :uid OR employee_id = :uid"), {"uid": owner_id})
                     db.query(User).filter(
                         User.id == owner_id,
                         User.role == "OWNER"
                     ).delete(synchronize_session=False)
 
     @staticmethod
-    def _resolve_branch_for_deletion(db: Session, clean_id: str):
+    def _resolve_organization_targets(db: Session, clean_id: str):
         """
-        Resolve the primary vahdBranch for deletion given an identifier that may be:
-        - A vahdBranch.id  (normal case from listing when primary_branch exists)
-        - A User.id of an HO user (edge case from listing when no primary_branch found)
-        Returns (branch, ho_user) tuple or (None, None) if not found.
+        Resolves an organization identifier to its components:
+        Returns (primary_branch, ho_user, all_branches_list)
+        clean_id may be:
+        - A vahdBranch.id
+        - A User.id of an HO user
+        - A User.ho_id (or Branch.ho_id)
         """
-        # 1. Direct branch lookup
-        branch = db.query(vahdBranch).filter(vahdBranch.id == clean_id).first()
-        if branch:
-            return branch
+        clean_id = (clean_id or "").strip()
+        if not clean_id:
+            return None, None, []
 
-        # 2. The id may be an HO user id — look up branches by HO user id
-        ho_user = db.query(User).filter(
-            User.id == clean_id,
-            or_(func.upper(User.role) == "HEAD_OFFICE", func.upper(User.role) == "HO")
-        ).first()
+        branch = db.query(vahdBranch).filter(vahdBranch.id == clean_id).first()
+        ho_user = None
+
+        if branch:
+            if branch.ho_id:
+                ho_user = db.query(User).filter(
+                    or_(User.id == branch.ho_id, User.ho_id == branch.ho_id),
+                    or_(func.upper(User.role) == "HEAD_OFFICE", func.upper(User.role) == "HO")
+                ).first()
+            if not ho_user and branch.owner_id:
+                ho_user = db.query(User).filter(
+                    User.id == branch.owner_id,
+                    or_(func.upper(User.role) == "HEAD_OFFICE", func.upper(User.role) == "HO")
+                ).first()
+        else:
+            ho_user = db.query(User).filter(
+                or_(User.id == clean_id, User.ho_id == clean_id),
+                or_(func.upper(User.role) == "HEAD_OFFICE", func.upper(User.role) == "HO")
+            ).first()
+
+            if not ho_user:
+                # Check if clean_id is branch.ho_id
+                branch = db.query(vahdBranch).filter(vahdBranch.ho_id == clean_id).first()
+                if branch and branch.ho_id:
+                    ho_user = db.query(User).filter(
+                        or_(User.id == branch.ho_id, User.ho_id == branch.ho_id),
+                        or_(func.upper(User.role) == "HEAD_OFFICE", func.upper(User.role) == "HO")
+                    ).first()
+
+        branches = []
         if ho_user:
-            # Find primary branch linked to this HO user
-            branch = db.query(vahdBranch).filter(
+            branches = db.query(vahdBranch).filter(
                 or_(
                     vahdBranch.ho_id == ho_user.ho_id if ho_user.ho_id else False,
                     vahdBranch.id == ho_user.branch_id if ho_user.branch_id else False,
+                    vahdBranch.owner_id == ho_user.id
                 )
-            ).order_by(vahdBranch.created_at.asc()).first()
-            if branch:
-                return branch
+            ).all()
+            if not branch and branches:
+                branch = branches[0]
+        elif branch:
+            if branch.ho_id:
+                branches = db.query(vahdBranch).filter(vahdBranch.ho_id == branch.ho_id).all()
+            else:
+                branches = [branch]
 
-        return None
+        return branch, ho_user, branches
+
+    @staticmethod
+    def _delete_single_organization_target(db: Session, clean_id: str) -> tuple:
+        """
+        Deletes an organization target resolved by clean_id (branch ID, HO user ID, or ho_id).
+        Returns (success, org_name, branch_name).
+        """
+        branch, ho_user, branches = SuperAdminService._resolve_organization_targets(db, clean_id)
+        if not branch and not ho_user:
+            # Fallback: check if clean_id is an owner user that was listed as an organization
+            fallback_user = db.query(User).filter(
+                User.id == clean_id,
+                func.upper(User.role) != "SUPER_ADMIN"
+            ).first()
+            if fallback_user:
+                org_name = fallback_user.full_name or fallback_user.email
+                db.execute(text("DELETE FROM employee_profiles WHERE user_id = :uid"), {"uid": fallback_user.id})
+                db.execute(text("DELETE FROM students WHERE user_id = :uid OR owner_id = :uid OR employee_id = :uid"), {"uid": fallback_user.id})
+                db.delete(fallback_user)
+                return True, org_name, ""
+            return False, "", ""
+
+        org_name = (
+            (branch.vahd_name if branch and branch.vahd_name else None)
+            or (getattr(ho_user, "organization_name", None) if ho_user else None)
+            or (f"{ho_user.full_name}'s Head Office" if ho_user and ho_user.full_name else "Head Office")
+        )
+        branch_name = (branch.branch_name if branch and branch.branch_name else "") or ""
+
+        # 1. Cascade delete all linked branches and their data
+        for b in branches:
+            SuperAdminService._cascade_delete_branch_data(db, b)
+
+        # 2. If HO user exists, clean up any remaining HO-scoped records even if 0 branches
+        if ho_user:
+            ho_id = ho_user.ho_id or ho_user.id
+
+            from src.models import (
+                StudentAttendanceReportLog, Membership, BiometricLog, StudentCourse,
+                EmployeeAttendance, LeaveRequest, EmployeeLeaveBalance, AttendanceCorrection,
+                PayrollRecord, EmployeeDocument, EmployeePerformance, ExitRequest
+            )
+
+            # Clean students under this HO
+            ho_custs = db.query(student).filter(
+                or_(
+                    student.ho_id == ho_id,
+                    student.ho_id == ho_user.id,
+                    student.owner_id == ho_user.id
+                )
+            ).all()
+            ho_c_ids = [c.id for c in ho_custs if c.id]
+            ho_c_uids = [c.user_id for c in ho_custs if c.user_id]
+            if ho_c_ids:
+                db.query(StudentAttendanceReportLog).filter(StudentAttendanceReportLog.student_id.in_(ho_c_ids)).delete(synchronize_session=False)
+                db.query(Membership).filter(Membership.student_id.in_(ho_c_ids)).delete(synchronize_session=False)
+                db.query(BiometricLog).filter(BiometricLog.student_id.in_(ho_c_ids)).delete(synchronize_session=False)
+                db.query(StudentCourse).filter(StudentCourse.student_id.in_(ho_c_ids)).delete(synchronize_session=False)
+                db.query(student).filter(student.id.in_(ho_c_ids)).delete(synchronize_session=False)
+            if ho_c_uids:
+                db.query(User).filter(
+                    User.id.in_(ho_c_uids),
+                    User.role.in_(["student", "STUDENT", "MEMBER"])
+                ).delete(synchronize_session=False)
+
+            # Clean employees under this HO
+            ho_emps = db.query(Employee).filter(
+                or_(
+                    Employee.ho_id == ho_id,
+                    Employee.ho_id == ho_user.id,
+                    Employee.owner_id == ho_user.id
+                )
+            ).all()
+            ho_e_ids = [e.id for e in ho_emps if e.id]
+            ho_e_emails = [e.email for e in ho_emps if e.email]
+            if ho_e_ids:
+                db.query(EmployeeAttendance).filter(EmployeeAttendance.employee_id.in_(ho_e_ids)).delete(synchronize_session=False)
+                db.query(LeaveRequest).filter(LeaveRequest.employee_id.in_(ho_e_ids)).delete(synchronize_session=False)
+                db.query(EmployeeLeaveBalance).filter(EmployeeLeaveBalance.employee_id.in_(ho_e_ids)).delete(synchronize_session=False)
+                db.query(AttendanceCorrection).filter(AttendanceCorrection.employee_id.in_(ho_e_ids)).delete(synchronize_session=False)
+                db.query(PayrollRecord).filter(PayrollRecord.employee_id.in_(ho_e_ids)).delete(synchronize_session=False)
+                db.query(EmployeeDocument).filter(EmployeeDocument.employee_id.in_(ho_e_ids)).delete(synchronize_session=False)
+                db.query(EmployeePerformance).filter(EmployeePerformance.employee_id.in_(ho_e_ids)).delete(synchronize_session=False)
+                db.query(ExitRequest).filter(ExitRequest.employee_id.in_(ho_e_ids)).delete(synchronize_session=False)
+                db.query(Employee).filter(Employee.id.in_(ho_e_ids)).delete(synchronize_session=False)
+            if ho_e_emails:
+                db.query(User).filter(
+                    User.email.in_(ho_e_emails),
+                    User.role.in_(["EMPLOYEE", "employee", "STAFF", "COACH"])
+                ).delete(synchronize_session=False)
+
+            # Clean owners under this HO
+            db.query(User).filter(
+                User.role == "OWNER",
+                or_(User.ho_id == ho_id, User.ho_id == ho_user.id)
+            ).delete(synchronize_session=False)
+
+            # Clean foreign key references in employee_profiles and students for ho_user.id
+            db.execute(text("DELETE FROM employee_profiles WHERE user_id = :uid"), {"uid": ho_user.id})
+            db.execute(text("DELETE FROM students WHERE user_id = :uid OR owner_id = :uid OR employee_id = :uid"), {"uid": ho_user.id})
+
+            # Delete the HO user account
+            db.query(User).filter(
+                or_(User.id == ho_user.id, User.ho_id == ho_id),
+                or_(func.upper(User.role) == "HEAD_OFFICE", func.upper(User.role) == "HO")
+            ).delete(synchronize_session=False)
+
+        return True, org_name, branch_name
 
     @staticmethod
     def delete_organization(db: Session, vahd_id: str, actor_info: Optional[dict] = None) -> Dict[str, Any]:
         clean_id = (vahd_id or "").strip()
 
-        # Resolve branch using consistent dual-path resolution (branch ID or HO user ID)
-        branch = SuperAdminService._resolve_branch_for_deletion(db, clean_id)
-        if not branch:
+        success, org_name, branch_name = SuperAdminService._delete_single_organization_target(db, clean_id)
+        if not success:
             return {"success": False, "message": "Organization not found"}
-
-        vahd_name = branch.vahd_name or "Organization"
-        branch_name = branch.branch_name or ""
-        ho_id = branch.ho_id
-
-        # Cascade delete all child branches under the same HO
-        if ho_id:
-            child_branches = db.query(vahdBranch).filter(
-                vahdBranch.ho_id == ho_id,
-                vahdBranch.id != branch.id
-            ).all()
-            for cb in child_branches:
-                SuperAdminService._cascade_delete_branch_data(db, cb)
-
-        SuperAdminService._cascade_delete_branch_data(db, branch)
-
-        # Also delete the HO user account itself if it still exists and has no remaining branches
-        if ho_id:
-            remaining = db.query(vahdBranch).filter(vahdBranch.ho_id == ho_id).count()
-            if remaining == 0:
-                db.query(User).filter(
-                    User.id == ho_id,
-                    or_(func.upper(User.role) == "HEAD_OFFICE", func.upper(User.role) == "HO")
-                ).delete(synchronize_session=False)
 
         # Audit log event
         actor_name, actor_email = SuperAdminService._resolve_actor(db, actor_info)
@@ -893,18 +1054,18 @@ class SuperAdminService:
             actor_name=actor_name,
             actor_email=actor_email,
             organization_id=clean_id,
-            organization_name=vahd_name,
+            organization_name=org_name,
             action="DELETE_ORGANIZATION",
             resource_type="organization",
             resource_id=clean_id,
-            new_value={"vahd_id": clean_id, "vahd_name": vahd_name, "branch_name": branch_name}
+            new_value={"vahd_id": clean_id, "vahd_name": org_name, "branch_name": branch_name}
         )
         db.add(log)
         db.commit()
 
         return {
             "success": True,
-            "message": f"Organization '{vahd_name}'{f' ({branch_name})' if branch_name else ''} deleted successfully."
+            "message": f"Organization '{org_name}'{f' ({branch_name})' if branch_name else ''} deleted successfully."
         }
 
     @staticmethod
@@ -914,28 +1075,15 @@ class SuperAdminService:
 
         deleted_count = 0
         deleted_names = []
-        seen_ho_ids: set = set()
 
         for gid in org_ids:
             clean_id = (gid or "").strip()
             if not clean_id:
                 continue
-            # Use consistent dual-path resolution (branch ID or HO user ID)
-            branch = SuperAdminService._resolve_branch_for_deletion(db, clean_id)
-            if branch:
-                vahd_name = branch.vahd_name or clean_id
-                deleted_names.append(f"{vahd_name} ({clean_id})")
-                ho_id = branch.ho_id
-                SuperAdminService._cascade_delete_branch_data(db, branch)
-                # Also clean up HO user if all their branches are now gone
-                if ho_id and ho_id not in seen_ho_ids:
-                    seen_ho_ids.add(ho_id)
-                    remaining = db.query(vahdBranch).filter(vahdBranch.ho_id == ho_id).count()
-                    if remaining == 0:
-                        db.query(User).filter(
-                            User.id == ho_id,
-                            or_(func.upper(User.role) == "HEAD_OFFICE", func.upper(User.role) == "HO")
-                        ).delete(synchronize_session=False)
+
+            success, org_name, _ = SuperAdminService._delete_single_organization_target(db, clean_id)
+            if success:
+                deleted_names.append(f"{org_name} ({clean_id})")
                 deleted_count += 1
 
         if deleted_count > 0:
@@ -997,36 +1145,48 @@ class SuperAdminService:
 
     @staticmethod
     def update_vahd_status(db: Session, vahd_id: str, status: str, actor_info: Optional[dict] = None) -> Dict[str, Any]:
-        branch = db.query(vahdBranch).filter(vahdBranch.id == vahd_id).first()
-        if not branch:
-            return {"success": False, "message": "vahd branch not found"}
+        branch, ho_user, branches = SuperAdminService._resolve_organization_targets(db, vahd_id)
+        if not branch and not ho_user:
+            return {"success": False, "message": "Organization not found"}
 
-        old_status = "Active" if branch.is_active else "Suspended"
         is_active = (status.lower() == "active")
-        branch.is_active = is_active
+
+        if branch:
+            old_status = "Active" if branch.is_active else "Suspended"
+            branch.is_active = is_active
+            for b in branches:
+                b.is_active = is_active
+            org_name = branch.vahd_name
+        else:
+            old_status = "Active" if ho_user.is_active else "Suspended"
+            org_name = ho_user.full_name or ho_user.email
+
+        if ho_user:
+            ho_user.is_active = is_active
 
         # Also sync associated owner / branch users
-        try:
-            db.query(User).filter(
-                or_(
-                    User.ho_id == branch.id,
-                    User.branch_id == branch.id,
-                    User.email == branch.email
-                )
-            ).update({"is_active": is_active}, synchronize_session=False)
-        except Exception:
-            pass
+        if branch:
+            try:
+                db.query(User).filter(
+                    or_(
+                        User.ho_id == branch.id,
+                        User.branch_id == branch.id,
+                        User.email == branch.email
+                    )
+                ).update({"is_active": is_active}, synchronize_session=False)
+            except Exception:
+                pass
 
         # Audit log event
         actor_name, actor_email = SuperAdminService._resolve_actor(db, actor_info)
         log = PlatformAuditLog(
             actor_name=actor_name,
             actor_email=actor_email,
-            organization_id=branch.id,
-            organization_name=branch.vahd_name,
+            organization_id=vahd_id,
+            organization_name=org_name,
             action="CHANGE_ORGANIZATION_STATUS",
             resource_type="organization",
-            resource_id=branch.id,
+            resource_id=vahd_id,
             old_value={"status": old_status},
             new_value={"status": "Active" if is_active else "Suspended"}
         )

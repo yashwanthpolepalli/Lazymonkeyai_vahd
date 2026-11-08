@@ -2,9 +2,9 @@ import uuid
 from typing import List, Dict, Any, Optional
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
-from src.models.settings import GymBranch, GymSetting, PaymentMethod, MasterData
-from src.models.hrms import Department, Designation
-from src.models.customer import Customer
+from src.models.settings import vahdBranch, vahdSetting, PaymentMethod, MasterData
+from src.models.hrms import Department, Designation, Employee
+from src.models.student import student
 from src.models.biometric_device import BiometricDevice
 
 class SettingsService:
@@ -14,33 +14,33 @@ class SettingsService:
         """
         Returns registered branches scoped by owner_id and role.
         """
-        query = db.query(GymBranch).filter(GymBranch.is_active == True)
+        query = db.query(vahdBranch).filter(vahdBranch.is_active == True)
 
         effective_owner_id = owner_id
         if current_user:
             role = (current_user.role or "").strip().upper()
             if role in ["SUPER_ADMIN", "SUPERADMIN", "ADMIN"]:
                 if owner_id:
-                    query = query.filter(GymBranch.owner_id == owner_id)
+                    query = query.filter(vahdBranch.owner_id == owner_id)
             elif role in ["HEAD_OFFICE", "HO"]:
                 ho_target = current_user.ho_id or current_user.id
-                query = query.filter(or_(GymBranch.ho_id == ho_target, GymBranch.owner_id == current_user.id))
+                query = query.filter(or_(vahdBranch.ho_id == ho_target, vahdBranch.owner_id == current_user.id))
             elif role in ["OWNER"]:
                 effective_owner_id = current_user.id
-                branch_conditions = [GymBranch.owner_id == current_user.id]
+                branch_conditions = [vahdBranch.owner_id == current_user.id]
                 if current_user.branch_id:
-                    branch_conditions.append(GymBranch.id == current_user.branch_id)
+                    branch_conditions.append(vahdBranch.id == current_user.branch_id)
                 query = query.filter(or_(*branch_conditions))
-            elif role in ["TRAINER", "STAFF", "CUSTOMER", "MEMBER"]:
+            elif role in ["employee", "STAFF", "student", "MEMBER"]:
                 if current_user.branch_id:
-                    query = query.filter(GymBranch.id == current_user.branch_id)
+                    query = query.filter(vahdBranch.id == current_user.branch_id)
 
         branches = query.all()
 
         if not branches and not current_user:
             distinct_locs = (
-                db.query(Customer.primary_gym_location)
-                .filter(Customer.primary_gym_location.isnot(None))
+                db.query(student.primary_vahd_location)
+                .filter(student.primary_vahd_location.isnot(None))
                 .distinct()
                 .all()
             )
@@ -51,22 +51,22 @@ class SettingsService:
                     b_name = parts[0].strip()
                     c_name = parts[1].strip() if len(parts) > 1 else ""
                     b_id = f"vahd_{uuid.uuid4().hex[:10]}"
-                    new_b = GymBranch(id=b_id, gym_name=b_name, branch_name=b_name, city=c_name, is_active=True)
+                    new_b = vahdBranch(id=b_id, vahd_name=b_name, branch_name=b_name, city=c_name, is_active=True)
                     db.add(new_b)
             db.commit()
-            branches = db.query(GymBranch).filter(GymBranch.is_active == True).all()
+            branches = db.query(vahdBranch).filter(vahdBranch.is_active == True).all()
 
         result = []
         for b in branches:
-            member_count = db.query(Customer).filter(
-                (Customer.branch_id == b.id) | 
-                (Customer.primary_gym_location.ilike(f"%{b.branch_name}%"))
+            member_count = db.query(student).filter(
+                (student.branch_id == b.id) | 
+                (student.primary_vahd_location.ilike(f"%{b.branch_name}%"))
             ).count()
             device_count = db.query(BiometricDevice).filter(BiometricDevice.location.ilike(f"%{b.branch_name}%")).count()
 
             result.append({
                 "id": b.id,
-                "gym_name": b.gym_name or b.branch_name,
+                "vahd_name": b.vahd_name or b.branch_name,
                 "branch_name": b.branch_name,
                 "city": b.city or "",
                 "address": b.address or (f"{b.branch_name}, {b.city}" if b.city else b.branch_name),
@@ -80,14 +80,14 @@ class SettingsService:
         return result
 
     @staticmethod
-    def create_branch(db: Session, data: Dict[str, Any], current_user: Any = None) -> GymBranch:
+    def create_branch(db: Session, data: Dict[str, Any], current_user: Any = None) -> vahdBranch:
         from src.config.settings import settings
         branch_id = f"branch_{uuid.uuid4().hex[:6]}"
         owner_id = (current_user.id if current_user else None) or data.get("owner_id")
         ho_id = (current_user.ho_id if current_user and current_user.ho_id else None) or (current_user.id if current_user and getattr(current_user, "role", "") in ["HEAD_OFFICE", "HO"] else None) or data.get("ho_id")
-        b = GymBranch(
+        b = vahdBranch(
             id=branch_id,
-            gym_name=data.get("gym_name") or settings.GYM_NAME,
+            vahd_name=data.get("vahd_name") or settings.vahd_NAME,
             branch_name=data["branch_name"],
             city=data.get("city") or "",
             address=data.get("address"),
@@ -101,12 +101,12 @@ class SettingsService:
         return b
 
     @staticmethod
-    def get_settings(db: Session) -> GymSetting:
-        setting = db.query(GymSetting).filter(GymSetting.id == "default").first()
+    def get_settings(db: Session) -> vahdSetting:
+        setting = db.query(vahdSetting).filter(vahdSetting.id == "default").first()
         if not setting:
-            setting = GymSetting(
+            setting = vahdSetting(
                 id="default",
-                gym_name="",
+                vahd_name="",
                 address="",
                 phone="",
                 gstin="",
@@ -137,20 +137,30 @@ class SettingsService:
         return setting
 
     @staticmethod
-    def update_settings(db: Session, data: Dict[str, Any]) -> GymSetting:
-        setting = db.query(GymSetting).filter(GymSetting.id == "default").first()
+    def update_settings(db: Session, data: Dict[str, Any]) -> vahdSetting:
+        setting = db.query(vahdSetting).filter(vahdSetting.id == "default").first()
         if not setting:
-            setting = GymSetting(id="default")
+            setting = vahdSetting(id="default")
             db.add(setting)
 
-        if "gym_name" in data:
-            setting.gym_name = data.get("gym_name", "")
+        if "vahd_name" in data:
+            setting.vahd_name = data.get("vahd_name", "")
         if "address" in data:
             setting.address = data.get("address", "")
         if "phone" in data:
             setting.phone = data.get("phone", "")
+        if "email" in data:
+            setting.email = data.get("email", "")
         if "gstin" in data:
             setting.gstin = data.get("gstin", "")
+        if "currency" in data:
+            setting.currency = data.get("currency", "")
+        if "timezone" in data:
+            setting.timezone = data.get("timezone", "")
+        if "opening_time" in data:
+            setting.opening_time = data.get("opening_time", "")
+        if "closing_time" in data:
+            setting.closing_time = data.get("closing_time", "")
         if "essl_bioserver_url" in data:
             setting.essl_bioserver_url = data.get("essl_bioserver_url", "")
         if "enable_auto_sms" in data:
@@ -201,9 +211,9 @@ class SettingsService:
         return setting
 
     @staticmethod
-    def get_billing_dict(setting: GymSetting) -> Dict[str, Any]:
+    def get_billing_dict(setting: vahdSetting) -> Dict[str, Any]:
         return {
-            "gym_name": setting.gym_name or "",
+            "vahd_name": setting.vahd_name or "",
             "address": setting.address or "",
             "gstin": setting.gstin or "",
             "sac_code": setting.sac_code or "",
@@ -279,6 +289,83 @@ class SettingsService:
                 "created_at": it.created_at.isoformat() if it.created_at else None,
             })
 
+        # Helper to classify departments dynamically
+        def infer_dept_type(dept_name: str, cur_extra: str = "") -> str:
+            if cur_extra and cur_extra.strip():
+                val = cur_extra.strip().lower()
+                if val in ("student", "students", "academic"):
+                    return "student"
+                if val in ("employee", "employees", "staff"):
+                    return "employee"
+                if val in ("both", "all"):
+                    return "both"
+            n = (dept_name or "").lower()
+            student_keywords = [
+                "computer", "science", "mechanical", "civil", "electrical", "electronics",
+                "engineering", "tech", "data", "ai", "bba", "mca", "mba", "commerce",
+                "humanities", "polytechnic", "physics", "chemistry", "mathematics",
+                "biology", "sports", "student", "academic", "stream", "curriculum",
+                "cse", "ece", "eee", "it", "batch", "degree", "class", "course"
+            ]
+            employee_keywords = [
+                "hr", "human resource", "payroll", "admin", "management", "finance",
+                "account", "operations", "facility", "facilities", "security", "transport",
+                "housekeeping", "logistics", "maintenance", "reception", "desk",
+                "faculty", "teaching", "staff", "office", "executive", "it support",
+                "administrative", "manager"
+            ]
+            is_stud = any(k in n for k in student_keywords)
+            is_emp = any(k in n for k in employee_keywords)
+            if is_stud and not is_emp:
+                return "student"
+            if is_emp and not is_stud:
+                return "employee"
+            return "both"
+
+        # Calculate employee and student counts per department
+        dept_emp_counts: Dict[str, int] = {}
+        try:
+            for e in db.query(Employee).all():
+                ed = (getattr(e, "department", None) or "").strip().lower()
+                if ed:
+                    dept_emp_counts[ed] = dept_emp_counts.get(ed, 0) + 1
+        except Exception:
+            pass
+
+        dept_stud_counts: Dict[str, int] = {}
+        try:
+            for s in db.query(student).all():
+                sm = s.meta_data if isinstance(s.meta_data, dict) else {}
+                sd = (sm.get("department") or sm.get("dept") or sm.get("branchdept") or getattr(s, "specialization", None) or "").strip().lower()
+                if sd:
+                    dept_stud_counts[sd] = dept_stud_counts.get(sd, 0) + 1
+        except Exception:
+            pass
+
+        # Update department items with counts and dynamic classification
+        for it in item_dicts:
+            if it.get("category") == "departments":
+                d_name = (it.get("name") or "").strip().lower()
+                ec = dept_emp_counts.get(d_name, 0)
+                sc = dept_stud_counts.get(d_name, 0)
+                it["employee_count"] = ec
+                it["student_count"] = sc
+                cur_extra = (it.get("extra_info") or "").strip().lower()
+                if cur_extra in ("student", "students", "academic"):
+                    it["extra_info"] = "student"
+                elif cur_extra in ("employee", "employees", "staff"):
+                    it["extra_info"] = "employee"
+                elif cur_extra in ("both", "all"):
+                    it["extra_info"] = "both"
+                elif ec > 0 and sc == 0:
+                    it["extra_info"] = "employee"
+                elif sc > 0 and ec == 0:
+                    it["extra_info"] = "student"
+                elif ec > 0 and sc > 0:
+                    it["extra_info"] = "both"
+                else:
+                    it["extra_info"] = infer_dept_type(it.get("name", ""), "")
+
         # Also merge departments from hrms_departments if category is 'departments' or all
         if not category or category == "departments":
             existing_dept_names = {d["name"].lower() for d in item_dicts if d["category"] == "departments"}
@@ -286,6 +373,18 @@ class SettingsService:
             for d in db_depts:
                 if d.name and d.name.lower() not in existing_dept_names:
                     existing_dept_names.add(d.name.lower())
+                    d_name = d.name.strip().lower()
+                    ec = dept_emp_counts.get(d_name, 0)
+                    sc = dept_stud_counts.get(d_name, 0)
+                    if ec > 0 and sc == 0:
+                        d_type = "employee"
+                    elif sc > 0 and ec == 0:
+                        d_type = "student"
+                    elif ec > 0 and sc > 0:
+                        d_type = "both"
+                    else:
+                        d_type = infer_dept_type(d.name, "")
+
                     item_dicts.append({
                         "id": d.id,
                         "category": "departments",
@@ -295,7 +394,9 @@ class SettingsService:
                         "is_active": d.is_active is not False,
                         "parent_id": "",
                         "parent_name": "",
-                        "extra_info": "",
+                        "extra_info": d_type,
+                        "employee_count": ec,
+                        "student_count": sc,
                         "level": "",
                         "display_order": 0,
                         "created_at": d.created_at.isoformat() if d.created_at else None,
@@ -351,7 +452,7 @@ class SettingsService:
         is_active = bool(data.get("is_active", True))
         parent_id = str(data.get("parent_id") or "").strip() or None
         parent_name = str(data.get("parent_name") or "").strip() or None
-        extra_info = str(data.get("extra_info") or "").strip() or None
+        extra_info = str(data.get("extra_info") or data.get("applicable_to") or data.get("type") or "").strip() or None
         level = str(data.get("level") or "").strip() or None
         display_order = int(data.get("display_order") or 0)
 
@@ -486,8 +587,8 @@ class SettingsService:
                 item.parent_id = parent_id
             if "parent_name" in data:
                 item.parent_name = parent_name
-            if "extra_info" in data:
-                item.extra_info = extra_info
+            if "extra_info" in data or "applicable_to" in data or "type" in data:
+                item.extra_info = str(data.get("extra_info") or data.get("applicable_to") or data.get("type") or "").strip() or None
             if "level" in data:
                 item.level = level
 
@@ -557,4 +658,4 @@ class SettingsService:
         return True
 
 # Alias for backwards compatibility
-GymSettingService = SettingsService
+vahdSettingService = SettingsService

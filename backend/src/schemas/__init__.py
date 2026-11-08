@@ -1,5 +1,5 @@
 from .auth import Token, TokenData, LoginRequest, UserResponse
-from .customer import CustomerCreate, CustomerResponse
+from .student import studentCreate, studentResponse
 from .biometrics import (
     BiometricDeviceCreate,
     BiometricCheckinCreate,
@@ -12,8 +12,8 @@ __all__ = [
     "TokenData",
     "LoginRequest",
     "UserResponse",
-    "CustomerCreate",
-    "CustomerResponse",
+    "studentCreate",
+    "studentResponse",
     "BiometricDeviceCreate",
     "BiometricCheckinCreate",
     "BiometricEnrollmentRequest",

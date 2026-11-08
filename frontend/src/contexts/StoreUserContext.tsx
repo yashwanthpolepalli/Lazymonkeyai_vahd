@@ -73,7 +73,7 @@ export function StoreUserProvider({ children }: { children: React.ReactNode }) {
     const newUser: StoreUser = {
       id: `CUST-LM-${Math.floor(1000 + Math.random() * 9000)}`,
       name: defaultName,
-      firstName: parts[0] || "Customer",
+      firstName: parts[0] || "student",
       lastName: parts.slice(1).join(" ") || "User",
       email: email,
       phone: "+971 50 882 1920",
@@ -89,13 +89,13 @@ export function StoreUserProvider({ children }: { children: React.ReactNode }) {
 
   const register = (userData: Partial<StoreUser>) => {
     const fName = userData.firstName || "New";
-    const lName = userData.lastName || "Customer";
+    const lName = userData.lastName || "student";
     const newUser: StoreUser = {
       id: `CUST-LM-${Math.floor(1000 + Math.random() * 9000)}`,
       name: `${fName} ${lName}`.trim(),
       firstName: fName,
       lastName: lName,
-      email: userData.email || "customer@lazymonkey.com",
+      email: userData.email || "student@lazymonkey.com",
       phone: userData.phone || "+971 50 123 4567",
       address: userData.address || "Marina Walk, Tower 2",
       city: userData.city || "Dubai",

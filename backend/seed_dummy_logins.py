@@ -4,7 +4,7 @@ Seed Dummy Testing Logins & Default Data
 ----------------------------------------
 Populates the database (SQLite or PostgreSQL) with working demo accounts
 for all 5 platform roles, along with default organization, branch,
-trainer profile, employee, and student/customer records.
+employee profile, HRMS employee, and student records.
 
 Usage:
     python seed_dummy_logins.py
@@ -23,10 +23,10 @@ from src.database.base import Base
 import src.models
 
 from src.models.user import User
-from src.models.settings import GymBranch, Setting
-from src.models.trainer import TrainerProfile
+from src.models.settings import Branch, Setting
+from src.models.employee import EmployeeProfile
 from src.models.hrms import Employee, Department
-from src.models.customer import Customer
+from src.models.student import student
 from src.models.membership import Membership
 from src.utils.security import hash_password
 from src.utils.timezone import now_ist_naive
@@ -77,7 +77,7 @@ DUMMY_USERS = [
         "id": "usr_owner_main",
         "email": "owner@vahd.com",
         "password": DEFAULT_PASSWORD,
-        "full_name": "Main Gym Owner",
+        "full_name": "Main VAHD Owner",
         "role": "OWNER",
         "phone": "+91 9900000003",
         "is_platform_admin": False,
@@ -90,7 +90,7 @@ DUMMY_USERS = [
         "id": "usr_trainer_main",
         "email": "employee@vahd.com",
         "password": DEFAULT_PASSWORD,
-        "full_name": "Alex Staff (Senior Trainer)",
+        "full_name": "Alex Staff (Senior Instructor)",
         "role": "EMPLOYEE",
         "phone": "+91 9900000004",
         "is_platform_admin": False,
@@ -104,7 +104,7 @@ DUMMY_USERS = [
         "id": "usr_student_main",
         "email": "student@vahd.com",
         "password": DEFAULT_PASSWORD,
-        "full_name": "John Student (Member)",
+        "full_name": "John Student (Enrolled)",
         "role": "STUDENT",
         "phone": "+91 9900000005",
         "is_platform_admin": False,
@@ -136,12 +136,12 @@ def seed_database():
             )
             db.add(setting)
             db.flush()
-            print("  ✅ Default Gym Setting created.")
+            print("  ✅ Default Setting created.")
 
         # ── 2. Default Branch ────────────────────────────────────────────────
-        branch = db.query(GymBranch).filter(GymBranch.id == "branch_main").first()
+        branch = db.query(Branch).filter(Branch.id == "branch_main").first()
         if not branch:
-            branch = GymBranch(
+            branch = Branch(
                 id="branch_main",
                 gym_name="VAHD Enterprise Platform",
                 branch_name="Main Headquarters Branch",
@@ -156,13 +156,13 @@ def seed_database():
             print("  ✅ Default Main Branch created.")
 
         # ── 3. Default Department ────────────────────────────────────────────
-        dept = db.query(Department).filter(Department.name == "Fitness & Training").first()
+        dept = db.query(Department).filter(Department.name == "Instruction & Operations").first()
         if not dept:
             dept = Department(
-                id="dept_fitness",
-                name="Fitness & Training",
-                code="FIT",
-                description="Core Fitness and Training Staff",
+                id="dept_instruction",
+                name="Instruction & Operations",
+                code="INST",
+                description="Core Teaching & Operations Staff",
                 head_name="Alex Staff",
                 is_active=True,
             )
@@ -205,25 +205,24 @@ def seed_database():
                 db.flush()
                 print(f"  ✨ Created user [{u_data['role']}]: {clean_email}")
 
-        # ── 5. Employee / Trainer Profiles ──────────────────────────────────
-        trainer = db.query(TrainerProfile).filter(TrainerProfile.email == "employee@vahd.com").first()
+        # ── 5. Employee Profiles ────────────────────────────────────────────
+        trainer = db.query(EmployeeProfile).filter(EmployeeProfile.email == "employee@vahd.com").first()
         if not trainer:
-            trainer = TrainerProfile(
-                id="tr_employee_main",
+            trainer = EmployeeProfile(
+                id="emp_prof_main",
                 user_id="usr_trainer_main",
-                full_name="Alex Staff (Senior Trainer)",
+                full_name="Alex Staff (Senior Instructor)",
                 email="employee@vahd.com",
                 phone="+91 9900000004",
                 gender="Male",
-                role="TRAINER",
-                specialization="Strength & Conditioning, Functional Fitness",
-                primary_gym_location="branch_main",
+                role="EMPLOYEE",
+                specialization="Technical Skills & Core Operations",
+                primary_vahd_location="branch_main",
                 base_monthly_salary=50000.0,
-                pt_session_rate=600.0,
                 is_active=True,
             )
             db.add(trainer)
-            print("  ✅ Trainer Profile created for employee@vahd.com.")
+            print("  ✅ Employee Profile created for employee@vahd.com.")
 
         emp = db.query(Employee).filter(Employee.email == "employee@vahd.com").first()
         if not emp:
@@ -235,8 +234,8 @@ def seed_database():
                 email="employee@vahd.com",
                 phone="+91 9900000004",
                 gender="Male",
-                designation="Senior Fitness Coach",
-                department="Fitness & Training",
+                designation="Senior Instructor",
+                department="Instruction & Operations",
                 branch_id="branch_main",
                 ho_id="ho_main",
                 owner_id="usr_owner_main",
@@ -246,40 +245,35 @@ def seed_database():
             db.add(emp)
             print("  ✅ HRMS Employee record created for employee@vahd.com.")
 
-        # ── 6. Student / Customer Profile & Membership ──────────────────────
-        cust = db.query(Customer).filter(Customer.email == "student@vahd.com").first()
-        if not cust:
-            cust = Customer(
-                id="cust_student_main",
+        # ── 6. Student Profile & Membership ─────────────────────────────────
+        stu = db.query(student).filter(student.email == "student@vahd.com").first()
+        if not stu:
+            stu = student(
+                id="stu_student_main",
                 user_id="usr_student_main",
-                full_name="John Student (Member)",
+                full_name="John Student (Enrolled)",
                 email="student@vahd.com",
                 phone="+91 9900000005",
                 gender="Male",
                 member_code="STU001",
                 age=24,
-                weight=72.5,
-                height=178.0,
-                bmi=22.9,
-                fitness_score=88,
-                goal="Muscle Building & Core Strength",
                 branch_id="branch_main",
                 ho_id="ho_main",
                 owner_id="usr_owner_main",
-                primary_gym_location="branch_main",
+                primary_vahd_location="branch_main",
                 status="ACTIVE",
             )
-            db.add(cust)
+            db.add(stu)
             db.flush()
-            print("  ✅ Customer / Student profile created for student@vahd.com.")
+            print("  ✅ Student profile created for student@vahd.com.")
 
-        mem = db.query(Membership).filter(Membership.customer_id == "cust_student_main").first()
+        mem = db.query(Membership).filter(Membership.customer_id == "stu_student_main").first()
         if not mem:
             now = now_ist_naive()
             mem = Membership(
                 id="mem_student_main",
-                customer_id="cust_student_main",
-                plan_name="Gold Annual All-Access Membership",
+                customer_id="stu_student_main",
+                plan_name="Annual Professional Certification Course",
                 plan_type="Annual",
                 status="ACTIVE",
                 start_date=now,
@@ -290,7 +284,7 @@ def seed_database():
                 payment_method="UPI",
             )
             db.add(mem)
-            print("  ✅ Active Membership created for student@vahd.com.")
+            print("  ✅ Active Enrollment / Membership created for student@vahd.com.")
 
         db.commit()
         print("\n" + "=" * 70)
@@ -314,4 +308,3 @@ def seed_database():
 
 if __name__ == "__main__":
     seed_database()
-

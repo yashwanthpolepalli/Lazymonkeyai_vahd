@@ -9,7 +9,7 @@ from sqlalchemy import desc
 
 from src.database.session import get_db
 from src.models.membership import Membership
-from src.models.customer import Customer
+from src.models.student import student
 from src.models.plan import MembershipPlan
 from src.models.pos import PosTransaction
 from src.models.hrms import (
@@ -20,7 +20,7 @@ from src.models.hrms import (
     SalesCommission,
 )
 from src.models.payroll import PayrollInvoice
-from src.models.trainer import TrainerProfile
+from src.models.employee import employeeProfile
 from src.services.pinelabs_service import PineLabsService
 from src.services.razorpay_service import RazorpayService
 
@@ -32,7 +32,7 @@ router = APIRouter(prefix="/payments", tags=["Payments"])
 class PineLabsChargeRequest(BaseModel):
     amount: float
     bill_number: str
-    customer_mobile: Optional[str] = None
+    student_mobile: Optional[str] = None
     payment_mode: Optional[str] = "CARD"  # CARD | TAP_NFC | UPI_QR
     terminal_id: Optional[str] = None
 
@@ -56,8 +56,8 @@ class RazorpayQRRequest(BaseModel):
 
 class RazorpayLinkRequest(BaseModel):
     amount: float
-    customer_phone: str
-    customer_name: Optional[str] = None
+    student_phone: str
+    student_name: Optional[str] = None
     bill_number: Optional[str] = None
     notes: Optional[Dict[str, Any]] = None
 
@@ -78,7 +78,7 @@ async def pinelabs_charge_terminal(payload: PineLabsChargeRequest):
     return await svc.initiate_transaction(
         amount=payload.amount,
         bill_number=payload.bill_number,
-        customer_mobile=payload.customer_mobile,
+        student_mobile=payload.student_mobile,
         payment_mode=payload.payment_mode or "CARD",
     )
 
@@ -160,8 +160,8 @@ async def razorpay_create_payment_link(payload: RazorpayLinkRequest):
     try:
         return await svc.create_payment_link(
             amount=payload.amount,
-            customer_phone=payload.customer_phone,
-            customer_name=payload.customer_name or "",
+            student_phone=payload.student_phone,
+            student_name=payload.student_name or "",
             description=bill_desc,
             notes=payload.notes,
         )
@@ -267,7 +267,7 @@ def get_payments_audit_ledger(
     3. Staff Salary & HRMS Disbursements (Outflow)
     4. Employee Salary Advances (Outflow)
     5. Employee Performance & Festival Bonuses (Outflow)
-    6. Trainer PT Commissions & Invoices (Outflow)
+    6. employee PT Commissions & Invoices (Outflow)
     """
     plans = db.query(MembershipPlan).all()
     plans_map = {p.name.strip().lower(): float(p.price) for p in plans if p.name and p.price}
@@ -277,8 +277,8 @@ def get_payments_audit_ledger(
     # 1. Memberships
     try:
         mem_rows = (
-            db.query(Membership, Customer)
-            .join(Customer, Customer.id == Membership.customer_id)
+            db.query(Membership, student)
+            .join(student, student.id == Membership.student_id)
             .order_by(desc(Membership.created_at))
             .all()
         )
@@ -304,7 +304,7 @@ def get_payments_audit_ledger(
                 "type": "INFLOW",
                 "invoice_number": inv_num,
                 "entity_name": cust.full_name or "",
-                "entity_type": "Customer",
+                "entity_type": "student",
                 "entity_id": cust.id,
                 "entity_phone": cust.phone or "",
                 "entity_email": cust.email or "",
@@ -350,10 +350,10 @@ def get_payments_audit_ledger(
                 "category_label": "POS / Store Sale",
                 "type": "INFLOW",
                 "invoice_number": pos.invoice_number or f"REC-POS-{(pos.id or '')[-6:].upper()}",
-                "entity_name": pos.customer_name or "",
-                "entity_type": "POS Customer",
-                "entity_id": pos.customer_id or "",
-                "entity_phone": pos.customer_phone or "",
+                "entity_name": pos.student_name or "",
+                "entity_type": "POS student",
+                "entity_id": pos.student_id or "",
+                "entity_phone": pos.student_phone or "",
                 "entity_email": "",
                 "description": desc_text,
                 "amount": float(pos.grand_total or 0.0),
@@ -500,11 +500,11 @@ def get_payments_audit_ledger(
     except Exception as exc:
         logger.error("Error loading bonuses: %s", exc)
 
-    # 6. Trainer Payroll Invoices
+    # 6. employee Payroll Invoices
     try:
         trn_rows = (
-            db.query(PayrollInvoice, TrainerProfile)
-            .join(TrainerProfile, TrainerProfile.id == PayrollInvoice.trainer_id)
+            db.query(PayrollInvoice, employeeProfile)
+            .join(employeeProfile, employeeProfile.id == PayrollInvoice.employee_id)
             .order_by(desc(PayrollInvoice.created_at))
             .all()
         )
@@ -515,12 +515,12 @@ def get_payments_audit_ledger(
             all_txs.append({
                 "id": f"tx_trn_{inv.id}",
                 "source_id": inv.id,
-                "category": "TRAINER_COMMISSION",
-                "category_label": "Trainer PT Commission & Payout",
+                "category": "employee_COMMISSION",
+                "category_label": "employee PT Commission & Payout",
                 "type": "OUTFLOW",
                 "invoice_number": f"TRN-{(inv.id or '')[-6:].upper()}",
                 "entity_name": trn.full_name or "",
-                "entity_type": "Trainer",
+                "entity_type": "employee",
                 "entity_id": trn.id,
                 "entity_phone": trn.phone or "",
                 "entity_email": trn.email or "",
@@ -533,7 +533,7 @@ def get_payments_audit_ledger(
                 "raw_date": dt,
             })
     except Exception as exc:
-        logger.error("Error loading trainer invoices: %s", exc)
+        logger.error("Error loading employee invoices: %s", exc)
 
     # Sort all transactions chronologically descending
     all_txs.sort(key=lambda x: x["raw_date"], reverse=True)

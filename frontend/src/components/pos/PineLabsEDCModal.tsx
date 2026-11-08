@@ -23,7 +23,7 @@ interface PineLabsEDCModalProps {
   isOpen: boolean;
   amount: number;
   billNumber: string;
-  customerMobile?: string;
+  studentMobile?: string;
   terminalId?: string;
   companyId?: string;
   onClose: () => void;
@@ -45,7 +45,7 @@ export function PineLabsEDCModal({
   isOpen,
   amount,
   billNumber,
-  customerMobile,
+  studentMobile,
   terminalId = "TID-882194",
   companyId,
   onClose,
@@ -84,15 +84,15 @@ export function PineLabsEDCModal({
         paymentMode === "TAP_NFC"
           ? "Please Tap Contactless Card on EDC Machine..."
           : paymentMode === "UPI_QR"
-          ? "Scan Dynamic BharatQR on EDC Screen..."
-          : "Please Insert / Swipe EMV Card on EDC Machine..."
+            ? "Scan Dynamic BharatQR on EDC Screen..."
+            : "Please Insert / Swipe EMV Card on EDC Machine..."
       );
 
       // Dispatch Charge Request directly to Pine Labs Plutus Cloud / Local EDC Bridge
       const res = await paymentsApi.chargePineLabs({
         amount,
         bill_number: billNumber,
-        customer_mobile: customerMobile || undefined,
+        student_mobile: studentMobile || undefined,
         payment_mode: paymentMode,
         terminal_id: terminalId || undefined,
         company_id: companyId || undefined,
@@ -204,33 +204,30 @@ export function PineLabsEDCModal({
             <button
               type="button"
               onClick={() => setPaymentMode("CARD")}
-              className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-                paymentMode === "CARD"
+              className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${paymentMode === "CARD"
                   ? "bg-primary text-primary-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
-              }`}
+                }`}
             >
               <CreditCard className="size-3.5" /> Chip / Swipe
             </button>
             <button
               type="button"
               onClick={() => setPaymentMode("TAP_NFC")}
-              className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-                paymentMode === "TAP_NFC"
+              className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${paymentMode === "TAP_NFC"
                   ? "bg-primary text-primary-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
-              }`}
+                }`}
             >
               <Zap className="size-3.5" /> Tap to Pay (NFC)
             </button>
             <button
               type="button"
               onClick={() => setPaymentMode("UPI_QR")}
-              className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-                paymentMode === "UPI_QR"
+              className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${paymentMode === "UPI_QR"
                   ? "bg-primary text-primary-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
-              }`}
+                }`}
             >
               <QrCode className="size-3.5" /> BharatQR on EDC
             </button>
@@ -276,12 +273,12 @@ export function PineLabsEDCModal({
                     {paymentMode === "TAP_NFC"
                       ? "TAP CARD ON EDC DISPLAY"
                       : paymentMode === "UPI_QR"
-                      ? "SCAN BHARATQR ON SCREEN"
-                      : "INSERT CHIP / SWIPE CARD"}
+                        ? "SCAN BHARATQR ON SCREEN"
+                        : "INSERT CHIP / SWIPE CARD"}
                   </p>
                 </div>
                 <p className="text-[11px] text-slate-400 font-mono">
-                  BILL NO: {billNumber} • Waiting for customer on terminal...
+                  BILL NO: {billNumber} • Waiting for student on terminal...
                 </p>
               </div>
             )}
@@ -321,7 +318,7 @@ export function PineLabsEDCModal({
                   <AlertCircle className="size-6" />
                 </div>
                 <h4 className="text-xl font-black text-red-400">TRANSACTION DECLINED</h4>
-                <p className="text-xs text-slate-300">Customer cancelled or card bank authorization failed.</p>
+                <p className="text-xs text-slate-300">student cancelled or card bank authorization failed.</p>
               </div>
             )}
 

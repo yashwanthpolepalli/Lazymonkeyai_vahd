@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import { apiClient } from '@/services/apiClient';
 import { hrmsApi, DepartmentItem, DesignationItem } from '@/services/hrmsApi';
@@ -50,7 +50,7 @@ const GENDER_OPTIONS = ['Male', 'Female', 'Other'];
 const DEFAULT_EMPLOYEE_ROLES = [
   { value: 'STAFF', label: 'Staff' },
   { value: 'FACULTY', label: 'Faculty / Teacher' },
-  { value: 'TRAINER', label: 'Trainer / Coach' },
+  { value: 'employee', label: 'employee / Coach' },
   { value: 'MANAGER', label: 'Manager' },
   { value: 'ADMIN', label: 'Administrator' },
   { value: 'EMPLOYEE', label: 'Employee' },
@@ -58,7 +58,7 @@ const DEFAULT_EMPLOYEE_ROLES = [
 const EMPLOYEE_ROLES = DEFAULT_EMPLOYEE_ROLES;
 
 const getOrgBranchLabel = (b: any) => {
-  const orgName = (b.gym_name || b.organisation || '').trim();
+  const orgName = (b.vahd_name || b.organisation || '').trim();
   const bName = (b.branch_name || b.name || '').trim();
   if (orgName && bName && orgName.toLowerCase() !== bName.toLowerCase()) {
     return `${orgName} (${bName})${b.city ? ` - ${b.city}` : ''}`;
@@ -77,7 +77,7 @@ export function EmployeeEnrollmentModal({
 
   // Header & HR Info
   const [employeeCode, setEmployeeCode] = useState('');
-  
+
   // Section 1: Employee Details
   const [name, setName] = useState('');
   const [fatherName, setFatherName] = useState('');
@@ -160,8 +160,62 @@ export function EmployeeEnrollmentModal({
   // Dynamic Departments and Designations from HRMS (stored and managed live in DB)
   const [departmentsList, setDepartmentsList] = useState<DepartmentItem[]>([]);
   const [designationsList, setDesignationsList] = useState<DesignationItem[]>([]);
-  const [branchesList, setBranchesList] = useState<Array<{ id: string; branch_name: string; name?: string; gym_name?: string; city?: string }>>([]);
+  const [branchesList, setBranchesList] = useState<Array<{ id: string; branch_name: string; name?: string; vahd_name?: string; city?: string }>>([]);
   const [selectedBranchId, setSelectedBranchId] = useState<string>('');
+  const [selectedSecondaryBranches, setSelectedSecondaryBranches] = useState<string[]>([]);
+  const [showSecondaryDropdown, setShowSecondaryDropdown] = useState(false);
+  const [secondarySearchQuery, setSecondarySearchQuery] = useState('');
+  const secondaryDropdownRef = useRef<HTMLDivElement | null>(null);
+
+  // Dynamic Technical Skills from DB Master Data
+  const [dynamicSkillsList, setDynamicSkillsList] = useState<Array<{ id: string; name: string; code?: string; extra_info?: string; description?: string }>>([]);
+  const [showSkillsDropdown, setShowSkillsDropdown] = useState(false);
+  const [skillSearchQuery, setSkillSearchQuery] = useState('');
+  const [customSkillInput, setCustomSkillInput] = useState('');
+  const skillsDropdownRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (secondaryDropdownRef.current && !secondaryDropdownRef.current.contains(event.target as Node)) {
+        setShowSecondaryDropdown(false);
+      }
+      if (skillsDropdownRef.current && !skillsDropdownRef.current.contains(event.target as Node)) {
+        setShowSkillsDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const selectedSkillsArray = useMemo(() => {
+    return technicalSkills ? technicalSkills.split(',').map((s) => s.trim()).filter(Boolean) : [];
+  }, [technicalSkills]);
+
+  const toggleSkill = (skillName: string) => {
+    const current = selectedSkillsArray;
+    let next: string[];
+    if (current.includes(skillName)) {
+      next = current.filter((s) => s !== skillName);
+    } else {
+      next = [...current, skillName];
+    }
+    setTechnicalSkills(next.join(', '));
+  };
+
+  const removeSkill = (skillName: string) => {
+    const next = selectedSkillsArray.filter((s) => s !== skillName);
+    setTechnicalSkills(next.join(', '));
+  };
+
+  const addCustomSkill = () => {
+    const trimmed = customSkillInput.trim();
+    if (!trimmed) return;
+    if (!selectedSkillsArray.includes(trimmed)) {
+      const next = [...selectedSkillsArray, trimmed];
+      setTechnicalSkills(next.join(', '));
+    }
+    setCustomSkillInput('');
+  };
 
   // Dynamic Master Data options (Gender, Blood Groups, Caste, Roles, Locations, Service Areas)
   const [dynamicBloodGroups, setDynamicBloodGroups] = useState<string[]>(() => {
@@ -173,7 +227,7 @@ export function EmployeeEnrollmentModal({
           return parsed.blood_groups.filter((b: any) => b.is_active !== false).map((b: any) => b.name);
         }
       }
-    } catch {}
+    } catch { }
     return BLOOD_GROUPS;
   });
 
@@ -189,7 +243,7 @@ export function EmployeeEnrollmentModal({
           }));
         }
       }
-    } catch {}
+    } catch { }
     return CASTE_OPTIONS;
   });
 
@@ -202,7 +256,7 @@ export function EmployeeEnrollmentModal({
           return parsed.gender_types.filter((g: any) => g.is_active !== false).map((g: any) => g.name);
         }
       }
-    } catch {}
+    } catch { }
     return GENDER_OPTIONS;
   });
 
@@ -221,7 +275,7 @@ export function EmployeeEnrollmentModal({
           }
         }
       }
-    } catch {}
+    } catch { }
     return DEFAULT_EMPLOYEE_ROLES;
   });
 
@@ -237,7 +291,7 @@ export function EmployeeEnrollmentModal({
       try {
         const stored = localStorage.getItem('vahd_master_data_v3') || localStorage.getItem('vahd_master_data_v2');
         if (stored) parsed = JSON.parse(stored);
-      } catch {}
+      } catch { }
 
       // Fetch fresh master data from backend DB
       const apiMaster = await masterDataApi.getAll().catch(() => null);
@@ -299,13 +353,32 @@ export function EmployeeEnrollmentModal({
         setMasterAreaOfServiceList(serviceOptions);
       }
 
-      // 5. Departments (HRMS API + Settings masterStore)
+      // Technical Skills from Master Data (Filtered for Employee or Shared Both)
+      if (Array.isArray(parsed.technical_skills)) {
+        const empSkills = parsed.technical_skills.filter((s: any) => {
+          if (s.is_active === false) return false;
+          const extra = (s.extra_info || '').toLowerCase().trim();
+          return extra === 'employee' || extra === 'both' || !extra || extra === 'all';
+        });
+        setDynamicSkillsList(empSkills);
+      }
+
+      // 5. Departments (HRMS API + Settings masterStore) - Filtered specifically for Employee / Staff View
+      const isEmployeeDept = (d: any) => {
+        if (typeof d === 'object' && d) {
+          const extra = (d.extra_info || d.department_type || '').toLowerCase().trim();
+          if (extra === 'student' || extra === 'students' || extra === 'academic') return false;
+          if (extra === 'employee' || extra === 'staff' || extra === 'both' || extra === 'all') return true;
+        }
+        return true;
+      };
+
       hrmsApi.getDepartments().then((data) => {
-        const apiDepts = Array.isArray(data) ? data : [];
+        const apiDepts = Array.isArray(data) ? data.filter((d: any) => isEmployeeDept(d)) : [];
         const existingNames = new Set(apiDepts.map((d: any) => d.name.toLowerCase()));
         const merged = [...apiDepts];
         if (Array.isArray(parsed.departments)) {
-          parsed.departments.filter((d: any) => d.is_active !== false).forEach((md: any) => {
+          parsed.departments.filter((d: any) => d.is_active !== false && isEmployeeDept(d)).forEach((md: any) => {
             if (!existingNames.has(md.name.toLowerCase())) {
               existingNames.add(md.name.toLowerCase());
               merged.push({
@@ -323,7 +396,7 @@ export function EmployeeEnrollmentModal({
         setDepartmentsList(merged);
       }).catch(() => {
         if (Array.isArray(parsed.departments)) {
-          setDepartmentsList(parsed.departments.filter((d: any) => d.is_active !== false).map((md: any) => ({
+          setDepartmentsList(parsed.departments.filter((d: any) => d.is_active !== false && isEmployeeDept(d)).map((md: any) => ({
             id: md.id || `dept_${md.name}`,
             name: md.name,
             code: md.code || '',
@@ -375,11 +448,11 @@ export function EmployeeEnrollmentModal({
       if (hoRes?.organizations && Array.isArray(hoRes.organizations) && hoRes.organizations.length > 0) {
         list = hoRes.organizations;
       } else {
-        const branchRes = await apiClient.get<any[]>('/gym/branches').catch(() => []);
+        const branchRes = await apiClient.get<any[]>('/vahd/branches').catch(() => []);
         if (Array.isArray(branchRes)) list = branchRes;
       }
 
-      const existingBranchNames = new Set(list.map((b) => (b.branch_name || b.name || b.gym_name || '').toLowerCase()));
+      const existingBranchNames = new Set(list.map((b) => (b.branch_name || b.name || b.vahd_name || '').toLowerCase()));
       const extraInstitutions: any[] = [];
       const addMasterInstitutions = (items: any[], typeLabel: string) => {
         if (Array.isArray(items)) {
@@ -391,7 +464,7 @@ export function EmployeeEnrollmentModal({
                 id: it.id || `inst_${name}`,
                 branch_name: name,
                 name: name,
-                gym_name: it.parent_name || typeLabel,
+                vahd_name: it.parent_name || typeLabel,
                 city: it.extra_info || '',
               });
             }
@@ -409,13 +482,13 @@ export function EmployeeEnrollmentModal({
         const activeOrgId = localStorage.getItem('vahd_selected_org_id');
         const matchedActive = activeOrgId && activeOrgId !== 'all' ? allBranches.find((b) => b.id === activeOrgId) : null;
         const target = matchedActive || (employeeToEdit ? allBranches.find((b) => b.id === (employeeToEdit.branch_id || employeeToEdit.meta_data?.branch_id)) : null) || allBranches[0];
-        
+
         if (target && !selectedBranchId) {
           setSelectedBranchId(target.id);
           if (!location) setLocation(getOrgBranchLabel(target));
         }
       }
-    } catch {}
+    } catch { }
   };
 
   useEffect(() => {
@@ -461,7 +534,7 @@ export function EmployeeEnrollmentModal({
       setEmergencyNote(emerg.note || '');
 
       const post = meta.post_details || {};
-      setLocation(post.location || employeeToEdit.gym_branch || employeeToEdit.primary_gym_location || '');
+      setLocation(post.location || employeeToEdit.vahd_branch || employeeToEdit.primary_vahd_location || '');
       setDepartment(post.department || employeeToEdit.department || '');
       setJobDesignation(post.designation || employeeToEdit.designation || employeeToEdit.role || '');
       setJoiningDate(post.joining_date || employeeToEdit.joined_date || new Date().toISOString().split('T')[0]);
@@ -470,6 +543,10 @@ export function EmployeeEnrollmentModal({
       if (employeeToEdit.branch_id || meta.branch_id) {
         setSelectedBranchId(employeeToEdit.branch_id || meta.branch_id);
       }
+      const rawSecondary = (employeeToEdit as any).secondary_branches || meta.secondary_branches || post.secondary_branches || [];
+      setSelectedSecondaryBranches(Array.isArray(rawSecondary) ? rawSecondary : []);
+      setShowSecondaryDropdown(false);
+      setSecondarySearchQuery('');
       setTechnicalSkills(post.technical_skills || (Array.isArray(employeeToEdit.skills) ? employeeToEdit.skills.join(', ') : ''));
       setBaseSalary(employeeToEdit.salary ? String(employeeToEdit.salary) : (employeeToEdit.base_monthly_salary ? String(employeeToEdit.base_monthly_salary) : ''));
       const rawStatus = employeeToEdit.status || (employeeToEdit.is_active === false ? 'Inactive' : 'Active');
@@ -530,6 +607,9 @@ export function EmployeeEnrollmentModal({
       setEmergencyContactNo('');
       setEmergencyNote('');
       setLocation('');
+      setSelectedSecondaryBranches([]);
+      setShowSecondaryDropdown(false);
+      setSecondarySearchQuery('');
       setDepartment('');
       setJobDesignation('');
       setJoiningDate(new Date().toISOString().split('T')[0]);
@@ -630,7 +710,7 @@ export function EmployeeEnrollmentModal({
       setTimeout(() => {
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
-          videoRef.current.play().catch(() => {});
+          videoRef.current.play().catch(() => { });
         }
       }, 100);
     } catch {
@@ -856,11 +936,10 @@ export function EmployeeEnrollmentModal({
                 <!-- Photo Box on Right Column -->
                 <td style="width: 22%; text-align: center; vertical-align: middle; background-color: #f0f9ff; border: none; padding: 4px;">
                   <div class="photo-box">
-                    ${
-                      photoBase64
-                        ? `<img src="${photoBase64}" alt="Passport Photo" />`
-                        : `<span style="font-weight:900; font-size:12px; color:#94a3b8; letter-spacing:1px;">PHOTO</span><span style="font-size:8px; color:#94a3b8; margin-top:2px;">Passport Size</span>`
-                    }
+                    ${photoBase64
+        ? `<img src="${photoBase64}" alt="Passport Photo" />`
+        : `<span style="font-weight:900; font-size:12px; color:#94a3b8; letter-spacing:1px;">PHOTO</span><span style="font-size:8px; color:#94a3b8; margin-top:2px;">Passport Size</span>`
+      }
                   </div>
                 </td>
               </tr>
@@ -978,6 +1057,14 @@ export function EmployeeEnrollmentModal({
                   <span class="val">${safeVal(department)}</span>
                 </td>
               </tr>
+              ${selectedSecondaryBranches.length > 0 ? `
+              <tr style="background-color: #ffffff;">
+                <td colspan="2" style="border-left: none; border-right: none;">
+                  <span class="label">Secondary Organisation(s): </span>
+                  <span class="val" style="color: #6b21a8; font-weight: 600;">${safeVal(selectedSecondaryBranches.join(', '))}</span>
+                </td>
+              </tr>
+              ` : ''}
               <tr style="background-color: #ffffff;">
                 <td style="border-left: none;">
                   <span class="label">Job Designation: </span>
@@ -1071,8 +1158,8 @@ export function EmployeeEnrollmentModal({
               </thead>
               <tbody>
                 ${experienceRows
-                  .map(
-                    (row, idx) => `
+        .map(
+          (row, idx) => `
                   <tr style="background-color: ${idx % 2 === 0 ? '#ffffff' : '#f0fdfa'};">
                     <td style="border-left: none; font-size: 9px;">${safeVal(row.duration)}</td>
                     <td style="font-weight: 600; font-size: 9px;">${safeVal(row.company)}</td>
@@ -1080,8 +1167,8 @@ export function EmployeeEnrollmentModal({
                     <td style="font-weight: 700; color: #0f766e; font-size: 9px;">${safeVal(row.lastSalary)}</td>
                     <td style="border-right: none; font-size: 9px;">${safeVal(row.reasonForLeaving)}</td>
                   </tr>`
-                  )
-                  .join('')}
+        )
+        .join('')}
               </tbody>
             </table>
 
@@ -1139,16 +1226,16 @@ export function EmployeeEnrollmentModal({
               </thead>
               <tbody>
                 ${languageList
-                  .map(
-                    (item, idx) => `
+        .map(
+          (item, idx) => `
                   <tr style="background-color: ${idx % 2 === 0 ? '#ffffff' : '#f5f3ff'};">
                     <td style="border-left: none; font-weight: 800; padding-left: 10px; color: #1e1b4b;">${item.language}</td>
                     <td style="text-align: center;">${checkedIcon(item.read)}</td>
                     <td style="text-align: center;">${checkedIcon(item.write)}</td>
                     <td style="border-right: none; text-align: center;">${checkedIcon(item.speak)}</td>
                   </tr>`
-                  )
-                  .join('')}
+        )
+        .join('')}
               </tbody>
             </table>
 
@@ -1217,8 +1304,9 @@ export function EmployeeEnrollmentModal({
       setErrorMsg('Personal Email ID is required.');
       return;
     }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(personalEmail.trim())) {
+    // Permissive email check — accept any format including legacy emails like karnisujata@21@gmail.com
+    const emailVal = personalEmail.trim();
+    if (!emailVal || !emailVal.includes('@') || emailVal.length < 3) {
       setErrorMsg('Please enter a valid Email address.');
       return;
     }
@@ -1243,8 +1331,9 @@ export function EmployeeEnrollmentModal({
       designation: jobDesignation ? jobDesignation.trim() : '',
       department: department ? department.trim() : '',
       salary: parseFloat(baseSalary || '0') || 0,
-      gym_branch: location,
+      vahd_branch: location,
       branch_id: selectedBranchId || undefined,
+      secondary_branches: selectedSecondaryBranches,
       joined_date: joiningDate,
       avatar: photoBase64 || undefined,
       face_image: photoBase64 || undefined,
@@ -1257,6 +1346,7 @@ export function EmployeeEnrollmentModal({
       meta_data: {
         form_title: 'PERSONAL DETAILS FORM',
         employee_code: employeeCode,
+        secondary_branches: selectedSecondaryBranches,
         father_name: fatherName,
         dob,
         age,
@@ -1278,6 +1368,7 @@ export function EmployeeEnrollmentModal({
         },
         post_details: {
           location,
+          secondary_branches: selectedSecondaryBranches,
           department,
           designation: jobDesignation,
           joining_date: joiningDate,
@@ -1314,21 +1405,21 @@ export function EmployeeEnrollmentModal({
         try {
           await apiClient.put(`/hrms/employees/${employeeToEdit.id}`, payload);
         } catch {
-          await apiClient.put(`/trainers/${employeeToEdit.id.replace('emp_', '')}`, payload);
+          await apiClient.put(`/employees/${employeeToEdit.id.replace('emp_', '')}`, payload);
         }
       } else {
         // Create new
         try {
           await apiClient.post('/hrms/employees', payload);
         } catch {
-          await apiClient.post('/trainers', {
+          await apiClient.post('/employees', {
             full_name: payload.full_name,
             email: payload.email,
             phone: payload.phone,
             role: payload.role || 'EMPLOYEE',
             specialization: payload.designation,
             base_monthly_salary: payload.salary,
-            primary_gym_location: payload.gym_branch,
+            primary_vahd_location: payload.vahd_branch,
             branch_id: payload.branch_id,
             bank_account_no: accountNumber,
             bank_ifsc: ifscCode,
@@ -1352,7 +1443,7 @@ export function EmployeeEnrollmentModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/80 backdrop-blur-xs overflow-y-auto print:p-0 print:bg-white print:static animate-fade-in employee-modal-overlay">
-      
+
       {/* Dynamic Print CSS for Page Isolation */}
       <style>{`
         @media print {
@@ -1405,7 +1496,7 @@ export function EmployeeEnrollmentModal({
 
       {/* Modal Dialog Window */}
       <div className="bg-white text-slate-900 border-2 border-slate-700 rounded-2xl w-full max-w-5xl shadow-2xl overflow-hidden my-auto max-h-[95vh] flex flex-col font-sans print:border-none print:shadow-none print:max-h-none print:w-full print:m-0 employee-modal-card">
-        
+
         {/* Top Control Bar (Hidden in Print) */}
         <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white px-5 py-3 flex items-center justify-between shrink-0 no-print border-b border-indigo-800">
           <div className="flex items-center gap-2.5">
@@ -1441,7 +1532,7 @@ export function EmployeeEnrollmentModal({
 
         {/* Scrollable Form Content / Printable Element */}
         <form onSubmit={handleSubmit} className="p-4 sm:p-6 overflow-y-auto space-y-4 print:p-0 print:overflow-visible">
-          
+
           {errorMsg && (
             <div className="p-3 rounded-xl bg-rose-50 border border-rose-300 text-rose-800 text-xs font-bold flex items-center gap-2 no-print">
               <Icon name="alert-circle" size={16} className="shrink-0" />
@@ -1458,7 +1549,7 @@ export function EmployeeEnrollmentModal({
 
           {/* Printable Container Wrapper */}
           <div id="employee-printable-dossier" className="space-y-3.5">
-            
+
             {/* Form Top Title */}
             <div className="text-center pb-2 border-b-2 border-blue-900 flex flex-col items-center">
               <h1 className="text-lg sm:text-xl font-black tracking-wider text-blue-950 uppercase">
@@ -1474,10 +1565,10 @@ export function EmployeeEnrollmentModal({
             {/* ───────────────────────────────────────────────────────────── */}
             <div className="border-2 border-blue-900 rounded-xl overflow-hidden bg-white shadow-xs">
               <div className="grid grid-cols-12 divide-x-2 divide-blue-900">
-                
+
                 {/* Left Column: HR Block & Employee Details Table */}
                 <div className="col-span-8 sm:col-span-9 flex flex-col">
-                  
+
                   {/* Header HR & Code Row */}
                   <div className="grid grid-cols-2 divide-x-2 divide-blue-900 border-b-2 border-blue-900">
                     <div className="bg-sky-100 p-2 flex items-center">
@@ -1507,7 +1598,7 @@ export function EmployeeEnrollmentModal({
 
                   {/* Sub-table within top block */}
                   <div className="divide-y divide-blue-200 text-xs bg-blue-50/15">
-                    
+
                     {/* Row 1: Name & Father Name */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-blue-200">
                       <div className="p-1.5 flex items-center gap-2">
@@ -1615,7 +1706,7 @@ export function EmployeeEnrollmentModal({
                         PHOTO
                       </span>
                       <span className="text-[10px] text-blue-400 mt-0.5 font-semibold no-print">Passport Size</span>
-                      
+
                       <div className="flex flex-col gap-1.5 mt-2 w-full max-w-[130px] no-print">
                         <button
                           type="button"
@@ -1637,7 +1728,7 @@ export function EmployeeEnrollmentModal({
 
               {/* EMPLOYEE DETAILS Continued (Full Width Grid Rows) */}
               <div className="divide-y divide-blue-200 border-t-2 border-blue-900 text-xs bg-blue-50/15">
-                
+
                 {/* Row 4: Blood Group & Religion */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-blue-200">
                   <div className="p-1.5 flex items-center gap-2">
@@ -1670,7 +1761,7 @@ export function EmployeeEnrollmentModal({
 
                 {/* Row 5: Gender & Marital Status */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-blue-200">
-                  
+
                   {/* Gender */}
                   <div className="p-1.5 flex items-center gap-2">
                     <span className="font-bold text-blue-950 shrink-0">Gender:</span>
@@ -1734,8 +1825,7 @@ export function EmployeeEnrollmentModal({
                   <div className="p-1.5 flex items-center gap-2">
                     <span className="font-bold text-blue-950 shrink-0">Personal Email ID:<span className="text-rose-500 ml-0.5">*</span></span>
                     <input
-                      type="email"
-                      required
+                      type="text"
                       value={personalEmail}
                       onChange={(e) => setPersonalEmail(e.target.value)}
                       placeholder="email@domain.com"
@@ -1780,7 +1870,7 @@ export function EmployeeEnrollmentModal({
                 <span>EMERGENCY CONTACT DETAILS</span>
                 <span className="text-[10px] text-amber-100 font-semibold">Section 2</span>
               </div>
-              
+
               <div className="divide-y divide-amber-200 bg-amber-50/15">
                 {/* Row 1: Full Name & Relationship */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-amber-200">
@@ -1852,7 +1942,7 @@ export function EmployeeEnrollmentModal({
                 <span>POST DETAILS</span>
                 <span className="text-[10px] text-purple-200 font-semibold">Section 3</span>
               </div>
-              
+
               <div className="divide-y divide-purple-200 bg-purple-50/15">
                 {/* Row 1: Location & Department */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-purple-200">
@@ -1903,6 +1993,360 @@ export function EmployeeEnrollmentModal({
                         <option value={department}>{department}</option>
                       )}
                     </select>
+                  </div>
+                </div>
+
+                {/* Row 2: Secondary Organisation(s) & Technical Skills Side-by-Side in Same Lane */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-purple-200 border-t border-purple-200 bg-purple-50/20">
+                  {/* Left Column: Secondary Organisation(s) */}
+                  <div className="p-2 relative flex flex-col justify-between">
+                    <div className="flex items-center justify-between gap-1.5 mb-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold text-purple-950 text-xs">Secondary Organisation(s):</span>
+                        <span className="text-[10px] text-purple-700 bg-purple-200/80 px-2 py-0.5 rounded-full font-bold">
+                          {selectedSecondaryBranches.length} Selected
+                        </span>
+                      </div>
+                      {selectedSecondaryBranches.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedSecondaryBranches([])}
+                          className="text-[10px] text-purple-600 hover:text-red-600 font-semibold cursor-pointer"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="relative" ref={secondaryDropdownRef}>
+                      {/* Dropdown Toggle Button */}
+                      <div
+                        onClick={() => setShowSecondaryDropdown((prev) => !prev)}
+                        className="min-h-[34px] w-full bg-white border border-purple-300 rounded-lg px-2.5 py-1.5 cursor-pointer hover:border-purple-500 focus-within:ring-2 focus-within:ring-purple-400/40 transition flex items-center justify-between gap-2 shadow-xs"
+                      >
+                        <div className="flex flex-wrap items-center gap-1 flex-1 overflow-hidden">
+                          {selectedSecondaryBranches.length === 0 ? (
+                            <span className="text-purple-400 font-medium text-xs select-none">
+                              Select secondary organisations...
+                            </span>
+                          ) : (
+                            selectedSecondaryBranches.map((branchName) => (
+                              <span
+                                key={branchName}
+                                className="inline-flex items-center gap-1 bg-purple-100 text-purple-900 border border-purple-300 rounded-md px-1.5 py-0.5 text-[11px] font-semibold shadow-2xs"
+                              >
+                                <span className="truncate max-w-[140px]">{branchName}</span>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedSecondaryBranches((prev) => prev.filter((b) => b !== branchName));
+                                  }}
+                                  className="text-purple-600 hover:text-red-600 rounded-full hover:bg-purple-200 p-0.5 leading-none font-bold"
+                                  title="Remove"
+                                >
+                                  ✕
+                                </button>
+                              </span>
+                            ))
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1 text-purple-600 shrink-0">
+                          <span className="text-[10px] uppercase font-bold text-purple-500">
+                            {showSecondaryDropdown ? 'Close' : 'Select'}
+                          </span>
+                          <svg
+                            className={`w-3.5 h-3.5 transition-transform duration-200 ${showSecondaryDropdown ? 'rotate-180' : ''}`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </div>
+                      </div>
+
+                      {/* Dropdown Menu Container */}
+                      {showSecondaryDropdown && (
+                        <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-purple-300 rounded-xl shadow-xl z-50 overflow-hidden text-xs divide-y divide-purple-100">
+                          {/* Search & Actions Bar */}
+                          <div className="p-2 bg-purple-50/70 flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={secondarySearchQuery}
+                              onChange={(e) => setSecondarySearchQuery(e.target.value)}
+                              placeholder="Search organisations..."
+                              className="flex-1 bg-white border border-purple-200 rounded-md px-2.5 py-1 text-xs outline-none focus:border-purple-500 text-purple-950 font-medium placeholder-purple-300"
+                              autoFocus
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const allLabels = branchesList
+                                  .filter((b) => b.id !== selectedBranchId)
+                                  .map((b) => getOrgBranchLabel(b));
+                                setSelectedSecondaryBranches(Array.from(new Set(allLabels)));
+                              }}
+                              className="text-[11px] font-bold text-purple-700 hover:text-purple-900 bg-purple-100 hover:bg-purple-200 px-2 py-1 rounded transition"
+                            >
+                              All
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedSecondaryBranches([])}
+                              className="text-[11px] font-bold text-slate-600 hover:text-red-700 bg-slate-100 hover:bg-red-50 px-2 py-1 rounded transition"
+                            >
+                              Clear
+                            </button>
+                          </div>
+
+                          {/* Scrollable Checkbox List */}
+                          <div className="max-h-56 overflow-y-auto p-1 divide-y divide-purple-50">
+                            {(() => {
+                              const filteredBranches = branchesList.filter((b) => {
+                                if (b.id && selectedBranchId && b.id === selectedBranchId) return false;
+                                const lbl = getOrgBranchLabel(b);
+                                if (!secondarySearchQuery.trim()) return true;
+                                return (
+                                  lbl.toLowerCase().includes(secondarySearchQuery.toLowerCase()) ||
+                                  (b.branch_name && b.branch_name.toLowerCase().includes(secondarySearchQuery.toLowerCase())) ||
+                                  (b.city && b.city.toLowerCase().includes(secondarySearchQuery.toLowerCase()))
+                                );
+                              });
+
+                              if (filteredBranches.length === 0) {
+                                return (
+                                  <div className="p-3 text-center text-purple-400 font-medium">
+                                    No other organisations found
+                                  </div>
+                                );
+                              }
+
+                              return filteredBranches.map((b) => {
+                                const label = getOrgBranchLabel(b);
+                                const isChecked = selectedSecondaryBranches.includes(label);
+                                return (
+                                  <label
+                                    key={b.id || label}
+                                    className={`flex items-center gap-2.5 px-3 py-2 cursor-pointer rounded-md transition select-none ${
+                                      isChecked ? 'bg-purple-100/70 font-bold text-purple-950' : 'hover:bg-purple-50 text-slate-800'
+                                    }`}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={isChecked}
+                                      onChange={() => {
+                                        setSelectedSecondaryBranches((prev) =>
+                                          prev.includes(label) ? prev.filter((item) => item !== label) : [...prev, label]
+                                        );
+                                      }}
+                                      className="w-4 h-4 text-purple-600 rounded border-purple-300 focus:ring-purple-400 cursor-pointer"
+                                    />
+                                    <div className="flex-1 flex items-center justify-between">
+                                      <span className="text-xs">{label}</span>
+                                      {b.city && (
+                                        <span className="text-[10px] text-purple-500 bg-purple-50 px-1.5 py-0.5 rounded font-normal">
+                                          {b.city}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </label>
+                                );
+                              });
+                            })()}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Right Column: Technical Skills Side-by-Side in Same Lane */}
+                  <div className="p-2 relative flex flex-col justify-between">
+                    <div className="flex items-center justify-between gap-1.5 mb-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold text-purple-950 text-xs">Technical Skills:</span>
+                        <span className="text-[10px] text-purple-700 bg-purple-200/80 px-2 py-0.5 rounded-full font-bold">
+                          {selectedSkillsArray.length} Selected
+                        </span>
+                      </div>
+                      {selectedSkillsArray.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setTechnicalSkills('')}
+                          className="text-[10px] text-purple-600 hover:text-red-600 font-semibold cursor-pointer"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="relative" ref={skillsDropdownRef}>
+                      {/* Dropdown Toggle Button */}
+                      <div
+                        onClick={() => setShowSkillsDropdown((prev) => !prev)}
+                        className="min-h-[34px] w-full bg-white border border-purple-300 rounded-lg px-2.5 py-1.5 cursor-pointer hover:border-purple-500 focus-within:ring-2 focus-within:ring-purple-400/40 transition flex items-center justify-between gap-2 shadow-xs"
+                      >
+                        <div className="flex flex-wrap items-center gap-1 flex-1 overflow-hidden">
+                          {selectedSkillsArray.length === 0 ? (
+                            <span className="text-purple-400 font-medium text-xs select-none">
+                              Select or add technical skills...
+                            </span>
+                          ) : (
+                            selectedSkillsArray.map((skillName) => (
+                              <span
+                                key={skillName}
+                                className="inline-flex items-center gap-1 bg-violet-100 text-violet-900 border border-violet-300 rounded-md px-1.5 py-0.5 text-[11px] font-semibold shadow-2xs"
+                              >
+                                <span className="truncate max-w-[140px]">{skillName}</span>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    removeSkill(skillName);
+                                  }}
+                                  className="text-violet-600 hover:text-red-600 rounded-full hover:bg-violet-200 p-0.5 leading-none font-bold"
+                                  title="Remove"
+                                >
+                                  ✕
+                                </button>
+                              </span>
+                            ))
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1 text-purple-600 shrink-0">
+                          <span className="text-[10px] uppercase font-bold text-purple-500">
+                            {showSkillsDropdown ? 'Close' : 'Select'}
+                          </span>
+                          <svg
+                            className={`w-3.5 h-3.5 transition-transform duration-200 ${showSkillsDropdown ? 'rotate-180' : ''}`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </div>
+                      </div>
+
+                      {/* Dropdown Menu Container */}
+                      {showSkillsDropdown && (
+                        <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-purple-300 rounded-xl shadow-xl z-50 overflow-hidden text-xs divide-y divide-purple-100">
+                          {/* Search & Custom Input Bar */}
+                          <div className="p-2 bg-purple-50/70 space-y-1.5">
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={skillSearchQuery}
+                                onChange={(e) => setSkillSearchQuery(e.target.value)}
+                                placeholder="Search technical skills..."
+                                className="flex-1 bg-white border border-purple-200 rounded-md px-2.5 py-1 text-xs outline-none focus:border-purple-500 text-purple-950 font-medium placeholder-purple-300"
+                                autoFocus
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const allNames = dynamicSkillsList.map((s) => s.name);
+                                  const merged = Array.from(new Set([...selectedSkillsArray, ...allNames]));
+                                  setTechnicalSkills(merged.join(', '));
+                                }}
+                                className="text-[11px] font-bold text-purple-700 hover:text-purple-900 bg-purple-100 hover:bg-purple-200 px-2 py-1 rounded transition"
+                              >
+                                All
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setTechnicalSkills('')}
+                                className="text-[11px] font-bold text-slate-600 hover:text-red-700 bg-slate-100 hover:bg-red-50 px-2 py-1 rounded transition"
+                              >
+                                Clear
+                              </button>
+                            </div>
+
+                            {/* Add Custom Skill input */}
+                            <div className="flex items-center gap-1.5 pt-0.5">
+                              <input
+                                type="text"
+                                value={customSkillInput}
+                                onChange={(e) => setCustomSkillInput(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    addCustomSkill();
+                                  }
+                                }}
+                                placeholder="Type custom skill..."
+                                className="flex-1 bg-white border border-purple-200 rounded-md px-2 py-0.5 text-[11px] outline-none focus:border-purple-500 text-slate-900 placeholder-slate-400"
+                              />
+                              <button
+                                type="button"
+                                onClick={addCustomSkill}
+                                disabled={!customSkillInput.trim()}
+                                className="text-[10px] font-bold bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white px-2 py-1 rounded shadow-2xs cursor-pointer"
+                              >
+                                + Add
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Scrollable Checkbox List */}
+                          <div className="max-h-56 overflow-y-auto p-1 divide-y divide-purple-50">
+                            {(() => {
+                              const filteredSkills = dynamicSkillsList.filter((s) => {
+                                if (!skillSearchQuery.trim()) return true;
+                                const q = skillSearchQuery.toLowerCase();
+                                return (
+                                  s.name.toLowerCase().includes(q) ||
+                                  (s.code && s.code.toLowerCase().includes(q)) ||
+                                  (s.description && s.description.toLowerCase().includes(q))
+                                );
+                              });
+
+                              if (filteredSkills.length === 0) {
+                                return (
+                                  <div className="p-3 text-center text-purple-400 font-medium">
+                                    {dynamicSkillsList.length === 0 ? 'No skills configured in Settings yet' : 'No matching skills found'}
+                                  </div>
+                                );
+                              }
+
+                              return filteredSkills.map((s) => {
+                                const isChecked = selectedSkillsArray.includes(s.name);
+                                return (
+                                  <label
+                                    key={s.id || s.name}
+                                    className={`flex items-center gap-2.5 px-3 py-2 cursor-pointer rounded-md transition select-none ${
+                                      isChecked ? 'bg-purple-100/70 font-bold text-purple-950' : 'hover:bg-purple-50 text-slate-800'
+                                    }`}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={isChecked}
+                                      onChange={() => toggleSkill(s.name)}
+                                      className="w-4 h-4 text-purple-600 rounded border-purple-300 focus:ring-purple-400 cursor-pointer"
+                                    />
+                                    <div className="flex-1 flex items-center justify-between gap-1">
+                                      <span className="text-xs">{s.name}</span>
+                                      <div className="flex items-center gap-1 shrink-0">
+                                        {s.code && (
+                                          <span className="text-[9px] font-mono text-purple-600 bg-purple-50 px-1 py-0.2 rounded border border-purple-200">
+                                            {s.code}
+                                          </span>
+                                        )}
+                                        {s.extra_info && s.extra_info !== 'both' && (
+                                          <span className="text-[9px] text-slate-500 bg-slate-100 px-1 py-0.2 rounded font-normal">
+                                            {s.extra_info}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </label>
+                                );
+                              });
+                            })()}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -2015,18 +2459,6 @@ export function EmployeeEnrollmentModal({
                   </div>
                 </div>
 
-                {/* Row 5: Technical Skills */}
-                <div className="p-1.5 flex items-center gap-2">
-                  <span className="font-bold text-purple-950 shrink-0">Technical Skills:</span>
-                  <input
-                    type="text"
-                    value={technicalSkills}
-                    onChange={(e) => setTechnicalSkills(e.target.value)}
-                    placeholder="Certifications, Special Skills, Domains"
-                    className="w-full bg-transparent outline-none text-slate-900 px-1 py-0.5 focus:bg-purple-100/50"
-                  />
-                </div>
-
               </div>
             </div>
 
@@ -2038,7 +2470,7 @@ export function EmployeeEnrollmentModal({
                 <span>BANK DETAILS - Please ensure that you have a completed and SIGNED form</span>
                 <span className="text-[10px] text-emerald-200 font-semibold">Section 4</span>
               </div>
-              
+
               <div className="divide-y divide-emerald-200 bg-emerald-50/15">
                 {/* Row 1: Account Holders Name */}
                 <div className="p-1.5 flex items-center gap-2">
@@ -2146,14 +2578,14 @@ export function EmployeeEnrollmentModal({
                   </button>
                 </div>
               </div>
-              
+
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-cyan-100/80 text-[10px] font-black text-cyan-950 uppercase tracking-tight border-b-2 border-cyan-800 divide-x divide-cyan-300">
-                      <th className="p-1.5 w-1/4">DURATION<br/><span className="font-normal text-[9px] lowercase">(month-year) to (month-year)</span></th>
-                      <th className="p-1.5 w-1/4">COMPANY<br/><span className="font-normal text-[9px] lowercase">(name & place)</span></th>
-                      <th className="p-1.5 w-1/6">DESIG-NATION<br/><span className="font-normal text-[9px] lowercase">(last)</span></th>
+                      <th className="p-1.5 w-1/4">DURATION<br /><span className="font-normal text-[9px] lowercase">(month-year) to (month-year)</span></th>
+                      <th className="p-1.5 w-1/4">COMPANY<br /><span className="font-normal text-[9px] lowercase">(name & place)</span></th>
+                      <th className="p-1.5 w-1/6">DESIG-NATION<br /><span className="font-normal text-[9px] lowercase">(last)</span></th>
                       <th className="p-1.5 w-1/6">LAST GROSS SALARY</th>
                       <th className="p-1.5">REASONS FOR LEAVING</th>
                       <th className="p-1 text-center w-8 no-print">#</th>
@@ -2232,7 +2664,7 @@ export function EmployeeEnrollmentModal({
                 <span>REFERENCE CONTACT DETAILS</span>
                 <span className="text-[10px] text-rose-200 font-semibold">Section 6</span>
               </div>
-              
+
               <div className="divide-y divide-rose-200 bg-rose-50/15">
                 {/* Row 1: Name & Company */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-rose-200">
@@ -2346,7 +2778,7 @@ export function EmployeeEnrollmentModal({
                   </button>
                 </div>
               )}
-              
+
               <div className="overflow-x-auto">
                 <table className="w-full text-center border-collapse">
                   <thead>

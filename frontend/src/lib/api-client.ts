@@ -10,7 +10,7 @@ const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string) ?? "http://12
 
 export function resolveImageUrl(url: string | null | undefined): string {
   if (!url || url.trim() === "") return "";
-  
+
   // If it's already a data URL or blob
   if (url.startsWith("data:") || url.startsWith("blob:")) return url;
 
@@ -43,7 +43,7 @@ export function resolveImageUrl(url: string | null | undefined): string {
           }
           return `${parsed.pathname}${parsed.search}`;
         }
-      } catch {}
+      } catch { }
     }
     return url;
   }
@@ -2546,9 +2546,9 @@ export const backupApi = {
   getStatus: () => request<Record<string, unknown>>("GET", "/erp/backup-status"),
 };
 
-// ─── CRM & Sales — Customers and Leads ──────────────────────────────────────
+// ─── CRM & Sales — students and Leads ──────────────────────────────────────
 
-export interface CustomerAddressItem {
+export interface studentAddressItem {
   id: string;
   tag?: string; // "Head Office" | "Warehouse" | "Branch" | "Billing" | "Shipping" | "Home" | "Other"
   type?: "billing" | "shipping" | "both";
@@ -2564,7 +2564,7 @@ export interface CustomerAddressItem {
   is_default_shipping?: boolean;
 }
 
-export interface CrmCustomer {
+export interface Crmstudent {
   id: string;
   tenant_id: string;
   name: string;
@@ -2574,7 +2574,7 @@ export interface CrmCustomer {
   whatsapp_number: string | null;
   company_name: string | null;
   contact_person?: string | null;
-  customer_type: string;
+  student_type: string;
   status: string;
   source: string | null;
   address: string | null;
@@ -2589,7 +2589,7 @@ export interface CrmCustomer {
   anniversary_date: string | null;
   gender: string | null;
   preferred_language: string | null;
-  customer_code?: string | null;
+  student_code?: string | null;
   first_name?: string | null;
   last_name?: string | null;
   website?: string | null;
@@ -2597,13 +2597,13 @@ export interface CrmCustomer {
   industry?: string | null;
   company_size?: string | null;
   annual_revenue?: number | null;
-  customer_category?: string;
+  student_category?: string;
   lifecycle_stage?: string;
   referred_by?: string | null;
   gst_treatment?: string | null;
   billing_address?: string | null;
   shipping_address?: string | null;
-  addresses?: CustomerAddressItem[];
+  addresses?: studentAddressItem[];
   payment_terms?: string | null;
   credit_limit: number;
   outstanding_balance: number;
@@ -2676,7 +2676,7 @@ export interface CrmLead {
   lost_reason: string | null;
   call_disposition?: string | null;
   call_duration_minutes?: number | null;
-  customer_response?: string | null;
+  student_response?: string | null;
   external_id?: string | null;
   external_source?: string | null;
   meta?: Record<string, any> | null;
@@ -2703,7 +2703,7 @@ export interface CrmLeadActivity {
   summary: string;
   call_disposition?: string | null;
   call_duration_minutes?: number | null;
-  customer_response?: string | null;
+  student_response?: string | null;
   occurred_at: string;
   created_by_user_id: string | null;
   created_at: string;
@@ -2711,7 +2711,7 @@ export interface CrmLeadActivity {
 }
 
 export interface CRMCallInitiateRequest {
-  target_type: string;  // lead | customer | opportunity | deal | quotation | order | ticket | complaint
+  target_type: string;  // lead | student | opportunity | deal | quotation | order | ticket | complaint
   target_id?: string | null;
   contact_name: string;
   contact_phone?: string | null;
@@ -2860,7 +2860,7 @@ export interface FacebookCampaign {
   ads?: FacebookAdItem[];
 }
 
-export interface CustomerLedgerEntry {
+export interface studentLedgerEntry {
   id: string;
   raw_id: string;
   parent_doc_id?: string;
@@ -2889,8 +2889,8 @@ export interface CustomerLedgerEntry {
   quote_amount?: number;
 }
 
-export interface CustomerLedgerResponse {
-  customer: {
+export interface studentLedgerResponse {
+  student: {
     id: string;
     name: string;
     company_name: string;
@@ -2902,7 +2902,7 @@ export interface CustomerLedgerResponse {
     city: string;
     state: string;
     postal_code: string;
-    customer_type: string;
+    student_type: string;
     status: string;
     credit_limit: number;
   };
@@ -2922,30 +2922,30 @@ export interface CustomerLedgerResponse {
     unpaid_invoices_count: number;
     total_transactions_count: number;
   };
-  ledger_entries: CustomerLedgerEntry[];
+  ledger_entries: studentLedgerEntry[];
 }
 
-export const crmCustomersApi = {
-  list: (page = 1, pageSize = 20, search?: string, customerType?: string) =>
-    request<PaginatedResponse<CrmCustomer>>("GET", "/crm/customers", undefined, { page, page_size: pageSize, search, customer_type: customerType }),
-  create: (data: Record<string, unknown>) => request<CrmCustomer>("POST", "/crm/customers", data),
-  update: (id: string, data: Record<string, unknown>) => request<CrmCustomer>("PATCH", `/crm/customers/${id}`, data),
-  delete: (id: string) => request<{ status: string; message: string; deleted_id?: string }>("DELETE", `/crm/customers/${id}`),
+export const crmstudentsApi = {
+  list: (page = 1, pageSize = 20, search?: string, studentType?: string) =>
+    request<PaginatedResponse<Crmstudent>>("GET", "/crm/students", undefined, { page, page_size: pageSize, search, student_type: studentType }),
+  create: (data: Record<string, unknown>) => request<Crmstudent>("POST", "/crm/students", data),
+  update: (id: string, data: Record<string, unknown>) => request<Crmstudent>("PATCH", `/crm/students/${id}`, data),
+  delete: (id: string) => request<{ status: string; message: string; deleted_id?: string }>("DELETE", `/crm/students/${id}`),
   verifyGstin: (gstin: string) => request<any>("POST", "/crm/verify-gstin", { gstin }),
-  bulkImport: (data: { customers: any[]; default_owner_user_id?: string | null }) =>
-    request<{ success: boolean; imported_count: number; message: string }>("POST", "/crm/customers/bulk-import", data),
+  bulkImport: (data: { students: any[]; default_owner_user_id?: string | null }) =>
+    request<{ success: boolean; imported_count: number; message: string }>("POST", "/crm/students/bulk-import", data),
   getLedger: (
-    customerId: string,
+    studentId: string,
     params?: { startDate?: string; endDate?: string; docType?: string; search?: string }
   ) =>
-    request<CustomerLedgerResponse>("GET", `/crm/customers/${customerId}/ledger`, undefined, {
+    request<studentLedgerResponse>("GET", `/crm/students/${studentId}/ledger`, undefined, {
       start_date: params?.startDate,
       end_date: params?.endDate,
       doc_type: params?.docType,
       search: params?.search,
     }),
   recordPayment: (
-    customerId: string,
+    studentId: string,
     data: {
       amount: number;
       payment_method: string;
@@ -2954,12 +2954,12 @@ export const crmCustomersApi = {
       invoice_id?: string;
       notes?: string;
     }
-  ) => request<{ status: string; message: string; customer_id: string; amount: number }>("POST", `/crm/customers/${customerId}/payments`, data),
+  ) => request<{ status: string; message: string; student_id: string; amount: number }>("POST", `/crm/students/${studentId}/payments`, data),
 };
 
 // ── CRM Modules ──────────────────────────────────────────────────────────────
 
-export interface CustomerGroup {
+export interface studentGroup {
   id: string;
   tenant_id: string;
   name: string;
@@ -2972,15 +2972,15 @@ export interface CustomerGroup {
   updated_at: string;
 }
 
-export interface CustomerGroupMember {
+export interface studentGroupMember {
   id: string;
   group_id: string;
-  customer_id: string;
+  student_id: string;
   joined_at: string;
   added_by_user_id: string | null;
   notes: string | null;
-  customer_name?: string;
-  customer_email?: string;
+  student_name?: string;
+  student_email?: string;
 }
 
 export interface CrmSegment {
@@ -3017,17 +3017,17 @@ export interface MembershipPlan {
   updated_at: string;
 }
 
-export interface CustomerMembership {
+export interface studentMembership {
   id: string;
   tenant_id: string;
-  customer_id: string;
+  student_id: string;
   plan_id: string;
   status: string;
   started_at: string;
   expires_at: string;
   auto_renewal: boolean;
   cancelled_at: string | null;
-  customer_name?: string;
+  student_name?: string;
   plan_name?: string;
   created_at: string;
   updated_at: string;
@@ -3036,7 +3036,7 @@ export interface CustomerMembership {
 export interface WalletTransaction {
   id: string;
   tenant_id: string;
-  customer_id: string;
+  student_id: string;
   transaction_type: string;
   amount: number;
   balance_after: number;
@@ -3044,7 +3044,7 @@ export interface WalletTransaction {
   reference_id: string | null;
   reference_type: string | null;
   created_at: string;
-  customer_name?: string;
+  student_name?: string;
 }
 
 export interface LoyaltyRule {
@@ -3066,7 +3066,7 @@ export interface LoyaltyRule {
 export interface LoyaltyTransaction {
   id: string;
   tenant_id: string;
-  customer_id: string;
+  student_id: string;
   rule_id: string | null;
   points_earned: number;
   points_redeemed: number;
@@ -3074,7 +3074,7 @@ export interface LoyaltyTransaction {
   description: string;
   reference_id: string | null;
   created_at: string;
-  customer_name?: string;
+  student_name?: string;
   rule_name?: string;
 }
 
@@ -3091,11 +3091,11 @@ export interface Discount {
   applicable_scope: string;
   applicable_products: string[] | null;
   applicable_categories: string[] | null;
-  applicable_customer_groups: string[] | null;
+  applicable_student_groups: string[] | null;
   applicable_segments: string[] | null;
   usage_limit: number | null;
   usage_count: number;
-  per_customer_limit: number | null;
+  per_student_limit: number | null;
   starts_at: string | null;
   ends_at: string | null;
   stackable: boolean;
@@ -3111,11 +3111,11 @@ export interface DiscountUsage {
   id: string;
   tenant_id: string;
   discount_id: string;
-  customer_id: string;
+  student_id: string;
   order_id: string | null;
   discount_amount: number;
   created_at: string;
-  customer_name?: string;
+  student_name?: string;
   discount_name?: string;
 }
 
@@ -3123,18 +3123,18 @@ export interface DiscountUsage {
 
 export const crmGroupsApi = {
   list: (page = 1, pageSize = 20, search?: string) =>
-    request<PaginatedResponse<CustomerGroup>>("GET", "/crm/groups", undefined, { page, page_size: pageSize, search }),
-  get: (id: string) => request<CustomerGroup>("GET", `/crm/groups/${id}`),
-  create: (data: Record<string, unknown>) => request<CustomerGroup>("POST", "/crm/groups", data),
-  update: (id: string, data: Record<string, unknown>) => request<CustomerGroup>("PATCH", `/crm/groups/${id}`, data),
+    request<PaginatedResponse<studentGroup>>("GET", "/crm/groups", undefined, { page, page_size: pageSize, search }),
+  get: (id: string) => request<studentGroup>("GET", `/crm/groups/${id}`),
+  create: (data: Record<string, unknown>) => request<studentGroup>("POST", "/crm/groups", data),
+  update: (id: string, data: Record<string, unknown>) => request<studentGroup>("PATCH", `/crm/groups/${id}`, data),
   delete: (id: string) => request<void>("DELETE", `/crm/groups/${id}`),
-  toggle: (id: string, isActive: boolean) => request<CustomerGroup>("PATCH", `/crm/groups/${id}/toggle`, { is_active: isActive }),
-  addMembers: (id: string, data: { customer_ids: string[] }) =>
+  toggle: (id: string, isActive: boolean) => request<studentGroup>("PATCH", `/crm/groups/${id}/toggle`, { is_active: isActive }),
+  addMembers: (id: string, data: { student_ids: string[] }) =>
     request<{ added: number }>("POST", `/crm/groups/${id}/members`, data),
-  removeMember: (groupId: string, customerId: string) =>
-    request<void>("DELETE", `/crm/groups/${groupId}/members/${customerId}`),
+  removeMember: (groupId: string, studentId: string) =>
+    request<void>("DELETE", `/crm/groups/${groupId}/members/${studentId}`),
   getMembers: (groupId: string, page = 1, pageSize = 20) =>
-    request<PaginatedResponse<CustomerGroupMember>>("GET", `/crm/groups/${groupId}/members`, undefined, { page, page_size: pageSize }),
+    request<PaginatedResponse<studentGroupMember>>("GET", `/crm/groups/${groupId}/members`, undefined, { page, page_size: pageSize }),
 };
 
 // ── Segments API ─────────────────────────────────────────────────────────────
@@ -3160,28 +3160,28 @@ export const crmMembershipsApi = {
   createPlan: (data: Record<string, unknown>) => request<MembershipPlan>("POST", "/crm/membership-plans", data),
   updatePlan: (id: string, data: Record<string, unknown>) => request<MembershipPlan>("PATCH", `/crm/membership-plans/${id}`, data),
   deletePlan: (id: string) => request<void>("DELETE", `/crm/membership-plans/${id}`),
-  listSubscriptions: (page = 1, pageSize = 20, customerId?: string, planId?: string, status?: string) =>
-    request<PaginatedResponse<CustomerMembership>>("GET", "/crm/membership-subscriptions", undefined, { page, page_size: pageSize, customer_id: customerId, plan_id: planId, status }),
-  getSubscription: (id: string) => request<CustomerMembership>("GET", `/crm/membership-subscriptions/${id}`),
-  createSubscription: (data: { customer_id: string; plan_id: string }) =>
-    request<CustomerMembership>("POST", "/crm/membership-subscriptions", data),
-  cancelSubscription: (id: string) => request<CustomerMembership>("POST", `/crm/membership-subscriptions/${id}/cancel`),
-  renewSubscription: (id: string) => request<CustomerMembership>("POST", `/crm/membership-subscriptions/${id}/renew`),
+  listSubscriptions: (page = 1, pageSize = 20, studentId?: string, planId?: string, status?: string) =>
+    request<PaginatedResponse<studentMembership>>("GET", "/crm/membership-subscriptions", undefined, { page, page_size: pageSize, student_id: studentId, plan_id: planId, status }),
+  getSubscription: (id: string) => request<studentMembership>("GET", `/crm/membership-subscriptions/${id}`),
+  createSubscription: (data: { student_id: string; plan_id: string }) =>
+    request<studentMembership>("POST", "/crm/membership-subscriptions", data),
+  cancelSubscription: (id: string) => request<studentMembership>("POST", `/crm/membership-subscriptions/${id}/cancel`),
+  renewSubscription: (id: string) => request<studentMembership>("POST", `/crm/membership-subscriptions/${id}/renew`),
 };
 
 // ── Wallet API ───────────────────────────────────────────────────────────────
 
 export const crmWalletApi = {
-  listTransactions: (customerId?: string, page = 1, pageSize = 20) =>
-    request<PaginatedResponse<WalletTransaction>>("GET", `/crm/wallet/transactions`, undefined, { customer_id: customerId, page, page_size: pageSize }),
-  credit: (customerId: string, amount: number, description: string, referenceId?: string) =>
-    request<WalletTransaction>("POST", `/crm/wallet/credit`, { customer_id: customerId, amount, description, reference_id: referenceId }),
-  debit: (customerId: string, amount: number, description: string, referenceId?: string) =>
-    request<WalletTransaction>("POST", `/crm/wallet/debit`, { customer_id: customerId, amount, description, reference_id: referenceId }),
-  adjust: (customerId: string, amount: number, description: string) =>
-    request<WalletTransaction>("POST", `/crm/wallet/adjust`, { customer_id: customerId, amount, description }),
-  getBalance: (customerId: string) =>
-    request<{ customer_id: string; balance: number }>("GET", `/crm/wallet/balance/${customerId}`),
+  listTransactions: (studentId?: string, page = 1, pageSize = 20) =>
+    request<PaginatedResponse<WalletTransaction>>("GET", `/crm/wallet/transactions`, undefined, { student_id: studentId, page, page_size: pageSize }),
+  credit: (studentId: string, amount: number, description: string, referenceId?: string) =>
+    request<WalletTransaction>("POST", `/crm/wallet/credit`, { student_id: studentId, amount, description, reference_id: referenceId }),
+  debit: (studentId: string, amount: number, description: string, referenceId?: string) =>
+    request<WalletTransaction>("POST", `/crm/wallet/debit`, { student_id: studentId, amount, description, reference_id: referenceId }),
+  adjust: (studentId: string, amount: number, description: string) =>
+    request<WalletTransaction>("POST", `/crm/wallet/adjust`, { student_id: studentId, amount, description }),
+  getBalance: (studentId: string) =>
+    request<{ student_id: string; balance: number }>("GET", `/crm/wallet/balance/${studentId}`),
 };
 
 // ── Loyalty API ──────────────────────────────────────────────────────────────
@@ -3194,12 +3194,12 @@ export const crmLoyaltyApi = {
   updateRule: (id: string, data: Record<string, unknown>) => request<LoyaltyRule>("PATCH", `/crm/loyalty/rules/${id}`, data),
   deleteRule: (id: string) => request<void>("DELETE", `/crm/loyalty/rules/${id}`),
   toggleRule: (id: string, isActive: boolean) => request<LoyaltyRule>("PATCH", `/crm/loyalty/rules/${id}/toggle`, { is_active: isActive }),
-  listTransactions: (customerId?: string, page = 1, pageSize = 20) =>
-    request<PaginatedResponse<LoyaltyTransaction>>("GET", "/crm/loyalty/transactions", undefined, { customer_id: customerId, page, page_size: pageSize }),
-  addPoints: (customerId: string, points: number, description: string, referenceId?: string) =>
-    request<LoyaltyTransaction>("POST", "/crm/loyalty/points/add", { customer_id: customerId, points, description, reference_id: referenceId }),
-  redeemPoints: (customerId: string, points: number, description: string, referenceId?: string) =>
-    request<LoyaltyTransaction>("POST", "/crm/loyalty/points/redeem", { customer_id: customerId, points, description, reference_id: referenceId }),
+  listTransactions: (studentId?: string, page = 1, pageSize = 20) =>
+    request<PaginatedResponse<LoyaltyTransaction>>("GET", "/crm/loyalty/transactions", undefined, { student_id: studentId, page, page_size: pageSize }),
+  addPoints: (studentId: string, points: number, description: string, referenceId?: string) =>
+    request<LoyaltyTransaction>("POST", "/crm/loyalty/points/add", { student_id: studentId, points, description, reference_id: referenceId }),
+  redeemPoints: (studentId: string, points: number, description: string, referenceId?: string) =>
+    request<LoyaltyTransaction>("POST", "/crm/loyalty/points/redeem", { student_id: studentId, points, description, reference_id: referenceId }),
 };
 
 // ── Discounts API ────────────────────────────────────────────────────────────
@@ -3212,8 +3212,8 @@ export const crmDiscountsApi = {
   update: (id: string, data: Record<string, unknown>) => request<Discount>("PATCH", `/crm/discounts/${id}`, data),
   delete: (id: string) => request<void>("DELETE", `/crm/discounts/${id}`),
   toggle: (id: string, isActive: boolean) => request<Discount>("PATCH", `/crm/discounts/${id}/toggle`, { is_active: isActive }),
-  validateCoupon: (code: string, customerId?: string, orderValue?: number) =>
-    request<{ valid: boolean; discount_id?: string; discount_amount?: number; message?: string }>("POST", "/crm/discounts/validate", { code, customer_id: customerId, order_value: orderValue }),
+  validateCoupon: (code: string, studentId?: string, orderValue?: number) =>
+    request<{ valid: boolean; discount_id?: string; discount_amount?: number; message?: string }>("POST", "/crm/discounts/validate", { code, student_id: studentId, order_value: orderValue }),
   listUsage: (discountId?: string, page = 1, pageSize = 20) =>
     request<PaginatedResponse<DiscountUsage>>("GET", "/crm/discounts/usage", undefined, { discount_id: discountId, page, page_size: pageSize }),
 };
@@ -3248,9 +3248,9 @@ export const crmLeadsApi = {
   update: (id: string, data: Record<string, unknown>) => request<CrmLead>("PATCH", `/crm/leads/${id}`, data),
   listActivities: (id: string) => request<CrmLeadActivity[]>("GET", `/crm/leads/${id}/activities`),
   addActivity: (id: string, data: Record<string, unknown>) => request<CrmLeadActivity>("POST", `/crm/leads/${id}/activities`, data),
-  convert: (id: string) => request<CrmCustomer>("POST", `/crm/leads/${id}/convert`),
-  convertPipeline: (id: string, data: { deal_name?: string; deal_amount?: number; deal_stage?: string; customer_type?: string; expected_close_date?: string; notes?: string }) =>
-    request<{ lead_id: string; customer_id: string; customer_name: string; opportunity_id: string; deal_name: string; deal_stage: string; deal_amount: number; message: string }>("POST", `/crm/leads/${id}/convert-pipeline`, data),
+  convert: (id: string) => request<Crmstudent>("POST", `/crm/leads/${id}/convert`),
+  convertPipeline: (id: string, data: { deal_name?: string; deal_amount?: number; deal_stage?: string; student_type?: string; expected_close_date?: string; notes?: string }) =>
+    request<{ lead_id: string; student_id: string; student_name: string; opportunity_id: string; deal_name: string; deal_stage: string; deal_amount: number; message: string }>("POST", `/crm/leads/${id}/convert-pipeline`, data),
   getAttribution: (id: string) =>
     request<LeadAttribution>("GET", `/crm/leads/${id}/attribution`),
   exportCsvUrl: (params?: { search?: string; status?: string; assigned_to?: string; created_after?: string; created_before?: string }) => {
@@ -3457,7 +3457,7 @@ export const crmLeadsApi = {
 export interface CrmOpportunity {
   id: string;
   tenant_id: string;
-  customer_id: string | null;
+  student_id: string | null;
   lead_id: string | null;
   name: string;
   stage: string;
@@ -3467,7 +3467,7 @@ export interface CrmOpportunity {
   owner_user_id: string | null;
   owner_name?: string | null;
   owner_email?: string | null;
-  customer_name?: string | null;
+  student_name?: string | null;
   calls_count?: number | null;
   last_call_status?: string | null;
   last_call_sentiment?: string | null;
@@ -3478,7 +3478,7 @@ export interface CrmOpportunity {
   notes?: string | null;
   call_disposition?: string | null;
   call_duration_minutes?: number | null;
-  customer_response?: string | null;
+  student_response?: string | null;
   last_contact_at?: string | null;
   created_at: string;
   updated_at: string;
@@ -3725,9 +3725,9 @@ export const assetLibraryApi = {
   approve: (assetId: string, status: "approved" | "rejected" | "draft", rejectionReason?: string) =>
     request<{ id: string; approval_status: string }>(
       "PUT", `/crm/ads/assets/${assetId}/approve`, {
-        status,
-        rejection_reason: rejectionReason,
-      }
+      status,
+      rejection_reason: rejectionReason,
+    }
     ),
 };
 
@@ -3789,7 +3789,7 @@ export const liveNotificationsApi = {
 
 export interface CrmTicket {
   id: string;
-  customer_id: string | null;
+  student_id: string | null;
   subject: string;
   description: string;
   priority: string;
@@ -3809,7 +3809,7 @@ export const crmTicketsApi = {
 
 export interface CrmQuotation {
   id: string;
-  customer_id: string;
+  student_id: string;
   quote_number: string;
   items: Record<string, any>;
   subtotal: number;
@@ -3839,7 +3839,7 @@ export const crmQuotationsApi = {
 
 export interface CrmSalesOrder {
   id: string;
-  customer_id: string;
+  student_id: string;
   order_number: string;
   items: Record<string, any>;
   total: number;
@@ -3853,23 +3853,23 @@ export const crmSalesOrdersApi = {
   create: (data: Record<string, unknown>) => request<CrmSalesOrder>("POST", "/crm/sales-orders", data),
 };
 
-// ─── Customer Intelligence API ────────────────────────────────────────────────
+// ─── student Intelligence API ────────────────────────────────────────────────
 
 export interface IntelAnalytics {
-  total_customers: number;
-  active_customers: number;
-  new_customers_this_month: number;
+  total_students: number;
+  active_students: number;
+  new_students_this_month: number;
   total_revenue: number;
   total_orders: number;
   avg_order_value: number;
   repeat_rate: number;
-  monthly_data: { month: string; revenue: number; orders: number; new_customers: number }[];
+  monthly_data: { month: string; revenue: number; orders: number; new_students: number }[];
   segments: { name: string; count: number }[];
 }
 
-export interface IntelChurnCustomer {
-  customer_id: string;
-  customer: string;
+export interface IntelChurnstudent {
+  student_id: string;
+  student: string;
   company: string | null;
   risk: number;
   tier: string;
@@ -3881,12 +3881,12 @@ export interface IntelChurnCustomer {
 
 export interface IntelChurn {
   summary: { high_risk: number; at_risk: number; watch: number; total: number };
-  customers: IntelChurnCustomer[];
+  students: IntelChurnstudent[];
 }
 
-export interface IntelLtvCustomer {
-  customer_id: string;
-  customer: string;
+export interface IntelLtvstudent {
+  student_id: string;
+  student: string;
   company: string | null;
   ltv: number;
   revenue: number;
@@ -3896,8 +3896,8 @@ export interface IntelLtvCustomer {
 }
 
 export interface IntelLtv {
-  summary: { avg_ltv: number; total_customer_value: number; avg_orders_per_customer: number; total_customers: number };
-  customers: IntelLtvCustomer[];
+  summary: { avg_ltv: number; total_student_value: number; avg_orders_per_student: number; total_students: number };
+  students: IntelLtvstudent[];
 }
 
 export interface IntelPurchaseBehaviour {
@@ -3919,14 +3919,14 @@ export interface IntelRfmSegment {
 
 export interface IntelRfm {
   segments: IntelRfmSegment[];
-  total_customers_analysed: number;
+  total_students_analysed: number;
 }
 
 export interface IntelRecommendation {
   id: string;
   type: string;
-  customer: string;
-  customer_seg: string;
+  student: string;
+  student_seg: string;
   title: string;
   description: string;
   confidence: number;
@@ -3936,7 +3936,7 @@ export interface IntelRecommendation {
 }
 
 export interface IntelRecommendations {
-  summary: { total_recommendations: number; avg_confidence: number; customers_analysed: number; transactions_analysed: number; support_interactions: number };
+  summary: { total_recommendations: number; avg_confidence: number; students_analysed: number; transactions_analysed: number; support_interactions: number };
   recommendations: IntelRecommendation[];
 }
 
@@ -4101,7 +4101,7 @@ export interface POSProduct {
 }
 
 export interface POSTransactionHistory {
-  id: string; session_id: string; cashier_id: string; customer_id: string | null;
+  id: string; session_id: string; cashier_id: string; student_id: string | null;
   receipt_number: string; status: string;
   parent_transaction_id: string | null;
   delivery_status: string | null;
@@ -4139,8 +4139,8 @@ export const posApi = {
   updateProduct: (id: string, data: Record<string, unknown>) => request<POSProduct>("PATCH", `/pos/products/${id}`, data),
   deleteProduct: (id: string) => request<void>("DELETE", `/pos/products/${id}`),
   createCategory: (data: Record<string, unknown>) => request<POSCategory>("POST", "/pos/categories", data),
-  getCustomerSummary: (nameOrId?: string, phone?: string) =>
-    request<any>("GET", `/invoices/customer-summary/${nameOrId || ""}`, undefined, { phone }),
+  getstudentSummary: (nameOrId?: string, phone?: string) =>
+    request<any>("GET", `/invoices/student-summary/${nameOrId || ""}`, undefined, { phone }),
   // Free Quantity & Promotional Schemes
   getFreeQtyRules: () =>
     request<any[]>("GET", "/pos/free-qty-rules"),
@@ -4831,27 +4831,27 @@ export const inventoryApi = {
   extractPRDocumentOCR: (file: File) => {
     const fd = new FormData();
     fd.append("file", file);
-    return request<{filename: string; extracted: boolean; pr_number?: string; department?: string; priority?: string; purpose_justification?: string; items?: any[]; confidence?: number}>("POST", "/inventory/procurement/ocr/extract-pr-document", fd);
+    return request<{ filename: string; extracted: boolean; pr_number?: string; department?: string; priority?: string; purpose_justification?: string; items?: any[]; confidence?: number }>("POST", "/inventory/procurement/ocr/extract-pr-document", fd);
   },
   extractQuotationOCR: (file: File) => {
     const fd = new FormData();
     fd.append("file", file);
-    return request<{filename: string; extracted: boolean; supplier_name?: string; quoted_unit_price?: number; delivery_lead_days?: number; payment_terms?: string}>("POST", "/inventory/procurement/extract-quotation-ocr", fd);
+    return request<{ filename: string; extracted: boolean; supplier_name?: string; quoted_unit_price?: number; delivery_lead_days?: number; payment_terms?: string }>("POST", "/inventory/procurement/extract-quotation-ocr", fd);
   },
   extractPODocumentOCR: (file: File) => {
     const fd = new FormData();
     fd.append("file", file);
-    return request<{filename: string; extracted: boolean; po_number?: string; supplier_name?: string; delivery_date?: string; items?: any[]; notes?: string; confidence?: number}>("POST", "/inventory/procurement/ocr/extract-po-document", fd);
+    return request<{ filename: string; extracted: boolean; po_number?: string; supplier_name?: string; delivery_date?: string; items?: any[]; notes?: string; confidence?: number }>("POST", "/inventory/procurement/ocr/extract-po-document", fd);
   },
   extractGRNDocumentOCR: (file: File) => {
     const fd = new FormData();
     fd.append("file", file);
-    return request<{filename: string; extracted: boolean; grn_number?: string; received_date?: string; items?: any[]; notes?: string; confidence?: number}>("POST", "/inventory/procurement/ocr/extract-grn-document", fd);
+    return request<{ filename: string; extracted: boolean; grn_number?: string; received_date?: string; items?: any[]; notes?: string; confidence?: number }>("POST", "/inventory/procurement/ocr/extract-grn-document", fd);
   },
   extractInvoiceDocumentOCR: (file: File) => {
     const fd = new FormData();
     fd.append("file", file);
-    return request<{filename: string; extracted: boolean; bill_number?: string; supplier_name?: string; total_amount?: number; due_date?: string; po_reference?: string; items?: any[]; notes?: string; confidence?: number}>("POST", "/inventory/procurement/ocr/extract-invoice-document", fd);
+    return request<{ filename: string; extracted: boolean; bill_number?: string; supplier_name?: string; total_amount?: number; due_date?: string; po_reference?: string; items?: any[]; notes?: string; confidence?: number }>("POST", "/inventory/procurement/ocr/extract-invoice-document", fd);
   },
 
   getPurchaseReturns: () => request<any[]>("GET", "/inventory/procurement/purchase-returns"),
@@ -4971,8 +4971,8 @@ export interface Invoice {
   invoice_number: string;
   invoice_type: string;
   status: string;
-  customer_id: string | null;
-  customer_name?: string;
+  student_id: string | null;
+  student_name?: string;
   invoice_date: string;
   due_date: string | null;
   subtotal: number;
@@ -5111,7 +5111,7 @@ export const invoicesApi = {
   listInvoices: (params?: { page?: number; page_size?: number; status?: string; invoice_type?: string; search?: string }) =>
     request<PaginatedResponse<Invoice>>("GET", "/invoices", undefined, params),
   getInvoice: (id: string) => request<Invoice>("GET", `/invoices/${id}`),
-  getCustomerSummary: (customerId: string) => request<any>("GET", `/invoices/customer-summary/${customerId}`),
+  getstudentSummary: (studentId: string) => request<any>("GET", `/invoices/student-summary/${studentId}`),
   createInvoice: (data: any) => request<Invoice>("POST", "/invoices", data),
   sendInvoice: (id: string) => request<{ message: string }>("POST", `/invoices/${id}/send`),
   sendInvoiceToWhatsApp: (id: string, phone?: string) =>
@@ -5328,16 +5328,16 @@ export const crmApi = {
   getPurchaseBehaviour: () => request<any>("GET", "/crm/intelligence/purchase-behaviour"),
   getRfmAnalysis: () => request<any>("GET", "/crm/intelligence/rfm"),
   getRecommendations: () => request<any>("GET", "/crm/intelligence/recommendations"),
-  
+
   // Facebook Ads & Marketing
   getAdHistory: (page = 1, pageSize = 50) => request<any>("GET", "/crm/campaigns/ad-history", undefined, { page, page_size: pageSize }),
   getFacebookCampaigns: () => request<any>("GET", "/crm/facebook/campaigns"),
-  
+
   // Pipeline & Core
   getOpportunities: () => request<any>("GET", "/crm/opportunities"),
   getLeads: (page = 1, pageSize = 100) => request<any>("GET", "/crm/leads", undefined, { page, page_size: pageSize }),
-  getCustomers: (page = 1, pageSize = 200) => request<any>("GET", "/crm/customers", undefined, { page, page_size: pageSize }),
-  createCustomer: (data: any) => request<any>("POST", "/crm/customers", data),
+  getstudents: (page = 1, pageSize = 200) => request<any>("GET", "/crm/students", undefined, { page, page_size: pageSize }),
+  createstudent: (data: any) => request<any>("POST", "/crm/students", data),
   getQuotations: () => request<any>("GET", "/crm/quotations"),
   getSalesOrders: () => request<any>("GET", "/crm/sales-orders")
 };
@@ -5402,7 +5402,7 @@ export const ewayBillApi = {
     from_city?: string;
     from_pincode?: string;
     to_gstin?: string;
-    to_customer_name?: string;
+    to_student_name?: string;
     to_address?: string;
     to_city?: string;
     to_pincode?: string;
@@ -5534,11 +5534,11 @@ export const marketplaceApi = {
   updateProductStatus: (productId: string, status: string) =>
     request<any>("PUT", `/marketplace/products/${productId}/status?product_status=${status}`),
 
-  getOrders: (params?: { vendor_id?: string; customer_id?: string; customer_email?: string; status?: string }) => {
+  getOrders: (params?: { vendor_id?: string; student_id?: string; student_email?: string; status?: string }) => {
     const q = new URLSearchParams();
     if (params?.vendor_id) q.set("vendor_id", params.vendor_id);
-    if (params?.customer_id) q.set("customer_id", params.customer_id);
-    if (params?.customer_email) q.set("customer_email", params.customer_email);
+    if (params?.student_id) q.set("student_id", params.student_id);
+    if (params?.student_email) q.set("student_email", params.student_email);
     if (params?.status) q.set("status", params.status);
     const qs = q.toString();
     return request<any[]>("GET", `/marketplace/orders${qs ? `?${qs}` : ""}`);
@@ -5878,9 +5878,9 @@ export const paymentsApi = {
   createRazorpayLink: (data: {
     amount: number;
     description: string;
-    customer_name?: string;
-    customer_phone?: string;
-    customer_email?: string;
+    student_name?: string;
+    student_phone?: string;
+    student_email?: string;
     notify_sms?: boolean;
     notify_email?: boolean;
     company_id?: string;
@@ -5928,7 +5928,7 @@ export const paymentsApi = {
   chargePineLabs: (data: {
     amount: number;
     bill_number: string;
-    customer_mobile?: string;
+    student_mobile?: string;
     payment_mode?: "CARD" | "TAP_NFC" | "UPI_QR";
     terminal_id?: string;
     company_id?: string;

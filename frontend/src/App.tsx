@@ -25,22 +25,21 @@ const ReportsPage = lazy(() => import('@/pages/owner/ReportsPage').then(m => ({ 
 const HoDashboard = lazy(() => import('@/pages/ho/HoDashboard').then(m => ({ default: m.HoDashboard })));
 const HoOrganisationsPage = lazy(() => import('@/pages/ho/HoOrganisationsPage').then(m => ({ default: m.HoOrganisationsPage })));
 
-// Trainer pages
-const TrainerDashboard = lazy(() => import('@/pages/trainer/TrainerDashboard').then(m => ({ default: m.TrainerDashboard })));
-const TrainerHrmsPage = lazy(() => import('@/pages/trainer/TrainerHrmsPage').then(m => ({ default: m.TrainerHrmsPage })));
-const ProgressPage = lazy(() => import('@/pages/trainer/ProgressPage').then(m => ({ default: m.ProgressPage })));
-const MessagesPage = lazy(() => import('@/pages/trainer/MessagesPage').then(m => ({ default: m.MessagesPage })));
-const AiCoachPage = lazy(() => import('@/pages/trainer/AiCoachPage').then(m => ({ default: m.AiCoachPage })));
-const TrainerProfilePage = lazy(() => import('@/pages/trainer/TrainerProfilePage').then(m => ({ default: m.TrainerProfilePage })));
+// employee pages
+const EmployeeDashboard = lazy(() => import('@/pages/employee/employeeDashboard').then(m => ({ default: m.EmployeeDashboard || m.employeeDashboard })));
+const EmployeeHrmsPage = lazy(() => import('@/pages/employee/employeeHrmsPage').then(m => ({ default: m.EmployeeHrmsPage || m.employeeHrmsPage })));
+const ProgressPage = lazy(() => import('@/pages/employee/ProgressPage').then(m => ({ default: m.ProgressPage })));
+const MessagesPage = lazy(() => import('@/pages/employee/MessagesPage').then(m => ({ default: m.MessagesPage })));
+const EmployeeProfilePage = lazy(() => import('@/pages/employee/employeeProfilePage').then(m => ({ default: m.EmployeeProfilePage || m.employeeProfilePage })));
 
-// Customer pages
-const CustomerDashboard = lazy(() => import('@/pages/customer/CustomerDashboard').then(m => ({ default: m.CustomerDashboard })));
-const CustomerAttendancePage = lazy(() => import('@/pages/customer/CustomerAttendancePage').then(m => ({ default: m.CustomerAttendancePage })));
-const CustomerProfilePage = lazy(() => import('@/pages/customer/CustomerProfilePage').then(m => ({ default: m.CustomerProfilePage })));
+// student pages
+const StudentDashboard = lazy(() => import('@/pages/student/StudentDashboard').then(m => ({ default: m.studentDashboard || (m as any).StudentDashboard })));
+const StudentAttendancePage = lazy(() => import('@/pages/student/StudentAttendancePage').then(m => ({ default: m.studentAttendancePage || (m as any).StudentAttendancePage })));
+const StudentProfilePage = lazy(() => import('@/pages/student/StudentProfilePage').then(m => ({ default: m.studentProfilePage || (m as any).StudentProfilePage })));
 
 // SuperAdmin pages
 const SuperAdminDashboard = lazy(() => import('@/pages/superadmin/SuperAdminDashboard').then(m => ({ default: m.SuperAdminDashboard })));
-const GymsPage = lazy(() => import('@/pages/superadmin/GymsPage').then(m => ({ default: m.GymsPage })));
+const VahdsPage = lazy(() => import('@/pages/superadmin/vahdsPage').then(m => ({ default: m.VahdsPage || m.vahdsPage })));
 const SaaSPlansPage = lazy(() => import('@/pages/superadmin/SaaSPlansPage').then(m => ({ default: m.SaaSPlansPage })));
 const FeatureControlsPage = lazy(() => import('@/pages/superadmin/FeatureControlsPage').then(m => ({ default: m.FeatureControlsPage })));
 const AiEnginePage = lazy(() => import('@/pages/superadmin/AiEnginePage').then(m => ({ default: m.AiEnginePage })));
@@ -95,13 +94,8 @@ function AppRoutes() {
         {/* OWNER ROUTES */}
         <Route path="/owner" element={<ProtectedRoute><RoleRedirect allowed={['owner']} /></ProtectedRoute>}>
           <Route index element={<OwnerDashboard />} />
-          <Route path="customers" element={<MembersPage />} />
-          <Route path="customers/:id" element={<Navigate to="/owner/customers" replace />} />
-          <Route path="nutrition" element={<Navigate to="/owner" replace />} />
-          <Route path="food-scanner" element={<Navigate to="/owner" replace />} />
-          <Route path="body-composition" element={<Navigate to="/owner" replace />} />
-          <Route path="health-sync" element={<Navigate to="/owner" replace />} />
-          <Route path="crm" element={<Navigate to="/owner" replace />} />
+          <Route path="students" element={<MembersPage />} />
+          <Route path="students/:id" element={<Navigate to="/owner/students" replace />} />
           <Route path="pos" element={<PosPage />} />
           <Route path="inventory" element={<Navigate to="/owner/pos?tab=inventory" replace />} />
           <Route path="purchase" element={<Navigate to="/owner/pos?tab=purchase" replace />} />
@@ -109,14 +103,14 @@ function AppRoutes() {
           <Route path="courses" element={<Navigate to="/owner/settings?tab=courses" replace />} />
           <Route path="attendance" element={<Navigate to="/owner/hrms?tab=attendance" replace />} />
           <Route path="attendance-approve" element={<Navigate to="/owner/hrms?tab=corrections" replace />} />
-          <Route path="trainers" element={<Navigate to="/owner/hrms?tab=trainers" replace />} />
+          <Route path="employees" element={<Navigate to="/owner/hrms?tab=employees" replace />} />
           <Route path="hrms" element={<HrmsPage />} />
           <Route path="brochures" element={<Navigate to="/owner" replace />} />
           <Route path="payments" element={<PaymentsPage />} />
           <Route path="iot" element={<IotPage />} />
           <Route path="cctv" element={<Navigate to="/owner/iot?tab=cctv" replace />} />
           <Route path="biometrics" element={<Navigate to="/owner/iot?tab=biometrics" replace />} />
-          <Route path="reports" element={<Navigate to="/owner/settings?tab=reports" replace />} />
+          <Route path="reports" element={<ReportsPage />} />
           <Route path="multi-branch" element={<MultiBranchPage />} />
           <Route path="erp" element={<Navigate to="/owner/settings?tab=erp" replace />} />
           <Route path="settings" element={<SettingsPage />} />
@@ -127,7 +121,7 @@ function AppRoutes() {
           <Route index element={<HoDashboard />} />
           <Route path="hrms" element={<HrmsPage />} />
           <Route path="organisations" element={<HoOrganisationsPage />} />
-          <Route path="reports" element={<Navigate to="/ho/settings?tab=reports" replace />} />
+          <Route path="reports" element={<ReportsPage />} />
           <Route path="attendance" element={<Navigate to="/ho/hrms?tab=attendance" replace />} />
           <Route path="attendance-approve" element={<Navigate to="/ho/hrms?tab=corrections" replace />} />
           <Route path="memberships" element={<Navigate to="/ho/settings?tab=courses" replace />} />
@@ -141,37 +135,30 @@ function AppRoutes() {
           <Route index element={<ErpPage />} />
         </Route>
 
-        {/* EMPLOYEE / TRAINER ROUTES */}
-        <Route path="/trainer" element={<ProtectedRoute><RoleRedirect allowed={['employee', 'trainer']} /></ProtectedRoute>}>
-          <Route index element={<TrainerDashboard />} />
-          <Route path="customers" element={<MembersPage />} />
-          <Route path="hrms" element={<TrainerHrmsPage />} />
-          <Route path="attendance" element={<Navigate to="/trainer/hrms?tab=attendance" replace />} />
-          <Route path="nutrition" element={<Navigate to="/trainer" replace />} />
+        {/* EMPLOYEE ROUTES */}
+        <Route path="/employee" element={<ProtectedRoute><RoleRedirect allowed={['employee']} /></ProtectedRoute>}>
+          <Route index element={<EmployeeDashboard />} />
+          <Route path="students" element={<MembersPage />} />
+          <Route path="hrms" element={<EmployeeHrmsPage />} />
+          <Route path="attendance" element={<Navigate to="/employee/hrms?tab=attendance" replace />} />
           <Route path="progress" element={<ProgressPage />} />
           <Route path="messages" element={<MessagesPage />} />
-          <Route path="ai-coach" element={<AiCoachPage />} />
-          <Route path="profile" element={<TrainerProfilePage />} />
+          <Route path="profile" element={<EmployeeProfilePage />} />
         </Route>
 
-        {/* STUDENT / CUSTOMER ROUTES */}
-        <Route path="/app" element={<ProtectedRoute><RoleRedirect allowed={['student', 'customer']} /></ProtectedRoute>}>
-          <Route index element={<CustomerDashboard />} />
-          <Route path="attendance" element={<CustomerAttendancePage />} />
-          <Route path="workouts" element={<Navigate to="/app" replace />} />
-          <Route path="nutrition" element={<Navigate to="/app" replace />} />
-          <Route path="food-scanner" element={<Navigate to="/app" replace />} />
+        {/* STUDENT / student ROUTES */}
+        <Route path="/app" element={<ProtectedRoute><RoleRedirect allowed={['student']} /></ProtectedRoute>}>
+          <Route index element={<StudentDashboard />} />
+          <Route path="attendance" element={<StudentAttendancePage />} />
           <Route path="progress" element={<ProgressPage />} />
-          <Route path="ai-coach" element={<AiCoachPage />} />
-          <Route path="transformation" element={<Navigate to="/app" replace />} />
           <Route path="history" element={<Navigate to="/app" replace />} />
-          <Route path="profile" element={<CustomerProfilePage />} />
+          <Route path="profile" element={<StudentProfilePage />} />
         </Route>
 
         {/* SUPER ADMIN ROUTES */}
         <Route path="/super-admin" element={<ProtectedRoute><RoleRedirect allowed={['super_admin']} /></ProtectedRoute>}>
           <Route index element={<SuperAdminDashboard />} />
-          <Route path="gyms" element={<GymsPage />} />
+          <Route path="vahds" element={<VahdsPage />} />
           <Route path="plans" element={<Navigate to="/super-admin" replace />} />
           <Route path="features" element={<Navigate to="/super-admin" replace />} />
           <Route path="ai-engine" element={<Navigate to="/super-admin" replace />} />
@@ -180,6 +167,11 @@ function AppRoutes() {
           <Route path="support" element={<SupportDeskPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
+
+        {/* SUPER ADMIN ALIAS ROUTES (fallback for underscore path variants) */}
+        <Route path="/super_admin/settings" element={<Navigate to="/super-admin/settings" replace />} />
+        <Route path="/super_admin" element={<Navigate to="/super-admin" replace />} />
+        <Route path="/super_admin/*" element={<Navigate to="/super-admin" replace />} />
 
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>

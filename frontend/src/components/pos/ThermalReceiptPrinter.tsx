@@ -32,9 +32,9 @@ export function ThermalReceiptPrinter({ bill, customTemplate }: ThermalReceiptPr
       const activeMap = rawActive ? JSON.parse(rawActive) : {};
       const activeId = activeMap.thermal || activeMap.invoices;
       invTemplate = templates.find((t: any) => t.id === activeId) ||
-                    templates.find((t: any) => t.category === 'thermal' && t.isDefault) ||
-                    templates.find((t: any) => t.category === 'thermal') ||
-                    templates[0];
+        templates.find((t: any) => t.category === 'thermal' && t.isDefault) ||
+        templates.find((t: any) => t.category === 'thermal') ||
+        templates[0];
     }
   } catch (e) {
     console.error('Failed to load inventory print template:', e);
@@ -44,7 +44,7 @@ export function ThermalReceiptPrinter({ bill, customTemplate }: ThermalReceiptPr
   const activeBillingGst = getActiveBillingGst(tenant?.id);
   const fallbackStore = getActiveReceiptTemplate();
   const tenantRaw = (tenant as any)?.raw || {};
-  
+
   const storeName = activeBillingGst?.trade_name || activeBillingGst?.legal_name || tenant?.name || invTemplate?.storeName || fallbackStore.storeName || 'Store';
   const storeAddress = activeBillingGst?.address || invTemplate?.storeAddress || tenantRaw?.address || fallbackStore.address || '';
   const storePhone = activeBillingGst?.phone || invTemplate?.storePhone || tenantRaw?.phone || fallbackStore.phone || '';
@@ -67,7 +67,7 @@ export function ThermalReceiptPrinter({ bill, customTemplate }: ThermalReceiptPr
     showLogo: true,
     showStoreAddress: true,
     showTaxId: true,
-    showCustomerDetails: true,
+    showstudentDetails: true,
     showTime: true,
     showPaymentQR: true
   };
@@ -75,7 +75,7 @@ export function ThermalReceiptPrinter({ bill, customTemplate }: ThermalReceiptPr
   const invoiceNum = bill.invoice_number || bill.id || bill.rawId?.substring(0, 8) || '#90412';
   const dateStr = formatDisplayDate(bill.date || new Date());
   const timeStr = bill.date ? new Date(bill.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  const customerName = bill.customerName || 'Walk-in Customer';
+  const studentName = bill.studentName || 'Walk-in student';
 
   const items = bill.items || [];
   const rawSubtotal = bill.subtotal || items.reduce((sum: number, i: any) => sum + ((i.quantity || 1) * (i.unit_price || i.price || 0)), 0);
@@ -138,14 +138,14 @@ export function ThermalReceiptPrinter({ bill, customTemplate }: ThermalReceiptPr
             <span>Cashier: Admin</span>
           </div>
         )}
-        {f.showCustomerDetails && (
+        {f.showstudentDetails && (
           <div className="text-[10.5px] font-semibold text-black mt-1 border-t border-dashed border-black pt-1 space-y-0.5">
-            <div>Customer: <span className="font-bold">{customerName}</span></div>
-            {(bill.customerBillingAddress || bill.customerAddress) && (
-              <div className="text-[10px]">Bill To: {bill.customerBillingAddress || bill.customerAddress}</div>
+            <div>student: <span className="font-bold">{studentName}</span></div>
+            {(bill.studentBillingAddress || bill.studentAddress) && (
+              <div className="text-[10px]">Bill To: {bill.studentBillingAddress || bill.studentAddress}</div>
             )}
-            {(bill.customerShippingAddress || bill.customerBillingAddress || bill.customerAddress) && (
-              <div className="text-[10px] font-bold">Ship To: {bill.customerShippingAddress || bill.customerBillingAddress || bill.customerAddress}</div>
+            {(bill.studentShippingAddress || bill.studentBillingAddress || bill.studentAddress) && (
+              <div className="text-[10px] font-bold">Ship To: {bill.studentShippingAddress || bill.studentBillingAddress || bill.studentAddress}</div>
             )}
             {bill.po_number && <div className="text-[10px]">PO Ref: {bill.po_number}</div>}
             {bill.vehicle_number && <div className="text-[10px]">Vehicle: {bill.vehicle_number}</div>}

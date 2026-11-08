@@ -8,6 +8,7 @@ import { WhatsAppGatewayConnectModal } from './WhatsAppGatewayConnectModal';
 import { printStudentAdmissionForm } from '@/lib/student-print-helper';
 import { TableColumnSettingsPopover, ColumnGroup } from './TableColumnSettingsPopover';
 import { HrmsImportExportControls } from './HrmsImportExportControls';
+import { PasswordResetModal } from './PasswordResetModal';
 
 export const STUDENT_COLUMN_GROUPS: ColumnGroup[] = [
   {
@@ -100,8 +101,8 @@ interface StudentItem {
   name?: string;
   email: string;
   phone: string;
+  student_number?: string;
   parent_phone?: string;
-  parent_mobile?: string;
   member_code?: string;
   code?: string;
   gender?: string;
@@ -127,12 +128,13 @@ interface StudentItem {
 export function StudentManagementTab() {
   const [students, setStudents] = useState<StudentItem[]>([]);
   const [availableCourses, setAvailableCourses] = useState<string[]>([]);
-  const [branchesList, setBranchesList] = useState<Array<{ id: string; branch_name: string; name?: string; gym_name?: string }>>([]);
+  const [branchesList, setBranchesList] = useState<Array<{ id: string; branch_name: string; name?: string; vahd_name?: string }>>([]);
   const [selectedBranch, setSelectedBranch] = useState<string>(() => {
     return localStorage.getItem('vahd_selected_org_id') || 'all';
   });
   const [selectedSubBranch, setSelectedSubBranch] = useState<string>('all');
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   // Sub-branches belonging specifically to the selected organisation
   const subBranches = useMemo(() => {
@@ -140,14 +142,14 @@ export function StudentManagementTab() {
       return [];
     }
     const targetBranch = branchesList.find(
-      (b) => b.id === selectedBranch || b.branch_name === selectedBranch || (b as any).gym_name === selectedBranch
+      (b) => b.id === selectedBranch || b.branch_name === selectedBranch || (b as any).vahd_name === selectedBranch
     );
     if (!targetBranch) return [];
-    const orgGymName = ((targetBranch as any).gym_name || targetBranch.branch_name || '').toLowerCase();
+    const orgvahdName = ((targetBranch as any).vahd_name || targetBranch.branch_name || '').toLowerCase();
     const orgOwnerId = (targetBranch as any).owner_id;
     return branchesList.filter(
       (b) =>
-        (orgGymName && (b as any).gym_name?.toLowerCase() === orgGymName) ||
+        (orgvahdName && (b as any).vahd_name?.toLowerCase() === orgvahdName) ||
         (orgOwnerId && (b as any).owner_id === orgOwnerId)
     );
   }, [branchesList, selectedBranch]);
@@ -174,7 +176,7 @@ export function StudentManagementTab() {
     setViewMode(mode);
     try {
       localStorage.setItem('hrms_students_view_mode', mode);
-    } catch {}
+    } catch { }
   };
   const [enrollModalOpen, setEnrollModalOpen] = useState(false);
   const [studentToEdit, setStudentToEdit] = useState<StudentItem | null>(null);
@@ -187,6 +189,7 @@ export function StudentManagementTab() {
   const [sendingSingleReport, setSendingSingleReport] = useState(false);
   const [isWhatsAppReportsModalOpen, setIsWhatsAppReportsModalOpen] = useState(false);
   const [isGatewayModalOpen, setIsGatewayModalOpen] = useState(false);
+  const [passwordResetTarget, setPasswordResetTarget] = useState<StudentItem | null>(null);
 
   const handleDispatchMonthlyReports = async () => {
     if (!confirm("Dispatch official monthly biometric attendance reports to all registered parent WhatsApp numbers?")) {
@@ -194,7 +197,7 @@ export function StudentManagementTab() {
     }
     setDispatchingReports(true);
     try {
-      const res = await apiClient.post<any>('/customers/attendance-reports/dispatch-monthly', {});
+      const res = await apiClient.post<any>('/students/attendance-reports/dispatch-monthly', {});
       showToast(res.data?.message || 'Monthly attendance reports dispatched to parents via WhatsApp!');
     } catch (err: any) {
       showToast(err?.response?.data?.detail || err?.message || 'Failed to dispatch monthly reports.');
@@ -206,7 +209,7 @@ export function StudentManagementTab() {
   const handleSendSingleStudentWhatsAppReport = async (studentId: string) => {
     setSendingSingleReport(true);
     try {
-      const res = await apiClient.post<any>(`/customers/${studentId}/attendance-report/send-whatsapp`, {});
+      const res = await apiClient.post<any>(`/students/${studentId}/attendance-report/send-whatsapp`, {});
       if (res?.whatsapp_url && !res?.gateway_sent) {
         window.open(res.whatsapp_url, '_blank');
         showToast(`Opening WhatsApp Web for ${res?.parent_phone || 'parent'} with pre-filled attendance report...`);
@@ -277,7 +280,7 @@ export function StudentManagementTab() {
   const [dispatchingWhatsAppId, setDispatchingWhatsAppId] = useState<string | null>(null);
 
   const handleQuickSendWhatsApp = async (student: any) => {
-    const parentPhone = student.parent_phone || student.meta_data?.parent_mobile || student.meta_data?.parent_phone;
+    const parentPhone = student.parent_phone || student.meta_data?.parent_phone;
     if (!parentPhone) {
       showToast(`Cannot dispatch: Missing parent mobile number for ${student.full_name || student.name}.`);
       return;
@@ -286,7 +289,7 @@ export function StudentManagementTab() {
     setDispatchingWhatsAppId(student.id);
     try {
       const now = new Date();
-      const res = await apiClient.post<any>(`/customers/${student.id}/attendance-report/send-whatsapp`, {
+      const res = await apiClient.post<any>(`/students/${student.id}/attendance-report/send-whatsapp`, {
         year: now.getFullYear(),
         month: now.getMonth() + 1,
         dispatch_type: 'MANUAL_ROW_DISPATCH'
@@ -304,17 +307,38 @@ export function StudentManagementTab() {
     }
   };
 
-  const fetchStudents = async () => {
+  const fetchStudents = async (branchId?: string) => {
     setLoading(true);
+    setFetchError(null);
     try {
+      const bId = typeof branchId === 'string' ? branchId : (localStorage.getItem('vahd_selected_org_id') || 'all');
+      const query = bId && bId !== 'all' ? `?branch_id=${encodeURIComponent(bId)}` : '';
       const [res, coursesRes, branchesRes] = await Promise.all([
-        apiClient.get<any[]>('/customers').catch(() => []),
+        apiClient.get<any>(`/students${query}`).catch((err) => {
+          console.error('Error fetching students:', err);
+          return { _error: err?.response?.data?.detail || err?.response?.data?.message || err?.message || 'Failed to load students' };
+        }),
         apiClient.get<any[]>('/courses').catch(() => []),
-        apiClient.get<any[]>('/gym/branches').catch(() => []),
+        apiClient.get<any[]>('/vahd/branches').catch(() => []),
       ]);
-      if (Array.isArray(res)) {
-        setStudents(res);
+
+      if (res && (res as any)._error) {
+        setFetchError((res as any)._error);
+        setStudents([]);
+      } else {
+        let studentData: any[] = [];
+        if (Array.isArray(res)) {
+          studentData = res;
+        } else if (Array.isArray((res as any)?.items)) {
+          studentData = (res as any).items;
+        } else if (Array.isArray((res as any)?.data)) {
+          studentData = (res as any).data;
+        } else if (Array.isArray((res as any)?.students)) {
+          studentData = (res as any).students;
+        }
+        setStudents(studentData);
       }
+
       if (Array.isArray(coursesRes)) {
         const names = coursesRes.map((c: any) => c.name).filter(Boolean);
         setAvailableCourses(names);
@@ -322,7 +346,8 @@ export function StudentManagementTab() {
       if (Array.isArray(branchesRes)) {
         setBranchesList(branchesRes);
       }
-    } catch {
+    } catch (err: any) {
+      setFetchError(err?.message || 'Failed to load students');
       setStudents([]);
     } finally {
       setLoading(false);
@@ -330,13 +355,13 @@ export function StudentManagementTab() {
   };
 
   useEffect(() => {
-    fetchStudents();
-  }, []);
+    fetchStudents(selectedBranch);
+  }, [selectedBranch]);
 
   const handleSyncBiometric = async (studentId: string) => {
     setSyncingId(studentId);
     try {
-      await apiClient.post(`/customers/${studentId}/sync-biometric`, {});
+      await apiClient.post(`/students/${studentId}/sync-biometric`, {});
       showToast('Biometric Face Profile synchronized successfully.');
       fetchStudents();
     } catch {
@@ -350,7 +375,12 @@ export function StudentManagementTab() {
     const name = studentName || 'this student';
     if (!window.confirm(`Are you sure you want to delete ${name}? This action cannot be undone.`)) return;
     try {
-      await apiClient.delete(`/customers/${studentId}`);
+      const res = await apiClient.delete(`/students/${studentId}`);
+      // Check explicit success field if present
+      if (res && res.success === false) {
+        showToast(res.message || 'Failed to delete student.');
+        return;
+      }
       showToast('Student record deleted successfully.');
       setSelectedIds((prev) => {
         const next = new Set(prev);
@@ -359,7 +389,8 @@ export function StudentManagementTab() {
       });
       fetchStudents();
     } catch (err: any) {
-      showToast('Failed to delete student.');
+      const detail = err?.response?.data?.detail || err?.response?.data?.message || err?.message || '';
+      showToast(detail ? `Failed to delete student: ${detail}` : 'Failed to delete student.');
       fetchStudents();
     }
   };
@@ -421,27 +452,38 @@ export function StudentManagementTab() {
     let matchesBranch = true;
     if (!isAll) {
       const targetBranch = branchesList.find(
-        (b) => b.id === selectedBranch || b.branch_name === selectedBranch || (b as any).gym_name === selectedBranch
+        (b) => b.id === selectedBranch || b.branch_name === selectedBranch || (b as any).vahd_name === selectedBranch || (b as any).ho_id === selectedBranch
       );
 
       const sBranchId = s.branch_id || meta.branch_id;
+      const sHoId = s.ho_id || meta.ho_id;
+      const sOwnerId = s.owner_id || meta.owner_id;
+
       const matchesBranchId = Boolean(
         sBranchId && (sBranchId === selectedBranch || (targetBranch && sBranchId === targetBranch.id))
+      );
+
+      const matchesHoId = Boolean(
+        sHoId && (
+          sHoId === selectedBranch ||
+          (targetBranch && (sHoId === targetBranch.id || sHoId === (targetBranch as any).ho_id))
+        )
       );
 
       const targetNames = [
         selectedBranch.toLowerCase(),
         targetBranch?.branch_name?.toLowerCase(),
-        (targetBranch as any)?.gym_name?.toLowerCase(),
+        (targetBranch as any)?.vahd_name?.toLowerCase(),
         targetBranch?.name?.toLowerCase(),
       ].filter(Boolean) as string[];
 
       const sNames = [
         s.branch?.toLowerCase(),
-        (s as any).primary_gym_location?.toLowerCase(),
+        (s as any).primary_vahd_location?.toLowerCase(),
         meta.branch?.toLowerCase(),
-        meta.gym_branch?.toLowerCase(),
+        meta.vahd_branch?.toLowerCase(),
         (s as any).organisation?.toLowerCase(),
+        meta.organisation_name?.toLowerCase(),
       ].filter(Boolean) as string[];
 
       const matchesName = targetNames.some((tn) =>
@@ -449,10 +491,10 @@ export function StudentManagementTab() {
       );
 
       const matchesOwner = Boolean(
-        targetBranch && (targetBranch as any).owner_id && (s.owner_id === (targetBranch as any).owner_id || (s as any).ho_id === targetBranch.id)
+        targetBranch && (targetBranch as any).owner_id && (sOwnerId === (targetBranch as any).owner_id || sHoId === targetBranch.id)
       );
 
-      matchesBranch = Boolean(matchesBranchId || matchesName || matchesOwner);
+      matchesBranch = Boolean(matchesBranchId || matchesHoId || matchesName || matchesOwner);
     }
 
     if (selectedSubBranch && selectedSubBranch !== 'all') {
@@ -504,7 +546,7 @@ export function StudentManagementTab() {
     try {
       const idsToDelete = Array.from(selectedIds);
       const results = await Promise.allSettled(
-        idsToDelete.map((id) => apiClient.delete(`/customers/${id}`))
+        idsToDelete.map((id) => apiClient.delete(`/students/${id}`))
       );
       const fulfilled = results.filter((r) => r.status === 'fulfilled').length;
       showToast(`Successfully deleted ${fulfilled} student record(s).`);
@@ -524,7 +566,7 @@ export function StudentManagementTab() {
     try {
       const idsToSync = Array.from(selectedIds);
       await Promise.allSettled(
-        idsToSync.map((id) => apiClient.post(`/customers/${id}/sync-biometric`, {}))
+        idsToSync.map((id) => apiClient.post(`/students/${id}/sync-biometric`, {}))
       );
       showToast(`Biometric synchronization requested for ${count} students.`);
       fetchStudents();
@@ -541,7 +583,7 @@ export function StudentManagementTab() {
       prev.map((stu) => (stu.id === studentId ? { ...stu, status: newStatus } : stu))
     );
     try {
-      await apiClient.put(`/customers/${studentId}`, { status: newStatus });
+      await apiClient.put(`/students/${studentId}`, { status: newStatus });
       showToast(`Student status updated to ${newStatus}.`);
       fetchStudents();
     } catch (e) {
@@ -569,7 +611,7 @@ export function StudentManagementTab() {
 
   return (
     <div className="space-y-4 animate-fade-in text-slate-800 dark:text-slate-200">
-      
+
       {/* Toast Notification */}
       {toast && (
         <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white text-xs font-semibold px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-2 border border-blue-500/30 animate-fade-in">
@@ -756,7 +798,7 @@ export function StudentManagementTab() {
 
             <button
               type="button"
-              onClick={fetchStudents}
+              onClick={() => fetchStudents()}
               className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 dark:border-slate-700 text-slate-600 dark:text-slate-300 transition shadow-2xs"
               title="Refresh Student Directory"
             >
@@ -838,6 +880,25 @@ export function StudentManagementTab() {
       {/* ───────────────────────────────────────────────────────────── */}
       {/* 3. STUDENTS DIRECTORY TABLE / GRID                             */}
       {/* ───────────────────────────────────────────────────────────── */}
+      {fetchError && (
+        <div className="card p-4 bg-rose-50 border border-rose-200 text-rose-800 rounded-2xl flex items-center justify-between gap-3 animate-fade-in">
+          <div className="flex items-center gap-2">
+            <Icon name="alert-circle" size={18} className="text-rose-600 shrink-0" />
+            <div>
+              <span className="text-xs font-bold block">Unable to load student directory</span>
+              <span className="text-[11px] text-rose-600 font-medium">{fetchError}</span>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => fetchStudents()}
+            className="px-3.5 py-1.5 bg-rose-600 text-white rounded-xl text-xs font-bold hover:bg-rose-700 transition shrink-0"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
       {loading ? (
         <div className="card p-12 text-center text-slate-400 bg-white dark:bg-slate-900 border border-slate-200/90 rounded-2xl">
           <div className="w-8 h-8 border-2 border-blue-600/30 border-t-blue-600 rounded-full animate-spin mx-auto mb-2" />
@@ -1008,11 +1069,11 @@ export function StudentManagementTab() {
                       {/* PARENT WHATSAPP */}
                       {visibleColumns.parentMobile && (
                         <td className="p-3.5 text-xs font-mono font-bold text-emerald-800 dark:text-emerald-300">
-                          {s.parent_phone || meta.parent_mobile || meta.parent_phone ? (
+                          {s.parent_phone || meta.parent_phone ? (
                             <div className="flex items-center gap-1.5">
                               <span className="inline-flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-lg border border-emerald-200 dark:border-emerald-800 text-[11px]">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-                                {s.parent_phone || meta.parent_mobile || meta.parent_phone}
+                                {s.parent_phone || meta.parent_phone}
                               </span>
                               <button
                                 type="button"
@@ -1299,22 +1360,21 @@ export function StudentManagementTab() {
                         <div className="flex items-center justify-center gap-1.5">
                           <button
                             type="button"
-                            disabled={dispatchingWhatsAppId === s.id}
-                            onClick={() => handleQuickSendWhatsApp(s)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 transition disabled:opacity-50"
-                            title={`Send Attendance Report to Parent (${s.parent_phone || s.meta_data?.parent_mobile || 'Mapped Mobile'}) via WhatsApp`}
-                          >
-                            <Icon name="message-circle" size={13} className="text-emerald-600" />
-                            <span>{dispatchingWhatsAppId === s.id ? 'Sending...' : 'WhatsApp'}</span>
-                          </button>
-                          <button
-                            type="button"
                             onClick={() => handleEditStudent(s)}
                             className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition"
                             title="Edit Student Details"
                           >
                             <Icon name="pen" size={12} />
                             <span>Edit</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setPasswordResetTarget(s)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-purple-50 hover:bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 border border-purple-200 dark:border-purple-800 transition"
+                            title="Reset Student Password"
+                          >
+                            <Icon name="key" size={12} className="text-purple-600" />
+                            <span>Password</span>
                           </button>
                           <button
                             type="button"
@@ -1443,12 +1503,11 @@ export function StudentManagementTab() {
                   <div className="flex items-center gap-1">
                     <button
                       type="button"
-                      disabled={dispatchingWhatsAppId === s.id}
-                      onClick={() => handleQuickSendWhatsApp(s)}
-                      className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 transition font-bold disabled:opacity-50"
-                      title={`Send Attendance Report to Parent (${s.parent_phone || s.meta_data?.parent_mobile || 'Mapped Mobile'}) via WhatsApp`}
+                      onClick={() => setPasswordResetTarget(s)}
+                      className="p-1.5 rounded-lg text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950/50 transition font-bold"
+                      title="Reset Student Password"
                     >
-                      <Icon name="message-circle" size={15} />
+                      <Icon name="key" size={14} />
                     </button>
                     <button
                       type="button"
@@ -1504,7 +1563,7 @@ export function StudentManagementTab() {
       {selectedStudentForView && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/70 backdrop-blur-sm overflow-y-auto animate-fade-in">
           <div className="bg-white dark:bg-slate-900 border-2 border-slate-300 dark:border-slate-700 rounded-3xl w-full max-w-3xl shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col">
-            
+
             {/* Header */}
             <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-800 text-white p-4 flex items-center justify-between shadow-md">
               <div className="flex items-center gap-3">
@@ -1631,7 +1690,7 @@ export function StudentManagementTab() {
                     <Icon name="message-square" size={12} /> Parent WhatsApp:
                   </span>
                   <div className="font-mono font-black text-emerald-900 dark:text-emerald-100 mt-0.5 text-xs">
-                    {selectedStudentForView.parent_phone || selectedStudentForView.meta_data?.parent_mobile || selectedStudentForView.meta_data?.parent_phone || 'N/A'}
+                    {selectedStudentForView.parent_phone || selectedStudentForView.meta_data?.parent_phone || 'N/A'}
                   </div>
                 </div>
                 <div>
@@ -1688,6 +1747,20 @@ export function StudentManagementTab() {
 
           </div>
         </div>
+      )}
+
+      {/* Password Reset Modal */}
+      {passwordResetTarget && (
+        <PasswordResetModal
+          isOpen={!!passwordResetTarget}
+          onClose={() => setPasswordResetTarget(null)}
+          targetType="student"
+          targetId={passwordResetTarget.id}
+          targetName={passwordResetTarget.full_name || passwordResetTarget.name || 'Student'}
+          targetEmail={passwordResetTarget.email || ''}
+          targetCode={passwordResetTarget.student_number || passwordResetTarget.member_code || passwordResetTarget.code || passwordResetTarget.id}
+          onSuccess={(msg) => showToast(msg)}
+        />
       )}
 
     </div>

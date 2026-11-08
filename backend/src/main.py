@@ -16,6 +16,9 @@ import src.models
 from src.api.v1.router import api_router
 
 from src.database.db_migrate import run_database_migrations
+from src.database.tenant_session import TenantScopeDenied
+from fastapi.responses import JSONResponse
+from src.api.deps import apply_tenant_scope
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -24,6 +27,12 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
 )
+
+@app.exception_handler(TenantScopeDenied)
+async def _tenant_scope_denied_handler(request, exc: TenantScopeDenied):
+    """Unauthenticated write attempts → clean 403 instead of a 500/crash."""
+    return JSONResponse(status_code=403, content={"detail": str(exc)})
+
 
 @app.on_event("startup")
 def on_startup():

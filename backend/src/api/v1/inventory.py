@@ -25,7 +25,7 @@ def get_inventory(
     stock_status: Optional[str] = Query(None),
     db: Session = Depends(get_db)
 ):
-    """List all gym inventory products with stock levels, filters, and pricing."""
+    """List all vahd inventory products with stock levels, filters, and pricing."""
     return InventoryService.get_inventory_items(
         db=db,
         search=search,
@@ -77,7 +77,7 @@ def create_inventory_item(
     payload: Dict[str, Any] = Body(...),
     db: Session = Depends(get_db)
 ):
-    """Create a new product in gym inventory."""
+    """Create a new product in vahd inventory."""
     return InventoryService.create_inventory_item(db=db, data=payload)
 
 
@@ -304,7 +304,7 @@ def import_master_catalog(
     payload: Dict[str, Any] = Body(...),
     db: Session = Depends(get_db)
 ):
-    """Import items from Master Catalog into active gym inventory."""
+    """Import items from Master Catalog into active vahd inventory."""
     return InventoryService.import_from_master_catalog(db=db, payload=payload)
 
 
@@ -380,7 +380,7 @@ def bulk_delete_products(
     payload: Dict[str, Any] = Body(...),
     db: Session = Depends(get_db)
 ):
-    """Bulk delete products from gym inventory."""
+    """Bulk delete products from vahd inventory."""
     product_ids = payload.get("product_ids", [])
     return InventoryService.bulk_delete_items(db=db, product_ids=product_ids)
 
@@ -490,7 +490,7 @@ def delete_inventory_item(
     item_id: str,
     db: Session = Depends(get_db)
 ):
-    """Delete an item from gym inventory."""
+    """Delete an item from vahd inventory."""
     try:
         return InventoryService.delete_inventory_item(db=db, item_id=item_id)
     except ValueError as e:

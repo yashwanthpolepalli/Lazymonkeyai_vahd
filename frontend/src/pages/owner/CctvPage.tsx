@@ -25,7 +25,7 @@ export function CctvPage() {
 
   const cameras = [
     { name: 'Entrance', location: 'Main Gate', status: 'online' },
-    { name: 'Gym Floor', location: 'Main Area', status: 'online' },
+    { name: 'vahd Floor', location: 'Main Area', status: 'online' },
     { name: 'Free Weights', location: 'Weight Zone', status: 'online' },
     { name: 'Reception', location: 'Front Desk', status: 'online' },
     { name: 'Studio', location: 'Class Room', status: 'warning' },

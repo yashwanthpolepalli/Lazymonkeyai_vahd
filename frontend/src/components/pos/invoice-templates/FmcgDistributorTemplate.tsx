@@ -81,21 +81,21 @@ export function FmcgDistributorTemplate({
       {/* ─── BILLED TO / SHIPPED TO DUAL COLUMNS ─── */}
       <div className="grid grid-cols-2 border-b border-black text-[9px] leading-snug">
         <div className="p-1 border-r border-black space-y-0.5">
-          <p className="font-bold font-sans">Billed To : <span className="font-mono">{invoice.customerName || 'Customer'}</span></p>
-          <p>Address : {invoice.customerBillingAddress || invoice.customerAddress || 'Local Address'}</p>
-          <p className="font-mono font-bold">GSTIN : {invoice.customerGST || 'UNREGISTERED'}</p>
+          <p className="font-bold font-sans">Billed To : <span className="font-mono">{invoice.studentName || 'student'}</span></p>
+          <p>Address : {invoice.studentBillingAddress || invoice.studentAddress || 'Local Address'}</p>
+          <p className="font-mono font-bold">GSTIN : {invoice.studentGST || 'UNREGISTERED'}</p>
           <div className="grid grid-cols-2 text-[8px] pt-0.5">
             <p>State : {sellerStateCode}-Telangana</p>
             <p>PO Date : {invoice.po_date ? formatDisplayDate(invoice.po_date) : formattedDate}</p>
             <p>Vehicle : {invoice.vehicle_number || '-'}</p>
-            <p>Cust Contact: {invoice.customerPhone || '-'}</p>
+            <p>Cust Contact: {invoice.studentPhone || '-'}</p>
           </div>
         </div>
 
         <div className="p-1 space-y-0.5">
-          <p className="font-bold font-sans">Shipped To : <span className="font-mono">{invoice.customerCompany || invoice.customerName || 'Customer'}</span></p>
-          <p>Address : {invoice.customerShippingAddress || invoice.customerBillingAddress || invoice.customerAddress || 'Delivery Address'}</p>
-          <p className="font-mono font-bold">GSTIN : {invoice.customerGST || 'UNREGISTERED'}</p>
+          <p className="font-bold font-sans">Shipped To : <span className="font-mono">{invoice.studentCompany || invoice.studentName || 'student'}</span></p>
+          <p>Address : {invoice.studentShippingAddress || invoice.studentBillingAddress || invoice.studentAddress || 'Delivery Address'}</p>
+          <p className="font-mono font-bold">GSTIN : {invoice.studentGST || 'UNREGISTERED'}</p>
           <div className="grid grid-cols-2 text-[8px] pt-0.5">
             <p>Driver / Transport : {invoice.transporter_name || invoice.driver_phone || '-'}</p>
             <p>e-Way Bill No : {invoice.eway_bill_number || '-'}</p>
@@ -111,7 +111,7 @@ export function FmcgDistributorTemplate({
           <thead>
             <tr className="border-b border-black font-sans font-bold text-center bg-gray-100">
               <th className="p-0.5 border-r border-black w-5" rowSpan={2}>#</th>
-              <th className="p-0.5 border-r border-black text-left" rowSpan={2}>Item Name<br/><span className="font-normal text-[7px]">HSN | Qty in SUOM</span></th>
+              <th className="p-0.5 border-r border-black text-left" rowSpan={2}>Item Name<br /><span className="font-normal text-[7px]">HSN | Qty in SUOM</span></th>
               <th className="p-0.5 border-r border-black">UOM</th>
               <th className="p-0.5 border-r border-black">MRP</th>
               <th className="p-0.5 border-r border-black">Rate</th>

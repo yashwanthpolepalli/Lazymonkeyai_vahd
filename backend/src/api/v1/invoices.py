@@ -7,7 +7,7 @@ from sqlalchemy import desc, or_, func
 
 from src.database.session import get_db
 from src.models.pos import PosTransaction
-from src.models.customer import Customer
+from src.models.student import student
 from src.models.inventory import Product, StockMovement
 from src.utils.timezone import now_ist_naive
 
@@ -25,9 +25,9 @@ def _format_pos_txn_to_invoice(t: PosTransaction) -> Dict[str, Any]:
         "invoice_type": "TAX_INVOICE",
         "status": (t.payment_status or t.status or "PAID").upper(),
         "payment_status": (t.payment_status or "PAID").upper(),
-        "customer_id": t.customer_id,
-        "customer_name": t.customer_name or "Walk-in Customer",
-        "customer_phone": t.customer_phone or "",
+        "student_id": t.student_id,
+        "student_name": t.student_name or "Walk-in student",
+        "student_phone": t.student_phone or "",
         "invoice_date": created_dt.strftime("%Y-%m-%d"),
         "due_date": created_dt.strftime("%Y-%m-%d"),
         "subtotal": float(t.subtotal or 0.0),
@@ -63,8 +63,8 @@ def list_invoices(
         query = query.filter(
             or_(
                 func.lower(PosTransaction.invoice_number).like(s),
-                func.lower(PosTransaction.customer_name).like(s),
-                func.lower(PosTransaction.customer_phone).like(s),
+                func.lower(PosTransaction.student_name).like(s),
+                func.lower(PosTransaction.student_phone).like(s),
             )
         )
 
@@ -89,18 +89,18 @@ def list_invoices(
     }
 
 
-@router.get("/customer-summary/{customer_id}")
-def get_customer_summary(customer_id: str, phone: Optional[str] = None, db: Session = Depends(get_db)):
+@router.get("/student-summary/{student_id}")
+def get_student_summary(student_id: str, phone: Optional[str] = None, db: Session = Depends(get_db)):
     query = db.query(PosTransaction)
-    if customer_id and customer_id != "undefined" and customer_id != "null":
+    if student_id and student_id != "undefined" and student_id != "null":
         query = query.filter(
             or_(
-                PosTransaction.customer_id == customer_id,
-                PosTransaction.customer_name == customer_id,
+                PosTransaction.student_id == student_id,
+                PosTransaction.student_name == student_id,
             )
         )
     elif phone:
-        query = query.filter(PosTransaction.customer_phone == phone)
+        query = query.filter(PosTransaction.student_phone == phone)
 
     txns = query.order_by(desc(PosTransaction.created_at)).all()
     total_invoiced = sum(float(t.grand_total or 0.0) for t in txns)
@@ -108,7 +108,7 @@ def get_customer_summary(customer_id: str, phone: Optional[str] = None, db: Sess
     total_due = total_invoiced - total_paid
 
     return {
-        "customer_id": customer_id,
+        "student_id": student_id,
         "total_invoices": len(txns),
         "total_invoiced": total_invoiced,
         "total_paid": total_paid,
@@ -133,7 +133,7 @@ def list_all_payments(
             "id": f"pay_{t.id}",
             "invoice_id": t.id,
             "invoice_number": t.invoice_number,
-            "customer_name": t.customer_name,
+            "student_name": t.student_name,
             "amount": float(t.grand_total or 0.0),
             "payment_method": t.payment_method or "Cash",
             "payment_date": (t.created_at or now_ist_naive()).strftime("%Y-%m-%d"),
@@ -242,9 +242,9 @@ def create_invoice(payload: Dict[str, Any] = Body(...), db: Session = Depends(ge
     txn = PosTransaction(
         id=f"pos_{uuid.uuid4().hex[:8]}",
         invoice_number=inv_num,
-        customer_id=payload.get("customer_id"),
-        customer_name=payload.get("customer_name") or "Walk-in Customer",
-        customer_phone=payload.get("customer_phone"),
+        student_id=payload.get("student_id"),
+        student_name=payload.get("student_name") or "Walk-in student",
+        student_phone=payload.get("student_phone"),
         subtotal=subtotal,
         tax_total=tax_total,
         discount_total=discount_total,
@@ -279,10 +279,10 @@ def update_invoice(invoice_id: str, payload: Dict[str, Any] = Body(...), db: Ses
         t.payment_status = str(payload["payment_status"]).upper()
     if "notes" in payload:
         t.notes = payload["notes"]
-    if "customer_name" in payload:
-        t.customer_name = payload["customer_name"]
-    if "customer_phone" in payload:
-        t.customer_phone = payload["customer_phone"]
+    if "student_name" in payload:
+        t.student_name = payload["student_name"]
+    if "student_phone" in payload:
+        t.student_phone = payload["student_phone"]
 
     db.commit()
     db.refresh(t)

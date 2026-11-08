@@ -85,7 +85,7 @@ class PineLabsService:
         self,
         amount: float,
         bill_number: str,
-        customer_mobile: Optional[str] = None,
+        student_mobile: Optional[str] = None,
         payment_mode: str = "CARD",
     ) -> Dict[str, Any]:
         """
@@ -101,7 +101,7 @@ class PineLabsService:
             "MerchantTransactionID": txn_id,
             "Amount": amount_paise,
             "BillNumber": bill_number,
-            "CustomerMobile": customer_mobile or "",
+            "studentMobile": student_mobile or "",
             "PaymentMode": payment_mode.upper(),
         }
 

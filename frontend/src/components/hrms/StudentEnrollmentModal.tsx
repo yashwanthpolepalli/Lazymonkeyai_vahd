@@ -100,7 +100,7 @@ export function StudentEnrollmentModal({
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       }
-    } catch {}
+    } catch { }
     return [];
   });
   const [languagesList, setLanguagesList] = useState<string[]>(() => {
@@ -110,14 +110,14 @@ export function StudentEnrollmentModal({
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       }
-    } catch {}
+    } catch { }
     return [];
   });
-  const [branchesList, setBranchesList] = useState<Array<{ id: string; branch_name: string; gym_name?: string; name?: string; city?: string }>>([]);
+  const [branchesList, setBranchesList] = useState<Array<{ id: string; branch_name: string; vahd_name?: string; name?: string; city?: string }>>([]);
 
   const getOrgDisplayName = (b?: any) => {
     if (!b) return '';
-    return (b.gym_name || b.name || b.branch_name || '').trim();
+    return (b.vahd_name || b.name || b.branch_name || '').trim();
   };
   const [selectedBranchId, setSelectedBranchId] = useState<string>(() => {
     const saved = localStorage.getItem('vahd_selected_org_id');
@@ -180,7 +180,7 @@ export function StudentEnrollmentModal({
           return parsed.qualifications.filter((q: any) => q.is_active !== false).map((q: any) => q.name);
         }
       }
-    } catch {}
+    } catch { }
     return [];
   });
 
@@ -193,7 +193,7 @@ export function StudentEnrollmentModal({
           return parsed.specializations.filter((s: any) => s.is_active !== false).map((s: any) => s.name);
         }
       }
-    } catch {}
+    } catch { }
     return [];
   });
 
@@ -207,7 +207,7 @@ export function StudentEnrollmentModal({
           return parsed.blood_groups.filter((b: any) => b.is_active !== false).map((b: any) => b.name);
         }
       }
-    } catch {}
+    } catch { }
     return BLOOD_GROUPS;
   });
 
@@ -223,7 +223,7 @@ export function StudentEnrollmentModal({
           }));
         }
       }
-    } catch {}
+    } catch { }
     return CASTE_OPTIONS;
   });
 
@@ -236,7 +236,7 @@ export function StudentEnrollmentModal({
           return parsed.gender_types.filter((g: any) => g.is_active !== false).map((g: any) => g.name);
         }
       }
-    } catch {}
+    } catch { }
     return GENDER_OPTIONS;
   });
 
@@ -250,7 +250,7 @@ export function StudentEnrollmentModal({
           if (names.length > 0) return names;
         }
       }
-    } catch {}
+    } catch { }
     return DEFAULT_STUDENT_DEPARTMENTS;
   });
 
@@ -265,7 +265,7 @@ export function StudentEnrollmentModal({
       try {
         const stored = localStorage.getItem('vahd_master_data_v3') || localStorage.getItem('vahd_master_data_v2');
         if (stored) parsed = JSON.parse(stored);
-      } catch {}
+      } catch { }
 
       // Fetch fresh master data from backend DB
       const apiMaster = await masterDataApi.getAll().catch(() => null);
@@ -306,18 +306,35 @@ export function StudentEnrollmentModal({
         setMasterTowns(parsed.towns.filter((t: any) => t.is_active !== false).map((t: any) => t.name));
       }
 
-      // 4. Departments (HRMS API + Master Data)
+      // 4. Departments (HRMS API + Master Data) - Filtered specifically for Student / Academic View
+      const isStudentDept = (d: any) => {
+        if (typeof d === 'object' && d) {
+          const extra = (d.extra_info || d.department_type || '').toLowerCase().trim();
+          if (extra === 'employee' || extra === 'staff') return false;
+          if (extra === 'student' || extra === 'academic' || extra === 'both' || extra === 'all') return true;
+        }
+        const name = (typeof d === 'string' ? d : (d?.name || '')).toLowerCase();
+        const nonStudentKeywords = ['human resource', 'payroll', 'security &', 'housekeeping', 'maintenance &', 'fleet logistics', 'administration & hr', 'administrative office', 'management'];
+        return !nonStudentKeywords.some((k) => name.includes(k));
+      };
+
       hrmsApi.getDepartments().then((data) => {
-        const apiDepts = Array.isArray(data) ? data.filter((d: any) => d.is_active !== false).map((d: any) => d.name) : [];
+        const apiDepts = Array.isArray(data)
+          ? data.filter((d: any) => d.is_active !== false && isStudentDept(d)).map((d: any) => d.name)
+          : [];
         let masterDepts: string[] = [];
         if (Array.isArray(parsed.departments)) {
-          masterDepts = parsed.departments.filter((d: any) => d.is_active !== false).map((d: any) => d.name);
+          masterDepts = parsed.departments
+            .filter((d: any) => d.is_active !== false && isStudentDept(d))
+            .map((d: any) => d.name);
         }
-        const combined = Array.from(new Set([...apiDepts, ...masterDepts]));
+        const combined = Array.from(new Set([...masterDepts, ...apiDepts]));
         setDepartmentOptions(combined.length > 0 ? combined : DEFAULT_STUDENT_DEPARTMENTS);
       }).catch(() => {
         if (Array.isArray(parsed.departments)) {
-          const masterDepts = parsed.departments.filter((d: any) => d.is_active !== false).map((d: any) => d.name);
+          const masterDepts = parsed.departments
+            .filter((d: any) => d.is_active !== false && isStudentDept(d))
+            .map((d: any) => d.name);
           setDepartmentOptions(masterDepts.length > 0 ? masterDepts : DEFAULT_STUDENT_DEPARTMENTS);
         }
       });
@@ -339,7 +356,7 @@ export function StudentEnrollmentModal({
           try {
             const p = JSON.parse(cached);
             if (Array.isArray(p) && p.length > 0) setCoursesList(p);
-          } catch {}
+          } catch { }
         }
       });
 
@@ -359,7 +376,7 @@ export function StudentEnrollmentModal({
           try {
             const p = JSON.parse(cachedL);
             if (Array.isArray(p) && p.length > 0) setLanguagesList(p);
-          } catch {}
+          } catch { }
         }
       });
 
@@ -369,11 +386,11 @@ export function StudentEnrollmentModal({
       if (hoRes?.organizations && Array.isArray(hoRes.organizations) && hoRes.organizations.length > 0) {
         list = hoRes.organizations;
       } else {
-        const branchRes = await apiClient.get<any[]>('/gym/branches').catch(() => []);
+        const branchRes = await apiClient.get<any[]>('/vahd/branches').catch(() => []);
         if (Array.isArray(branchRes)) list = branchRes;
       }
 
-      const existingBranchNames = new Set(list.map((b) => (b.branch_name || b.name || b.gym_name || '').toLowerCase()));
+      const existingBranchNames = new Set(list.map((b) => (b.branch_name || b.name || b.vahd_name || '').toLowerCase()));
       const extraInstitutions: any[] = [];
       const addMasterInstitutions = (items: any[], typeLabel: string) => {
         if (Array.isArray(items)) {
@@ -385,7 +402,7 @@ export function StudentEnrollmentModal({
                 id: it.id || `inst_${name}`,
                 branch_name: name,
                 name: name,
-                gym_name: it.parent_name || typeLabel,
+                vahd_name: it.parent_name || typeLabel,
                 city: it.extra_info || '',
               });
             }
@@ -408,7 +425,7 @@ export function StudentEnrollmentModal({
           setSelectedBranchId(allBranches[0].id);
         }
       }
-    } catch {}
+    } catch { }
   };
 
   useEffect(() => {
@@ -602,7 +619,7 @@ export function StudentEnrollmentModal({
       setFullName(studentToEdit.full_name || studentToEdit.name || '');
       setFatherName(meta.father_name || studentToEdit.father_name || '');
       setMotherName(meta.mother_name || studentToEdit.mother_name || '');
-      setParentMobile(studentToEdit.parent_phone || studentToEdit.parent_mobile || meta.parent_mobile || meta.parent_phone || meta.guardian_phone || '');
+      setParentMobile(studentToEdit.parent_phone || meta.parent_phone || '');
       setStudentEmail(studentToEdit.email || meta.email || '');
 
       const perm = meta.permanent_address || {};
@@ -780,7 +797,7 @@ export function StudentEnrollmentModal({
       setTimeout(() => {
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
-          videoRef.current.play().catch(() => {});
+          videoRef.current.play().catch(() => { });
         }
       }, 100);
     } catch {
@@ -843,8 +860,9 @@ export function StudentEnrollmentModal({
       setErrorMsg('Student Email Address is required.');
       return;
     }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(studentEmail.trim())) {
+    // Permissive email check — accept any format including legacy emails like karnisujata@21@gmail.com
+    const emailVal = studentEmail.trim();
+    if (!emailVal || !emailVal.includes('@') || emailVal.length < 3) {
       setErrorMsg('Please enter a valid Student Email address.');
       return;
     }
@@ -878,13 +896,34 @@ export function StudentEnrollmentModal({
     const aadharJoined = aadharNumber.join('');
     const validEmail = studentEmail.trim().toLowerCase();
 
+    let userHoId: string | undefined = undefined;
+    let userOwnerId: string | undefined = undefined;
+    let userBranchId: string | undefined = undefined;
+    try {
+      const uStr = localStorage.getItem('vahd_user');
+      if (uStr) {
+        const parsed = JSON.parse(uStr);
+        const role = (parsed?.role || '').toUpperCase();
+        userHoId = parsed?.ho_id || (['HEAD_OFFICE', 'HO'].includes(role) ? parsed?.id : undefined);
+        userOwnerId = parsed?.owner_id || (['OWNER'].includes(role) ? parsed?.id : undefined);
+        userBranchId = parsed?.branch_id || undefined;
+      }
+    } catch {}
+
+    const resolvedBranchId = selectedBranchId || currentOrg?.id || userBranchId || undefined;
+    const resolvedHoId = (currentOrg as any)?.ho_id || userHoId || undefined;
+    const resolvedOwnerId = (currentOrg as any)?.owner_id || userOwnerId || undefined;
+    const resolvedLocation = getOrgDisplayName(currentOrg) || (currentOrg as any)?.branch_name || (currentOrg as any)?.vahd_name || undefined;
+
     const studentPayload = {
       full_name: fullName.toUpperCase().trim(),
       email: validEmail,
       phone: finalMobile,
       parent_phone: cleanParentMobile,
-      parent_mobile: cleanParentMobile,
-      branch_id: selectedBranchId || currentOrg?.id || undefined,
+      branch_id: resolvedBranchId,
+      ho_id: resolvedHoId,
+      owner_id: resolvedOwnerId,
+      primary_vahd_location: resolvedLocation,
       gender: gender.toLowerCase(),
       age: age ? parseInt(age, 10) : undefined,
       role: 'STUDENT',
@@ -901,8 +940,10 @@ export function StudentEnrollmentModal({
         affiliation: affiliation.trim(),
         college_logo: collegeLogo || undefined,
         academic_year: academicYear,
-        branch_id: selectedBranchId || currentOrg?.id || undefined,
-        organisation_name: getOrgDisplayName(currentOrg) || undefined,
+        branch_id: resolvedBranchId,
+        ho_id: resolvedHoId,
+        owner_id: resolvedOwnerId,
+        organisation_name: resolvedLocation,
         course: selectedFinalCourse,
         medium: selectedFinalMedium,
         department: department || undefined,
@@ -911,7 +952,6 @@ export function StudentEnrollmentModal({
         email: validEmail,
         father_name: fatherName.toUpperCase(),
         mother_name: motherName.toUpperCase(),
-        parent_mobile: cleanParentMobile,
         parent_phone: cleanParentMobile,
         permanent_address: {
           door_no: permDoorNo,
@@ -951,15 +991,30 @@ export function StudentEnrollmentModal({
     };
 
     try {
+      let res: any;
       if (studentToEdit?.id) {
-        await apiClient.put(`/customers/${studentToEdit.id}`, studentPayload);
+        res = await apiClient.put(`/students/${studentToEdit.id}`, studentPayload);
       } else {
-        await apiClient.post('/customers', studentPayload);
+        res = await apiClient.post('/students', studentPayload);
       }
+
+      // Explicitly check response body for failures even if HTTP 200/201
+      if (res && res.success === false) {
+        setErrorMsg(res.message || res.detail || 'Failed to submit student application.');
+        return;
+      }
+
+      // Verify confirmed student record exists in response
+      const confirmedId = res?.id || res?.student?.id || res?.data?.id || (res?.success && (res?.student_id || res?.id));
+      if (!confirmedId && !res?.full_name && res?.success !== true) {
+        setErrorMsg(res?.message || 'Server did not confirm student enrollment. Please verify.');
+        return;
+      }
+
       if (onSuccess) onSuccess();
       onClose();
     } catch (err: any) {
-      setErrorMsg(err?.response?.data?.detail || err?.message || 'Failed to submit student application.');
+      setErrorMsg(err?.response?.data?.detail || err?.response?.data?.message || err?.message || 'Failed to submit student application.');
     } finally {
       setLoading(false);
     }
@@ -1023,7 +1078,7 @@ export function StudentEnrollmentModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/70 backdrop-blur-sm overflow-y-auto animate-fade-in">
       <div className="bg-white dark:bg-slate-900 border-2 border-slate-300 dark:border-slate-700 rounded-3xl w-full max-w-4xl shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col">
-        
+
         {/* Hidden Logo File Input */}
         <input
           ref={logoInputRef}
@@ -1160,7 +1215,7 @@ export function StudentEnrollmentModal({
 
         {/* Form Body Container */}
         <form onSubmit={handleSubmit} className="p-4 sm:p-6 overflow-y-auto space-y-6 text-xs text-slate-800 dark:text-slate-200">
-          
+
           {errorMsg && (
             <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold flex items-center gap-2">
               <Icon name="alert-circle" size={16} />
@@ -1205,38 +1260,38 @@ export function StudentEnrollmentModal({
                     </span>
                   </div>
                 ) : null}
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400">Academic Year:</span>
-                    <input
-                      type="text"
-                      value={academicYear}
-                      onChange={(e) => setAcademicYear(e.target.value)}
-                      placeholder="Academic Year (e.g. 2026 - 2027)"
-                      className="w-32 px-2.5 py-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-xs font-bold text-center text-blue-700 dark:text-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400">Status:</span>
-                    <select
-                      value={status}
-                      onChange={(e) => setStatus(e.target.value)}
-                      className={cn(
-                        'px-2.5 py-1 bg-white dark:bg-slate-900 border rounded-lg text-xs font-black focus:outline-none focus:ring-2 cursor-pointer shadow-xs',
-                        status === 'ACTIVE'
-                          ? 'text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-700'
-                          : 'text-rose-700 dark:text-rose-400 border-rose-300 dark:border-rose-700'
-                      )}
-                    >
-                      <option value="ACTIVE">ACTIVE</option>
-                      <option value="INACTIVE">INACTIVE</option>
-                    </select>
-                  </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400">Academic Year:</span>
+                  <input
+                    type="text"
+                    value={academicYear}
+                    onChange={(e) => setAcademicYear(e.target.value)}
+                    placeholder="Academic Year (e.g. 2026 - 2027)"
+                    className="w-32 px-2.5 py-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-xs font-bold text-center text-blue-700 dark:text-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400">Status:</span>
+                  <select
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value)}
+                    className={cn(
+                      'px-2.5 py-1 bg-white dark:bg-slate-900 border rounded-lg text-xs font-black focus:outline-none focus:ring-2 cursor-pointer shadow-xs',
+                      status === 'ACTIVE'
+                        ? 'text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-700'
+                        : 'text-rose-700 dark:text-rose-400 border-rose-300 dark:border-rose-700'
+                    )}
+                  >
+                    <option value="ACTIVE">ACTIVE</option>
+                    <option value="INACTIVE">INACTIVE</option>
+                  </select>
                 </div>
               </div>
+            </div>
 
             {/* Side-by-Side Dropdowns: Department, Medium of Instruction & Course Program */}
             <div className="grid grid-cols-1 md:grid-cols-12 gap-3 pt-1">
-              
+
               {/* Department Dropdown (4 cols) */}
               <div className="md:col-span-4 space-y-1.5">
                 <label className="block font-bold text-slate-800 dark:text-slate-200 text-xs">
@@ -1538,8 +1593,7 @@ export function StudentEnrollmentModal({
                     <Icon name="mail" size={15} />
                   </div>
                   <input
-                    type="email"
-                    required
+                    type="text"
                     value={studentEmail}
                     onChange={(e) => setStudentEmail(e.target.value)}
                     placeholder="student.email@example.com"
@@ -1806,7 +1860,7 @@ export function StudentEnrollmentModal({
 
           {/* Rows 7 to 11: DOB, Sex, Caste, Mother Tongue, Marital Status */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            
+
             {/* 7. Date of Birth & Age */}
             <div className="border border-slate-200 dark:border-slate-700 rounded-2xl p-3 bg-white dark:bg-slate-800/40 space-y-2">
               <label className="block font-bold text-slate-800 dark:text-slate-200">

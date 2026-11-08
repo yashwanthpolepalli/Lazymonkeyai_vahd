@@ -58,7 +58,7 @@ export function SalesHistory() {
               <tr>
                 <th className="px-6 py-3">Receipt No</th>
                 <th className="px-6 py-3">Time</th>
-                <th className="px-6 py-3">Customer</th>
+                <th className="px-6 py-3">student</th>
                 <th className="px-6 py-3">Items</th>
                 <th className="px-6 py-3">Total</th>
                 <th className="px-6 py-3">Payment</th>
@@ -72,7 +72,7 @@ export function SalesHistory() {
                     <ReceiptText className="size-4" /> {sale.receipt_number}
                   </td>
                   <td className="px-6 py-3 font-mono text-xs">{new Date(sale.created_at).toLocaleTimeString()}</td>
-                  <td className="px-6 py-3 font-bold">{sale.cashier_id || "Customer"}</td>
+                  <td className="px-6 py-3 font-bold">{sale.cashier_id || "student"}</td>
                   <td className="px-6 py-3 font-mono">{sale.items.length} items</td>
                   <td className="px-6 py-3 font-bold text-emerald-600">{currency.symbol}{sale.total_amount.toFixed(2)}</td>
                   <td className="px-6 py-3">

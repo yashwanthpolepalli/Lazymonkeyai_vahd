@@ -7,7 +7,7 @@ import {
   CheckCircle2, Keyboard, MonitorSmartphone, Wallet, Printer, ShieldAlert
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { posProducts, posTransactions, posCustomers, posCategories } from "../../lib/pos-fallback";
+import { posProducts, posTransactions, posstudents, posCategories } from "../../lib/pos-fallback";
 import { posApi, invoicesApi, POSTransactionHistory } from "../../lib/api-client";
 import { useTenant } from "../../contexts/tenant-context";
 import { ESCPOSPrinter } from "../../lib/escpos-printer";
@@ -426,7 +426,7 @@ export const HoldBillsView = ({ onResume }: { onResume?: (bill: any) => void }) 
         </div>
         <div>
           <h2 className="text-xl font-bold tracking-tight text-slate-900">Suspended / Parked Bills</h2>
-          <p className="text-slate-500 text-xs font-medium">Resume held customer carts and complete open transactions.</p>
+          <p className="text-slate-500 text-xs font-medium">Resume held student carts and complete open transactions.</p>
         </div>
       </div>
       <div className="flex-1 overflow-y-auto">
@@ -445,7 +445,7 @@ export const HoldBillsView = ({ onResume }: { onResume?: (bill: any) => void }) 
                     <span className="bg-amber-50 text-amber-700 text-xs font-bold px-2.5 py-1 rounded-lg border border-amber-200/60 font-mono">{bill.receipt_number}</span>
                     <span className="text-xs font-medium text-slate-400">{new Date(bill.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                   </div>
-                  <h3 className="text-sm font-bold text-slate-900 mb-1">Customer: {bill.customer_id ? bill.customer_id.substring(0,8) : 'Walk-in Guest'}</h3>
+                  <h3 className="text-sm font-bold text-slate-900 mb-1">student: {bill.student_id ? bill.student_id.substring(0, 8) : 'Walk-in Guest'}</h3>
                   <p className="text-xs text-slate-500 mb-4">{bill.items.length} items in basket</p>
                 </div>
                 <div className="flex items-center justify-between pt-3 border-t border-slate-100">
@@ -620,7 +620,7 @@ export const DeliveryView = () => {
         </div>
         <div>
           <h2 className="text-xl font-bold tracking-tight text-slate-900">Delivery Dispatch</h2>
-          <p className="text-slate-500 text-xs font-medium">Assign orders and track customer delivery fulfillment.</p>
+          <p className="text-slate-500 text-xs font-medium">Assign orders and track student delivery fulfillment.</p>
         </div>
       </div>
       <div className="flex-1 overflow-y-auto">
@@ -642,7 +642,7 @@ export const DeliveryView = () => {
                     </span>
                   </div>
                   <div className="mb-4">
-                    <p className="text-xs font-bold text-slate-800">Customer: {d.customer_id ? d.customer_id.substring(0,8) : "Guest"}</p>
+                    <p className="text-xs font-bold text-slate-800">student: {d.student_id ? d.student_id.substring(0, 8) : "Guest"}</p>
                     <p className="text-xs text-slate-500 line-clamp-1 mt-0.5">{d.delivery_address || "No address provided"}</p>
                   </div>
                 </div>
@@ -704,7 +704,7 @@ export const ExchangeView = ({ currentSessionId, products, initialSearch }: { cu
           ...invList.map((inv: any) => ({
             id: inv.id,
             number: inv.invoice_number || `INV-${inv.id.slice(0, 8)}`,
-            customer: inv.customer_name || "Guest",
+            student: inv.student_name || "Guest",
             total: Number(inv.total_amount || 0),
             date: inv.invoice_date || inv.created_at,
             type: "invoice"
@@ -712,7 +712,7 @@ export const ExchangeView = ({ currentSessionId, products, initialSearch }: { cu
           ...posHistory.map((pos: any) => ({
             id: pos.id,
             number: pos.receipt_number || `REC-${pos.id.slice(0, 8)}`,
-            customer: pos.customer_name || pos.customer_id || "Guest",
+            student: pos.student_name || pos.student_id || "Guest",
             total: Number(pos.total_amount || 0),
             date: pos.created_at,
             type: "pos"
@@ -739,9 +739,9 @@ export const ExchangeView = ({ currentSessionId, products, initialSearch }: { cu
   const filteredCatalog = React.useMemo(() => {
     if (!productSearch.trim()) return catalogProducts.slice(0, 8);
     const q = productSearch.toLowerCase();
-    return catalogProducts.filter(p => 
-      p.name?.toLowerCase().includes(q) || 
-      p.sku?.toLowerCase().includes(q) || 
+    return catalogProducts.filter(p =>
+      p.name?.toLowerCase().includes(q) ||
+      p.sku?.toLowerCase().includes(q) ||
       p.barcode?.toLowerCase().includes(q)
     ).slice(0, 12);
   }, [catalogProducts, productSearch]);
@@ -753,8 +753,8 @@ export const ExchangeView = ({ currentSessionId, products, initialSearch }: { cu
     try {
       // 1. Check POS receipts
       const history = await posApi.getHistory({ limit: 1000 }).catch(() => []);
-      let found: any = history.find((t: any) => 
-        t.id?.toLowerCase() === q.toLowerCase() || 
+      let found: any = history.find((t: any) =>
+        t.id?.toLowerCase() === q.toLowerCase() ||
         t.receipt_number?.toLowerCase() === q.toLowerCase() ||
         t.id?.toLowerCase().includes(q.toLowerCase()) ||
         t.receipt_number?.toLowerCase().includes(q.toLowerCase())
@@ -767,9 +767,9 @@ export const ExchangeView = ({ currentSessionId, products, initialSearch }: { cu
         if (!fullInv) {
           const invRes: any = await invoicesApi.listInvoices({ search: q }).catch(() => null);
           const invList = invRes?.items || invRes?.data || (Array.isArray(invRes) ? invRes : []);
-          const matchedInv = invList.find((inv: any) => 
-            inv.id?.toLowerCase() === q.toLowerCase() || 
-            inv.invoice_number?.toLowerCase() === q.toLowerCase() || 
+          const matchedInv = invList.find((inv: any) =>
+            inv.id?.toLowerCase() === q.toLowerCase() ||
+            inv.invoice_number?.toLowerCase() === q.toLowerCase() ||
             inv.invoice_number?.toLowerCase().includes(q.toLowerCase())
           );
 
@@ -781,13 +781,13 @@ export const ExchangeView = ({ currentSessionId, products, initialSearch }: { cu
         if (fullInv) {
           const rawLines = fullInv.lines || fullInv.items || fullInv.invoice_items || [];
           const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-          
+
           let lineItems = rawLines.map((it: any, idx: number) => {
             const rawPid = it.product_id || it.productId;
-            const validPid = (typeof rawPid === "string" && uuidRegex.test(rawPid)) 
-              ? rawPid 
+            const validPid = (typeof rawPid === "string" && uuidRegex.test(rawPid))
+              ? rawPid
               : (typeof fullInv.id === "string" && uuidRegex.test(fullInv.id) ? fullInv.id : "00000000-0000-0000-0000-000000000000");
-            
+
             const qty = Math.max(1, Math.round(Number(it.quantity || 1)));
             const unitPrice = Number(it.unit_price || it.rate || (Number(fullInv.total_amount || 0) / Math.max(1, rawLines.length)));
             const subtotal = Number(it.line_total || it.taxable_amount || (unitPrice * qty));
@@ -831,10 +831,10 @@ export const ExchangeView = ({ currentSessionId, products, initialSearch }: { cu
             receipt_number: fullInv.invoice_number || `INV-${fullInv.id.slice(0, 8)}`,
             invoice_type: fullInv.invoice_type || "Tax Invoice",
             created_at: fullInv.created_at || fullInv.invoice_date || new Date().toISOString(),
-            customer_name: fullInv.customer_name || fullInv.customer_id || "Walk-in Guest",
-            customer_phone: fullInv.customer_phone || fullInv.phone || "N/A",
-            customer_email: fullInv.customer_email || fullInv.email || "N/A",
-            customer_gstin: fullInv.customer_gstin || fullInv.gstin || "",
+            student_name: fullInv.student_name || fullInv.student_id || "Walk-in Guest",
+            student_phone: fullInv.student_phone || fullInv.phone || "N/A",
+            student_email: fullInv.student_email || fullInv.email || "N/A",
+            student_gstin: fullInv.student_gstin || fullInv.gstin || "",
             billing_address: fullInv.billing_address || fullInv.address || "Counter Sale",
             subtotal: Number(fullInv.subtotal || fullInv.taxable_amount || fullInv.total_amount || 0),
             tax_amount: Number(fullInv.tax_amount || fullInv.cgst_amount || 0) + Number(fullInv.sgst_amount || 0) + Number(fullInv.igst_amount || 0),
@@ -1021,7 +1021,7 @@ export const ExchangeView = ({ currentSessionId, products, initialSearch }: { cu
 
       const response = await posApi.checkout(payload);
       toast.success(`Exchange completed successfully! Receipt Ref: ${response.receipt_number}`);
-      
+
       // Reset
       setOriginalBill(null);
       setSelectedReturnItems({});
@@ -1103,7 +1103,7 @@ export const ExchangeView = ({ currentSessionId, products, initialSearch }: { cu
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 flex-1">
           {/* ── LEFT: Full Invoice Details & Return Items ── */}
           <div className="lg:col-span-6 bg-white border border-rose-200/80 rounded-2xl p-5 shadow-xs flex flex-col">
-            
+
             {/* INVOICE MASTER DETAILS CARD */}
             <div className="bg-slate-50/80 border border-slate-200/70 rounded-xl p-4 mb-4">
               <div className="flex items-start justify-between gap-3 border-b border-slate-200/60 pb-3 mb-3">
@@ -1117,7 +1117,7 @@ export const ExchangeView = ({ currentSessionId, products, initialSearch }: { cu
                   <p className="text-xs text-slate-500 mt-1 flex items-center gap-2">
                     <span>📅 {new Date(originalBill.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span>
                     <span>•</span>
-                    <span>👤 <strong className="text-slate-700">{originalBill.customer_name || "Walk-in Guest"}</strong></span>
+                    <span>👤 <strong className="text-slate-700">{originalBill.student_name || "Walk-in Guest"}</strong></span>
                   </p>
                 </div>
                 <div className="text-right">
@@ -1151,7 +1151,7 @@ export const ExchangeView = ({ currentSessionId, products, initialSearch }: { cu
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
               <div>
                 <h3 className="text-sm font-bold text-slate-900">Select Items to Return / Exchange</h3>
-                <p className="text-[11px] text-slate-500">Pick items and quantities customer wants to exchange</p>
+                <p className="text-[11px] text-slate-500">Pick items and quantities student wants to exchange</p>
               </div>
               <div className="text-right">
                 <span className="text-[10px] uppercase font-semibold text-slate-400 block">Return Credit</span>
@@ -1172,11 +1172,10 @@ export const ExchangeView = ({ currentSessionId, products, initialSearch }: { cu
                 return (
                   <div
                     key={it.id}
-                    className={`p-3 rounded-xl border transition-all ${
-                      isSelected
+                    className={`p-3 rounded-xl border transition-all ${isSelected
                         ? "border-rose-400 bg-rose-50/60 shadow-xs ring-1 ring-rose-300"
                         : "border-slate-200 bg-slate-50/60 hover:border-slate-300 hover:bg-white"
-                    }`}
+                      }`}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <label className="flex items-start gap-2.5 cursor-pointer flex-1 min-w-0">
@@ -1271,7 +1270,7 @@ export const ExchangeView = ({ currentSessionId, products, initialSearch }: { cu
                           >
                             <option value="Size / Fit Swap">Size / Fit Swap</option>
                             <option value="Color Swap">Color / Variant Swap</option>
-                            <option value="Customer Mind Change">Customer Mind Change</option>
+                            <option value="student Mind Change">student Mind Change</option>
                             <option value="Defective Replacement">Defective / Damaged</option>
                             <option value="Model Upgrade">Model / Price Upgrade</option>
                             <option value="Wrong Item Received">Wrong Item Billed</option>
@@ -1409,7 +1408,7 @@ export const ExchangeView = ({ currentSessionId, products, initialSearch }: { cu
               <span className="text-slate-300 font-bold text-sm">=</span>
               <div className="bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl">
                 <span className="text-[10px] text-slate-500 font-semibold block">
-                  {netDifference > 0 ? "Customer Pays Balance:" : netDifference < 0 ? "Store Refunds Customer:" : "Net Balance:"}
+                  {netDifference > 0 ? "student Pays Balance:" : netDifference < 0 ? "Store Refunds student:" : "Net Balance:"}
                 </span>
                 <span className={`text-base font-black ${netDifference > 0 ? "text-indigo-600" : netDifference < 0 ? "text-rose-600" : "text-emerald-600"}`}>
                   {netDifference === 0 ? "₹0.00 (Even Swap)" : formatCurrency(Math.abs(netDifference))}
@@ -1428,7 +1427,7 @@ export const ExchangeView = ({ currentSessionId, products, initialSearch }: { cu
                   <option value="cash">💵 Cash</option>
                   <option value="online">⚡ UPI / Online</option>
                   <option value="card">💳 Card</option>
-                  <option value="wallet">👛 Customer Wallet</option>
+                  <option value="wallet">👛 student Wallet</option>
                 </select>
               )}
 
@@ -1451,7 +1450,7 @@ export const ExchangeView = ({ currentSessionId, products, initialSearch }: { cu
           </div>
           <h3 className="text-lg font-bold text-slate-900">Scan or Enter Receipt to Start Exchange</h3>
           <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
-            Enter any original counter receipt number (`REC-...`) or ERP sales invoice (`INV-...`) in the search bar above, or click any recent bill to load the customer's items for exchange.
+            Enter any original counter receipt number (`REC-...`) or ERP sales invoice (`INV-...`) in the search bar above, or click any recent bill to load the student's items for exchange.
           </p>
         </div>
       )}
@@ -1485,7 +1484,7 @@ export const RefundView = ({ currentSessionId, initialSearch }: { currentSession
           ...invList.map((inv: any) => ({
             id: inv.id,
             number: inv.invoice_number || `INV-${inv.id.slice(0, 8)}`,
-            customer: inv.customer_name || "Guest",
+            student: inv.student_name || "Guest",
             total: Number(inv.total_amount || 0),
             date: inv.invoice_date || inv.created_at,
             type: "invoice"
@@ -1493,7 +1492,7 @@ export const RefundView = ({ currentSessionId, initialSearch }: { currentSession
           ...posHistory.map((pos: any) => ({
             id: pos.id,
             number: pos.receipt_number || `REC-${pos.id.slice(0, 8)}`,
-            customer: pos.customer_name || pos.customer_id || "Guest",
+            student: pos.student_name || pos.student_id || "Guest",
             total: Number(pos.total_amount || 0),
             date: pos.created_at,
             type: "pos"
@@ -1517,8 +1516,8 @@ export const RefundView = ({ currentSessionId, initialSearch }: { currentSession
     try {
       // 1. Search in POS transactions
       const history = await posApi.getHistory({ limit: 1000 }).catch(() => []);
-      let found: any = history.find(t => 
-        t.id?.toLowerCase() === q.toLowerCase() || 
+      let found: any = history.find(t =>
+        t.id?.toLowerCase() === q.toLowerCase() ||
         t.receipt_number?.toLowerCase() === q.toLowerCase() ||
         t.id?.toLowerCase().includes(q.toLowerCase()) ||
         t.receipt_number?.toLowerCase().includes(q.toLowerCase())
@@ -1531,9 +1530,9 @@ export const RefundView = ({ currentSessionId, initialSearch }: { currentSession
         if (!fullInv) {
           const invRes: any = await invoicesApi.listInvoices({ search: q }).catch(() => null);
           const invList = invRes?.items || invRes?.data || (Array.isArray(invRes) ? invRes : []);
-          const matchedInv = invList.find((inv: any) => 
-            inv.id?.toLowerCase() === q.toLowerCase() || 
-            inv.invoice_number?.toLowerCase() === q.toLowerCase() || 
+          const matchedInv = invList.find((inv: any) =>
+            inv.id?.toLowerCase() === q.toLowerCase() ||
+            inv.invoice_number?.toLowerCase() === q.toLowerCase() ||
             inv.invoice_number?.toLowerCase().includes(q.toLowerCase())
           );
 
@@ -1596,9 +1595,9 @@ export const RefundView = ({ currentSessionId, initialSearch }: { currentSession
             receipt_number: fullInv.invoice_number || `INV-${fullInv.id.slice(0, 8)}`,
             invoice_type: fullInv.invoice_type || "Tax Invoice",
             created_at: fullInv.created_at || fullInv.invoice_date || new Date().toISOString(),
-            customer_name: fullInv.customer_name || fullInv.customer_id || "Walk-in Guest",
-            customer_phone: fullInv.customer_phone || fullInv.phone || "N/A",
-            customer_email: fullInv.customer_email || fullInv.email || "N/A",
+            student_name: fullInv.student_name || fullInv.student_id || "Walk-in Guest",
+            student_phone: fullInv.student_phone || fullInv.phone || "N/A",
+            student_email: fullInv.student_email || fullInv.email || "N/A",
             subtotal: Number(fullInv.subtotal || fullInv.taxable_amount || fullInv.total_amount || 0),
             tax_amount: Number(fullInv.tax_amount || fullInv.cgst_amount || 0) + Number(fullInv.sgst_amount || 0) + Number(fullInv.igst_amount || 0),
             discount_amount: Number(fullInv.discount_amount || 0),
@@ -1663,12 +1662,12 @@ export const RefundView = ({ currentSessionId, initialSearch }: { currentSession
 
   const handleSelectAll = () => {
     if (!tx) return;
-    const filteredItems = tx.items.filter((item: any) => 
+    const filteredItems = tx.items.filter((item: any) =>
       itemSearch ? (item.product_name?.toLowerCase().includes(itemSearch.toLowerCase()) || item.product_sku?.toLowerCase().includes(itemSearch.toLowerCase())) : true
     );
-    
+
     const allSelected = filteredItems.every((i: any) => selectedItems[i.id] === i.quantity);
-    
+
     if (allSelected) {
       const newItems = { ...selectedItems };
       filteredItems.forEach((i: any) => delete newItems[i.id]);
@@ -1800,7 +1799,7 @@ export const RefundView = ({ currentSessionId, initialSearch }: { currentSession
 
       {tx ? (
         <div className="bg-white border border-slate-200/80 rounded-2xl shadow-xs overflow-hidden flex flex-col flex-1">
-          
+
           {/* MASTER INVOICE DETAILS CARD */}
           <div className="p-5 border-b border-slate-200/70 bg-slate-50/80">
             <div className="flex items-start justify-between gap-4 border-b border-slate-200/60 pb-3 mb-3">
@@ -1814,7 +1813,7 @@ export const RefundView = ({ currentSessionId, initialSearch }: { currentSession
                 <p className="text-xs text-slate-500 mt-1 flex items-center gap-2">
                   <span>📅 {new Date(tx.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span>
                   <span>•</span>
-                  <span>👤 <strong className="text-slate-700">{tx.customer_name || tx.customer_id || "Walk-in Guest"}</strong></span>
+                  <span>👤 <strong className="text-slate-700">{tx.student_name || tx.student_id || "Walk-in Guest"}</strong></span>
                 </p>
               </div>
               <div className="text-right">
@@ -1848,15 +1847,15 @@ export const RefundView = ({ currentSessionId, initialSearch }: { currentSession
           <div className="p-3 border-b border-slate-100 flex items-center justify-between bg-white gap-3">
             <div className="flex items-center gap-2 flex-1 max-w-sm relative">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input 
-                type="text" 
-                placeholder="Filter items by name or SKU..." 
+              <input
+                type="text"
+                placeholder="Filter items by name or SKU..."
                 value={itemSearch}
                 onChange={(e) => setItemSearch(e.target.value)}
                 className="w-full pl-9 pr-3 py-1.5 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 font-medium bg-slate-50"
               />
             </div>
-            <button 
+            <button
               type="button"
               onClick={handleSelectAll}
               className="text-xs font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-3.5 py-1.5 rounded-xl transition-colors cursor-pointer border border-rose-200/60"
@@ -1880,11 +1879,10 @@ export const RefundView = ({ currentSessionId, initialSearch }: { currentSession
                 return (
                   <div
                     key={item.id}
-                    className={`p-3 rounded-xl border transition-all ${
-                      isSelected
+                    className={`p-3 rounded-xl border transition-all ${isSelected
                         ? "border-rose-400 bg-rose-50/60 shadow-xs ring-1 ring-rose-300"
                         : "border-slate-200 bg-slate-50/60 hover:border-slate-300 hover:bg-white"
-                    }`}
+                      }`}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <label className="flex items-start gap-2.5 cursor-pointer flex-1 min-w-0">
@@ -1973,11 +1971,11 @@ export const RefundView = ({ currentSessionId, initialSearch }: { currentSession
                         <div className="flex items-center gap-1.5">
                           <span className="text-xs font-medium text-slate-700">Reason:</span>
                           <select
-                            value={refundReasons[item.id] || "Customer Mind Change"}
+                            value={refundReasons[item.id] || "student Mind Change"}
                             onChange={(e) => setRefundReasons(prev => ({ ...prev, [item.id]: e.target.value }))}
                             className="text-xs font-medium bg-white border border-slate-300 rounded-lg px-2 py-1 outline-none text-slate-800 shadow-2xs"
                           >
-                            <option value="Customer Mind Change">Customer Changed Mind</option>
+                            <option value="student Mind Change">student Changed Mind</option>
                             <option value="Defective Item">Defective / Damaged</option>
                             <option value="Wrong Item Billed">Wrong Item Billed</option>
                             <option value="Dissatisfied Quality">Dissatisfied with Quality</option>
@@ -2135,17 +2133,17 @@ export const PriceCheckView = ({ products = [] }: { products?: any[] }) => {
 };
 export const FavoritesView = ({ products = [], addToCart }: { products?: any[], addToCart?: (product: any) => void }) => {
   const [favoriteIds, setFavoriteIds] = React.useState<string[]>([]);
-  
+
   React.useEffect(() => {
     try {
       const stored = localStorage.getItem('pos_favorites');
       if (stored) setFavoriteIds(JSON.parse(stored));
-    } catch(e) {}
+    } catch (e) { }
   }, []);
 
   const toggleFavorite = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    const newFavs = favoriteIds.includes(id) 
+    const newFavs = favoriteIds.includes(id)
       ? favoriteIds.filter(f => f !== id)
       : [...favoriteIds, id];
     setFavoriteIds(newFavs);
@@ -2153,7 +2151,7 @@ export const FavoritesView = ({ products = [], addToCart }: { products?: any[], 
   };
 
   // If no favorites are set yet, show top 5 as a placeholder demo
-  const favorites = favoriteIds.length > 0 
+  const favorites = favoriteIds.length > 0
     ? products.filter(p => favoriteIds.includes(p.id))
     : products.slice(0, 8);
 
@@ -2174,12 +2172,12 @@ export const FavoritesView = ({ products = [], addToCart }: { products?: any[], 
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
             {favorites.map(p => (
-              <div 
-                key={p.id} 
+              <div
+                key={p.id}
                 onClick={() => addToCart && addToCart(p)}
                 className="bg-white border border-slate-200/80 rounded-2xl overflow-hidden hover:border-indigo-400 hover:shadow-xs transition-all cursor-pointer group flex flex-col relative"
               >
-                <div 
+                <div
                   onClick={(e) => toggleFavorite(e, p.id)}
                   className="absolute top-2 right-2 z-10 w-7 h-7 bg-white/90 backdrop-blur-sm text-rose-500 hover:bg-rose-50 rounded-full flex items-center justify-center shadow-2xs transition-colors"
                 >
@@ -2243,7 +2241,7 @@ export const RecentBillsView = ({ onRefund, onExchange }: { onRefund?: (id: stri
                 rawId: tx.id,
                 id: tx.receipt_number,
                 date: tx.created_at,
-                customerName: (tx as any).customer_name || "Customer",
+                studentName: (tx as any).student_name || "student",
                 paymentMethod: methodDisplay,
                 total: totalAmount,
                 paidAmount: totalPaid,
@@ -2286,13 +2284,13 @@ export const RecentBillsView = ({ onRefund, onExchange }: { onRefund?: (id: stri
             </p>
           </div>
         </div>
-        
+
         <div className="flex items-center gap-3">
           <div className="relative">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input 
-              type="text" 
-              placeholder="Search receipt no or customer..." 
+            <input
+              type="text"
+              placeholder="Search receipt no or student..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 w-64 shadow-xs"
@@ -2307,7 +2305,7 @@ export const RecentBillsView = ({ onRefund, onExchange }: { onRefund?: (id: stri
             <tr>
               <th className="px-5 py-3.5 font-bold">Receipt / Bill #</th>
               <th className="px-5 py-3.5 font-bold">Time</th>
-              <th className="px-5 py-3.5 font-bold">Customer</th>
+              <th className="px-5 py-3.5 font-bold">student</th>
               <th className="px-5 py-3.5 font-bold">Payment Method</th>
               <th className="px-5 py-3.5 font-bold text-right">Total Amount</th>
               <th className="px-5 py-3.5 font-bold text-center">Status</th>
@@ -2322,7 +2320,7 @@ export const RecentBillsView = ({ onRefund, onExchange }: { onRefund?: (id: stri
                   {tx.isRefund && <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-700 uppercase">Refund</span>}
                 </td>
                 <td className="px-6 py-4 text-slate-500">{new Date(tx.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
-                <td className="px-6 py-4 font-medium text-slate-900">{tx.customerName}</td>
+                <td className="px-6 py-4 font-medium text-slate-900">{tx.studentName}</td>
                 <td className="px-6 py-4">
                   <span className={`px-2 py-0.5 rounded text-xs font-bold ${tx.isPartial ? 'bg-amber-100 text-amber-800' : 'text-slate-600 bg-slate-100'}`}>
                     {tx.paymentMethod}
@@ -2341,20 +2339,19 @@ export const RecentBillsView = ({ onRefund, onExchange }: { onRefund?: (id: stri
                   )}
                 </td>
                 <td className="px-6 py-4 text-center">
-                  <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
-                    tx.isRefund 
-                      ? 'bg-rose-100 text-rose-700' 
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${tx.isRefund
+                      ? 'bg-rose-100 text-rose-700'
                       : tx.isPartial
-                      ? 'bg-amber-100 text-amber-800 border border-amber-300'
-                      : tx.status === 'Completed' 
-                      ? 'bg-emerald-100 text-emerald-700' 
-                      : 'bg-amber-100 text-amber-700'
-                  }`}>
+                        ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                        : tx.status === 'Completed'
+                          ? 'bg-emerald-100 text-emerald-700'
+                          : 'bg-amber-100 text-amber-700'
+                    }`}>
                     {tx.isRefund ? 'Refunded' : tx.status}
                   </span>
                 </td>
                 <td className="px-6 py-4 text-right">
-                  <button 
+                  <button
                     onClick={() => setSelectedBill(tx)}
                     className="text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 font-bold text-xs px-3 py-1.5 rounded-lg border border-indigo-200 transition-colors"
                   >
@@ -2387,164 +2384,164 @@ export const RecentBillsView = ({ onRefund, onExchange }: { onRefund?: (id: stri
             >
               <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-slate-50">
                 <div className="flex items-center gap-3 text-slate-900">
-                <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center">
-                  <History className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-black text-lg leading-none">Receipt Details</h3>
-                  <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-wider">{selectedBill.id}</p>
-                </div>
-              </div>
-              <button onClick={() => setSelectedBill(null)} className="p-2 text-slate-400 hover:text-slate-900 bg-white rounded-lg border border-slate-200 shadow-sm transition-colors">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-6 bg-slate-50">
-              {/* Customer Info */}
-              <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm mb-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-500 font-bold">
-                    {selectedBill.customerName.charAt(0)}
+                  <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center">
+                    <History className="w-5 h-5" />
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-slate-900">{selectedBill.customerName}</p>
-                    <p className="text-xs text-slate-500">{new Date(selectedBill.date).toLocaleString()}</p>
-                  </div>
-                  <div className="ml-auto flex gap-2">
-                    {selectedBill.isRefund && (
-                      <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-700">
-                        Refund Receipt
-                      </span>
-                    )}
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${selectedBill.isRefund ? 'bg-rose-100 text-rose-700' : selectedBill.status === 'Completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-                      {selectedBill.isRefund ? 'Refunded' : selectedBill.status}
-                    </span>
+                    <h3 className="font-black text-lg leading-none">Receipt Details</h3>
+                    <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-wider">{selectedBill.id}</p>
                   </div>
                 </div>
+                <button onClick={() => setSelectedBill(null)} className="p-2 text-slate-400 hover:text-slate-900 bg-white rounded-lg border border-slate-200 shadow-sm transition-colors">
+                  <X className="w-4 h-4" />
+                </button>
               </div>
 
-              {/* Items */}
-              <div className="mb-6">
-                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-1">Purchased Items</h4>
-                <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                  {selectedBill.items.map((item: any, idx: number) => {
-                    // Check if this specific item was refunded in any child transactions
-                    const childRefunds = bills.filter(b => b.parentTxId === selectedBill.rawId);
-                    const refundedQty = childRefunds.reduce((sum, child) => {
-                      const childItem = child.items.find((i: any) => i.product_id === item.product_id);
-                      return sum + (childItem ? Math.abs(childItem.quantity) : 0);
-                    }, 0);
-                    
-                    return (
-                      <div key={idx} className="flex justify-between p-3 border-b border-slate-100 last:border-b-0 items-center">
-                        <div className="flex-1">
-                          <p className="text-sm font-bold text-slate-800 line-clamp-1">{item.name || `Product ${item.product_id.substring(0,8)}`}</p>
-                          <p className="text-xs text-slate-500">
-                            {item.quantity} x {formatCurrency(item.unit_price)}
-                            {refundedQty > 0 && (
-                              <span className="ml-2 font-bold text-rose-600">({refundedQty} Refunded)</span>
-                            )}
-                          </p>
-                        </div>
-                        <div className="text-sm font-black text-slate-900">
-                          {formatCurrency(item.subtotal)}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Payment Details */}
-              <div className="mb-6">
-                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-1">Payment Breakdown</h4>
-                <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3">
-                  <div className="flex justify-between text-sm text-slate-600 font-medium">
-                    <span>Subtotal</span>
-                    <span>{formatCurrency(selectedBill.subtotal || 0)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm text-slate-600 font-medium">
-                    <span>Tax (5%)</span>
-                    <span>{formatCurrency(selectedBill.tax || 0)}</span>
-                  </div>
-                  {selectedBill.discount > 0 && (
-                    <div className="flex justify-between text-sm text-rose-600 font-medium">
-                      <span>Discount</span>
-                      <span>-{formatCurrency(selectedBill.discount || 0)}</span>
+              <div className="flex-1 overflow-y-auto p-6 bg-slate-50">
+                {/* student Info */}
+                <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-500 font-bold">
+                      {selectedBill.studentName.charAt(0)}
                     </div>
-                  )}
-                  <div className="pt-3 mt-3 border-t border-slate-100 flex justify-between text-lg font-black text-slate-900">
-                    <span>Grand Total {selectedBill.isRefund && "(Refunded)"}</span>
-                    <span className={selectedBill.isRefund ? "text-rose-600" : ""}>{formatCurrency(selectedBill.total)}</span>
+                    <div>
+                      <p className="text-sm font-bold text-slate-900">{selectedBill.studentName}</p>
+                      <p className="text-xs text-slate-500">{new Date(selectedBill.date).toLocaleString()}</p>
+                    </div>
+                    <div className="ml-auto flex gap-2">
+                      {selectedBill.isRefund && (
+                        <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-700">
+                          Refund Receipt
+                        </span>
+                      )}
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${selectedBill.isRefund ? 'bg-rose-100 text-rose-700' : selectedBill.status === 'Completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                        {selectedBill.isRefund ? 'Refunded' : selectedBill.status}
+                      </span>
+                    </div>
                   </div>
                 </div>
+
+                {/* Items */}
+                <div className="mb-6">
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-1">Purchased Items</h4>
+                  <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                    {selectedBill.items.map((item: any, idx: number) => {
+                      // Check if this specific item was refunded in any child transactions
+                      const childRefunds = bills.filter(b => b.parentTxId === selectedBill.rawId);
+                      const refundedQty = childRefunds.reduce((sum, child) => {
+                        const childItem = child.items.find((i: any) => i.product_id === item.product_id);
+                        return sum + (childItem ? Math.abs(childItem.quantity) : 0);
+                      }, 0);
+
+                      return (
+                        <div key={idx} className="flex justify-between p-3 border-b border-slate-100 last:border-b-0 items-center">
+                          <div className="flex-1">
+                            <p className="text-sm font-bold text-slate-800 line-clamp-1">{item.name || `Product ${item.product_id.substring(0, 8)}`}</p>
+                            <p className="text-xs text-slate-500">
+                              {item.quantity} x {formatCurrency(item.unit_price)}
+                              {refundedQty > 0 && (
+                                <span className="ml-2 font-bold text-rose-600">({refundedQty} Refunded)</span>
+                              )}
+                            </p>
+                          </div>
+                          <div className="text-sm font-black text-slate-900">
+                            {formatCurrency(item.subtotal)}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Payment Details */}
+                <div className="mb-6">
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-1">Payment Breakdown</h4>
+                  <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3">
+                    <div className="flex justify-between text-sm text-slate-600 font-medium">
+                      <span>Subtotal</span>
+                      <span>{formatCurrency(selectedBill.subtotal || 0)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm text-slate-600 font-medium">
+                      <span>Tax (5%)</span>
+                      <span>{formatCurrency(selectedBill.tax || 0)}</span>
+                    </div>
+                    {selectedBill.discount > 0 && (
+                      <div className="flex justify-between text-sm text-rose-600 font-medium">
+                        <span>Discount</span>
+                        <span>-{formatCurrency(selectedBill.discount || 0)}</span>
+                      </div>
+                    )}
+                    <div className="pt-3 mt-3 border-t border-slate-100 flex justify-between text-lg font-black text-slate-900">
+                      <span>Grand Total {selectedBill.isRefund && "(Refunded)"}</span>
+                      <span className={selectedBill.isRefund ? "text-rose-600" : ""}>{formatCurrency(selectedBill.total)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Payment Methods Used */}
+                {selectedBill.payments && selectedBill.payments.length > 0 && (
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-1">Payment Methods</h4>
+                    <div className="flex gap-2">
+                      {selectedBill.payments.map((pm: any, idx: number) => (
+                        <div key={idx} className="bg-white border border-slate-200 rounded-lg p-3 flex-1 text-center shadow-sm">
+                          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{pm.payment_method}</p>
+                          <p className="text-sm font-black text-slate-900">{formatCurrency(pm.amount)}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
               </div>
 
-              {/* Payment Methods Used */}
-              {selectedBill.payments && selectedBill.payments.length > 0 && (
-                <div>
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-1">Payment Methods</h4>
-                  <div className="flex gap-2">
-                    {selectedBill.payments.map((pm: any, idx: number) => (
-                      <div key={idx} className="bg-white border border-slate-200 rounded-lg p-3 flex-1 text-center shadow-sm">
-                        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{pm.payment_method}</p>
-                        <p className="text-sm font-black text-slate-900">{formatCurrency(pm.amount)}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-            </div>
-            
-            {/* Actions */}
-            <div className="p-4 border-t border-slate-200 bg-white flex gap-3">
-              <button 
-                onClick={async () => {
-                  try {
-                    const escpos = new ESCPOSPrinter();
-                    const directPrinted = await escpos.printDirectUSB(selectedBill);
-                    if (!directPrinted) {
+              {/* Actions */}
+              <div className="p-4 border-t border-slate-200 bg-white flex gap-3">
+                <button
+                  onClick={async () => {
+                    try {
+                      const escpos = new ESCPOSPrinter();
+                      const directPrinted = await escpos.printDirectUSB(selectedBill);
+                      if (!directPrinted) {
+                        triggerThermalPrint();
+                      }
+                    } catch (e) {
                       triggerThermalPrint();
                     }
-                  } catch (e) {
-                    triggerThermalPrint();
-                  }
-                }}
-                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl transition-colors flex items-center justify-center gap-1.5 shadow-xs text-xs"
-              >
-                <Printer className="w-4 h-4" />
-                Print
-              </button>
-              {!selectedBill.isRefund && (
-                <>
-                  <button 
-                    onClick={() => {
-                      if (onExchange && selectedBill?.id) {
-                        onExchange(selectedBill.id);
-                      }
-                    }}
-                    className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl transition-colors shadow-xs text-xs flex items-center justify-center gap-1.5"
-                  >
-                    <RefreshCw className="w-3.5 h-3.5" />
-                    Exchange
-                  </button>
-                  <button 
-                    onClick={() => {
-                      if (onRefund && selectedBill?.id) {
-                        onRefund(selectedBill.id);
-                      }
-                    }}
-                    className="flex-1 bg-slate-900 hover:bg-slate-800 text-white font-bold py-2.5 rounded-xl transition-colors shadow-xs text-xs flex items-center justify-center gap-1.5"
-                  >
-                    <CreditCard className="w-3.5 h-3.5" />
-                    Refund
-                  </button>
-                </>
-              )}
-            </div>
-          </motion.div>
+                  }}
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl transition-colors flex items-center justify-center gap-1.5 shadow-xs text-xs"
+                >
+                  <Printer className="w-4 h-4" />
+                  Print
+                </button>
+                {!selectedBill.isRefund && (
+                  <>
+                    <button
+                      onClick={() => {
+                        if (onExchange && selectedBill?.id) {
+                          onExchange(selectedBill.id);
+                        }
+                      }}
+                      className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl transition-colors shadow-xs text-xs flex items-center justify-center gap-1.5"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      Exchange
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (onRefund && selectedBill?.id) {
+                          onRefund(selectedBill.id);
+                        }
+                      }}
+                      className="flex-1 bg-slate-900 hover:bg-slate-800 text-white font-bold py-2.5 rounded-xl transition-colors shadow-xs text-xs flex items-center justify-center gap-1.5"
+                    >
+                      <CreditCard className="w-3.5 h-3.5" />
+                      Refund
+                    </button>
+                  </>
+                )}
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -2562,7 +2559,7 @@ export const AISuggestionsView = () => (
         </div>
         <div>
           <h2 className="text-xl font-bold tracking-tight text-slate-900">AI Sales & Cross-Sell Copilot</h2>
-          <p className="text-slate-500 text-xs font-medium">Real-time cart intelligence, high-affinity add-ons, and customer recommendation triggers.</p>
+          <p className="text-slate-500 text-xs font-medium">Real-time cart intelligence, high-affinity add-ons, and student recommendation triggers.</p>
         </div>
       </div>
       <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-purple-50 text-purple-700 border border-purple-200 flex items-center gap-1.5">
@@ -2607,12 +2604,12 @@ export const AISuggestionsView = () => (
       <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-xs space-y-3">
         <div className="flex items-center justify-between">
           <span className="text-[10px] font-bold uppercase tracking-wider text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200">
-            🎯 Customer Loyalty Trigger
+            🎯 student Loyalty Trigger
           </span>
         </div>
         <h4 className="text-sm font-bold text-slate-900">Points Redemption Reminder</h4>
         <p className="text-xs text-slate-500 leading-relaxed">
-          Prompt returning customers when their accumulated loyalty reward points exceed ₹50 discount eligibility.
+          Prompt returning students when their accumulated loyalty reward points exceed ₹50 discount eligibility.
         </p>
         <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
           <span className="font-semibold text-slate-700">Boosts Retention</span>
@@ -2662,7 +2659,7 @@ export const WalletView = () => {
         <div className="space-y-5 flex-1">
           {/* Top 4 KPI Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            
+
             {/* Total Revenue */}
             <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs flex flex-col justify-between">
               <div className="flex items-center justify-between mb-2">

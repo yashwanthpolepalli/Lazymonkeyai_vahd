@@ -2,8 +2,8 @@ import { apiClient } from './apiClient';
 
 export interface PayrollInvoice {
   id: string;
-  trainer_id: string;
-  trainer_name?: string;
+  employee_id: string;
+  employee_name?: string;
   month_year: string;
   days_present: number;
   total_days_in_month: number;
@@ -27,7 +27,7 @@ export const payrollApi = {
       return [];
     }
   },
-  generateInvoice: async (data: { trainer_id: string; month_year: string; pt_sessions_count?: number }): Promise<PayrollInvoice> => {
+  generateInvoice: async (data: { employee_id: string; month_year: string; pt_sessions_count?: number }): Promise<PayrollInvoice> => {
     return apiClient.post<PayrollInvoice>('/payroll/generate', data);
   },
   processPayment: async (payrollId: string, data: { payment_method: string; transaction_reference?: string }): Promise<PayrollInvoice> => {

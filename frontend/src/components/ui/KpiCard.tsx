@@ -3,7 +3,7 @@ import { cn } from '@/utils/cn';
 export interface KpiCardProps {
   id?: string;
   label: string;
-  value: string;
+  value: string | number;
   change?: number | string;
   changeLabel?: string;
   sparkline?: number[];
@@ -11,6 +11,9 @@ export interface KpiCardProps {
   trend?: 'up' | 'down' | 'neutral';
   icon: string;
   accent?: 'brand' | 'success' | 'warning' | 'danger' | 'ai';
+  hideSparkline?: boolean;
+  hideChange?: boolean;
+  className?: string;
 }
 
 const accentMap = {
@@ -24,7 +27,20 @@ const accentMap = {
 import { Icon } from './Icon';
 import { Sparkline } from './Sparkline';
 
-export function KpiCard({ label, value, change, changeLabel, sparkline, status, trend, icon, accent = 'brand' }: KpiCardProps) {
+export function KpiCard({
+  label,
+  value,
+  change,
+  changeLabel,
+  sparkline,
+  status,
+  trend,
+  icon,
+  accent = 'brand',
+  hideSparkline = false,
+  hideChange = false,
+  className,
+}: KpiCardProps) {
   const currentStatus = status || trend || 'neutral';
   const a = accentMap[accent] || accentMap.brand;
   const isUp = currentStatus === 'up';
@@ -39,17 +55,29 @@ export function KpiCard({ label, value, change, changeLabel, sparkline, status, 
     return val;
   };
 
+  const isCompact = hideSparkline && hideChange;
+
   return (
-    <div className="card card-hover p-5 group">
-      <div className="flex items-start justify-between mb-3">
-        <span className="stat-label">{label}</span>
-        <div className={cn('w-9 h-9 rounded-xl flex items-center justify-center', a.bg)}>
-          <Icon name={icon} size={18} className={a.text} />
+    <div
+      className={cn(
+        'card card-hover transition-all duration-200 group flex flex-col justify-between',
+        isCompact ? 'p-3.5 sm:p-4 min-h-[96px]' : 'p-5',
+        className
+      )}
+    >
+      <div className="flex items-start justify-between gap-1.5 mb-2">
+        <span className="stat-label text-[11px] font-bold text-slate-500 uppercase tracking-wider line-clamp-2 leading-tight">
+          {label}
+        </span>
+        <div className={cn('w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center shrink-0 shadow-2xs', a.bg)}>
+          <Icon name={icon} size={15} className={a.text} />
         </div>
       </div>
-      <div className="text-2xl font-bold text-navy-900 mb-2 tracking-tight">{value}</div>
-      {(change !== undefined || changeLabel) && (
-        <div className="flex items-center gap-2 mb-3">
+      <div className="text-xl sm:text-2xl font-black text-navy-900 tracking-tight leading-none mt-1">
+        {value}
+      </div>
+      {!hideChange && (change !== undefined || changeLabel) && (
+        <div className="flex items-center gap-2 mt-2">
           {change !== undefined && (
             <span className={cn('inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-xs font-bold', changeBg, changeColor)}>
               {isUp && <Icon name="arrow-up-right" size={12} />}
@@ -60,8 +88,8 @@ export function KpiCard({ label, value, change, changeLabel, sparkline, status, 
           {changeLabel && <span className="text-xs text-navy-400 font-medium">{changeLabel}</span>}
         </div>
       )}
-      {sparkline && sparkline.length > 0 && (
-        <div className="h-8 -mx-1">
+      {!hideSparkline && sparkline && sparkline.length > 0 && (
+        <div className="h-8 -mx-1 mt-2">
           <Sparkline data={sparkline} color={a.spark} height={32} />
         </div>
       )}

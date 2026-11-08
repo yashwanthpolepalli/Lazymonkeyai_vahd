@@ -170,7 +170,6 @@ export function DevicesPage() {
               { id: 'all', label: 'All Fleet' },
               { id: 'biometric', label: 'Turnstiles & Biometrics' },
               { id: 'face_recognition', label: 'Face Cam Terminals' },
-              { id: 'body_scanner', label: 'InBody Scanners' },
               { id: 'cctv', label: 'CCTV Feeds' },
               { id: 'pos', label: 'POS Terminals' },
             ].map((tab) => (
@@ -239,7 +238,7 @@ export function DevicesPage() {
                         </Badge>
                       </td>
                       <td className="px-3 py-3 font-medium text-slate-600">{d.lastHeartbeat || 'Just now'}</td>
-                      <td className="px-3 py-3 text-slate-600 font-medium">{d.location || 'Main Branch'}</td>
+                      <td className="px-3 py-3 text-slate-600 font-medium">{d.location || ''}</td>
                       <td className="px-3 py-3">
                         <div className="flex items-center gap-1.5 text-slate-700 font-medium">
                           <Icon name={d.network === 'WiFi' ? 'wifi' : 'server'} size={13} className="text-slate-400" />
@@ -319,7 +318,6 @@ export function DevicesPage() {
                   >
                     <option value="biometric">Biometric Turnstile</option>
                     <option value="face_recognition">Face Recognition Cam</option>
-                    <option value="body_scanner">InBody Composition Scanner</option>
                     <option value="cctv">CCTV Stream Camera</option>
                     <option value="pos">POS Terminal</option>
                   </select>

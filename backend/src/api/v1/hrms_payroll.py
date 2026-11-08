@@ -23,7 +23,7 @@ from src.models.hrms import (
     Designation,
     Department
 )
-from src.models.settings import Setting as GymSetting
+from src.models.settings import Setting as vahdSetting
 
 router = APIRouter(prefix="/hrms/payroll", tags=["HRMS - Payroll & Compensation"])
 
@@ -791,8 +791,8 @@ def download_payslip_pdf(id: str, db: Session = Depends(get_db)):
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
 
-    settings = db.query(GymSetting).first()
-    gym_name = settings.gym_name if (settings and settings.gym_name) else None
+    settings = db.query(vahdSetting).first()
+    vahd_name = settings.vahd_name if (settings and settings.vahd_name) else None
 
     tmpl = db.query(PayslipTemplate).filter(PayslipTemplate.is_default == True).first()
     cfg = {
@@ -804,7 +804,7 @@ def download_payslip_pdf(id: str, db: Session = Depends(get_db)):
     pdf_bytes = generate_payslip_pdf(
         slip=slip,
         emp=emp,
-        company_name=gym_name,
+        company_name=vahd_name,
         desig_name=emp.designation,
         dept_name=emp.department,
         template_config=cfg

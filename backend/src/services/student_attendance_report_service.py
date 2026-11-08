@@ -7,8 +7,8 @@ from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc, or_
 
-from src.models.customer import Customer
-from src.models.settings import GymBranch
+from src.models.student import student, Student
+from src.models.settings import vahdBranch
 from src.models.biometric import BiometricLog
 from src.models.crm import WhatsAppSessionModel
 from src.models.student_report import StudentAttendanceReportLog
@@ -48,7 +48,7 @@ class StudentAttendanceReportService:
     @staticmethod
     def compute_student_monthly_attendance(
         db: Session,
-        customer_id: str,
+        student_id: str,
         year: Optional[int] = None,
         month: Optional[int] = None
     ) -> Dict[str, Any]:
@@ -70,24 +70,41 @@ class StudentAttendanceReportService:
             target_year, target_month, up_to_day=up_to_day
         )
 
-        student = db.query(Customer).filter(Customer.id == customer_id).first()
+        student = db.query(Student).filter(Student.id == student_id).first()
         if not student:
-            raise ValueError(f"Student with ID '{customer_id}' not found.")
+            raise ValueError(f"Student with ID '{student_id}' not found.")
 
         meta = student.meta_data or {}
         parent_phone = (
             student.parent_phone
-            or meta.get("parent_mobile")
             or meta.get("parent_phone")
-            or meta.get("guardian_phone")
             or ""
         ).strip()
 
-        # Query all biometric logs for this student in the target month
-        logs = (
+        # Build exhaustive match keys for student
+        stu_match_ids = {str(student.id), str(student.id).replace("cust_", ""), f"cust_{student.id}"}
+        if student.user_id:
+            stu_match_ids.add(str(student.user_id))
+            stu_match_ids.add(f"cust_{student.user_id}")
+            stu_match_ids.add(f"cust_usr_{student.user_id}")
+        if getattr(student, "member_code", None):
+            stu_match_ids.add(str(student.member_code).strip())
+        if student.email:
+            stu_match_ids.add(student.email.strip().lower())
+
+        # 1. Query EmployeeAttendance records for this student
+        from src.models.hrms import EmployeeAttendance
+        att_records = db.query(EmployeeAttendance).filter(
+            EmployeeAttendance.employee_id.in_(list(stu_match_ids)),
+            EmployeeAttendance.date >= date(target_year, target_month, 1),
+            EmployeeAttendance.date <= date(target_year, target_month, last_day)
+        ).all()
+        att_by_day = {a.date.day: a for a in att_records if a.date}
+
+        # 2. Query all biometric logs for this student in the target month
+        raw_bio_logs = (
             db.query(BiometricLog)
             .filter(
-                BiometricLog.customer_id == student.id,
                 BiometricLog.timestamp >= start_dt,
                 BiometricLog.timestamp <= end_dt,
                 BiometricLog.status != "DENIED"
@@ -95,6 +112,22 @@ class StudentAttendanceReportService:
             .order_by(BiometricLog.timestamp.asc())
             .all()
         )
+
+        logs = []
+        for bl in raw_bio_logs:
+            sid = str(bl.student_id or "")
+            b_meta = bl.meta_data or {}
+            m_uid = str(b_meta.get("user_id") or b_meta.get("student_id") or "")
+            m_code = str(b_meta.get("student_code") or "")
+            m_email = str(b_meta.get("email") or "").strip().lower()
+            if (
+                sid in stu_match_ids
+                or sid.replace("cust_", "") in stu_match_ids
+                or m_uid in stu_match_ids
+                or m_code in stu_match_ids
+                or (student.email and m_email == student.email.strip().lower())
+            ):
+                logs.append(bl)
 
         # Group logs by day
         day_logs: Dict[int, List[BiometricLog]] = {}
@@ -115,14 +148,15 @@ class StudentAttendanceReportService:
             weekday_name = cur_date.strftime("%a")
             date_str = cur_date.strftime("%Y-%m-%d")
 
+            att = att_by_day.get(d)
             d_logs = day_logs.get(d, [])
-            if d_logs:
-                # Student is present on this day
+
+            if att or d_logs:
                 status = "PRESENT"
                 days_present += 1
-                punch_in = d_logs[0].timestamp.strftime("%I:%M %p")
-                punch_out = d_logs[-1].timestamp.strftime("%I:%M %p") if len(d_logs) > 1 else punch_in
-                device_info = d_logs[0].device_name or "Biometric Terminal"
+                punch_in = (att.check_in if att and att.check_in else None) or (d_logs[0].timestamp.strftime("%I:%M %p") if d_logs else "--:--")
+                punch_out = (att.check_out if att and att.check_out else None) or (d_logs[-1].timestamp.strftime("%I:%M %p") if len(d_logs) > 1 else punch_in)
+                device_info = (d_logs[0].device_name if d_logs else None) or (att.notes if att else "Attendance System")
             elif is_sunday:
                 status = "SUNDAY"
                 punch_in = None
@@ -170,10 +204,20 @@ class StudentAttendanceReportService:
             status_text = "🚨 Severe Shortage (Critical Risk of Exam Detention)"
             status_code = "CRITICAL"
 
-        course_name = meta.get("course") or student.goal or "Degree Program"
+        course_name = meta.get("course") or "Degree Program"
         medium_name = meta.get("medium") or ""
-        college_name = meta.get("college_name") or student.primary_gym_location or "VAHD Higher Education Academy"
-        roll_number = meta.get("roll_number") or meta.get("admission_number") or student.id
+        college_name = meta.get("college_name") or student.primary_vahd_location or "VAHD Higher Education Academy"
+
+        # Resolve sequential roll code (stu0001, stu0002...)
+        roll_number = getattr(student, "member_code", None)
+        if not roll_number or str(roll_number).startswith("cust_"):
+            roll_number = meta.get("roll_number") or meta.get("student_number") or meta.get("code") or meta.get("roll_no") or meta.get("admission_number")
+        if not roll_number or str(roll_number).startswith("cust_"):
+            from src.services.student_service import studentService
+            try:
+                roll_number = studentService.ensure_student_roll_code(student, db, commit=True)
+            except Exception:
+                roll_number = f"stu{student.id[-4:]}"
 
         return {
             "student_id": student.id,
@@ -401,7 +445,7 @@ class StudentAttendanceReportService:
     @staticmethod
     def send_report_to_parent(
         db: Session,
-        customer_id: str,
+        student_id: str,
         year: Optional[int] = None,
         month: Optional[int] = None,
         dispatch_type: str = "MANUAL_DISPATCH"
@@ -412,17 +456,18 @@ class StudentAttendanceReportService:
         Saves a persistent audit record into `student_attendance_report_logs`.
         """
         report = StudentAttendanceReportService.compute_student_monthly_attendance(
-            db, customer_id=customer_id, year=year, month=month
+            db, student_id=student_id, year=year, month=month
         )
 
         parent_phone = report.get("parent_phone")
         if not parent_phone:
             # Log skipped attempt
             log_entry = StudentAttendanceReportLog(
-                student_id=customer_id,
+                student_id=student_id,
                 student_name=report.get("student_name", "Unknown"),
                 parent_phone="MISSING",
                 branch_id=report.get("branch_id"),
+                tenant_id=report.get("branch_id"),
                 year=report.get("year"),
                 month=report.get("month"),
                 month_name=report.get("month_name"),
@@ -440,7 +485,7 @@ class StudentAttendanceReportService:
 
             return {
                 "success": False,
-                "student_id": customer_id,
+                "student_id": student_id,
                 "student_name": report.get("student_name"),
                 "message": f"Missing parent mobile number for {report.get('student_name')}. Please update student dossier with parent mobile number."
             }
@@ -469,10 +514,11 @@ class StudentAttendanceReportService:
 
         # Create persistent audit log in DB
         log_entry = StudentAttendanceReportLog(
-            student_id=customer_id,
+            student_id=student_id,
             student_name=report.get("student_name"),
             parent_phone=parent_phone,
             branch_id=report.get("branch_id"),
+            tenant_id=report.get("branch_id"),
             year=report.get("year"),
             month=report.get("month"),
             month_name=report.get("month_name"),
@@ -505,7 +551,7 @@ class StudentAttendanceReportService:
         return {
             "success": True,
             "log_id": log_entry.id,
-            "student_id": customer_id,
+            "student_id": student_id,
             "student_name": report.get("student_name"),
             "parent_phone": parent_phone,
             "formatted_phone": formatted_phone,
@@ -530,16 +576,16 @@ class StudentAttendanceReportService:
         Dispatches monthly attendance reports to all enrolled students' respective mapped parent mobile numbers.
         Executed automatically at month-end or triggered on-demand by the owner.
         """
-        query = db.query(Customer).filter(
+        query = db.query(student).filter(
             or_(
-                func.upper(Customer.status) == "ACTIVE",
-                Customer.status == "ACTIVE",
-                Customer.status == "Active",
-                Customer.status.is_(None)
+                func.upper(student.status) == "ACTIVE",
+                student.status == "ACTIVE",
+                student.status == "Active",
+                student.status.is_(None)
             )
         )
         if branch_id:
-            query = query.filter(Customer.branch_id == branch_id)
+            query = query.filter(student.branch_id == branch_id)
 
         students = query.all()
         results = []
@@ -549,7 +595,7 @@ class StudentAttendanceReportService:
         for s in students:
             try:
                 res = StudentAttendanceReportService.send_report_to_parent(
-                    db, customer_id=s.id, year=year, month=month, dispatch_type=dispatch_type
+                    db, student_id=s.id, year=year, month=month, dispatch_type=dispatch_type
                 )
                 if res.get("success"):
                     sent_count += 1
@@ -595,19 +641,19 @@ class StudentAttendanceReportService:
         target_year = year or now.year
         target_month = month or now.month
 
-        # Query branches to provide branch_name and gym_name mapping
-        branches_dict = {b.id: b for b in db.query(GymBranch).all()}
+        # Query branches to provide branch_name and vahd_name mapping
+        branches_dict = {b.id: b for b in db.query(vahdBranch).all()}
 
-        query = db.query(Customer).filter(
+        query = db.query(student).filter(
             or_(
-                func.upper(Customer.status) == "ACTIVE",
-                Customer.status == "ACTIVE",
-                Customer.status == "Active",
-                Customer.status.is_(None)
+                func.upper(student.status) == "ACTIVE",
+                student.status == "ACTIVE",
+                student.status == "Active",
+                student.status.is_(None)
             )
         )
         if branch_id and branch_id != "all":
-            query = query.filter(Customer.branch_id == branch_id)
+            query = query.filter(student.branch_id == branch_id)
 
         students = query.all()
 
@@ -634,7 +680,7 @@ class StudentAttendanceReportService:
         for s in students:
             try:
                 rep = StudentAttendanceReportService.compute_student_monthly_attendance(
-                    db, customer_id=s.id, year=target_year, month=target_month
+                    db, student_id=s.id, year=target_year, month=target_month
                 )
             except Exception as e:
                 logger.error(f"Error computing attendance for student {s.id}: {e}")
@@ -650,8 +696,8 @@ class StudentAttendanceReportService:
             total_pct_sum += rep.get("attendance_percentage", 0.0)
 
             branch_obj = branches_dict.get(s.branch_id)
-            branch_label = branch_obj.branch_name if branch_obj else (s.primary_gym_location or "Main Campus")
-            gym_label = branch_obj.gym_name if branch_obj else ""
+            branch_label = branch_obj.branch_name if branch_obj else (s.primary_vahd_location or "Main Campus")
+            vahd_label = branch_obj.vahd_name if branch_obj else ""
 
             student_reports.append({
                 "student_id": s.id,
@@ -661,7 +707,7 @@ class StudentAttendanceReportService:
                 "course": rep.get("course"),
                 "branch_id": s.branch_id,
                 "branch_name": branch_label,
-                "gym_name": gym_label,
+                "vahd_name": vahd_label,
                 "parent_phone": rep.get("parent_phone"),
                 "has_parent_phone": rep.get("has_parent_phone"),
                 "total_working_days": rep.get("total_working_days"),
@@ -697,7 +743,8 @@ class StudentAttendanceReportService:
         db: Session,
         year: Optional[int] = None,
         month: Optional[int] = None,
-        limit: int = 100
+        limit: int = 100,
+        branch_id: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """Returns the chronological audit log of all sent WhatsApp reports."""
         query = db.query(StudentAttendanceReportLog)
@@ -705,6 +752,15 @@ class StudentAttendanceReportService:
             query = query.filter(StudentAttendanceReportLog.year == year)
         if month:
             query = query.filter(StudentAttendanceReportLog.month == month)
+        if branch_id and str(branch_id).lower() not in ["all", "", "none", "undefined", "null"]:
+            # Match by canonical tenant/branch id; fall back to the legacy
+            # branch_id/tenant_id columns already stamped on the log rows.
+            query = query.filter(
+                or_(
+                    StudentAttendanceReportLog.branch_id == branch_id,
+                    StudentAttendanceReportLog.tenant_id == branch_id
+                )
+            )
 
         logs = query.order_by(desc(StudentAttendanceReportLog.created_at)).limit(limit).all()
         return [

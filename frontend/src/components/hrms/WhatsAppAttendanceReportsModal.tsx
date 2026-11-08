@@ -114,7 +114,7 @@ export function WhatsAppAttendanceReportsModal({ isOpen, onClose }: Props) {
   const loadOverview = async (y = targetYear, m = targetMonth) => {
     setLoading(true);
     try {
-      const res = await apiClient.get<OverviewResponse>(`/customers/attendance-reports/overview?year=${y}&month=${m}`);
+      const res = await apiClient.get<OverviewResponse>(`/students/attendance-reports/overview?year=${y}&month=${m}`);
       setOverview(res);
     } catch (err: any) {
       console.error('Failed to load attendance reports overview:', err);
@@ -126,7 +126,7 @@ export function WhatsAppAttendanceReportsModal({ isOpen, onClose }: Props) {
 
   const loadLogs = async (y = targetYear, m = targetMonth) => {
     try {
-      const res = await apiClient.get<WhatsAppLogItem[]>(`/customers/attendance-reports/logs?year=${y}&month=${m}&limit=150`);
+      const res = await apiClient.get<WhatsAppLogItem[]>(`/students/attendance-reports/logs?year=${y}&month=${m}&limit=150`);
       setLogs(res || []);
     } catch (err) {
       console.error('Failed to load WhatsApp dispatch logs:', err);
@@ -148,7 +148,7 @@ export function WhatsAppAttendanceReportsModal({ isOpen, onClose }: Props) {
     }
     setDispatchingStudentId(student.student_id);
     try {
-      const res = await apiClient.post<any>(`/customers/${student.student_id}/attendance-report/send-whatsapp`, {
+      const res = await apiClient.post<any>(`/students/${student.student_id}/attendance-report/send-whatsapp`, {
         year: targetYear,
         month: targetMonth,
         dispatch_type: 'MANUAL_DISPATCH',
@@ -174,7 +174,7 @@ export function WhatsAppAttendanceReportsModal({ isOpen, onClose }: Props) {
     }
     setDispatchingAll(true);
     try {
-      const res = await apiClient.post<any>('/customers/attendance-reports/dispatch-monthly', {
+      const res = await apiClient.post<any>('/students/attendance-reports/dispatch-monthly', {
         year: targetYear,
         month: targetMonth,
         dispatch_type: 'AUTOMATED_MONTH_END',
@@ -190,12 +190,12 @@ export function WhatsAppAttendanceReportsModal({ isOpen, onClose }: Props) {
   };
 
   const handleDownloadCsv = (studentId: string) => {
-    const url = `/api/v1/customers/${studentId}/attendance-report/csv?year=${targetYear}&month=${targetMonth}`;
+    const url = `/api/v1/students/${studentId}/attendance-report/csv?year=${targetYear}&month=${targetMonth}`;
     window.open(url, '_blank');
   };
 
   const handlePrintPdf = (studentId: string) => {
-    const url = `/api/v1/customers/${studentId}/attendance-report/pdf?year=${targetYear}&month=${targetMonth}`;
+    const url = `/api/v1/students/${studentId}/attendance-report/pdf?year=${targetYear}&month=${targetMonth}`;
     window.open(url, '_blank');
   };
 
@@ -227,7 +227,7 @@ export function WhatsAppAttendanceReportsModal({ isOpen, onClose }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-900/80 backdrop-blur-sm animate-fade-in">
       <div className="relative w-full max-w-7xl max-h-[94vh] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl flex flex-col border border-slate-200 dark:border-slate-800 overflow-hidden">
-        
+
         {/* Toast Notification */}
         {toastMessage && (
           <div className="absolute top-4 right-4 z-50 flex items-center gap-2 px-4 py-3 bg-slate-900 text-white rounded-xl shadow-xl border border-slate-700 animate-slide-in text-sm font-medium">
@@ -288,11 +288,10 @@ export function WhatsAppAttendanceReportsModal({ isOpen, onClose }: Props) {
             <button
               type="button"
               onClick={() => setIsGatewayModalOpen(true)}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm border cursor-pointer active:scale-95 ${
-                isGatewayConnected
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm border cursor-pointer active:scale-95 ${isGatewayConnected
                   ? 'bg-emerald-50 text-emerald-800 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-700'
                   : 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-700 hover:bg-amber-100 animate-pulse'
-              }`}
+                }`}
               title="Click to view WhatsApp Gateway connection or scan QR code"
             >
               <span className={`w-2 h-2 rounded-full ${isGatewayConnected ? 'bg-emerald-500' : 'bg-amber-500 animate-ping'}`} />
@@ -546,8 +545,8 @@ export function WhatsAppAttendanceReportsModal({ isOpen, onClose }: Props) {
                                 s.attendance_percentage >= 75
                                   ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
                                   : s.attendance_percentage >= 65
-                                  ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                                  : 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
+                                    ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                                    : 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
                               )}
                             >
                               {s.attendance_percentage}%

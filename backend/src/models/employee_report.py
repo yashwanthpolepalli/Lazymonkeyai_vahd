@@ -14,12 +14,13 @@ class EmployeeAttendanceReportLog(Base):
     __tablename__ = "employee_attendance_report_logs"
 
     id = Column(String, primary_key=True, default=lambda: f"earl_{uuid.uuid4().hex[:12]}")
+    tenant_id = Column(String, nullable=True, index=True)
     employee_id = Column(String, index=True, nullable=False)
     employee_name = Column(String, nullable=False)
     employee_code = Column(String, index=True, nullable=True)
     email = Column(String, index=True, nullable=False)
     branch_id = Column(String, index=True, nullable=True)
-    gym_branch = Column(String, nullable=True)
+    vahd_branch = Column(String, nullable=True)
     owner_id = Column(String, index=True, nullable=True)
     ho_id = Column(String, index=True, nullable=True)
 

@@ -83,13 +83,13 @@ export function AgriSeedsTemplate({
         </div>
       </div>
 
-      {/* ─── CUSTOMER DETAILS & INVOICE META ─── */}
+      {/* ─── student DETAILS & INVOICE META ─── */}
       <div className="grid grid-cols-12 border-b-2 border-black py-1 px-1 text-[9px] leading-snug bg-gray-50/40">
         <div className="col-span-7 space-y-0.5">
-          <p className="font-bold">BUYER (BILL TO) : <span className="font-extrabold uppercase">{invoice.customerName || 'Customer'}</span></p>
-          <p><span className="font-bold">BILL TO (ADDRESS) : </span>{invoice.customerBillingAddress || invoice.customerAddress || 'Adilabad'}</p>
-          <p className="text-emerald-950 font-bold"><span className="text-gray-900 font-bold">SHIP TO (DELIVERY) : </span>{invoice.customerShippingAddress || invoice.customerBillingAddress || invoice.customerAddress || 'Same as Bill To'}</p>
-          <p className="font-mono font-bold">GSTIN : {invoice.customerGST || 'UNREGISTERED'}</p>
+          <p className="font-bold">BUYER (BILL TO) : <span className="font-extrabold uppercase">{invoice.studentName || 'student'}</span></p>
+          <p><span className="font-bold">BILL TO (ADDRESS) : </span>{invoice.studentBillingAddress || invoice.studentAddress || 'Adilabad'}</p>
+          <p className="text-emerald-950 font-bold"><span className="text-gray-900 font-bold">SHIP TO (DELIVERY) : </span>{invoice.studentShippingAddress || invoice.studentBillingAddress || invoice.studentAddress || 'Same as Bill To'}</p>
+          <p className="font-mono font-bold">GSTIN : {invoice.studentGST || 'UNREGISTERED'}</p>
         </div>
 
         <div className="col-span-5 text-right font-mono space-y-0.5">
@@ -205,7 +205,7 @@ export function AgriSeedsTemplate({
             For : {dynamicStoreName}
           </span>
           <div className="flex justify-between items-end pt-8">
-            <span className="border-t border-black pt-0.5 inline-block text-[7px] font-bold text-center">Customer signatory</span>
+            <span className="border-t border-black pt-0.5 inline-block text-[7px] font-bold text-center">student signatory</span>
             <span className="border-t border-black pt-0.5 inline-block text-[7px] font-bold text-center">Authorised signatory</span>
           </div>
         </div>

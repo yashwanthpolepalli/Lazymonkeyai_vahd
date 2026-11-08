@@ -12,6 +12,7 @@ class StudentAttendanceReportLog(Base):
     __tablename__ = "student_attendance_report_logs"
 
     id = Column(String, primary_key=True, default=lambda: f"sarl_{uuid.uuid4().hex[:12]}")
+    tenant_id = Column(String, nullable=True, index=True)
     student_id = Column(String, index=True, nullable=False)
     student_name = Column(String, nullable=False)
     parent_phone = Column(String, index=True, nullable=False)

@@ -3,16 +3,16 @@ import { useAuth } from '@/context/AuthContext';
 
 interface DashboardHeaderProps {
   userName?: string;
-  gymName?: string;
+  vahdName?: string;
   branchName?: string;
-  onAddCustomer?: () => void;
+  onAddstudent?: () => void;
   onAddPayment?: () => void;
   onAddSalesInvoice?: () => void;
 }
 
 export function DashboardHeader({
   userName,
-  gymName,
+  vahdName,
   branchName,
 }: DashboardHeaderProps) {
   const { user } = useAuth();

@@ -24,8 +24,8 @@ export interface MarketplaceProduct {
 
 export interface MarketplaceOrder {
   id: string;
-  customerId: string;
-  customerName: string;
+  studentId: string;
+  studentName: string;
   vendorId: string;
   vendorName: string;
   status: "Pending" | "Processing" | "Shipped" | "Delivered" | "Cancelled" | "Returned";
@@ -84,11 +84,11 @@ export const mockMarketplaceProducts: MarketplaceProduct[] = [
 ];
 
 export const mockMarketplaceOrders: MarketplaceOrder[] = [
-  { id: "ORD-98234", customerId: "CUST-004", customerName: "David Chen", vendorId: "VND-001", vendorName: "TechNova Electronics", status: "Delivered", total: 4299.00, date: "2026-08-28T14:30:00Z", items: 1 },
-  { id: "ORD-98235", customerId: "EXT-001", customerName: "Al-Manara Retail LLC", vendorId: "VND-002", vendorName: "Arabian Coffee Roasters", status: "Shipped", total: 2500.00, date: "2026-08-29T09:15:00Z", items: 20 },
-  { id: "ORD-98236", customerId: "CUST-002", customerName: "Sarah Al-Qasimi", vendorId: "VND-003", vendorName: "Fresh Harvest Groceries", status: "Processing", total: 240.00, date: "2026-08-29T08:45:00Z", items: 5 },
-  { id: "ORD-98237", customerId: "EXT-002", customerName: "Emirates Suites Hotel", vendorId: "VND-005", vendorName: "Gulf Packaging & Supplies", status: "Pending", total: 1950.00, date: "2026-08-29T10:20:00Z", items: 10 },
-  { id: "ORD-98238", customerId: "CUST-005", customerName: "Tariq Mansoor", vendorId: "VND-006", vendorName: "Al-Noor Auto Spares", status: "Delivered", total: 680.00, date: "2026-08-27T11:00:00Z", items: 2 },
+  { id: "ORD-98234", studentId: "CUST-004", studentName: "David Chen", vendorId: "VND-001", vendorName: "TechNova Electronics", status: "Delivered", total: 4299.00, date: "2026-08-28T14:30:00Z", items: 1 },
+  { id: "ORD-98235", studentId: "EXT-001", studentName: "Al-Manara Retail LLC", vendorId: "VND-002", vendorName: "Arabian Coffee Roasters", status: "Shipped", total: 2500.00, date: "2026-08-29T09:15:00Z", items: 20 },
+  { id: "ORD-98236", studentId: "CUST-002", studentName: "Sarah Al-Qasimi", vendorId: "VND-003", vendorName: "Fresh Harvest Groceries", status: "Processing", total: 240.00, date: "2026-08-29T08:45:00Z", items: 5 },
+  { id: "ORD-98237", studentId: "EXT-002", studentName: "Emirates Suites Hotel", vendorId: "VND-005", vendorName: "Gulf Packaging & Supplies", status: "Pending", total: 1950.00, date: "2026-08-29T10:20:00Z", items: 10 },
+  { id: "ORD-98238", studentId: "CUST-005", studentName: "Tariq Mansoor", vendorId: "VND-006", vendorName: "Al-Noor Auto Spares", status: "Delivered", total: 680.00, date: "2026-08-27T11:00:00Z", items: 2 },
 ];
 
 export const mockDeliveryPartners = [

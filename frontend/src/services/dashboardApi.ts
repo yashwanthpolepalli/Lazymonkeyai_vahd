@@ -9,19 +9,23 @@ export const dashboardApi = {
 
     const liveActivity = (res?.recentCheckIns || []).map((item: any) => {
       const isLogout = item.direction && (item.direction.toUpperCase().includes('OUT') || item.direction.toUpperCase().includes('EXIT'));
+      const cleanZone = (item.zone || '').trim();
+      const cleanDevice = (item.deviceName || item.method || '').trim();
+      const descParts = [cleanZone, cleanDevice && cleanDevice.toLowerCase() !== cleanZone.toLowerCase() ? cleanDevice : ''].filter(Boolean);
+
       return {
         id: item.eventId || `act-${Math.random()}`,
         type: isLogout ? 'checkout' : 'checkin',
-        title: item.customerName || 'Student Member',
-        customerId: item.customerId || '',
+        title: item.studentName || item.studentId || '',
+        studentId: item.studentId || '',
         userRole: item.userRole || 'Student',
         direction: item.direction || (isLogout ? 'CHECK_OUT' : 'CHECK_IN'),
         status: item.status || 'SUCCESS',
-        description: `${item.zone || 'Main Branch'} · ${item.method || 'Biometric Scanner'}`,
-        device: item.deviceName || item.method || 'Biometric Scanner',
-        location: item.zone || 'Main Branch',
+        description: descParts.join(' · '),
+        device: cleanDevice,
+        location: cleanZone,
         timestamp: item.timestamp,
-        time: item.timestamp ? new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) : 'Just now',
+        time: item.timestamp ? new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) : '',
       };
     });
 
@@ -29,8 +33,8 @@ export const dashboardApi = {
 
     return {
       userName: res?.userName || '',
-      gym: {
-        name: res?.gymName || '',
+      vahd: {
+        name: res?.vahdName || '',
         branch: res?.branchName || branch || '',
       },
       summary: {
@@ -59,14 +63,13 @@ export const dashboardApi = {
         pos: res?.revenueBreakdown?.pos ?? 0,
         other: res?.revenueBreakdown?.other ?? 0,
       },
-      top_trainers: [],
+      top_employees: [],
       quick_actions: [
         { id: 'add_member', title: 'Add Member', description: 'Enroll new member', icon: 'user-plus', accent: 'blue', action: 'add_member' },
         { id: 'attendance', title: 'Mark Attendance', description: 'Quick check-in', icon: 'check-square-2', accent: 'green', action: 'attendance' },
         { id: 'invoice', title: 'Create Invoice', description: 'Generate invoice', icon: 'file-text', accent: 'purple', action: 'invoice' },
-        { id: 'pt_session', title: 'Add PT Session', description: 'Book PT session', icon: 'dumbbell', accent: 'orange', action: 'pt_session' },
-        { id: 'workout', title: 'Create Workout', description: 'Assign program', icon: 'sliders', accent: 'pink', action: 'workout' },
-        { id: 'biometric', title: 'Scan Body', description: 'Body analysis', icon: 'scan', accent: 'teal', action: 'biometric' },
+        { id: 'pos_sale', title: 'New POS Sale', description: 'POS checkout', icon: 'shopping-cart', accent: 'orange', action: 'pos_sale' },
+        { id: 'reports', title: 'Reports & Export', description: 'Analytics reports', icon: 'bar-chart-3', accent: 'teal', action: 'reports' },
         { id: 'payment', title: 'Record Payment', description: 'Receive payment', icon: 'indian-rupee', accent: 'green', action: 'payment' },
         { id: 'notification', title: 'Send Notification', description: 'Broadcast message', icon: 'send', accent: 'blue', action: 'notification' },
         { id: 'ai_insights', title: 'AI Insights', description: 'Smart analytics', icon: 'sparkles', accent: 'purple', action: 'ai_insights' },

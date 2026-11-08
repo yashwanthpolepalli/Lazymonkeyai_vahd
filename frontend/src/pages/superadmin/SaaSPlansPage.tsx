@@ -15,7 +15,7 @@ interface SaaSPlanItem {
   price_annual: number;
   max_branches: number;
   max_members: number;
-  max_trainers: number;
+  max_employees: number;
   ai_credits_monthly: number;
   storage_gb: number;
   features: string[];
@@ -39,7 +39,7 @@ export function SaaSPlansPage() {
     price_annual: '',
     max_branches: '',
     max_members: '',
-    max_trainers: '',
+    max_employees: '',
     ai_credits_monthly: '',
     storage_gb: '',
     features: '',
@@ -58,7 +58,7 @@ export function SaaSPlansPage() {
     price_annual: '',
     max_branches: '',
     max_members: '',
-    max_trainers: '',
+    max_employees: '',
     ai_credits_monthly: '',
     storage_gb: '',
     features: '',
@@ -90,7 +90,7 @@ export function SaaSPlansPage() {
       price_annual: p.price_annual !== null && p.price_annual !== undefined ? String(p.price_annual) : '',
       max_branches: p.max_branches !== null && p.max_branches !== undefined ? String(p.max_branches) : '',
       max_members: p.max_members !== null && p.max_members !== undefined ? String(p.max_members) : '',
-      max_trainers: p.max_trainers !== null && p.max_trainers !== undefined ? String(p.max_trainers) : '',
+      max_employees: p.max_employees !== null && p.max_employees !== undefined ? String(p.max_employees) : '',
       ai_credits_monthly: p.ai_credits_monthly !== null && p.ai_credits_monthly !== undefined ? String(p.ai_credits_monthly) : '',
       storage_gb: p.storage_gb !== null && p.storage_gb !== undefined ? String(p.storage_gb) : '',
       features: Array.isArray(p.features) ? p.features.join(', ') : '',
@@ -112,7 +112,7 @@ export function SaaSPlansPage() {
         price_annual: createForm.price_annual !== '' ? Number(createForm.price_annual) : null,
         max_branches: createForm.max_branches !== '' ? Number(createForm.max_branches) : null,
         max_members: createForm.max_members !== '' ? Number(createForm.max_members) : null,
-        max_trainers: createForm.max_trainers !== '' ? Number(createForm.max_trainers) : null,
+        max_employees: createForm.max_employees !== '' ? Number(createForm.max_employees) : null,
         ai_credits_monthly: createForm.ai_credits_monthly !== '' ? Number(createForm.ai_credits_monthly) : null,
         storage_gb: createForm.storage_gb !== '' ? Number(createForm.storage_gb) : null,
         features: createForm.features ? createForm.features.split(',').map((s) => s.trim()).filter(Boolean) : [],
@@ -129,7 +129,7 @@ export function SaaSPlansPage() {
         price_annual: '',
         max_branches: '',
         max_members: '',
-        max_trainers: '',
+        max_employees: '',
         ai_credits_monthly: '',
         storage_gb: '',
         features: '',
@@ -157,7 +157,7 @@ export function SaaSPlansPage() {
         price_annual: editForm.price_annual !== '' ? Number(editForm.price_annual) : null,
         max_branches: editForm.max_branches !== '' ? Number(editForm.max_branches) : null,
         max_members: editForm.max_members !== '' ? Number(editForm.max_members) : null,
-        max_trainers: editForm.max_trainers !== '' ? Number(editForm.max_trainers) : null,
+        max_employees: editForm.max_employees !== '' ? Number(editForm.max_employees) : null,
         ai_credits_monthly: editForm.ai_credits_monthly !== '' ? Number(editForm.ai_credits_monthly) : null,
         storage_gb: editForm.storage_gb !== '' ? Number(editForm.storage_gb) : null,
         features: editForm.features ? editForm.features.split(',').map((s) => s.trim()).filter(Boolean) : [],
@@ -599,7 +599,7 @@ export function SaaSPlansPage() {
                 <label className="font-bold text-slate-700 block mb-1">Enabled Features (comma separated)</label>
                 <textarea
                   rows={3}
-                  placeholder="e.g. AI Coach, InBody OCR, PineLabs POS"
+                  placeholder="e.g. AI Coach, Vision OCR, PineLabs POS"
                   value={createForm.features}
                   onChange={(e) => setCreateForm((p) => ({ ...p, features: e.target.value }))}
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500"

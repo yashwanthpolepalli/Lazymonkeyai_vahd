@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  X, 
-  Printer, 
-  MessageCircle, 
-  Mail, 
-  Download, 
-  FileText, 
-  CheckCircle2, 
-  Copy, 
+import {
+  X,
+  Printer,
+  MessageCircle,
+  Mail,
+  Download,
+  FileText,
+  CheckCircle2,
+  Copy,
   Phone,
   Receipt
 } from 'lucide-react';
@@ -41,10 +41,10 @@ export function ProcurementShareModal({
 
   // Extract variables safely even when documentData is null
   const docNumber = documentData?.bill_number || documentData?.po_number || documentData?.request_number || documentData?.id?.slice(0, 8) || 'DOC-001';
-  const supplierName = documentData?.supplier_name || documentData?.supplier?.name || documentData?.customerName || 'Vendor Partner';
+  const supplierName = documentData?.supplier_name || documentData?.supplier?.name || documentData?.studentName || 'Vendor Partner';
   const supplierPhone = documentData?.supplier_phone || documentData?.supplier?.phone || documentData?.supplier?.contacts?.[0]?.phone || '';
   const supplierEmail = documentData?.supplier_email || documentData?.supplier?.email || documentData?.supplier?.contacts?.[0]?.email || '';
-  
+
   const totalAmount = Number(documentData?.total_amount || documentData?.grand_total || 0);
   const paidAmount = Number(documentData?.paid_amount || documentData?.amount_received || 0);
   const paymentStatus = documentData?.status || (paidAmount >= totalAmount && totalAmount > 0 ? 'Paid' : 'Unpaid');
@@ -68,12 +68,12 @@ export function ProcurementShareModal({
     invoice_number: docNumber,
     invoice_date: documentData?.bill_date || documentData?.order_date || documentData?.created_at || new Date().toISOString(),
     due_date: documentData?.due_date || documentData?.delivery_date,
-    customerName: supplierName,
-    customerPhone: phoneInput,
-    customerEmail: emailInput,
-    customerCompany: documentData?.supplier?.company_name || supplierName,
-    customerGST: documentData?.supplier?.tax_id || (documentData?.supplier as any)?.gstin || '',
-    customerAddress: documentData?.supplier?.address || '',
+    studentName: supplierName,
+    studentPhone: phoneInput,
+    studentEmail: emailInput,
+    studentCompany: documentData?.supplier?.company_name || supplierName,
+    studentGST: documentData?.supplier?.tax_id || (documentData?.supplier as any)?.gstin || '',
+    studentAddress: documentData?.supplier?.address || '',
     items: items.map((it: any) => ({
       product_name: it.product_name || it.name || 'Material Item',
       quantity: Number(it.quantity) || 1,
@@ -148,7 +148,7 @@ export function ProcurementShareModal({
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
         <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-xl w-full shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
-          
+
           {/* Header */}
           <div className="p-6 bg-gradient-to-r from-teal-600 via-indigo-600 to-purple-600 text-white flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -174,22 +174,20 @@ export function ProcurementShareModal({
             <button
               type="button"
               onClick={() => setActiveTab('whatsapp')}
-              className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
-                activeTab === 'whatsapp' 
-                  ? 'bg-emerald-600 text-white shadow-sm' 
+              className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'whatsapp'
+                  ? 'bg-emerald-600 text-white shadow-sm'
                   : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-              }`}
+                }`}
             >
               <MessageCircle className="size-4" /> WhatsApp Dispatch
             </button>
             <button
               type="button"
               onClick={() => setActiveTab('email')}
-              className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
-                activeTab === 'email' 
-                  ? 'bg-indigo-600 text-white shadow-sm' 
+              className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'email'
+                  ? 'bg-indigo-600 text-white shadow-sm'
                   : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-              }`}
+                }`}
             >
               <Mail className="size-4" /> Email Dispatch
             </button>
@@ -235,14 +233,14 @@ export function ProcurementShareModal({
                   <Phone className="size-3.5 text-emerald-600" /> Recipient WhatsApp Mobile Number:
                 </label>
                 <div className="flex gap-2">
-                  <Input 
-                    placeholder="e.g. 919876543210" 
-                    value={phoneInput} 
+                  <Input
+                    placeholder="e.g. 919876543210"
+                    value={phoneInput}
                     onChange={(e) => setPhoneInput(e.target.value)}
                     className="font-mono text-sm rounded-xl"
                   />
-                  <Button 
-                    type="button" 
+                  <Button
+                    type="button"
                     onClick={handleSendWhatsApp}
                     className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl gap-1.5 shrink-0 shadow-md"
                   >
@@ -262,15 +260,15 @@ export function ProcurementShareModal({
                   <Mail className="size-3.5 text-indigo-600" /> Recipient Vendor Email Address:
                 </label>
                 <div className="flex gap-2">
-                  <Input 
+                  <Input
                     type="email"
-                    placeholder="vendor@company.com" 
-                    value={emailInput} 
+                    placeholder="vendor@company.com"
+                    value={emailInput}
                     onChange={(e) => setEmailInput(e.target.value)}
                     className="text-sm rounded-xl"
                   />
-                  <Button 
-                    type="button" 
+                  <Button
+                    type="button"
                     onClick={handleSendEmail}
                     className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl gap-1.5 shrink-0 shadow-md"
                   >

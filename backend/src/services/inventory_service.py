@@ -511,14 +511,14 @@ class InventoryService:
                 try:
                     import urllib.request
                     off_url = f"https://world.openfoodfacts.org/api/v2/product/{clean_q}.json"
-                    req = urllib.request.Request(off_url, headers={"User-Agent": "Mozilla/5.0 (GymWeb Enterprise ERP)"})
+                    req = urllib.request.Request(off_url, headers={"User-Agent": "Mozilla/5.0 (vahdWeb Enterprise ERP)"})
                     with urllib.request.urlopen(req, timeout=3.5) as resp:
                         data = json.loads(resp.read().decode())
                         if data.get("status") == 1 and "product" in data:
                             p = data["product"]
                             p_name = (p.get("product_name") or p.get("product_name_en") or p.get("generic_name") or "").strip()
                             b_name = (p.get("brands") or "").strip()
-                            c_name = (p.get("categories") or "Nutrition").split(",")[0].strip()
+                            c_name = (p.get("categories") or "General Supplies").split(",")[0].strip()
                             img = p.get("image_front_url") or p.get("image_url") or ""
                             if p_name:
                                 full_title = f"{b_name} {p_name}".strip() if b_name and b_name.lower() not in p_name.lower() else p_name
@@ -526,7 +526,7 @@ class InventoryService:
                                 discovered_item = {
                                     "name": full_title,
                                     "brand": b_name or "Generic",
-                                    "category": c_name or "Nutrition",
+                                    "category": c_name or "General Supplies",
                                     "barcode": clean_q,
                                     "sku": f"SKU-{clean_q[-6:]}",
                                     "image_url": img,
@@ -571,7 +571,7 @@ class InventoryService:
                                         discovered_item = {
                                             "name": prod_title,
                                             "brand": brand,
-                                            "category": "Supplements / Nutrition",
+                                            "category": "Supplies / Consumables",
                                             "barcode": clean_q,
                                             "sku": f"SKU-{clean_q[-6:]}",
                                             "image_url": img_url,
@@ -626,7 +626,7 @@ Respond ONLY with a JSON array with this exact schema:
     "sku": "BRAND-PRODUCT-SIZE",
     "barcode": "{clean_q if is_barcode_query else 'EAN13 digits'}",
     "hsn_code": "21069099",
-    "category": "Supplements | Nutrition | Accessories | Merchandise | Equipment",
+    "category": "Supplies | Consumables | Accessories | Merchandise | Equipment",
     "brand": "Brand Name",
     "unit": "Pcs",
     "mrp": 0.0,
@@ -684,11 +684,11 @@ Respond ONLY with a JSON array with this exact schema:
                 except Exception:
                     pass
 
-        # Find which SKUs and Barcodes already exist in gym inventory
+        # Find which SKUs and Barcodes already exist in vahd inventory
         existing_skus = set(sku.lower() for (sku,) in db.query(Product.sku).all() if sku)
         existing_barcodes = set(b.strip() for (b,) in db.query(Product.barcode).all() if b and b.strip())
 
-        # Exclude items that are already imported into local gym inventory
+        # Exclude items that are already imported into local vahd inventory
         unimported_items = [
             c for c in items
             if (c.sku or "").lower() not in existing_skus
@@ -799,7 +799,7 @@ Respond ONLY with a JSON array with this exact schema:
             imported_count += 1
 
         db.commit()
-        return {"imported_count": imported_count, "message": f"Successfully imported {imported_count} product(s) into gym inventory"}
+        return {"imported_count": imported_count, "message": f"Successfully imported {imported_count} product(s) into vahd inventory"}
 
     @staticmethod
     def adjust_stock(db: Session, data: Dict[str, Any]) -> Dict[str, Any]:

@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, Integer, Float, Boolean, DateTime, Text, JSON, ForeignKey
+from sqlalchemy import Column, String, Integer, Float, Boolean, DateTime, Text, JSON, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
 from src.database.base import Base
 from src.utils.timezone import now_ist_naive
@@ -8,10 +8,12 @@ from src.utils.timezone import now_ist_naive
 
 class ProductCategory(Base):
     __tablename__ = "erp_product_categories"
+    __table_args__ = (UniqueConstraint("tenant_id", "category_code", name="uq_cat_tenant_category_code"),)
 
     id = Column(String, primary_key=True, index=True, default=lambda: f"cat_{uuid.uuid4().hex[:8]}")
+    tenant_id = Column(String, nullable=True, index=True)
     name = Column(String(150), nullable=False, index=True)
-    category_code = Column(String(50), unique=True, index=True, nullable=True)
+    category_code = Column(String(50), index=True, nullable=True)
     description = Column(Text, nullable=True)
     image_url = Column(Text, nullable=True)
     status = Column(String(50), default="ACTIVE")
@@ -22,6 +24,7 @@ class Brand(Base):
     __tablename__ = "erp_brands"
 
     id = Column(String, primary_key=True, index=True, default=lambda: f"brand_{uuid.uuid4().hex[:8]}")
+    tenant_id = Column(String, nullable=True, index=True)
     name = Column(String(100), nullable=False, index=True)
     description = Column(Text, nullable=True)
     manufacturer = Column(String(150), nullable=True)
@@ -34,6 +37,7 @@ class UnitOfMeasure(Base):
     __tablename__ = "erp_uoms"
 
     id = Column(String, primary_key=True, index=True, default=lambda: f"uom_{uuid.uuid4().hex[:8]}")
+    tenant_id = Column(String, nullable=True, index=True)
     name = Column(String(50), nullable=False, index=True)
     abbreviation = Column(String(20), nullable=False)
     unit_type = Column(String(50), nullable=True)
@@ -45,14 +49,16 @@ class UnitOfMeasure(Base):
 
 class Product(Base):
     __tablename__ = "erp_products"
+    __table_args__ = (UniqueConstraint("tenant_id", "sku", name="uq_product_tenant_sku"),)
 
     id = Column(String, primary_key=True, index=True, default=lambda: f"prod_{uuid.uuid4().hex[:8]}")
-    
+    tenant_id = Column(String, nullable=True, index=True)
+
     # 1. Basic & Identity
     name = Column(String(255), nullable=False, index=True)
     unique_item_name = Column(String(255), nullable=True)
     item_code = Column(String(100), nullable=True, index=True)
-    sku = Column(String(100), unique=True, index=True, nullable=False)
+    sku = Column(String(100), index=True, nullable=False)
     barcode = Column(String(100), index=True, nullable=True)
     secondary_barcode = Column(String(100), index=True, nullable=True)
     hsn_code = Column(String(100), index=True, nullable=True)
@@ -121,6 +127,7 @@ class MasterCatalogProduct(Base):
     __tablename__ = "erp_master_catalog_products"
 
     id = Column(String, primary_key=True, index=True, default=lambda: f"mcat_{uuid.uuid4().hex[:8]}")
+    tenant_id = Column(String, nullable=True, index=True)
     name = Column(String(255), nullable=False, index=True)
     unique_item_name = Column(String(255), nullable=True)
     item_code = Column(String(100), nullable=True)
@@ -150,6 +157,7 @@ class StockMovement(Base):
     __tablename__ = "erp_stock_movements"
 
     id = Column(String, primary_key=True, index=True, default=lambda: f"mov_{uuid.uuid4().hex[:8]}")
+    tenant_id = Column(String, nullable=True, index=True)
     product_id = Column(String, ForeignKey("erp_products.id", ondelete="CASCADE"), nullable=False, index=True)
     product_name = Column(String(255), nullable=False)
     movement_type = Column(String(50), nullable=False)  # IN, OUT, ADJUSTMENT, SALE, RETURN
@@ -167,6 +175,7 @@ class FreeScheme(Base):
     __tablename__ = "erp_free_schemes"
 
     id = Column(String, primary_key=True, index=True, default=lambda: f"sch_{uuid.uuid4().hex[:8]}")
+    tenant_id = Column(String, nullable=True, index=True)
     name = Column(String(255), nullable=False)
     applies_to = Column(String(100), nullable=True)
     buy_quantity = Column(Integer, nullable=True)

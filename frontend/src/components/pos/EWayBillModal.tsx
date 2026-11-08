@@ -33,7 +33,7 @@ interface EWayBillModalProps {
     from_city?: string;
     from_pincode?: string;
     to_gstin?: string;
-    to_customer_name?: string;
+    to_student_name?: string;
     to_address?: string;
     to_city?: string;
     to_pincode?: string;
@@ -134,8 +134,8 @@ export function EWayBillModal({ isOpen, onClose, onGenerated, invoiceData }: EWa
         from_city: invoiceData.from_city || activeGst?.state_name || '',
         from_pincode: invoiceData.from_pincode || '',
         to_gstin: invoiceData.to_gstin || 'URP',
-        to_customer_name: invoiceData.to_customer_name || 'Valued Customer',
-        to_address: invoiceData.to_address || 'Customer Delivery Address',
+        to_student_name: invoiceData.to_student_name || 'Valued student',
+        to_address: invoiceData.to_address || 'student Delivery Address',
         to_city: invoiceData.to_city || 'City',
         to_pincode: invoiceData.to_pincode || '500001',
         transporter_id: transporterId.trim(),
@@ -225,7 +225,7 @@ export function EWayBillModal({ isOpen, onClose, onGenerated, invoiceData }: EWa
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 overflow-y-auto">
       <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-3xl overflow-hidden animate-in fade-in zoom-in-95 my-8">
-        
+
         {/* Modal Header */}
         <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -248,18 +248,16 @@ export function EWayBillModal({ isOpen, onClose, onGenerated, invoiceData }: EWa
 
         {/* Modal Body */}
         <div className="p-6 space-y-5 max-h-[82vh] overflow-y-auto">
-          
+
           {/* Statutory Threshold Alert */}
-          <div className={`p-3.5 rounded-xl border flex items-start gap-3 ${
-            isOverThreshold ? 'bg-amber-50 border-amber-200 text-amber-900' : 'bg-blue-50 border-blue-200 text-blue-900'
-          }`}>
+          <div className={`p-3.5 rounded-xl border flex items-start gap-3 ${isOverThreshold ? 'bg-amber-50 border-amber-200 text-amber-900' : 'bg-blue-50 border-blue-200 text-blue-900'
+            }`}>
             <ShieldCheck className={`w-5 h-5 shrink-0 mt-0.5 ${isOverThreshold ? 'text-amber-600' : 'text-blue-600'}`} />
             <div className="text-xs space-y-0.5">
               <div className="flex items-center gap-2">
                 <span className="font-bold">Consignment Total: {currency.symbol}{totalVal.toFixed(2)}</span>
-                <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                  isOverThreshold ? 'bg-amber-200 text-amber-900' : 'bg-blue-200 text-blue-900'
-                }`}>
+                <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${isOverThreshold ? 'bg-amber-200 text-amber-900' : 'bg-blue-200 text-blue-900'
+                  }`}>
                   {isOverThreshold ? 'Mandatory Statutory EWB (> ₹50,000)' : 'Optional / Inter-State Transit'}
                 </span>
               </div>
@@ -276,22 +274,20 @@ export function EWayBillModal({ isOpen, onClose, onGenerated, invoiceData }: EWa
                 <button
                   type="button"
                   onClick={() => setActiveTab('part_a')}
-                  className={`pb-2 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5 cursor-pointer ${
-                    activeTab === 'part_a'
+                  className={`pb-2 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5 cursor-pointer ${activeTab === 'part_a'
                       ? 'border-indigo-600 text-indigo-700'
                       : 'border-transparent text-slate-500 hover:text-slate-900'
-                  }`}
+                    }`}
                 >
                   <FileText className="w-3.5 h-3.5" /> Part-A: Consignment & Goods
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveTab('part_b')}
-                  className={`pb-2 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5 cursor-pointer ${
-                    activeTab === 'part_b'
+                  className={`pb-2 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5 cursor-pointer ${activeTab === 'part_b'
                       ? 'border-indigo-600 text-indigo-700'
                       : 'border-transparent text-slate-500 hover:text-slate-900'
-                  }`}
+                    }`}
                 >
                   <Truck className="w-3.5 h-3.5" /> Part-B: Vehicle & Transporter
                 </button>
@@ -311,7 +307,7 @@ export function EWayBillModal({ isOpen, onClose, onGenerated, invoiceData }: EWa
 
                     <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
                       <span className="font-bold text-[10px] uppercase text-slate-500 block">To (Consignee / Recipient)</span>
-                      <p className="font-bold text-slate-900">{invoiceData.to_customer_name || 'Valued Recipient'}</p>
+                      <p className="font-bold text-slate-900">{invoiceData.to_student_name || 'Valued Recipient'}</p>
                       <p className="font-mono text-slate-700">GSTIN: {invoiceData.to_gstin || 'URP'}</p>
                       <p className="text-slate-600">{invoiceData.to_address || 'Delivery Address'}</p>
                       <p className="text-slate-600">{invoiceData.to_city || 'Destination'}, PIN: {invoiceData.to_pincode || '500001'}</p>
@@ -508,7 +504,7 @@ export function EWayBillModal({ isOpen, onClose, onGenerated, invoiceData }: EWa
                     const fromPin = raw.fromPincode || invoiceData.from_pincode || '560001';
 
                     const toGst = raw.toGstin || invoiceData.to_gstin || '05AAACH6188F1ZM';
-                    const toName = raw.toTrdName || invoiceData.to_customer_name || 'phani';
+                    const toName = raw.toTrdName || invoiceData.to_student_name || 'phani';
                     const toAddr = raw.toAddr1 || invoiceData.to_address || 'Shree Nilaya, Dasarahosahalli';
                     const toPlace = raw.toPlace || invoiceData.to_city || 'Beml Nagar';
                     const toPin = raw.toPincode || invoiceData.to_pincode || '263652';
@@ -516,8 +512,8 @@ export function EWayBillModal({ isOpen, onClose, onGenerated, invoiceData }: EWa
                     const liveDocNo = raw.docNo || invoiceData.invoice_number;
                     const liveDocDate = raw.docDate || invoiceData.invoice_date || new Date().toLocaleDateString();
                     const liveTotVal = raw.totInvValue != null ? Number(raw.totInvValue) : totalVal;
-                    const liveTaxVal = raw.igstValue != null && Number(raw.igstValue) > 0 
-                      ? Number(raw.igstValue) 
+                    const liveTaxVal = raw.igstValue != null && Number(raw.igstValue) > 0
+                      ? Number(raw.igstValue)
                       : (Number(raw.cgstValue || 0) + Number(raw.sgstValue || 0));
 
                     const vehList = raw.VehiclListDetails?.[0] || {};

@@ -5,6 +5,8 @@ export interface Member {
   phone: string;
   avatar: string;
   membership: string;
+  course?: string;
+  parent_phone?: string;
   status: 'active' | 'inactive' | 'expiring' | 'trial' | 'vip';
   attendance: number;
   lastVisit: string;
@@ -12,12 +14,10 @@ export interface Member {
   revenue: string;
   risk: 'low' | 'medium' | 'high';
   branch: string;
+  branch_id?: string;
+  ho_id?: string;
   joinDate: string;
   age: number;
   gender: string;
-  weight: number;
-  bodyFat: number;
-  goal: string;
-  trainer: string;
-  enable_workout_videos?: boolean;
+  employee: string;
 }

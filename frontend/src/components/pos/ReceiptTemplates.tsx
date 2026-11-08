@@ -249,7 +249,7 @@ export function ReceiptTemplates() {
               {[
                 { key: 'showStoreAddress', label: 'Show Store Address & Contact' },
                 { key: 'showTaxId', label: 'Show GSTIN / Tax Reg No' },
-                { key: 'showCustomerDetails', label: 'Show Customer Name & Phone' },
+                { key: 'showstudentDetails', label: 'Show student Name & Phone' },
                 { key: 'showItemHSN', label: 'Show Item HSN/SAC Code' },
                 { key: 'showItemDiscount', label: 'Show Line Item Discount' },
                 { key: 'showTaxBreakdown', label: 'Show GST Breakdown (CGST/SGST)' },
@@ -362,9 +362,9 @@ export function ReceiptTemplates() {
                   <span>Date: 05 Aug 2026</span>
                   <span>Cashier: Sarah J.</span>
                 </div>
-                {template.showCustomerDetails && (
+                {template.showstudentDetails && (
                   <div className="border-t border-dotted border-slate-400 pt-0.5 mt-0.5">
-                    <span className="font-bold">Customer: Rahul Sharma (+91 9876543210)</span>
+                    <span className="font-bold">student: Rahul Sharma (+91 9876543210)</span>
                   </div>
                 )}
               </div>

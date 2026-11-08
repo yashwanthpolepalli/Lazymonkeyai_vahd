@@ -4,6 +4,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
 export interface RequestOptions extends RequestInit {
   params?: Record<string, string | number | boolean | undefined | null>;
+  timeout?: number;
 }
 
 async function request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
@@ -38,8 +39,13 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
 
   const url = `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}${queryString}`;
 
+  const controller = new AbortController();
+  const timeoutMs = typeof options.timeout === 'number' ? options.timeout : 10000;
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  const signal = options.signal || controller.signal;
+
   try {
-    const response = await fetch(url, { ...fetchOptions, headers });
+    const response = await fetch(url, { ...fetchOptions, headers, signal });
 
     if (!response.ok) {
       let errorMessage = `API Error: ${response.status} ${response.statusText}`;
@@ -63,7 +69,12 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
     if (error instanceof ApiError) {
       throw error;
     }
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new ApiError('Request timed out. Please verify backend server is responding.', 408);
+    }
     throw new ApiError('Unable to connect to server. Please check network connection.', 0);
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 

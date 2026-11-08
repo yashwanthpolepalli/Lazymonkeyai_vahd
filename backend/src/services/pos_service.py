@@ -8,7 +8,7 @@ from sqlalchemy import func, desc, or_
 
 from src.models.pos import PosTransaction, PosSession
 from src.models.inventory import Product, StockMovement
-from src.models.customer import Customer
+from src.models.student import student
 from src.utils.timezone import now_ist_naive
 
 
@@ -81,9 +81,9 @@ class PosService:
 
     @staticmethod
     def process_checkout(db: Session, payload: Dict[str, Any]) -> Dict[str, Any]:
-        customer_id = payload.get("customer_id")
-        customer_name = payload.get("customer_name")
-        customer_phone = payload.get("customer_phone")
+        student_id = payload.get("student_id")
+        student_name = payload.get("student_name")
+        student_phone = payload.get("student_phone")
         payment_method = payload.get("payment_method")
         discount_amount = float(payload.get("discount_amount") or 0.0)
         cashier_name = payload.get("cashier_name")
@@ -157,7 +157,7 @@ class PosService:
                         new_stock=new_stk,
                         reference_type=reference_type,
                         reference_no=invoice_number,
-                        notes=payload.get("notes") or (f"POS sale to {customer_name}" if customer_name else "POS counter sale"),
+                        notes=payload.get("notes") or (f"POS sale to {student_name}" if student_name else "POS counter sale"),
                         performed_by=cashier_name
                     ))
 
@@ -167,9 +167,9 @@ class PosService:
         tx = PosTransaction(
             id=f"pos_{uuid.uuid4().hex[:8]}",
             invoice_number=invoice_number,
-            customer_id=customer_id,
-            customer_name=customer_name,
-            customer_phone=customer_phone,
+            student_id=student_id,
+            student_name=student_name,
+            student_phone=student_phone,
             subtotal=round(subtotal, 2),
             tax_total=round(tax_total, 2),
             discount_total=round(discount_amount, 2),
@@ -188,8 +188,8 @@ class PosService:
         return {
             "id": tx.id,
             "invoiceNumber": tx.invoice_number,
-            "customerName": tx.customer_name,
-            "customerPhone": tx.customer_phone,
+            "studentName": tx.student_name,
+            "studentPhone": tx.student_phone,
             "subtotal": tx.subtotal,
             "discount": tx.discount_total,
             "tax": tx.tax_total,
@@ -210,8 +210,8 @@ class PosService:
             results.append({
                 "id": t.id,
                 "invoiceId": t.invoice_number,
-                "customerName": t.customer_name,
-                "customerPhone": t.customer_phone,
+                "studentName": t.student_name,
+                "studentPhone": t.student_phone,
                 "itemsStr": items_str,
                 "items": items_list,
                 "amount": float(t.grand_total or 0.0),

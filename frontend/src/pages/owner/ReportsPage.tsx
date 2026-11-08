@@ -205,7 +205,7 @@ const dailyAbstractCards: ReportCardConfig[] = [
   {
     id: 'registered-unregistered-users',
     title: 'Registered vs Unregistered',
-    description: 'Biometric & face ID enrolment status breakdown across all veterinary institutions',
+    description: 'Biometric & face ID enrolment status breakdown across all  institutions',
     icon: 'scan-face',
     iconBg: 'bg-emerald-50 text-emerald-600 border border-emerald-100',
     iconColor: 'text-emerald-600',
@@ -224,7 +224,7 @@ const hrmsAnalyticsCards: ReportCardConfig[] = [
   {
     id: 'departments-abstract',
     title: 'Departments Abstract',
-    description: 'Breakdown by Clinical, Administration, Field Staff, Laboratory and Research wings',
+    description: 'Breakdown by , Administration, Field Staff, Laboratory and Research wings',
     icon: 'building-2',
     iconBg: 'bg-purple-50 text-purple-600 border border-purple-100',
     iconColor: 'text-purple-600',
@@ -232,7 +232,7 @@ const hrmsAnalyticsCards: ReportCardConfig[] = [
   {
     id: 'designations-abstract',
     title: 'Designations Abstract',
-    description: 'Attendance fidelity categorized by rank: DVAHO, VAS, Veterinary Assistant, Attenders',
+    description: 'Attendance fidelity categorized by rank: DVAHO, VAS,  Assistant, Attenders',
     icon: 'users',
     iconBg: 'bg-violet-50 text-violet-600 border border-violet-100',
     iconColor: 'text-violet-600',
@@ -272,18 +272,31 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
   const [employees, setEmployees] = useState<EmployeeItem[]>([]);
   const [departments, setDepartments] = useState<DepartmentItem[]>([]);
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
+  const [students, setStudents] = useState<any[]>([]);
+  const [dailyAttendeeType, setDailyAttendeeType] = useState<'all' | 'employees' | 'students'>('all');
   const [loading, setLoading] = useState(true);
+
+  const getTodayDateStr = () => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
 
   // Common Filters for Drill-Downs
   const [filterDistrict, setFilterDistrict] = useState('All Districts');
   const [filterPlace, setFilterPlace] = useState('All Places');
-  const [filterDate, setFilterDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [filterDate, setFilterDate] = useState(() => getTodayDateStr());
   const [filterFromDate, setFilterFromDate] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() - 7);
-    return d.toISOString().split('T')[0];
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   });
-  const [filterToDate, setFilterToDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [filterToDate, setFilterToDate] = useState(() => getTodayDateStr());
   const [filterCheckinTime, setFilterCheckinTime] = useState('');
   const [filterCheckoutTime, setFilterCheckoutTime] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
@@ -304,7 +317,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
   const [selectedBranch, setSelectedBranch] = useState<string>(() => {
     return localStorage.getItem('vahd_selected_org_id') || 'all';
   });
-  const [allBranchesList, setAllBranchesList] = useState<Array<{ id: string; branch_name: string; gym_name?: string }>>([]);
+  const [allBranchesList, setAllBranchesList] = useState<Array<{ id: string; branch_name: string; vahd_name?: string }>>([]);
 
   // Synchronize with Topbar organization / branch switcher
   useEffect(() => {
@@ -327,12 +340,12 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
             res.branches.map((br: any) => ({
               id: br.branch_id,
               branch_name: br.branch_name,
-              gym_name: br.gym_name,
+              vahd_name: br.vahd_name,
             }))
           );
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, [targetYear, targetMonth]);
 
   const fetchMonthlyOverviews = async (y = targetYear, m = targetMonth, b = selectedBranch) => {
@@ -340,7 +353,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
     try {
       const branchParam = b && b !== 'all' ? `&branch_id=${encodeURIComponent(b)}` : '';
       const [studRes, empRes, hoRes] = await Promise.all([
-        apiClient.get<any>(`/customers/attendance-reports/overview?year=${y}&month=${m}${branchParam}`).catch(() => null),
+        apiClient.get<any>(`/students/attendance-reports/overview?year=${y}&month=${m}${branchParam}`).catch(() => null),
         apiClient.get<any>(`/hrms/attendance-reports/overview?year=${y}&month=${m}${branchParam}`).catch(() => null),
         apiClient.get<any>(`/ho/attendance-reports/branches?year=${y}&month=${m}${branchParam}`).catch(() => null),
       ]);
@@ -353,7 +366,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
           hoRes.branches.map((br: any) => ({
             id: br.branch_id,
             branch_name: br.branch_name,
-            gym_name: br.gym_name,
+            vahd_name: br.vahd_name,
           }))
         );
       }
@@ -373,14 +386,106 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
     setLoading(true);
     try {
       const targetDate = dateToFetch || filterDate;
-      const [empRes, deptRes, attRes] = await Promise.all([
-        hrmsApi.getEmployees().catch(() => []),
+      const dateParts = targetDate.split('-');
+      const y = parseInt(dateParts[0], 10);
+      const m = parseInt(dateParts[1], 10);
+
+      const branchIdParam = selectedBranch && selectedBranch !== 'all' ? selectedBranch : undefined;
+      const [empRes, deptRes, attRes, matrixRes, stuRes] = await Promise.all([
+        hrmsApi.getEmployees({ branch_id: branchIdParam }).catch(() => []),
         hrmsApi.getDepartments().catch(() => []),
-        hrmsApi.getAttendance(targetDate).catch(() => [])
+        hrmsApi.getAttendance(targetDate, branchIdParam).catch(() => []),
+        (y && m) ? hrmsApi.getAttendanceMatrix({ year: y, month: m, user_type: 'all', branch_id: branchIdParam }).catch(() => null) : Promise.resolve(null),
+        apiClient.get<any[]>('/students', { params: branchIdParam ? { branch_id: branchIdParam } : undefined }).catch(() => [])
       ]);
       setEmployees(Array.isArray(empRes) ? empRes : []);
       setDepartments(Array.isArray(deptRes) ? deptRes : []);
-      setAttendance(Array.isArray(attRes) ? attRes : []);
+      setStudents(Array.isArray(stuRes) ? stuRes : []);
+
+      const combinedAtt = Array.isArray(attRes) ? [...attRes] : [];
+      // Merge verified punches from monthly matrix if any are missing or have status mismatch
+      if (matrixRes?.employees && Array.isArray(matrixRes.employees)) {
+        let dayNum = 0;
+        if (targetDate.includes('-')) {
+          const parts = targetDate.split('-');
+          dayNum = parseInt(parts[parts.length - 1], 10);
+        } else if (targetDate.includes('/')) {
+          const parts = targetDate.split('/');
+          dayNum = parseInt(parts[0], 10);
+        }
+
+        if (dayNum > 0) {
+          matrixRes.employees.forEach((mEmp: any) => {
+            const dInfo = mEmp.days?.[dayNum] || mEmp.days?.[String(dayNum)];
+            const isPres =
+              dInfo &&
+              (dInfo.code === 'P' ||
+                dInfo.code === 'HD' ||
+                dInfo.status === 'P' ||
+                dInfo.status === 'Present' ||
+                dInfo.status_label === 'Present' ||
+                (dInfo.check_in && dInfo.check_in !== '--:--' && dInfo.check_in !== '-'));
+
+            if (dInfo && isPres) {
+              const mCleanCode = (mEmp.code || '').replace(/\D/g, '');
+              const mCleanId = (mEmp.id || '').replace(/^emp_/i, '').toLowerCase();
+              const mName = (mEmp.name || '').toLowerCase().trim();
+
+              const existing = combinedAtt.find((a) => {
+                const aCleanCode = (a.employee_code || '').replace(/\D/g, '');
+                const aCleanId = (a.employee_id || '').replace(/^emp_/i, '').toLowerCase();
+                const aName = (a.employee_name || '').toLowerCase().trim();
+                return (
+                  (aCleanCode && mCleanCode && aCleanCode === mCleanCode) ||
+                  (aCleanId && mCleanId && aCleanId === mCleanId) ||
+                  (aName && mName && (aName === mName || aName.includes(mName) || mName.includes(aName)))
+                );
+              });
+
+              const resolvedStatus = dInfo.status_label || (dInfo.code === 'P' ? 'Present' : dInfo.status || 'Present');
+              const inTime = dInfo.check_in && dInfo.check_in !== '--:--' && dInfo.check_in !== '-' ? dInfo.check_in : undefined;
+              const outTime = dInfo.check_out && dInfo.check_out !== '--:--' && dInfo.check_out !== '-' ? dInfo.check_out : undefined;
+
+              if (existing) {
+                if (inTime && (!existing.check_in || existing.check_in === '--:--' || existing.check_in === '—' || existing.check_in === '-')) {
+                  existing.check_in = inTime;
+                }
+                if (outTime && (!existing.check_out || existing.check_out === '--:--' || existing.check_out === '—' || existing.check_out === '-')) {
+                  existing.check_out = outTime;
+                }
+                if (dInfo.check_in_location && (!existing.check_in_location || existing.check_in_location === '—' || existing.check_in_location === '')) {
+                  existing.check_in_location = dInfo.check_in_location;
+                }
+                if (dInfo.check_out_location && (!existing.check_out_location || existing.check_out_location === '—' || existing.check_out_location === '')) {
+                  existing.check_out_location = dInfo.check_out_location;
+                }
+                if (existing.status === 'Absent' || !existing.status) {
+                  existing.status = resolvedStatus;
+                }
+              } else {
+                combinedAtt.push({
+                  id: `matrix_${mEmp.id}_${targetDate}`,
+                  employee_id: mEmp.id,
+                  employee_code: mEmp.code || '',
+                  employee_name: mEmp.name || '',
+                  initials: mEmp.initials || '',
+                  designation: mEmp.designation || '',
+                  department: mEmp.department || '',
+                  date: targetDate,
+                  check_in: inTime || '--:--',
+                  check_out: outTime || '--:--',
+                  check_in_location: dInfo.check_in_location || '',
+                  check_out_location: dInfo.check_out_location || '',
+                  status: resolvedStatus,
+                  work_hours: dInfo.work_hours || 8.0,
+                  notes: 'Live System Attendance Record'
+                });
+              }
+            }
+          });
+        }
+      }
+      setAttendance(combinedAtt);
     } catch (err) {
       console.error('Failed to load reports data', err);
     } finally {
@@ -390,7 +495,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
 
   useEffect(() => {
     fetchData(filterDate);
-  }, [filterDate]);
+  }, [filterDate, selectedBranch]);
 
   // Dynamic district rollup computed live from employee attendance records
   const dynamicDistricts = useMemo(() => {
@@ -418,7 +523,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
     });
 
     employees.forEach((emp) => {
-      const dName = emp.address || emp.gym_branch || 'Hyderabad';
+      const dName = emp.address || emp.vahd_branch || 'Unassigned';
       if (!distGroups.has(dName)) {
         distGroups.set(dName, {
           total: 0,
@@ -469,88 +574,321 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
   // Built dynamic employee daily rows from live database records
   const employeeAttendanceRows = useMemo(() => {
     const attMap = new Map<string, AttendanceRecord>();
+    const registerAtt = (key: string | undefined | null, record: AttendanceRecord) => {
+      if (!key) return;
+      const cleanKey = String(key).trim().toLowerCase();
+      if (!cleanKey) return;
+      const hasValidPunch = !!(record.check_in && record.check_in !== '--:--' && record.check_in !== '—');
+      const existing = attMap.get(cleanKey);
+      if (!existing || (hasValidPunch && (!existing.check_in || existing.check_in === '--:--' || existing.check_in === '—'))) {
+        attMap.set(cleanKey, record);
+      }
+      if (cleanKey.startsWith('emp_')) {
+        const noEmp = cleanKey.replace(/^emp_/, '');
+        if (!attMap.has(noEmp)) attMap.set(noEmp, record);
+      }
+      if (cleanKey.startsWith('emp-')) {
+        const noEmp = cleanKey.replace(/^emp-/, '');
+        if (!attMap.has(noEmp)) attMap.set(noEmp, record);
+      }
+      const numOnly = cleanKey.replace(/\D/g, '');
+      if (numOnly) {
+        const padded = numOnly.padStart(4, '0');
+        if (!attMap.has(padded)) attMap.set(padded, record);
+        const unpadded = String(parseInt(numOnly, 10));
+        if (!attMap.has(unpadded)) attMap.set(unpadded, record);
+      }
+    };
+
     attendance.forEach((att) => {
-      if (att.employee_id) attMap.set(att.employee_id, att);
-      if (att.employee_code) attMap.set(att.employee_code, att);
+      registerAtt(att.employee_id, att);
+      registerAtt(att.employee_code, att);
+      registerAtt(att.employee_name, att);
+      if ((att as any).email) registerAtt((att as any).email, att);
+      if ((att as any).user_id) registerAtt((att as any).user_id, att);
     });
 
     const recordedEmpIds = new Set<string>();
 
+    const cleanLocation = (rawLoc?: string | null): string => {
+      if (!rawLoc || rawLoc === '—' || rawLoc === '--:--') return '—';
+      const cleaned = rawLoc
+        .replace(/\s*\((Face Scanner|Biometric Turnstile|RFID Sensor|Manual Self Check-in|GPS Mobile|Face AI Terminal|Webcam|WEBCAM_FACE_SCANNER)\)/gi, '')
+        .replace(/^(Face Scanner|Biometric Device|Biometric Turnstile|Live Face Scanner|Webcam)$/i, '')
+        .trim();
+      return cleaned || '—';
+    };
+
     const rowsFromEmployees = employees.map((emp, idx) => {
       const fullName = `${emp.first_name || ''} ${emp.last_name || ''}`.trim() || emp.full_name || 'Staff Member';
       const empId = emp.code || emp.id || `EMP-${1000 + idx}`;
-      const att = attMap.get(emp.id) || attMap.get(emp.code);
 
-      if (emp.id) recordedEmpIds.add(emp.id);
-      if (emp.code) recordedEmpIds.add(emp.code);
+      const lookupKeys = [
+        emp.id,
+        emp.code,
+        emp.code ? emp.code.replace(/^EMP-/i, '') : '',
+        emp.code ? String(parseInt(emp.code.replace(/\D/g, '') || '0', 10)) : '',
+        emp.code ? (emp.code.replace(/\D/g, '') || '').padStart(4, '0') : '',
+        emp.id ? emp.id.replace(/^emp_/i, '') : '',
+        fullName,
+        emp.first_name,
+        emp.email,
+        (emp as any).user_id,
+      ].filter(Boolean) as string[];
 
-      const inTime = att?.check_in && att.check_in !== '--:--' ? att.check_in : '—';
-      const outTime = att?.check_out && att.check_out !== '--:--' ? att.check_out : '—';
-      const hasPunched = inTime !== '—';
+      let att: AttendanceRecord | undefined;
+      for (const k of lookupKeys) {
+        const cleanK = String(k).trim().toLowerCase();
+        if (attMap.has(cleanK)) {
+          att = attMap.get(cleanK);
+          break;
+        }
+      }
+
+      if (emp.id) recordedEmpIds.add(emp.id.toLowerCase());
+      if (emp.code) recordedEmpIds.add(emp.code.toLowerCase());
+      if (empId) recordedEmpIds.add(empId.toLowerCase());
+      if (fullName) recordedEmpIds.add(fullName.toLowerCase());
+
+      const inTime = att?.check_in && att.check_in !== '--:--' && att.check_in !== '-' ? att.check_in : '—';
+      const outTime = att?.check_out && att.check_out !== '--:--' && att.check_out !== '-' ? att.check_out : '—';
+      const hasInPunch = inTime !== '—';
+      const hasOutPunch = outTime !== '—';
 
       let status = 'Absent';
       if (att?.status) {
         status = att.status;
-      } else if (hasPunched) {
+      } else if (hasInPunch) {
         status = 'Present';
       } else if (emp.status && emp.status.toLowerCase() !== 'active') {
         status = emp.status;
       }
 
-      const branchOrDept = emp.gym_branch || emp.department || 'Main Facility';
-      const dist = emp.address || emp.gym_branch || 'Hyderabad';
-      const loc = att?.notes?.includes('Punch via')
-        ? att.notes.replace('Punch via', '').trim()
-        : (emp.gym_branch ? `${emp.gym_branch} Campus` : 'Main Campus');
+      const branchOrDept = emp.vahd_branch || emp.department || '—';
+      const dist = emp.address || emp.vahd_branch || '—';
+
+      // Dynamic check-in location from DB (strictly '—' if user has not checked in)
+      let inLoc = '—';
+      if (hasInPunch) {
+        const cleaned = cleanLocation(att?.check_in_location);
+        if (cleaned !== '—') {
+          inLoc = cleaned;
+        } else if (att?.check_in_latitude && att?.check_in_longitude) {
+          inLoc = `${Number(att.check_in_latitude).toFixed(4)}, ${Number(att.check_in_longitude).toFixed(4)}`;
+        } else if (emp.vahd_branch) {
+          inLoc = emp.vahd_branch;
+        }
+      }
+
+      // Dynamic check-out location from DB (strictly '—' if user has not checked out)
+      let outLoc = '—';
+      if (hasOutPunch) {
+        const cleaned = cleanLocation(att?.check_out_location);
+        if (cleaned !== '—') {
+          outLoc = cleaned;
+        } else if (att?.check_out_latitude && att?.check_out_longitude) {
+          outLoc = `${Number(att.check_out_latitude).toFixed(4)}, ${Number(att.check_out_longitude).toFixed(4)}`;
+        } else if (emp.vahd_branch) {
+          outLoc = emp.vahd_branch;
+        }
+      }
 
       return {
+        attendee_type: 'employee',
         name: fullName,
         id: empId,
-        desg: emp.designation || 'Staff',
+        desg: emp.designation || '—',
         place: branchOrDept,
         dist: dist,
         in: inTime,
         out: outTime,
-        loc: hasPunched ? loc : '—',
+        in_loc: inLoc,
+        out_loc: outLoc,
+        in_lat: att?.check_in_latitude,
+        in_lng: att?.check_in_longitude,
+        out_lat: att?.check_out_latitude,
+        out_lng: att?.check_out_longitude,
+        loc: inLoc,
+        status: status
+      };
+    });
+
+    const rowsFromStudents = students.map((s, idx) => {
+      const fullName = s.full_name || s.name || 'Student';
+      const studentRoll = s.member_code || s.roll_number || s.student_number || s.code || (s.id && !s.id.startsWith('cust_') ? s.id : `stu${String(idx + 1).padStart(4, '0')}`);
+
+      const lookupKeys = [
+        s.id,
+        s.user_id,
+        s.member_code,
+        s.roll_number,
+        s.student_number,
+        s.code,
+        studentRoll,
+        fullName,
+        s.email,
+        s.phone,
+      ].filter(Boolean) as string[];
+
+      let att: AttendanceRecord | undefined;
+      for (const k of lookupKeys) {
+        const cleanK = String(k).trim().toLowerCase();
+        if (attMap.has(cleanK)) {
+          att = attMap.get(cleanK);
+          break;
+        }
+      }
+
+      if (s.id) recordedEmpIds.add(s.id.toLowerCase());
+      if (s.user_id) recordedEmpIds.add(String(s.user_id).toLowerCase());
+      if (s.member_code) recordedEmpIds.add(String(s.member_code).toLowerCase());
+      if (studentRoll) recordedEmpIds.add(studentRoll.toLowerCase());
+      if (fullName) recordedEmpIds.add(fullName.toLowerCase());
+
+      const inTime = att?.check_in && att.check_in !== '--:--' && att.check_in !== '-'
+        ? att.check_in
+        : (s.today_punch?.in_time || s.punch_in || s.in_time || '—');
+      const outTime = att?.check_out && att.check_out !== '--:--' && att.check_out !== '-'
+        ? att.check_out
+        : (s.today_punch?.out_time || s.punch_out || s.out_time || '—');
+      const hasInPunch = inTime !== '—';
+      const hasOutPunch = outTime !== '—';
+
+      let status = 'Absent';
+      if (att?.status) {
+        status = att.status;
+      } else if (hasInPunch) {
+        status = 'Present';
+      } else if (s.today_status && s.today_status !== 'Absent') {
+        status = s.today_status;
+      } else if (s.is_present || s.isPresentToday) {
+        status = 'Present';
+      } else if (s.status && s.status.toLowerCase() !== 'active') {
+        status = s.status;
+      }
+
+      const branchOrDept = s.primary_vahd_location || s.branch || s.branch_name || s.course || '—';
+      const meta = s.meta_data || {};
+      const dist = meta.district || meta.city || meta.permanent_address?.district || s.primary_vahd_location || s.branch || '—';
+
+      let inLoc = '—';
+      if (hasInPunch) {
+        const cleaned = cleanLocation(att?.check_in_location);
+        if (cleaned !== '—') {
+          inLoc = cleaned;
+        } else if (att?.check_in_latitude && att?.check_in_longitude) {
+          inLoc = `${Number(att.check_in_latitude).toFixed(4)}, ${Number(att.check_in_longitude).toFixed(4)}`;
+        } else if (s.primary_vahd_location) {
+          inLoc = s.primary_vahd_location;
+        }
+      }
+
+      let outLoc = '—';
+      if (hasOutPunch) {
+        const cleaned = cleanLocation(att?.check_out_location);
+        if (cleaned !== '—') {
+          outLoc = cleaned;
+        } else if (att?.check_out_latitude && att?.check_out_longitude) {
+          outLoc = `${Number(att.check_out_latitude).toFixed(4)}, ${Number(att.check_out_longitude).toFixed(4)}`;
+        } else if (s.primary_vahd_location) {
+          outLoc = s.primary_vahd_location;
+        }
+      }
+
+      return {
+        attendee_type: 'student',
+        name: fullName,
+        id: studentRoll,
+        desg: s.course || s.specialization || s.qualification || 'Student',
+        place: branchOrDept,
+        dist: dist,
+        in: inTime,
+        out: outTime,
+        in_loc: inLoc,
+        out_loc: outLoc,
+        in_lat: att?.check_in_latitude,
+        in_lng: att?.check_in_longitude,
+        out_lat: att?.check_out_latitude,
+        out_lng: att?.check_out_longitude,
+        loc: inLoc,
         status: status
       };
     });
 
     // Also include attendance records that don't match any employee directly
     const extraRows = attendance
-      .filter((att) => !recordedEmpIds.has(att.employee_id) && !recordedEmpIds.has(att.employee_code))
+      .filter((att) => {
+        const id1 = (att.employee_id || '').toLowerCase();
+        const code1 = (att.employee_code || '').toLowerCase();
+        const name1 = (att.employee_name || '').toLowerCase();
+        return !recordedEmpIds.has(id1) && !recordedEmpIds.has(code1) && !recordedEmpIds.has(name1);
+      })
       .map((att, idx) => {
-        const inTime = att.check_in && att.check_in !== '--:--' ? att.check_in : '—';
-        const outTime = att.check_out && att.check_out !== '--:--' ? att.check_out : '—';
-        const hasPunched = inTime !== '—';
+        const inTime = att.check_in && att.check_in !== '--:--' && att.check_in !== '-' ? att.check_in : '—';
+        const outTime = att.check_out && att.check_out !== '--:--' && att.check_out !== '-' ? att.check_out : '—';
+        const hasInPunch = inTime !== '—';
+        const hasOutPunch = outTime !== '—';
+
+        let inLoc = '—';
+        if (hasInPunch) {
+          const cleaned = cleanLocation(att.check_in_location);
+          if (cleaned !== '—') {
+            inLoc = cleaned;
+          } else if (att.check_in_latitude && att.check_in_longitude) {
+            inLoc = `${Number(att.check_in_latitude).toFixed(4)}, ${Number(att.check_in_longitude).toFixed(4)}`;
+          }
+        }
+
+        let outLoc = '—';
+        if (hasOutPunch) {
+          const cleaned = cleanLocation(att.check_out_location);
+          if (cleaned !== '—') {
+            outLoc = cleaned;
+          } else if (att.check_out_latitude && att.check_out_longitude) {
+            outLoc = `${Number(att.check_out_latitude).toFixed(4)}, ${Number(att.check_out_longitude).toFixed(4)}`;
+          }
+        }
+
+        const defaultPlace = att.department || '—';
 
         return {
-          name: att.employee_name || 'Staff Member',
+          attendee_type: 'employee',
+          name: att.employee_name || att.employee_code || att.employee_id || `STAFF-${idx + 1}`,
           id: att.employee_code || att.employee_id || `STAFF-${idx + 1}`,
-          desg: att.designation || 'Staff',
-          place: att.department || 'Main Facility',
-          dist: 'Hyderabad',
+          desg: att.designation || '—',
+          place: defaultPlace,
+          dist: '—',
           in: inTime,
           out: outTime,
-          loc: hasPunched ? (att.notes || 'Biometric Device') : '—',
-          status: att.status || (hasPunched ? 'Present' : 'Absent')
+          in_loc: inLoc,
+          out_loc: outLoc,
+          in_lat: att.check_in_latitude,
+          in_lng: att.check_in_longitude,
+          out_lat: att.check_out_latitude,
+          out_lng: att.check_out_longitude,
+          loc: inLoc,
+          status: att.status || (hasInPunch ? 'Present' : 'Absent')
         };
       });
 
-    return [...rowsFromEmployees, ...extraRows];
-  }, [employees, attendance]);
+    if (dailyAttendeeType === 'employees') {
+      return [...rowsFromEmployees, ...extraRows];
+    } else if (dailyAttendeeType === 'students') {
+      return rowsFromStudents;
+    } else {
+      return [...rowsFromEmployees, ...rowsFromStudents, ...extraRows];
+    }
+  }, [employees, attendance, students, dailyAttendeeType]);
 
-  // Dynamic filter lists from live records
+  // Dynamic filter lists from live records (100% dynamic from DB via backend)
   const dynamicDistrictsList = useMemo(() => {
-    const list = Array.from(new Set(employeeAttendanceRows.map((r) => r.dist).filter(Boolean)));
-    const merged = Array.from(new Set([...list, ...DISTRICTS.filter((d) => d !== 'All Districts')]));
-    return ['All Districts', ...merged];
+    const list = Array.from(new Set(employeeAttendanceRows.map((r) => r.dist).filter((d) => d && d !== '—')));
+    return ['All Districts', ...list];
   }, [employeeAttendanceRows]);
 
   const dynamicPlacesList = useMemo(() => {
-    const list = Array.from(new Set(employeeAttendanceRows.map((r) => r.place).filter(Boolean)));
-    const merged = Array.from(new Set([...list, ...PLACES_OF_WORKING.filter((p) => p !== 'All Places')]));
-    return ['All Places', ...merged];
+    const list = Array.from(new Set(employeeAttendanceRows.map((r) => r.place).filter((p) => p && p !== '—')));
+    return ['All Places', ...list];
   }, [employeeAttendanceRows]);
 
   // Filtered rows for Daily Attendance Report
@@ -558,7 +896,15 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
     return employeeAttendanceRows.filter((r) => {
       const matchDist = filterDistrict === 'All Districts' || r.dist.toLowerCase() === filterDistrict.toLowerCase();
       const matchPlace = filterPlace === 'All Places' || r.place.toLowerCase() === filterPlace.toLowerCase();
-      const matchStatus = filterStatus === 'All' || r.status.toLowerCase() === filterStatus.toLowerCase();
+      const st = (r.status || '').toLowerCase();
+      const fst = (filterStatus || '').toLowerCase();
+      const matchStatus =
+        filterStatus === 'All' ||
+        st === fst ||
+        (fst === 'present' && (st.startsWith('present') || st === 'late' || st === 'p')) ||
+        (fst === 'late' && (st === 'late' || st.includes('late'))) ||
+        (fst === 'absent' && (st === 'absent' || st === 'a')) ||
+        (fst === 'leave' && (st.includes('leave') || st === 'pl'));
       const matchQuery =
         !searchTableQuery.trim() ||
         r.name.toLowerCase().includes(searchTableQuery.toLowerCase()) ||
@@ -566,11 +912,15 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
         r.desg.toLowerCase().includes(searchTableQuery.toLowerCase()) ||
         r.dist.toLowerCase().includes(searchTableQuery.toLowerCase()) ||
         r.place.toLowerCase().includes(searchTableQuery.toLowerCase());
-      return matchDist && matchPlace && matchStatus && matchQuery;
-    });
-  }, [employeeAttendanceRows, filterDistrict, filterPlace, filterStatus, searchTableQuery]);
 
-  // Export to CSV helper
+      const matchCheckin = !filterCheckinTime || (r.in !== '—' && r.in.includes(filterCheckinTime));
+      const matchCheckout = !filterCheckoutTime || (r.out !== '—' && r.out.includes(filterCheckoutTime));
+
+      return matchDist && matchPlace && matchStatus && matchQuery && matchCheckin && matchCheckout;
+    });
+  }, [employeeAttendanceRows, filterDistrict, filterPlace, filterStatus, searchTableQuery, filterCheckinTime, filterCheckoutTime]);
+
+  // Export to CSV helper with UTF-8 BOM so Microsoft Excel opens it cleanly with full columns and data
   const handleExportCSV = (filename: string, headers: string[], rows: (string | number | undefined | null)[][]) => {
     const escapeCell = (cell: string | number | undefined | null) => {
       if (cell === null || cell === undefined) return '""';
@@ -579,19 +929,21 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
     };
 
     const csvContent =
-      'data:text/csv;charset=utf-8,' +
+      '\uFEFF' +
       [
         headers.map(escapeCell).join(','),
         ...rows.map((row) => row.map(escapeCell).join(','))
-      ].join('\n');
+      ].join('\r\n');
 
-    const encodedUri = encodeURI(csvContent);
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
+    link.href = url;
     link.setAttribute('download', `${filename}_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
   const handlePrint = () => {
@@ -609,7 +961,10 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
   if (selectedReport === 'student-attendance') {
     const studentsList = studentsOverview?.students || [];
     const filteredStudents = studentsList.filter((s: any) => {
-      const matchBranch = !selectedBranch || selectedBranch === 'all' || s.branch_id === selectedBranch;
+      const matchBranch = !selectedBranch || selectedBranch === 'all' ||
+        s.branch_id === selectedBranch ||
+        (s.branch_name && s.branch_name.toLowerCase() === selectedBranch.toLowerCase()) ||
+        allBranchesList.some((b) => b.id === selectedBranch && (b.branch_name === s.branch_name || b.vahd_name === s.branch_name));
       const matchSearch =
         !searchTableQuery.trim() ||
         (s.student_name || '').toLowerCase().includes(searchTableQuery.toLowerCase()) ||
@@ -688,7 +1043,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                   <option value="all">🌟 All Branches (Consolidated)</option>
                   {allBranchesList.map((b) => (
                     <option key={b.id} value={b.id}>
-                      🏫 {b.gym_name ? `${b.gym_name} — ` : ''}{b.branch_name}
+                      🏫 {b.vahd_name ? `${b.vahd_name} — ` : ''}{b.branch_name}
                     </option>
                   ))}
                 </select>
@@ -779,7 +1134,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                     ['#', 'ROLL NO', 'STUDENT NAME', 'DEGREE / COURSE', 'REGISTERED MOBILE', 'WORKING DAYS', 'PRESENT', 'ABSENT', 'ATTENDANCE %', 'ACADEMIC STANDING'],
                     filteredStudents.map((s: any, idx: number) => [
                       idx + 1,
-                      s.roll_number || s.student_id,
+                      s.roll_number || s.member_code || s.student_number || s.code || (s.student_id?.startsWith('cust_') ? `stu${s.student_id.slice(-4)}` : s.student_id),
                       s.student_name,
                       s.degree || '--',
                       s.parent_phone || '--',
@@ -872,12 +1227,12 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                     const pct = s.attendance_percentage ?? 0;
                     return (
                       <tr key={s.student_id} className="hover:bg-slate-50/80 transition-colors">
-                        <td className="py-3 px-3 font-mono font-bold text-slate-900">{s.roll_number || s.student_id}</td>
+                        <td className="py-3 px-3 font-mono font-bold text-slate-900">{s.roll_number || s.member_code || s.student_number || s.code || (s.student_id?.startsWith('cust_') ? `stu${s.student_id.slice(-4)}` : s.student_id)}</td>
                         <td className="py-3 px-3 font-extrabold text-slate-900">
                           <div>{s.student_name}</div>
                           <div className="text-[10px] text-slate-500 font-medium flex items-center gap-1 mt-0.5">
                             <span className="px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 border border-slate-200">
-                              🏫 {s.branch_name || s.college_name || 'Main Campus'}
+                              🏫 {s.branch_name || s.college_name || ''}
                             </span>
                           </div>
                         </td>
@@ -888,13 +1243,12 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                         <td className="py-3 px-3 text-center font-bold text-rose-600 bg-rose-50/30">{s.days_absent}</td>
                         <td className="py-3 px-3 text-center">
                           <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
-                              pct >= 75
-                                ? 'bg-emerald-100 text-emerald-800'
-                                : pct >= 60
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${pct >= 75
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : pct >= 60
                                 ? 'bg-amber-100 text-amber-800'
                                 : 'bg-rose-100 text-rose-800'
-                            }`}
+                              }`}
                           >
                             {pct}%
                           </span>
@@ -911,7 +1265,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                         <td className="py-3 px-3 text-right">
                           <div className="inline-flex items-center gap-1.5">
                             <a
-                              href={`/api/v1/customers/${s.student_id}/attendance-report/csv?year=${targetYear}&month=${targetMonth}${authParam}`}
+                              href={`/api/v1/students/${s.student_id}/attendance-report/csv?year=${targetYear}&month=${targetMonth}${authParam}`}
                               download
                               className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-bold flex items-center gap-1 transition"
                               title="Download Student CSV Statement"
@@ -920,7 +1274,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                               <span>CSV</span>
                             </a>
                             <a
-                              href={`/api/v1/customers/${s.student_id}/attendance-report/pdf?year=${targetYear}&month=${targetMonth}${authParam}`}
+                              href={`/api/v1/students/${s.student_id}/attendance-report/pdf?year=${targetYear}&month=${targetMonth}${authParam}`}
                               target="_blank"
                               rel="noreferrer"
                               className="px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-bold flex items-center gap-1 transition"
@@ -947,7 +1301,10 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
   if (selectedReport === 'employee-attendance') {
     const employeesList = employeesOverview?.employees || [];
     const filteredEmployees = employeesList.filter((emp: any) => {
-      const matchBranch = !selectedBranch || selectedBranch === 'all' || emp.branch_id === selectedBranch;
+      const matchBranch = !selectedBranch || selectedBranch === 'all' ||
+        emp.branch_id === selectedBranch ||
+        (emp.branch_name && emp.branch_name.toLowerCase() === selectedBranch.toLowerCase()) ||
+        allBranchesList.some((b) => b.id === selectedBranch && (b.branch_name === emp.branch_name || b.vahd_name === emp.branch_name));
       const matchSearch =
         !searchTableQuery.trim() ||
         (emp.employee_name || '').toLowerCase().includes(searchTableQuery.toLowerCase()) ||
@@ -1027,7 +1384,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                   <option value="all">🌟 All Branches (Consolidated)</option>
                   {allBranchesList.map((b) => (
                     <option key={b.id} value={b.id}>
-                      🏫 {b.gym_name ? `${b.gym_name} — ` : ''}{b.branch_name}
+                      🏫 {b.vahd_name ? `${b.vahd_name} — ` : ''}{b.branch_name}
                     </option>
                   ))}
                 </select>
@@ -1217,7 +1574,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                           <div>{emp.employee_name}</div>
                           <div className="text-[10px] text-slate-500 font-medium flex items-center gap-1 mt-0.5">
                             <span className="px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 border border-slate-200">
-                              🏫 {emp.branch_name || emp.gym_branch || 'Main Branch'}
+                              🏫 {emp.branch_name || emp.vahd_branch || ''}
                             </span>
                           </div>
                         </td>
@@ -1234,13 +1591,12 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                         <td className="py-3 px-3 text-center font-bold text-purple-600">{emp.days_leave}</td>
                         <td className="py-3 px-3 text-center">
                           <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
-                              pct >= 75
-                                ? 'bg-emerald-100 text-emerald-800'
-                                : pct >= 60
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${pct >= 75
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : pct >= 60
                                 ? 'bg-amber-100 text-amber-800'
                                 : 'bg-rose-100 text-rose-800'
-                            }`}
+                              }`}
                           >
                             {pct}%
                           </span>
@@ -1403,7 +1759,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
               <div key={b.branch_id} className="bg-white p-5 rounded-2xl border border-navy-100 shadow-2xs space-y-3">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-navy-50">
                   <div>
-                    <h3 className="text-base font-extrabold text-navy-900">{b.gym_name || b.branch_name}</h3>
+                    <h3 className="text-base font-extrabold text-navy-900">{b.vahd_name || b.branch_name}</h3>
                     <p className="text-xs text-navy-500">
                       City: <strong>{b.city || 'Primary Campus'}</strong> &bull; Owner: <strong>{b.owner_name || 'Assigned'}</strong>
                     </p>
@@ -1483,7 +1839,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
             <h1 className="text-2xl font-black tracking-tight text-navy-900 uppercase">
               DAILY ATTENDANCE REPORT
             </h1>
-            <p className="text-xs text-navy-500 font-medium">Employee-level daily attendance records</p>
+            <p className="text-xs text-navy-500 font-medium">Employee &amp; Student daily attendance records with organisation mapping</p>
           </div>
 
           <button
@@ -1498,7 +1854,20 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
 
         {/* Filter Toolbar Box */}
         <div className="bg-white p-4 rounded-2xl border border-navy-100 shadow-sm space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-2.5 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2.5 text-xs">
+            <div>
+              <label className="block text-[11px] font-bold text-navy-600 mb-1">Attendee Type</label>
+              <select
+                value={dailyAttendeeType}
+                onChange={(e) => setDailyAttendeeType(e.target.value as 'all' | 'employees' | 'students')}
+                className="w-full px-2.5 py-1.5 rounded-xl border border-navy-200 bg-white font-bold text-navy-800 text-xs focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
+              >
+                <option value="all">All Attendees</option>
+                <option value="employees">Employees Only</option>
+                <option value="students">Students Only</option>
+              </select>
+            </div>
+
             <div>
               <label className="block text-[11px] font-bold text-navy-600 mb-1">District</label>
               <select
@@ -1597,12 +1966,16 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
             <button
               type="button"
               onClick={() => {
+                setDailyAttendeeType('all');
                 setFilterDistrict('All Districts');
                 setFilterPlace('All Places');
                 setFilterStatus('All');
                 setSearchTableQuery('');
                 setFilterCheckinTime('');
                 setFilterCheckoutTime('');
+                const todayStr = getTodayDateStr();
+                setFilterDate(todayStr);
+                fetchData(todayStr);
               }}
               className="px-4 py-1.5 rounded-xl text-xs font-bold border border-navy-200 text-navy-700 hover:bg-navy-50 transition cursor-pointer"
             >
@@ -1628,8 +2001,8 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                 onClick={() =>
                   handleExportCSV(
                     'Daily_Attendance_Report',
-                    ['#', 'DISTRICT', 'EMPLOYEE ID', 'NAME', 'DESIGNATION', 'INSTITUTION', 'ATTENDANCE DATE', 'CHECK-IN TIME', 'LOCATION', 'CHECK-OUT TIME', 'STATUS'],
-                    filteredDailyAttendance.map((r, i) => [i + 1, r.dist, r.id, r.name, r.desg, r.place, filterDate, r.in, r.loc, r.out, r.status])
+                    ['#', 'DISTRICT', 'ID / ROLL NO.', 'NAME', 'TYPE', 'DESIGNATION / COURSE', 'INSTITUTION', 'ATTENDANCE DATE', 'CHECK-IN TIME', 'CHECK-IN LOCATION', 'CHECK-OUT TIME', 'CHECK-OUT LOCATION', 'STATUS'],
+                    filteredDailyAttendance.map((r, i) => [i + 1, r.dist, r.id, r.name, r.attendee_type === 'student' ? 'Student' : 'Employee', r.desg, r.place, filterDate, r.in, r.in_loc, r.out, r.out_loc, r.status])
                   )
                 }
                 className="px-3 py-1.5 rounded-xl text-xs font-bold border border-navy-200 bg-white hover:bg-navy-50 text-navy-700 flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
@@ -1655,7 +2028,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                 <tr>
                   <th className="py-3 px-3.5">#</th>
                   <th className="py-3 px-3.5">DISTRICT</th>
-                  <th className="py-3 px-3.5">EMPLOYEE ID</th>
+                  <th className="py-3 px-3.5">ID / ROLL NO.</th>
                   <th className="py-3 px-3.5">NAME</th>
                   <th className="py-3 px-3.5">DESIGNATION</th>
                   <th className="py-3 px-3.5">INSTITUTION</th>
@@ -1686,19 +2059,50 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                       <td className="py-3 px-3.5 font-mono text-navy-600">{filterDate}</td>
                       <td className="py-3 px-3.5 font-mono text-navy-900 font-bold">{row.in}</td>
                       <td className="py-3 px-3.5 text-navy-600">
-                        {row.loc !== '—' ? (
+                        {row.in_loc !== '—' ? (
                           <div>
-                            <div>{row.loc}</div>
-                            <span className="text-blue-600 hover:underline text-[10px] font-bold cursor-pointer">
-                              View on Map
-                            </span>
+                            <div className="font-semibold text-navy-800">{row.in_loc}</div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const q = (row.in_lat && row.in_lng)
+                                  ? `${row.in_lat},${row.in_lng}`
+                                  : encodeURIComponent(`${row.in_loc}, ${row.dist || ''}`);
+                                window.open(`https://maps.google.com/?q=${q}`, '_blank');
+                              }}
+                              className="text-blue-600 hover:text-blue-800 hover:underline text-[10px] font-bold cursor-pointer inline-flex items-center gap-0.5 mt-0.5"
+                            >
+                              <Icon name="map-pin" size={10} />
+                              <span>View on Map</span>
+                            </button>
                           </div>
                         ) : (
                           '—'
                         )}
                       </td>
                       <td className="py-3 px-3.5 font-mono text-navy-900">{row.out}</td>
-                      <td className="py-3 px-3.5 text-navy-400">—</td>
+                      <td className="py-3 px-3.5 text-navy-600">
+                        {row.out_loc !== '—' ? (
+                          <div>
+                            <div className="font-semibold text-navy-800">{row.out_loc}</div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const q = (row.out_lat && row.out_lng)
+                                  ? `${row.out_lat},${row.out_lng}`
+                                  : encodeURIComponent(`${row.out_loc}, ${row.dist || ''}`);
+                                window.open(`https://maps.google.com/?q=${q}`, '_blank');
+                              }}
+                              className="text-blue-600 hover:text-blue-800 hover:underline text-[10px] font-bold cursor-pointer inline-flex items-center gap-0.5 mt-0.5"
+                            >
+                              <Icon name="map-pin" size={10} />
+                              <span>View on Map</span>
+                            </button>
+                          </div>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
                       <td className="py-3 px-3.5 text-center whitespace-nowrap">
                         <span
                           className={cn(
@@ -1706,10 +2110,10 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                             row.status === 'Present'
                               ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                               : row.status === 'Late'
-                              ? 'bg-amber-50 text-amber-700 border-amber-200'
-                              : row.status === 'Leave'
-                              ? 'bg-purple-50 text-purple-700 border-purple-200'
-                              : 'bg-rose-50 text-rose-700 border-rose-200'
+                                ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                : row.status === 'Leave'
+                                  ? 'bg-purple-50 text-purple-700 border-purple-200'
+                                  : 'bg-rose-50 text-rose-700 border-rose-200'
                           )}
                         >
                           {row.status}
@@ -2506,10 +2910,10 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
               {hubCategory === 'students'
                 ? 'Student Attendance Statements & Exports'
                 : hubCategory === 'employees'
-                ? 'Employee Attendance Statements & Exports'
-                : hubCategory === 'branches'
-                ? 'Multi-Branch Headquarters Reports'
-                : 'Combined Attendance Reports'}
+                  ? 'Employee Attendance Statements & Exports'
+                  : hubCategory === 'branches'
+                    ? 'Multi-Branch Headquarters Reports'
+                    : 'Combined Attendance Reports'}
             </span>
           </div>
 

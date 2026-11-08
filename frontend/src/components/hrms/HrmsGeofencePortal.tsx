@@ -12,7 +12,7 @@ import {
 
 interface HoOrganizationItem {
   id: string;
-  gym_name: string;
+  vahd_name: string;
   branch_name: string;
   city?: string;
   geofence_portal_enabled: boolean;
@@ -48,7 +48,7 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
   const [activeSchemeId, setActiveSchemeId] = useState<string>('');
   const [schemeName, setSchemeName] = useState('');
   const [branchName, setBranchName] = useState('');
-  const [gymName, setGymName] = useState('');
+  const [vahdName, setvahdName] = useState('');
   const [ipWhitelist, setIpWhitelist] = useState('');
   const [latitude, setLatitude] = useState<number | string>('');
   const [longitude, setLongitude] = useState<number | string>('');
@@ -58,11 +58,11 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
   const [shiftEndTime, setShiftEndTime] = useState<string>('');
   const [gracePeriodMins, setGracePeriodMins] = useState<number>(0);
   const [minHalfDayHours, setMinHalfDayHours] = useState<number | string>('');
+  const [allowOt, setAllowOt] = useState<boolean>(true);
+  const [minOtThresholdMins, setMinOtThresholdMins] = useState<number | ''>(60);
   const [allowedChannels, setAllowedChannels] = useState<string[]>([
     'gps',
-    'biometric',
     'face_recognition',
-    'web_ess',
   ]);
   const [assignedEmployeeIds, setAssignedEmployeeIds] = useState<string[]>([]);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
@@ -73,16 +73,16 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
     setTimeout(() => setToastMsg(null), 4000);
   };
 
-  // Fetch initial schemes, branches, gym settings, employees and students from live database
+  // Fetch initial schemes, branches, vahd settings, employees and students from live database
   const loadData = async () => {
     setLoading(true);
     try {
       const [schemesRes, empsRes, custsRes, branchesRes, settingsRes] = await Promise.all([
         hrmsApi.getGeofenceSchemes().catch(() => []),
         hrmsApi.getEmployees().catch(() => []),
-        apiClient.get<any[]>('/customers').catch(() => []),
-        apiClient.get<any[]>('/gym/branches').catch(() => []),
-        apiClient.get<any>('/gym/settings').catch(() => null),
+        apiClient.get<any[]>('/students').catch(() => []),
+        apiClient.get<any[]>('/vahd/branches').catch(() => []),
+        apiClient.get<any>('/vahd/settings').catch(() => null),
       ]);
 
       const emps = empsRes || [];
@@ -92,26 +92,26 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
 
       const realBranches = Array.isArray(branchesRes)
         ? branchesRes.map((b) => ({
-            name: b.branch_name || b.name || '',
-            city: b.city || '',
-          }))
+          name: b.branch_name || b.name || '',
+          city: b.city || '',
+        }))
         : [];
       setAvailableBranches(realBranches);
 
-      const realGymName = settingsRes?.gym_name || realBranches[0]?.name || '';
-      setGymName(realGymName);
+      const realvahdName = settingsRes?.vahd_name || realBranches[0]?.name || '';
+      setvahdName(realvahdName);
 
       const allMemberIds = [...emps.map((e) => e.id), ...custs.map((c) => c.id)];
 
       if (schemesRes && schemesRes.length > 0) {
         setSchemes(schemesRes);
-        loadSchemeIntoForm(schemesRes[0], allMemberIds, realGymName);
+        loadSchemeIntoForm(schemesRes[0], allMemberIds, realvahdName);
       } else {
         setSchemes([]);
         setActiveSchemeId('');
         setSchemeName('');
         setBranchName(realBranches[0]?.name || '');
-        setGymName(realGymName);
+        setvahdName(realvahdName);
         setLatitude(currentDeviceCoords ? currentDeviceCoords.lat : '');
         setLongitude(currentDeviceCoords ? currentDeviceCoords.lng : '');
         setRadiusMeters(0);
@@ -121,7 +121,7 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
         setShiftEndTime('');
         setGracePeriodMins(0);
         setMinHalfDayHours('');
-        setAllowedChannels(['gps', 'biometric', 'face_recognition', 'web_ess']);
+        setAllowedChannels(['gps', 'face_recognition']);
         setAssignedEmployeeIds([]);
       }
     } catch (e) {
@@ -141,7 +141,7 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
             lng: pos.coords.longitude,
           });
         },
-        () => {}
+        () => { }
       );
     }
   }, []);
@@ -179,7 +179,7 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
       );
       showToast(
         res?.message ||
-          `Attendance & Geofence Portal ${nextStatus ? 'ENABLED' : 'DISABLED'} for this organization`
+        `Attendance & Geofence Portal ${nextStatus ? 'ENABLED' : 'DISABLED'} for this organization`
       );
       window.dispatchEvent(
         new CustomEvent('vahd:branch_geofence_toggled', {
@@ -197,11 +197,11 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
   const selectedOrg = hoOrganizations.find((o) => o.id === selectedOrgId) || hoOrganizations[0];
 
 
-  const loadSchemeIntoForm = (scheme: GeofenceScheme, allAvailableIds?: string[], fallbackGymName?: string) => {
+  const loadSchemeIntoForm = (scheme: GeofenceScheme, allAvailableIds?: string[], fallbackvahdName?: string) => {
     setActiveSchemeId(scheme.id || '');
     setSchemeName(scheme.name || '');
     setBranchName(scheme.branch_name || '');
-    setGymName(scheme.gym_name || fallbackGymName || gymName || '');
+    setvahdName(scheme.vahd_name || fallbackvahdName || vahdName || '');
     setIpWhitelist(scheme.ip_whitelist || '');
     setLatitude(scheme.latitude ?? (currentDeviceCoords ? currentDeviceCoords.lat : ''));
     setLongitude(scheme.longitude ?? (currentDeviceCoords ? currentDeviceCoords.lng : ''));
@@ -211,10 +211,12 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
     setShiftEndTime(scheme.shift_end_time || '');
     setGracePeriodMins(scheme.grace_period_mins ?? 0);
     setMinHalfDayHours(scheme.min_half_day_hours ?? '');
+    setAllowOt(scheme.allow_ot !== undefined && scheme.allow_ot !== null ? !!scheme.allow_ot : true);
+    setMinOtThresholdMins(scheme.min_ot_threshold_mins ?? 60);
     setAllowedChannels(
       scheme.allowed_channels?.length
-        ? scheme.allowed_channels
-        : ['gps', 'biometric', 'face_recognition', 'web_ess']
+        ? scheme.allowed_channels.filter((c: string) => c === 'gps' || c === 'face_recognition')
+        : ['gps', 'face_recognition']
     );
 
     const rawAssigned = scheme.assigned_employee_ids || [];
@@ -235,7 +237,7 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
     setActiveSchemeId(newId);
     setSchemeName('');
     setBranchName(targetBranch);
-    setGymName(gymName);
+    setvahdName(vahdName);
     setLatitude(currentDeviceCoords ? currentDeviceCoords.lat : '');
     setLongitude(currentDeviceCoords ? currentDeviceCoords.lng : '');
     setRadiusMeters(0);
@@ -245,6 +247,8 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
     setShiftEndTime('');
     setGracePeriodMins(0);
     setMinHalfDayHours('');
+    setAllowOt(true);
+    setMinOtThresholdMins(60);
     setAllowedChannels(['gps', 'biometric', 'face_recognition', 'web_ess']);
     setAssignedEmployeeIds([]);
     showToast('New geofence scheme form opened. Enter parameters and click Save Scheme.');
@@ -287,7 +291,7 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
         id: activeSchemeId,
         name: schemeName.trim(),
         branch_name: branchName,
-        gym_name: gymName,
+        vahd_name: vahdName,
         ip_whitelist: ipWhitelist,
         latitude: typeof latitude === 'string' ? (latitude === '' ? 0 : parseFloat(latitude)) : latitude,
         longitude: typeof longitude === 'string' ? (longitude === '' ? 0 : parseFloat(longitude)) : longitude,
@@ -297,6 +301,8 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
         shift_end_time: shiftEndTime,
         grace_period_mins: gracePeriodMins,
         min_half_day_hours: minHalfDayHours === '' || minHalfDayHours === undefined ? undefined : Number(minHalfDayHours),
+        allow_ot: allowOt,
+        min_ot_threshold_mins: minOtThresholdMins === '' ? 60 : Number(minOtThresholdMins),
         allowed_channels: allowedChannels,
         assigned_employee_ids: assignedEmployeeIds,
         is_active: true,
@@ -333,7 +339,7 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
       name: (emp.full_name || `${emp.first_name || ''} ${emp.last_name || ''}`.trim()) || 'Employee',
       code: emp.code ? `EMP-${emp.code}` : 'EMP',
       role: 'Employee' as const,
-      subText: emp.designation || emp.department || 'Staff / Trainer',
+      subText: emp.designation || emp.department || 'Staff / employee',
       email: emp.email || '',
     })),
     ...students.map((stu, idx) => ({
@@ -437,9 +443,6 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
                 <h2 className="text-lg sm:text-xl font-black text-white tracking-tight flex items-center gap-2">
                   <span>Branch Geofence Portal Access Control</span>
                 </h2>
-                <p className="text-xs text-slate-400 max-w-2xl font-medium">
-                  Toggle whether the <strong>Attendance &amp; Geofence Portal</strong> tab is visible and accessible in Owner login for each branch / organization. When disabled, this tab is completely hidden from that branch's owner.
-                </p>
               </div>
 
               {/* Active Branch Control Pill / Switch */}
@@ -447,7 +450,7 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
                 <div className="bg-slate-800/80 backdrop-blur-md border border-slate-700/80 rounded-2xl p-3.5 flex items-center gap-4 shrink-0 shadow-lg">
                   <div className="text-right">
                     <div className="text-[10px] font-extrabold uppercase text-slate-400">
-                      Portal Status for {selectedOrg.gym_name || selectedOrg.branch_name}
+                      Portal Status for {selectedOrg.vahd_name || selectedOrg.branch_name}
                     </div>
                     <div className="flex items-center justify-end gap-1.5 mt-0.5">
                       <span
@@ -522,7 +525,7 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
                       onClick={() => {
                         setSelectedOrgId(org.id);
                         if (org.branch_name) setBranchName(org.branch_name);
-                        if (org.gym_name) setGymName(org.gym_name);
+                        if (org.vahd_name) setvahdName(org.vahd_name);
                       }}
                       className={cn(
                         'cursor-pointer rounded-xl p-3 border transition-all flex items-center justify-between gap-3',
@@ -539,7 +542,7 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
                             className={isSelected ? 'text-indigo-400' : 'text-slate-400'}
                           />
                           <span className="text-xs font-black text-white truncate">
-                            {org.gym_name || org.branch_name}
+                            {org.vahd_name || org.branch_name}
                           </span>
                         </div>
                         <div className="text-[10px] text-slate-400 font-semibold pl-5">
@@ -554,7 +557,7 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
                           e.stopPropagation();
                           setSelectedOrgId(org.id);
                           if (org.branch_name) setBranchName(org.branch_name);
-                          if (org.gym_name) setGymName(org.gym_name);
+                          if (org.vahd_name) setvahdName(org.vahd_name);
                           handleToggleBranchAccess(org.id, org.geofence_portal_enabled);
                         }}
                         disabled={togglingAccess}
@@ -750,11 +753,11 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
               </div>
             </div>
 
-            {/* Branch & Gym Selector Row */}
+            {/* Branch & vahd Selector Row */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-[11px] font-extrabold text-slate-600 uppercase mb-1.5">
-                  GYM BRANCH ASSIGNMENT
+                  vahd BRANCH ASSIGNMENT
                 </label>
                 <select
                   value={branchName}
@@ -775,13 +778,13 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
 
               <div>
                 <label className="block text-[11px] font-extrabold text-slate-600 uppercase mb-1.5">
-                  ORGANIZATION / GYM NAME
+                  ORGANIZATION / vahd NAME
                 </label>
                 <input
                   type="text"
-                  value={gymName}
-                  onChange={(e) => setGymName(e.target.value)}
-                  placeholder="Gym / Facility Name"
+                  value={vahdName}
+                  onChange={(e) => setvahdName(e.target.value)}
+                  placeholder="vahd / Facility Name"
                   className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50/70 border border-slate-200 text-xs font-bold text-slate-900 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
                 />
               </div>
@@ -885,7 +888,8 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Row 1: Primary Working Window & Thresholds */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
                 <label className="block text-[11px] font-extrabold text-slate-600 uppercase mb-1.5">
                   SHIFT START TIME
@@ -930,9 +934,7 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
                   className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50/70 border border-slate-200 text-xs font-bold text-slate-900 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
                 />
               </div>
-            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="block text-[11px] font-extrabold text-slate-600 uppercase mb-1.5">
                   MINIMUM HALF-DAY HOURS
@@ -946,24 +948,56 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
                   className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50/70 border border-slate-200 text-xs font-bold text-slate-900 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
                 />
               </div>
+            </div>
 
-              {/* Dynamic Rule Preview Callout */}
-              <div className="sm:col-span-2 p-3.5 rounded-xl bg-purple-50/70 border border-purple-200/80">
-                <span className="text-[11px] font-black text-purple-900 uppercase block mb-1">
-                  Rule Preview (IST Timezone):
-                </span>
-                <p className="text-xs text-slate-700 leading-relaxed">
-                  {shiftStartTime ? (
-                    <>
-                      Check-ins after <span className="font-extrabold text-purple-900">{shiftStartTime.split(' ')[0]} + {gracePeriodMins}m IST</span> will be flagged as <span className="font-extrabold text-amber-700 bg-amber-100 px-1 py-0.5 rounded">Late</span>.
-                    </>
-                  ) : (
-                    <span>Shift timing policy: Grace period of <span className="font-extrabold text-purple-900">{gracePeriodMins}m</span> will apply after shift start. </span>
+            {/* Row 2: Overtime (OT) Policy & Threshold (Matching Image 2) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
+              {/* Allow Overtime (OT) Card */}
+              <div
+                onClick={() => setAllowOt(!allowOt)}
+                className="flex items-center justify-between p-3.5 sm:p-4 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50/70 cursor-pointer transition select-none shadow-2xs"
+              >
+                <div>
+                  <h4 className="text-xs sm:text-sm font-black text-slate-900 tracking-tight">
+                    Allow Overtime (OT)
+                  </h4>
+                  <p className="text-[11px] font-medium text-slate-500 mt-0.5">
+                    Calculate extra hours beyond full-day shift
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  aria-checked={allowOt}
+                  role="checkbox"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setAllowOt(!allowOt);
+                  }}
+                  className={cn(
+                    'w-5 h-5 rounded-md flex items-center justify-center transition-colors border shrink-0 ml-3 cursor-pointer',
+                    allowOt
+                      ? 'bg-purple-600 border-purple-600 text-white'
+                      : 'border-slate-300 bg-white'
                   )}
-                  {minHalfDayHours ? (
-                    <> Shifts below <span className="font-extrabold text-purple-900">{minHalfDayHours} hours</span> automatically count as <span className="font-extrabold text-rose-700 bg-rose-100 px-1 py-0.5 rounded">Half Day</span>.</>
-                  ) : null}
-                </p>
+                >
+                  {allowOt && <Icon name="check" size={13} className="stroke-[3]" />}
+                </button>
+              </div>
+
+              {/* MIN. OT THRESHOLD (MINUTES) */}
+              <div>
+                <label className="block text-[11px] font-extrabold text-slate-600 uppercase mb-1.5">
+                  MIN. OT THRESHOLD (MINUTES)
+                </label>
+                <input
+                  type="number"
+                  value={minOtThresholdMins}
+                  onChange={(e) =>
+                    setMinOtThresholdMins(e.target.value === '' ? '' : parseInt(e.target.value, 10))
+                  }
+                  placeholder="60"
+                  className="w-full px-3.5 py-3 rounded-xl bg-white border border-slate-200 text-xs sm:text-sm font-bold text-slate-900 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all shadow-2xs"
+                />
               </div>
             </div>
           </div>
@@ -1171,22 +1205,10 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
                   icon: 'map-pin',
                 },
                 {
-                  id: 'biometric',
-                  title: 'Biometric Fingerprint Terminals',
-                  desc: 'Hardware gate turnstiles',
-                  icon: 'fingerprint',
-                },
-                {
                   id: 'face_recognition',
                   title: 'AI Facial Recognition Tablet',
                   desc: 'Kiosk face recognition at entrance',
                   icon: 'camera',
-                },
-                {
-                  id: 'web_ess',
-                  title: 'Web ESS Portal & WFH',
-                  desc: 'Browser 1-click punch',
-                  icon: 'globe',
                 },
               ].map((channel) => {
                 const isChecked = allowedChannels.includes(channel.id);
@@ -1249,8 +1271,8 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
               </div>
 
               <div className="flex justify-between items-center py-1 border-b border-slate-100">
-                <span className="text-slate-500 font-medium">Branch / Gym:</span>
-                <span className="font-extrabold text-purple-700">{branchName} ({gymName})</span>
+                <span className="text-slate-500 font-medium">Branch / vahd:</span>
+                <span className="font-extrabold text-purple-700">{branchName} ({vahdName})</span>
               </div>
 
               <div className="flex justify-between items-center py-1 border-b border-slate-100">
@@ -1265,14 +1287,21 @@ export function HrmsGeofencePortal({ onSuccessToast }: HrmsGeofencePortalProps) 
                 <span className="font-extrabold text-emerald-600">{radiusMeters}m</span>
               </div>
 
-              <div className="flex justify-between items-center py-1">
+              <div className="flex justify-between items-center py-1 border-b border-slate-100">
                 <span className="text-slate-500 font-medium">Working Hours:</span>
                 <span className="font-bold text-slate-800">
                   {shiftStartTime && shiftEndTime
                     ? `${shiftStartTime} - ${shiftEndTime} IST (${gracePeriodMins}m grace)`
                     : shiftStartTime
-                    ? `${shiftStartTime} onwards IST (${gracePeriodMins}m grace)`
-                    : 'Flexible / 24x7'}
+                      ? `${shiftStartTime} onwards IST (${gracePeriodMins}m grace)`
+                      : 'Flexible / 24x7'}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center py-1">
+                <span className="text-slate-500 font-medium">Overtime (OT):</span>
+                <span className="font-bold text-slate-800">
+                  {allowOt ? `Allowed (≥ ${minOtThresholdMins || 0}m)` : 'Disabled'}
                 </span>
               </div>
             </div>

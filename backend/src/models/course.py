@@ -1,6 +1,6 @@
 from src.utils.timezone import now_ist_naive
 import datetime
-from sqlalchemy import Column, String, Float, Integer, Boolean, DateTime, ForeignKey, JSON
+from sqlalchemy import Column, String, Float, Integer, Boolean, DateTime, ForeignKey, JSON, UniqueConstraint
 from sqlalchemy.orm import relationship
 from src.database.base import Base
 
@@ -8,6 +8,7 @@ class Course(Base):
     __tablename__ = "courses"
 
     id = Column(String, primary_key=True, index=True)
+    tenant_id = Column(String, nullable=True, index=True)
     owner_id = Column(String, nullable=True, index=True)
     branch_id = Column(String, nullable=True, index=True)
     name = Column(String, nullable=False)
@@ -29,7 +30,8 @@ class StudentCourse(Base):
     __tablename__ = "student_courses"
 
     id = Column(String, primary_key=True, index=True)
-    customer_id = Column(String, ForeignKey("customers.id"), index=True, nullable=False)
+    tenant_id = Column(String, nullable=True, index=True)
+    student_id = Column(String, ForeignKey("students.id"), index=True, nullable=False)
     course_name = Column(String, nullable=True)
     course_type = Column(String, nullable=True)
     status = Column(String, nullable=True)
@@ -48,18 +50,24 @@ class StudentCourse(Base):
 
 class CourseLanguage(Base):
     __tablename__ = "course_languages"
+    __table_args__ = (UniqueConstraint("tenant_id", "name", name="uq_courselang_tenant_name"),
+                      {"extend_existing": True})
 
     id = Column(String, primary_key=True, index=True)
-    name = Column(String, nullable=False, unique=True)
+    tenant_id = Column(String, nullable=True, index=True)
+    name = Column(String, nullable=False, index=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=now_ist_naive)
 
 
 class CourseClassification(Base):
     __tablename__ = "course_classifications"
+    __table_args__ = (UniqueConstraint("tenant_id", "value", name="uq_courseclass_tenant_value"),
+                      {"extend_existing": True})
 
     id = Column(String, primary_key=True, index=True)
-    value = Column(String, nullable=False, unique=True)
+    tenant_id = Column(String, nullable=True, index=True)
+    value = Column(String, nullable=False, index=True)
     label = Column(String, nullable=False)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=now_ist_naive)

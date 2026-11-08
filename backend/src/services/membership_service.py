@@ -11,7 +11,7 @@ class MembershipService:
     @staticmethod
     def get_all_plans(db: Session, owner_id: Optional[str] = None, branch_id: Optional[str] = None) -> List[dict]:
         """
-        Returns dynamic active membership plans filtered by gym owner and branch without hardcoded fallbacks.
+        Returns dynamic active membership plans filtered by vahd owner and branch without hardcoded fallbacks.
         """
         from sqlalchemy import text, or_
         try:
@@ -151,8 +151,8 @@ class MembershipService:
         return {"status": "SUCCESS", "message": f"Plan '{plan_id}' deleted."}
 
     @staticmethod
-    def get_membership_by_customer(db: Session, customer_id: str) -> Optional[Membership]:
-        return db.query(Membership).filter(Membership.customer_id == customer_id).order_by(Membership.created_at.desc()).first()
+    def get_membership_by_student(db: Session, student_id: str) -> Optional[Membership]:
+        return db.query(Membership).filter(Membership.student_id == student_id).order_by(Membership.created_at.desc()).first()
 
     @staticmethod
     def get_expiring_memberships(db: Session) -> List[Membership]:
@@ -183,9 +183,9 @@ class MembershipService:
 
     @staticmethod
     def assign_membership(db: Session, data: dict) -> Membership:
-        customer_id = data.get("customer_id")
-        if not customer_id:
-            raise ValueError("customer_id is required for membership assignment")
+        student_id = data.get("student_id")
+        if not student_id:
+            raise ValueError("student_id is required for membership assignment")
 
         plan_name, price, duration_days = MembershipService._resolve_plan(db, data)
         paid_amount = float(data.get("paid_amount")) if data.get("paid_amount") is not None else price
@@ -215,7 +215,7 @@ class MembershipService:
 
         mem = Membership(
             id=mem_id,
-            customer_id=customer_id,
+            student_id=student_id,
             plan_name=plan_name,
             plan_type=plan_type,
             status="ACTIVE",
@@ -234,8 +234,8 @@ class MembershipService:
         return mem
 
     @staticmethod
-    def renew_membership(db: Session, customer_id: str, data: dict) -> Membership:
-        mem = db.query(Membership).filter(Membership.customer_id == customer_id).order_by(Membership.created_at.desc()).first()
+    def renew_membership(db: Session, student_id: str, data: dict) -> Membership:
+        mem = db.query(Membership).filter(Membership.student_id == student_id).order_by(Membership.created_at.desc()).first()
         now = now_ist_naive()
 
         if mem:
@@ -290,5 +290,5 @@ class MembershipService:
             db.refresh(mem)
             return mem
         else:
-            data["customer_id"] = customer_id
+            data["student_id"] = student_id
             return MembershipService.assign_membership(db, data)

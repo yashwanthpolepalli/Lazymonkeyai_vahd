@@ -8,8 +8,8 @@ import { apiClient } from '@/services/apiClient';
 import { cn } from '@/utils/cn';
 
 interface RecentCheckin {
-  customer_id: string;
-  customer_name: string;
+  student_id: string;
+  student_name: string;
   avatar: string;
   event_type: string;
   direction: string;
@@ -47,10 +47,10 @@ function eventBadgeVariant(event_type: string): 'brand' | 'success' | 'ai' | 'wa
 function eventBadgeLabel(event_type: string, direction: string): string {
   const t = (event_type || '').toLowerCase();
   const dir = (direction || '').toLowerCase();
-  if (t.includes('face'))        return 'Face Recognition';
-  if (t.includes('finger'))      return 'Fingerprint';
+  if (t.includes('face')) return 'Face Recognition';
+  if (t.includes('finger')) return 'Fingerprint';
   if (t.includes('rfid') || t.includes('card')) return 'RFID Card';
-  if (dir === 'check_out')       return 'Check-Out';
+  if (dir === 'check_out') return 'Check-Out';
   return 'Check-In';
 }
 
@@ -75,18 +75,18 @@ export function AttendancePage() {
     return () => { isMounted = false; };
   }, []);
 
-  // Hourly chart — all 24 hours from DB (supports 24/7 gyms)
-  const hourlyData   = analytics?.hourly_data   ?? [];
+  // Hourly chart — all 24 hours from DB (supports 24/7 vahds)
+  const hourlyData = analytics?.hourly_data ?? [];
   const hourlyLabels = analytics?.hourly_labels ?? [];
 
   // Weekly trend — 7-day daily count from DB
-  const weeklyData   = analytics?.weekly_data   ?? [];
+  const weeklyData = analytics?.weekly_data ?? [];
   const weeklyLabels = analytics?.weekly_labels ?? [];
 
   // KPIs from DB
   const todayCheckins = analytics?.today_checkins ?? 0;
-  const peakHour      = analytics?.peak_hour      ?? '—';
-  const avgDuration   = analytics?.avg_duration   ?? '—';
+  const peakHour = analytics?.peak_hour ?? '—';
+  const avgDuration = analytics?.avg_duration ?? '—';
 
   // Recent check-in events from DB
   const recentCheckins = analytics?.recent_checkins ?? [];
@@ -140,7 +140,7 @@ export function AttendancePage() {
             </div>
             <div className="text-2xl font-bold text-navy-900">
               {recentCheckins.length > 0
-                ? new Set(recentCheckins.map(r => r.customer_id)).size
+                ? new Set(recentCheckins.map(r => r.student_id)).size
                 : 0}
             </div>
             <div className="text-xs text-navy-400 mt-1">Unique members (recent)</div>
@@ -197,14 +197,14 @@ export function AttendancePage() {
         ) : (
           <div className="space-y-2">
             {recentCheckins.map((r, i) => {
-              const initials = (r.customer_name || '?').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+              const initials = (r.student_name || '?').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
               return (
-                <div key={`${r.customer_id}-${i}`} className="flex items-center gap-3 p-2 rounded-xl hover:bg-navy-50 transition-colors">
+                <div key={`${r.student_id}-${i}`} className="flex items-center gap-3 p-2 rounded-xl hover:bg-navy-50 transition-colors">
                   <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
                     {initials}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-semibold text-navy-900 truncate">{r.customer_name}</div>
+                    <div className="text-sm font-semibold text-navy-900 truncate">{r.student_name}</div>
                     <div className="text-xs text-navy-400 truncate">{r.device_name}</div>
                   </div>
                   <Badge variant={eventBadgeVariant(r.event_type)}>

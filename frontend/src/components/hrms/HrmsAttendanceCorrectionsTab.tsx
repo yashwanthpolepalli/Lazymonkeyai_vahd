@@ -7,7 +7,7 @@ import {
   type AttendanceCorrectionStats,
   type EmployeeItem,
 } from '@/services/hrmsApi';
-import { membersApi, type CustomerView } from '@/services/membersApi';
+import { membersApi, type studentView } from '@/services/membersApi';
 
 interface HrmsAttendanceCorrectionsTabProps {
   onSuccessToast?: (msg: string) => void;
@@ -45,7 +45,7 @@ export function HrmsAttendanceCorrectionsTab({ onSuccessToast }: HrmsAttendanceC
 
   // Directory for quick selection in modal
   const [employees, setEmployees] = useState<EmployeeItem[]>([]);
-  const [students, setStudents] = useState<CustomerView[]>([]);
+  const [students, setStudents] = useState<studentView[]>([]);
 
   // Modals
   const [showAddModal, setShowAddModal] = useState<boolean>(false);
@@ -82,7 +82,7 @@ export function HrmsAttendanceCorrectionsTab({ onSuccessToast }: HrmsAttendanceC
   // Fetch real employees and students for dropdown selection
   useEffect(() => {
     hrmsApi.getEmployees().then(setEmployees).catch(() => setEmployees([]));
-    membersApi.getCustomers().then(setStudents).catch(() => setStudents([]));
+    membersApi.getstudents().then(setStudents).catch(() => setStudents([]));
   }, []);
 
   // Fetch correction records & statistics
@@ -255,7 +255,7 @@ export function HrmsAttendanceCorrectionsTab({ onSuccessToast }: HrmsAttendanceC
           person_code: emp.code || '',
           designation: emp.designation || '',
           department: emp.department || '',
-          district: emp.gym_branch || prev.district,
+          district: emp.vahd_branch || prev.district,
         }));
       }
     } else {
@@ -483,8 +483,8 @@ export function HrmsAttendanceCorrectionsTab({ onSuccessToast }: HrmsAttendanceC
               className="w-full bg-slate-50/70 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 outline-none focus:border-purple-500 focus:bg-white transition cursor-pointer"
             >
               <option value="ALL">👥 All (Students &amp; Employees)</option>
-              <option value="EMPLOYEE">👨‍💼 Employees &amp; Staff Only</option>
-              <option value="STUDENT">🎓 Students Only</option>
+              <option value="EMPLOYEE"> Employees &amp; Staff Only</option>
+              <option value="STUDENT">Students Only</option>
             </select>
           </div>
 
@@ -888,8 +888,8 @@ export function HrmsAttendanceCorrectionsTab({ onSuccessToast }: HrmsAttendanceC
                           isApproved
                             ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                             : rec.status === 'Rejected'
-                            ? "bg-rose-50 text-rose-700 border-rose-200"
-                            : "bg-amber-50 text-amber-700 border-amber-200"
+                              ? "bg-rose-50 text-rose-700 border-rose-200"
+                              : "bg-amber-50 text-amber-700 border-amber-200"
                         )}>
                           {rec.status}
                         </span>
@@ -982,7 +982,7 @@ export function HrmsAttendanceCorrectionsTab({ onSuccessToast }: HrmsAttendanceC
                       : "text-slate-600 hover:text-slate-900"
                   )}
                 >
-                  👨‍💼 Employee / Trainer
+                  👨‍💼 Employee / employee
                 </button>
                 <button
                   type="button"
@@ -1021,15 +1021,15 @@ export function HrmsAttendanceCorrectionsTab({ onSuccessToast }: HrmsAttendanceC
                   <option value="">-- Choose or Enter Manually Below --</option>
                   {newForm.person_type === 'EMPLOYEE'
                     ? employees.map((emp) => (
-                        <option key={emp.id} value={emp.id}>
-                          {emp.full_name || `${emp.first_name} ${emp.last_name || ''}`} ({emp.code || 'EMP'}) - {emp.designation || 'Staff'}
-                        </option>
-                      ))
+                      <option key={emp.id} value={emp.id}>
+                        {emp.full_name || `${emp.first_name} ${emp.last_name || ''}`} ({emp.code || 'EMP'}) - {emp.designation || 'Staff'}
+                      </option>
+                    ))
                     : students.map((st) => (
-                        <option key={st.id} value={st.id}>
-                          {st.name} ({st.member_id || 'STU'})
-                        </option>
-                      ))}
+                      <option key={st.id} value={st.id}>
+                        {st.name} ({st.member_id || 'STU'})
+                      </option>
+                    ))}
                 </select>
               </div>
 

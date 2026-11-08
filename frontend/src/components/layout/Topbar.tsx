@@ -26,14 +26,14 @@ export function Topbar() {
   const [showOrgDropdown, setShowOrgDropdown] = useState(false);
   const [topbarOrgs, setTopbarOrgs] = useState<Array<{ id: string; name: string; branch: string; city: string }>>([]);
   const [selectedTopbarOrg, setSelectedTopbarOrg] = useState<string>(() => localStorage.getItem('vahd_selected_org_id') || 'all');
-  const [items, setItems] = useState(() => (user ? getNavItems(user.role) : []));
+  const [items, setItems] = useState(() => (user ? getNavItems(user.role, user.permissions) : []));
   const [liveLeads, setLiveLeads] = useState<LiveLeadNotification[]>(() => getStoredLeads());
   const [systemNotifs, setSystemNotifs] = useState<SystemNotificationItem[]>([]);
   const [toastAlert, setToastAlert] = useState<LiveLeadNotification | null>(null);
 
   useEffect(() => {
     const updateItems = () => {
-      if (user) setItems(getNavItems(user.role));
+      if (user) setItems(getNavItems(user.role, user.permissions));
     };
     updateItems();
     window.addEventListener('vahd_modules_changed', updateItems);
@@ -44,7 +44,7 @@ export function Topbar() {
     };
   }, [user]);
 
-  // Real-time Lead Notification & Audio Beep Listener for Super Admin / Gym Owners
+  // Real-time Lead Notification & Audio Beep Listener for Super Admin / vahd Owners
   useEffect(() => {
     const handleNewLeadEvent = (e: any) => {
       const lead = e.detail as LiveLeadNotification;
@@ -70,14 +70,17 @@ export function Topbar() {
               setToastAlert((curr) => (curr?.id === parsed.lead.id ? null : curr));
             }, 8000);
           }
-        } catch (err) {}
+        } catch (err) { }
       }
     };
 
-    // Polling from backend API for live notifications
+    // Polling from backend API for live notifications (with single flight guard and 5s timeout)
+    let isPolling = false;
     const pollBackendLive = async () => {
+      if (isPolling) return;
+      isPolling = true;
       try {
-        const live = await apiClient.get<any[]>('/system/notifications/live').catch(() => []);
+        const live = await apiClient.get<any[]>('/system/notifications/live', { timeout: 5000 }).catch(() => []);
         if (Array.isArray(live)) {
           setSystemNotifs(
             live.map((n: any) => ({
@@ -90,7 +93,9 @@ export function Topbar() {
             }))
           );
         }
-      } catch (e) {}
+      } catch (e) { } finally {
+        isPolling = false;
+      }
     };
 
     pollBackendLive();
@@ -108,7 +113,26 @@ export function Topbar() {
   useEffect(() => {
     const fetchOrgs = async () => {
       try {
-        if (user?.role === 'ho') {
+        if (user?.role === 'super_admin') {
+          const res = await apiClient.get<any[]>('/superadmin/vahds');
+          if (Array.isArray(res)) {
+            const seen = new Set<string>();
+            const unique: typeof topbarOrgs = [];
+            for (const h of res) {
+              const id = h.ho_id || h.id;
+              if (id && !seen.has(id)) {
+                seen.add(id);
+                unique.push({
+                  id: id,
+                  name: h.name || 'Head Office',
+                  branch: h.branch_name || 'HQ',
+                  city: h.city || '',
+                });
+              }
+            }
+            setTopbarOrgs(unique);
+          }
+        } else if (user?.role === 'ho') {
           const res = await apiClient.get<any>('/ho/organizations');
           if (res?.organizations) {
             const seen = new Set<string>();
@@ -118,7 +142,7 @@ export function Topbar() {
                 seen.add(o.id);
                 unique.push({
                   id: o.id,
-                  name: o.gym_name || o.name || 'Organization',
+                  name: o.vahd_name || o.name || 'Organization',
                   branch: o.branch_name || o.branch || '',
                   city: o.city || '',
                 });
@@ -136,7 +160,7 @@ export function Topbar() {
                 seen.add(b.id);
                 unique.push({
                   id: b.id,
-                  name: b.gym_name || b.name || 'Branch',
+                  name: b.vahd_name || b.name || 'Branch',
                   branch: b.branch_name || b.branch || '',
                   city: b.city || '',
                 });
@@ -145,7 +169,7 @@ export function Topbar() {
             setTopbarOrgs(unique);
           }
         }
-      } catch (e) {}
+      } catch (e) { }
     };
     fetchOrgs();
 
@@ -168,9 +192,7 @@ export function Topbar() {
     ho: 'Head Office (HO)',
     owner: 'Owner',
     employee: 'Employee',
-    trainer: 'Employee',
     student: 'Student',
-    customer: 'Student',
   };
   const roleLabel = roleLabelMap[user?.role || 'owner'] || 'Owner';
 
@@ -201,7 +223,7 @@ export function Topbar() {
               </div>
               <p className="text-sm font-black text-white">{toastAlert.name}</p>
               <p className="text-xs font-semibold text-slate-300">
-                Gym: <strong>{toastAlert.gymName || 'Gym Lead'}</strong> • Plan: <span className="text-orange-400">{toastAlert.plan || 'Free Trial'}</span>
+                vahd: <strong>{toastAlert.vahdName || 'vahd Lead'}</strong> • Plan: <span className="text-orange-400">{toastAlert.plan || 'Free Trial'}</span>
               </p>
               <p className="text-xs text-slate-400 flex items-center gap-2 pt-0.5">
                 <span>📞 {toastAlert.phone}</span>
@@ -220,86 +242,99 @@ export function Topbar() {
 
       {/* Top Header Row */}
       <div className="h-16 flex items-center justify-between px-3 sm:px-4 gap-4 border-b border-slate-100 w-full">
-        {/* Left: Brand Logo & Gym Location Selector */}
+        {/* Left: Brand Logo & vahd Location Selector */}
         <div className="flex items-center gap-4 min-w-0">
           <Logo size="sm" />
 
-          {/* Interactive Organization Selector Dropdown */}
-          <div className="relative">
-            <button
-              onClick={() => setShowOrgDropdown(!showOrgDropdown)}
-              className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-800 hover:bg-slate-100 cursor-pointer transition-colors"
-            >
-              <Icon name="map-pin" size={14} className="text-purple-600" />
-              <span className="truncate max-w-[200px]">
-                {(() => {
-                  if (selectedTopbarOrg === 'all') {
-                    return user?.role === 'ho' ? 'All Organizations (HQ)' : user?.gymName || 'All Branches';
-                  }
-                  const match = topbarOrgs.find((o) => o.id === selectedTopbarOrg);
-                  if (match) {
-                    return match.branch && match.branch.toLowerCase() !== match.name.toLowerCase()
-                      ? `${match.name} - ${match.branch}`
-                      : match.name;
-                  }
-                  return user?.gymName || 'Selected Organization';
-                })()}
+          {/* Organization Badge for Students/Employees vs Switcher for Admin/HO/Owners */}
+          {user?.role === 'student' || user?.role === 'employee' ? (
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-purple-50/80 border border-purple-200 text-xs font-bold text-purple-900 shadow-xs">
+              <Icon name="map-pin" size={14} className="text-purple-600 shrink-0" />
+              <span className="truncate max-w-[220px]" title={user?.vahdName || user?.branchName || 'Enrolled Organization'}>
+                {user?.vahdName || user?.branchName || (user as any)?.organization_name || (user as any)?.vahd_name || 'Assigned Organization'}
               </span>
-              <Icon name="chevron-down" size={12} className="text-slate-400 shrink-0" />
-            </button>
+            </div>
+          ) : (
+            <div className="relative">
+              <button
+                onClick={() => setShowOrgDropdown(!showOrgDropdown)}
+                className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-800 hover:bg-slate-100 cursor-pointer transition-colors"
+              >
+                <Icon name="map-pin" size={14} className="text-purple-600" />
+                <span className="truncate max-w-[200px]">
+                  {(() => {
+                    if (selectedTopbarOrg === 'all') {
+                      return user?.role === 'super_admin'
+                        ? 'All Head Offices'
+                        : user?.role === 'ho'
+                          ? 'All Organizations (HQ)'
+                          : user?.vahdName || 'All Branches';
+                    }
+                    const match = topbarOrgs.find((o) => o.id === selectedTopbarOrg);
+                    if (match) {
+                      return match.branch && match.branch.toLowerCase() !== match.name.toLowerCase()
+                        ? `${match.name} - ${match.branch}`
+                        : match.name;
+                    }
+                    return user?.role === 'super_admin'
+                      ? 'All Head Offices'
+                      : user?.vahdName || 'All Organizations';
+                  })()}
+                </span>
+                <Icon name="chevron-down" size={12} className="text-slate-400 shrink-0" />
+              </button>
 
-            {showOrgDropdown && (
-              <div className="absolute left-0 top-11 w-64 bg-white rounded-2xl p-2 z-50 shadow-2xl border border-slate-200 text-xs animate-in fade-in slide-in-from-top-1 duration-150">
-                <p className="px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-slate-400">
-                  Switch Organization
-                </p>
-                <div className="space-y-0.5 max-h-56 overflow-y-auto">
-                  <button
-                    onClick={() => {
-                      setSelectedTopbarOrg('all');
-                      localStorage.setItem('vahd_selected_org_id', 'all');
-                      window.dispatchEvent(new CustomEvent('vahd:org_changed', { detail: { id: 'all' } }));
-                      setShowOrgDropdown(false);
-                    }}
-                    className={`w-full flex items-center justify-between p-2 rounded-xl text-left ${
-                      selectedTopbarOrg === 'all'
-                        ? 'bg-purple-50 text-purple-900 font-extrabold'
-                        : 'hover:bg-slate-50 text-slate-700 font-medium'
-                    }`}
-                  >
-                    <span>All Organizations</span>
-                    {selectedTopbarOrg === 'all' && <Icon name="check" size={13} className="text-purple-600" />}
-                  </button>
-                  {topbarOrgs.map((o) => (
+              {showOrgDropdown && (
+                <div className="absolute left-0 top-11 w-64 bg-white rounded-2xl p-2 z-50 shadow-2xl border border-slate-200 text-xs animate-in fade-in slide-in-from-top-1 duration-150">
+                  <p className="px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                    {user?.role === 'super_admin' ? 'Filter by Head Office' : 'Switch Organization'}
+                  </p>
+                  <div className="space-y-0.5 max-h-56 overflow-y-auto">
                     <button
-                      key={o.id}
                       onClick={() => {
-                        setSelectedTopbarOrg(o.id);
-                        localStorage.setItem('vahd_selected_org_id', o.id);
-                        window.dispatchEvent(new CustomEvent('vahd:org_changed', { detail: { id: o.id } }));
+                        setSelectedTopbarOrg('all');
+                        localStorage.setItem('vahd_selected_org_id', 'all');
+                        window.dispatchEvent(new CustomEvent('vahd:org_changed', { detail: { id: 'all' } }));
                         setShowOrgDropdown(false);
                       }}
-                      className={`w-full flex items-center justify-between p-2 rounded-xl text-left ${
-                        selectedTopbarOrg === o.id
+                      className={`w-full flex items-center justify-between p-2 rounded-xl text-left ${selectedTopbarOrg === 'all'
+                        ? 'bg-purple-50 text-purple-900 font-extrabold'
+                        : 'hover:bg-slate-50 text-slate-700 font-medium'
+                        }`}
+                    >
+                      <span>{user?.role === 'super_admin' ? 'All Head Offices' : 'All Organizations'}</span>
+                      {selectedTopbarOrg === 'all' && <Icon name="check" size={13} className="text-purple-600" />}
+                    </button>
+                    {topbarOrgs.map((o) => (
+                      <button
+                        key={o.id}
+                        onClick={() => {
+                          setSelectedTopbarOrg(o.id);
+                          localStorage.setItem('vahd_selected_org_id', o.id);
+                          window.dispatchEvent(new CustomEvent('vahd:org_changed', { detail: { id: o.id } }));
+                          setShowOrgDropdown(false);
+                        }}
+                        className={`w-full flex items-center justify-between p-2 rounded-xl text-left ${selectedTopbarOrg === o.id
                           ? 'bg-purple-50 text-purple-900 font-extrabold'
                           : 'hover:bg-slate-50 text-slate-700 font-medium'
-                      }`}
-                    >
-                      <div className="truncate">
-                        <p className="font-bold truncate">{o.name}</p>
-                        <p className="text-[10px] text-slate-400 truncate">
-                          {o.branch} • {o.city}
-                        </p>
-                      </div>
-                      {selectedTopbarOrg === o.id && (
-                        <Icon name="check" size={13} className="text-purple-600 shrink-0 ml-1" />
-                      )}
-                    </button>
-                  ))}
+                          }`}
+                      >
+                        <div className="truncate">
+                          <p className="font-bold truncate">{o.name}</p>
+                          <p className="text-[10px] text-slate-400 truncate">
+                            {o.branch} • {o.city}
+                          </p>
+                        </div>
+                        {selectedTopbarOrg === o.id && (
+                          <Icon name="check" size={13} className="text-purple-600 shrink-0 ml-1" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Center: Search Bar */}
@@ -369,7 +404,7 @@ export function Topbar() {
                           <span className="text-[10px] text-orange-700 font-bold">{lead.timestamp}</span>
                         </div>
                         <p className="text-[11px] font-bold text-slate-700">
-                          {lead.gymName || 'Lead'} • <span className="text-orange-600">{lead.plan || 'Inquiry'}</span>
+                          {lead.vahdName || 'Lead'} • <span className="text-orange-600">{lead.plan || 'Inquiry'}</span>
                         </p>
                         <div className="flex items-center justify-between text-[10px] text-slate-500 font-medium">
                           <span>📞 {lead.phone}</span>
@@ -454,7 +489,7 @@ export function Topbar() {
                 />
               ) : (
                 <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-600 text-white font-extrabold text-xs flex items-center justify-center border border-purple-200/80 shadow-2xs uppercase">
-                  {(user?.name || user?.email?.split('@')[0] || 'User')
+                  {(user?.name || user?.email?.split('@')[0] || '')
                     .split(' ')
                     .filter(Boolean)
                     .map((n) => n[0])
@@ -464,7 +499,7 @@ export function Topbar() {
                 </div>
               )}
               <div className="hidden sm:flex flex-col items-start leading-tight">
-                <span className="text-xs font-extrabold text-slate-900">{user?.name || user?.email?.split('@')[0] || 'User'}</span>
+                <span className="text-xs font-extrabold text-slate-900">{user?.name || user?.email?.split('@')[0] || ''}</span>
                 <span className="text-[10px] font-medium text-slate-400">{roleLabel}</span>
               </div>
               <Icon name="chevron-down" size={14} className="text-slate-400 hidden sm:block" />
@@ -473,13 +508,22 @@ export function Topbar() {
             {showProfile && (
               <div className="absolute right-0 top-12 w-56 bg-white rounded-2xl p-2 animate-slide-up z-50 shadow-xl border border-slate-100">
                 <div className="px-3 py-2 border-b border-slate-100 mb-1">
-                  <div className="text-xs font-extrabold text-slate-900">{user?.name || user?.email?.split('@')[0] || 'User'}</div>
-                  <div className="text-[11px] text-slate-400">{user?.email || 'user@lazymonkey.com'}</div>
+                  <div className="text-xs font-extrabold text-slate-900">{user?.name || user?.email?.split('@')[0] || ''}</div>
+                  <div className="text-[11px] text-slate-400">{user?.email || ''}</div>
                 </div>
                 <button
                   onClick={() => {
                     setShowProfile(false);
-                    navigate(user?.role === 'customer' ? '/app/profile' : `/${user?.role || 'owner'}/settings`);
+                    const role = (user?.role || '').toLowerCase();
+                    let profilePath = `/${role || 'owner'}/settings?tab=general`;
+                    if (role === 'super_admin') {
+                      profilePath = '/super-admin/settings?tab=general';
+                    } else if (role === 'student') {
+                      profilePath = '/app/profile';
+                    } else if (role === 'employee' || role === 'staff') {
+                      profilePath = '/employee/profile';
+                    }
+                    navigate(profilePath);
                   }}
                   className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors flex items-center gap-2"
                 >
@@ -489,7 +533,16 @@ export function Topbar() {
                 <button
                   onClick={() => {
                     setShowProfile(false);
-                    navigate(`/${user?.role || 'owner'}/settings`);
+                    const role = (user?.role || '').toLowerCase();
+                    let settingsPath = `/${role || 'owner'}/settings`;
+                    if (role === 'super_admin') {
+                      settingsPath = '/super-admin/settings';
+                    } else if (role === 'student') {
+                      settingsPath = '/app/profile';
+                    } else if (role === 'employee' || role === 'staff') {
+                      settingsPath = '/employee/profile';
+                    }
+                    navigate(settingsPath);
                   }}
                   className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors flex items-center gap-2"
                 >
@@ -519,7 +572,8 @@ export function Topbar() {
               to={item.path}
               end={
                 item.path === '/owner' ||
-                item.path === '/trainer' ||
+                item.path === '/ho' ||
+                item.path === '/employee' ||
                 item.path === '/app' ||
                 item.path === '/super-admin'
               }

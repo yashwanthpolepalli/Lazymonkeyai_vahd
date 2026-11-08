@@ -10,7 +10,7 @@ interface EmployeeOverviewItem {
   phone: string;
   designation: string;
   department: string;
-  gym_branch?: string;
+  vahd_branch?: string;
   branch_id?: string;
   total_working_days: number;
   days_present: number;
@@ -40,7 +40,7 @@ interface EmailLogItem {
   employee_code: string;
   email: string;
   branch_id?: string;
-  gym_branch?: string;
+  vahd_branch?: string;
   year: number;
   month: number;
   month_name: string;
@@ -304,11 +304,10 @@ export function EmployeeAttendanceReportsModal({ isOpen, onClose, branchId }: Pr
           <div className="flex items-center gap-2">
             <button
               onClick={() => setActiveTab('delivery')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-                activeTab === 'delivery'
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${activeTab === 'delivery'
                   ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
                   : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-              }`}
+                }`}
             >
               <Icon name="users" size={14} />
               <span>1. Employee Delivery Status Tracker</span>
@@ -316,11 +315,10 @@ export function EmployeeAttendanceReportsModal({ isOpen, onClose, branchId }: Pr
 
             <button
               onClick={() => setActiveTab('logs')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-                activeTab === 'logs'
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${activeTab === 'logs'
                   ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
                   : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-              }`}
+                }`}
             >
               <Icon name="file-text" size={14} />
               <span>2. Email Dispatch Audit Logs</span>
@@ -383,11 +381,10 @@ export function EmployeeAttendanceReportsModal({ isOpen, onClose, branchId }: Pr
                   <button
                     key={f.key}
                     onClick={() => setStatusFilter(f.key as any)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                      statusFilter === f.key
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${statusFilter === f.key
                         ? 'bg-slate-900 text-white shadow-xs'
                         : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-                    }`}
+                      }`}
                   >
                     {f.label}
                   </button>
@@ -479,13 +476,12 @@ export function EmployeeAttendanceReportsModal({ isOpen, onClose, branchId }: Pr
                           {/* Score % */}
                           <td className="py-3.5 px-4 text-center">
                             <span
-                              className={`px-2 py-0.5 rounded-full text-[11px] font-extrabold ${
-                                emp.attendance_percentage >= 75
+                              className={`px-2 py-0.5 rounded-full text-[11px] font-extrabold ${emp.attendance_percentage >= 75
                                   ? 'bg-emerald-100 text-emerald-800'
                                   : emp.attendance_percentage >= 60
-                                  ? 'bg-amber-100 text-amber-800'
-                                  : 'bg-rose-100 text-rose-800'
-                              }`}
+                                    ? 'bg-amber-100 text-amber-800'
+                                    : 'bg-rose-100 text-rose-800'
+                                }`}
                             >
                               {emp.attendance_percentage}%
                             </span>
@@ -536,11 +532,10 @@ export function EmployeeAttendanceReportsModal({ isOpen, onClose, branchId }: Pr
                               <button
                                 onClick={() => handleDispatchSingle(emp)}
                                 disabled={isBusy}
-                                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1 border transition-all ${
-                                  isSent
+                                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1 border transition-all ${isSent
                                     ? 'bg-slate-50 text-slate-600 hover:bg-slate-100 border-slate-200'
                                     : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border-indigo-200'
-                                }`}
+                                  }`}
                                 title="Send monthly statement email to employee"
                               >
                                 <Icon name="mail" size={12} className={isBusy ? 'animate-spin' : ''} />
@@ -637,11 +632,10 @@ export function EmployeeAttendanceReportsModal({ isOpen, onClose, branchId }: Pr
                         </td>
                         <td className="py-3 px-4 text-center">
                           <span
-                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
-                              log.delivery_status === 'SENT'
+                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${log.delivery_status === 'SENT'
                                 ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
                                 : 'bg-rose-100 text-rose-800 border border-rose-300'
-                            }`}
+                              }`}
                           >
                             {log.delivery_status}
                           </span>
@@ -717,17 +711,16 @@ export function EmployeeAttendanceReportsModal({ isOpen, onClose, branchId }: Pr
                       <td className="py-2.5 px-3 text-slate-500">{r.weekday}</td>
                       <td className="py-2.5 px-3">
                         <span
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
-                            r.status === 'PRESENT'
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${r.status === 'PRESENT'
                               ? 'bg-emerald-100 text-emerald-800'
                               : r.status === 'LEAVE'
-                              ? 'bg-indigo-100 text-indigo-800'
-                              : r.status === 'SUNDAY'
-                              ? 'bg-slate-100 text-slate-600'
-                              : r.status === 'UPCOMING'
-                              ? 'bg-slate-50 text-slate-400'
-                              : 'bg-rose-100 text-rose-800'
-                          }`}
+                                ? 'bg-indigo-100 text-indigo-800'
+                                : r.status === 'SUNDAY'
+                                  ? 'bg-slate-100 text-slate-600'
+                                  : r.status === 'UPCOMING'
+                                    ? 'bg-slate-50 text-slate-400'
+                                    : 'bg-rose-100 text-rose-800'
+                            }`}
                         >
                           {r.status}
                         </span>

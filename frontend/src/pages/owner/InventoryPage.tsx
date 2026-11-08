@@ -485,17 +485,17 @@ export function InventoryPage({ embedded, onNavigateToPos }: InventoryPageProps 
 
   const [localVisibleColumns, setLocalVisibleColumns] = useState<string[]>(() => {
     try {
-      const saved = localStorage.getItem('inventory_visible_columns_v6') || localStorage.getItem('gym_inventory_visible_columns_v6');
+      const saved = localStorage.getItem('inventory_visible_columns_v6') || localStorage.getItem('vahd_inventory_visible_columns_v6');
       if (saved) return JSON.parse(saved);
-    } catch {}
+    } catch { }
     return defaultLocalVisible;
   });
 
   const [masterVisibleColumns, setMasterVisibleColumns] = useState<string[]>(() => {
     try {
-      const saved = localStorage.getItem('master_catalog_visible_columns_v6') || localStorage.getItem('gym_master_catalog_visible_columns_v6');
+      const saved = localStorage.getItem('master_catalog_visible_columns_v6') || localStorage.getItem('vahd_master_catalog_visible_columns_v6');
       if (saved) return JSON.parse(saved);
-    } catch {}
+    } catch { }
     return defaultMasterVisible;
   });
 
@@ -638,7 +638,7 @@ export function InventoryPage({ embedded, onNavigateToPos }: InventoryPageProps 
         if (Array.isArray(invRes)) setItems(invRes);
         if (Array.isArray(schRes)) setFreeSchemes(schRes);
       })
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setLoading(false));
   };
 
@@ -2854,7 +2854,7 @@ export function InventoryPage({ embedded, onNavigateToPos }: InventoryPageProps 
                     />
                     <div>
                       <span className="font-bold text-slate-900 block">Publish to Online Storefront</span>
-                      <span className="text-[10px] text-slate-400">Makes product visible on gym mobile app & web store</span>
+                      <span className="text-[10px] text-slate-400">Makes product visible on vahd mobile app & web store</span>
                     </div>
                   </label>
 
@@ -2921,7 +2921,7 @@ export function InventoryPage({ embedded, onNavigateToPos }: InventoryPageProps 
                       rows={4}
                       value={form.long_description}
                       onChange={(e) => setForm({ ...form, long_description: e.target.value })}
-                      placeholder="Detailed product ingredients, instructions, and gym usage guidelines..."
+                      placeholder="Detailed product ingredients, instructions, and vahd usage guidelines..."
                       className="w-full px-3.5 py-2 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-purple-500"
                     />
                   </div>

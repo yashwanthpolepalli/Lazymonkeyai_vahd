@@ -1,16 +1,18 @@
-from fastapi import APIRouter, HTTPException, Body
+from fastapi import APIRouter, HTTPException, Body, Depends
+from sqlalchemy.orm import Session
+from src.database.session import get_db
+from src.models.settings import vahdBranch
 from src.api.v1.auth import router as auth_router
-from src.api.v1.customers import router as customers_router, members_router, crm_customers_router, students_router
+from src.api.v1.students import router as students_main_router, members_router, crm_students_router, students_router as students_reports_router
 from src.api.v1.courses import router as courses_router
 from src.api.v1.biometrics import router as biometrics_router
 from src.api.v1.super_admin import router as super_admin_router
 from src.api.v1.dashboard import router as dashboard_router
-from src.api.v1.trainers import router as trainers_router
+from src.api.v1.employees import router as employees_router
 from src.api.v1.payroll import router as payroll_router
 from src.api.v1.plans import router as plans_router
 from src.api.v1.settings import router as settings_router
-from src.api.v1.ai_coach import router as ai_coach_router
-from src.api.v1.customer_portal import router as customer_portal_router
+from src.api.v1.student_portal import router as student_portal_router
 from src.api.v1.hrms import router as hrms_router
 from src.api.v1.hrms_payroll import router as hrms_payroll_router
 from src.api.v1.inventory import router as inventory_router
@@ -25,23 +27,30 @@ from src.api.v1.reviews import router as reviews_router
 from src.api.v1.procurement import router as procurement_router
 from src.api.v1.ho import router as ho_router
 
-api_router = APIRouter()
+from src.api.deps import apply_tenant_scope
+
+# Global Phase-2 tenancy enforcement: apply_tenant_scope runs as a router-level
+# dependency on EVERY route, so the request's tenant scope (contextvar consumed
+# by TenantSession) is always set from the JWT — even for the hundreds of
+# endpoints that never declare get_current_user themselves.
+api_router = APIRouter(dependencies=[Depends(apply_tenant_scope)])
 api_router.include_router(ho_router)
 api_router.include_router(auth_router)
-api_router.include_router(customers_router)
-api_router.include_router(students_router)
-api_router.include_router(crm_customers_router)
+api_router.include_router(students_main_router)
+api_router.include_router(students_reports_router)
+api_router.include_router(students_main_router, prefix="/students")
+api_router.include_router(students_reports_router, prefix="/students")
+api_router.include_router(crm_students_router)
 api_router.include_router(members_router)
 api_router.include_router(courses_router)
 api_router.include_router(biometrics_router)
 api_router.include_router(super_admin_router)
 api_router.include_router(dashboard_router)
-api_router.include_router(trainers_router)
+api_router.include_router(employees_router)
 api_router.include_router(payroll_router)
 api_router.include_router(plans_router)
 api_router.include_router(settings_router)
-api_router.include_router(ai_coach_router)
-api_router.include_router(customer_portal_router)
+api_router.include_router(student_portal_router)
 api_router.include_router(hrms_router)
 api_router.include_router(hrms_payroll_router)
 api_router.include_router(inventory_router)
@@ -58,33 +67,67 @@ api_router.include_router(procurement_router, prefix="/inventory")
 
 # System & Branches compatibility endpoints for multi-tenant switcher
 @api_router.get("/system/tenants")
-def list_system_tenants():
-    return [
-        {
+def list_system_tenants(db: Session = Depends(get_db)):
+    from src.models.erp import Company
+    from src.models.settings import Branch, Setting
+    comps = db.query(Company).filter(Company.status == "active").all()
+    if comps:
+        return [
+            {
+                "id": c.id,
+                "name": c.name or c.legal_name,
+                "slug": (c.name or c.legal_name or "").lower().replace(" ", "-"),
+                "industry": c.industry or "",
+                "status": c.status or "active",
+                "logo_url": c.logo_url
+            }
+            for c in comps
+        ]
+    branches = db.query(Branch).filter(Branch.is_active == True).all()
+    if branches:
+        items = []
+        seen = set()
+        for b in branches:
+            b_name = b.vahd_name or b.branch_name or b.name
+            if b_name and b_name not in seen:
+                seen.add(b_name)
+                items.append({
+                    "id": b.id,
+                    "name": b_name,
+                    "slug": b_name.lower().replace(" ", "-"),
+                    "industry": getattr(b, "plan_tier", None) or "",
+                    "status": "active" if b.is_active else "inactive",
+                    "logo_url": None
+                })
+        if items:
+            return items
+    setting = db.query(Setting).first()
+    org_name = (setting.name if setting and setting.name else "")
+    if org_name:
+        return [{
             "id": "default",
-            "name": "VAHD",
-            "slug": "vahd",
-            "industry": "Fitness & Wellness",
+            "name": org_name,
+            "slug": org_name.lower().replace(" ", "-"),
+            "industry": "",
             "status": "active",
             "logo_url": None
-        }
-    ]
+        }]
+    return []
 
 @api_router.get("/erp/branches")
 @api_router.get("/branches")
-def list_erp_branches():
-    return {
-        "items": [
-            {
-                "id": "br_01",
-                "name": "Main Branch",
-                "code": "MAIN",
-                "company_id": "default",
-                "status": "Active"
-            }
-        ],
-        "total": 1
-    }
+def list_erp_branches(db: Session = Depends(get_db)):
+    branches = db.query(vahdBranch).filter(vahdBranch.is_active == True).order_by(vahdBranch.branch_name.asc()).all()
+    items = []
+    for b in branches:
+        items.append({
+            "id": b.id,
+            "name": b.branch_name or b.vahd_name or "",
+            "code": getattr(b, "code", None) or b.id,
+            "company_id": b.ho_id or b.owner_id or "",
+            "status": "Active" if b.is_active else "Inactive"
+        })
+    return {"items": items, "total": len(items)}
 
 @api_router.post("/system/send-enrollment-email")
 def dispatch_enrollment_email_endpoint(payload: dict = Body(...)):

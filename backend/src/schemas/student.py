@@ -1,0 +1,44 @@
+from typing import Optional
+from pydantic import BaseModel, EmailStr
+from datetime import datetime
+
+class studentBase(BaseModel):
+    full_name: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    gender: Optional[str] = None
+    profile_image: Optional[str] = None
+    status: Optional[str] = None
+    owner_id: Optional[str] = None
+    branch_id: Optional[str] = None
+    qualification: Optional[str] = None
+    specialization: Optional[str] = None
+    meta_data: Optional[dict] = None
+
+class studentCreate(studentBase):
+    role: Optional[str] = "student"
+    assigned_employee_name: Optional[str] = None
+    membership_plan: Optional[str] = None
+    plan_price: Optional[float] = None
+    plan_duration_days: Optional[int] = None
+    payment_method: Optional[str] = None
+    primary_vahd_location: Optional[str] = None
+    branch: Optional[str] = None
+    start_date: Optional[str] = None
+    expiry_date: Optional[str] = None
+    is_face_enrolled: Optional[bool] = None
+    paid_amount: Optional[float] = None
+    due_amount: Optional[float] = None
+    invoice_number: Optional[str] = None
+    transaction_id: Optional[str] = None
+
+class studentResponse(studentBase):
+    id: str
+    user_id: str
+    employee_id: Optional[str] = None
+    owner_id: Optional[str] = None
+    branch_id: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True

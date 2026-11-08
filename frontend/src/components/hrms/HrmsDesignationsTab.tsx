@@ -31,7 +31,7 @@ export function HrmsDesignationsTab() {
     setViewMode(mode);
     try {
       localStorage.setItem('hrms_designations_view_mode', mode);
-    } catch {}
+    } catch { }
   };
 
   // Dynamic Career Levels State
@@ -263,12 +263,12 @@ export function HrmsDesignationsTab() {
       const updatedList = careerLevels.map((l) =>
         l.id === editingLevel.id
           ? {
-              ...l,
-              name: levelForm.name.trim(),
-              code: levelForm.code.trim() || levelForm.name.substring(0, 4).toUpperCase(),
-              color: levelForm.color,
-              description: levelForm.description.trim(),
-            }
+            ...l,
+            name: levelForm.name.trim(),
+            code: levelForm.code.trim() || levelForm.name.substring(0, 4).toUpperCase(),
+            color: levelForm.color,
+            description: levelForm.description.trim(),
+          }
           : l
       );
       saveCareerLevels(updatedList);
@@ -842,7 +842,7 @@ export function HrmsDesignationsTab() {
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Senior Fitness Trainer, Head Coach"
+                  placeholder="e.g. Senior Fitness employee, Head Coach"
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-navy-200 bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 font-medium"

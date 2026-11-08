@@ -1,7 +1,7 @@
 import { apiClient } from './apiClient';
 import type { Member } from '@/types/member';
 
-export interface CustomerView extends Partial<Member> {
+export interface studentView extends Partial<Member> {
   id: string;
   name: string;
   phone?: string;
@@ -13,7 +13,7 @@ export interface CustomerView extends Partial<Member> {
 export type { Member };
 
 export const membersApi = {
-  getCustomers: async (params?: Record<string, string>): Promise<Member[]> => {
+  getstudents: async (params?: Record<string, string>): Promise<Member[]> => {
     return membersApi.list(params);
   },
   list: async (params?: Record<string, string>): Promise<Member[]> => {
@@ -21,7 +21,7 @@ export const membersApi = {
     /* eslint-disable @typescript-eslint/no-explicit-any */
     let rawList: any[] = [];
     try {
-      const res = await apiClient.get<any[]>(`/customers${query}`);
+      const res = await apiClient.get<any[]>(`/students${query}`);
       rawList = Array.isArray(res) ? res : [];
     } catch (_err) {
       try {
@@ -43,34 +43,37 @@ export const membersApi = {
         ? (riskRaw as Member['risk'])
         : 'low';
 
+      const courseVal = item.course || item.specialization || item.qualification || item.membership || (typeof item.membership_plan === 'object' ? item.membership_plan?.planName : item.membership_plan) || 'General';
+      const parentPhone = item.parent_phone || item.meta_data?.parent_phone || '';
+
       return {
         id: item.id || '',
         name: item.name || item.full_name || '',
         email: item.email || '',
         phone: item.phone || '',
         avatar: item.avatar || item.profile_image || '',
-        membership: item.membership || (typeof item.membership_plan === 'object' ? item.membership_plan?.planName : item.membership_plan) || '',
+        membership: courseVal,
+        course: courseVal,
+        parent_phone: parentPhone,
         status,
         attendance: Number(item.attendance) || 0,
         lastVisit: item.lastVisit || '',
         expiry: item.expiry || '',
         revenue: item.revenue || '',
         risk,
-        branch: item.branch || '',
+        branch: item.branch || item.primary_vahd_location || '',
+        branch_id: item.branch_id || item.primary_vahd_location || '',
+        ho_id: item.ho_id || '',
         joinDate: item.joinDate || item.created_at || '',
         age: Number(item.age) || 0,
         gender: item.gender || '',
-        weight: Number(item.weight) || 0,
-        bodyFat: Number(item.bodyFat) || 0,
-        goal: item.goal || '',
-        trainer: item.trainer || '',
-        enable_workout_videos: item.enable_workout_videos !== undefined ? Boolean(item.enable_workout_videos) : true,
+        employee: item.employee || '',
       };
     });
   },
   get: async (id: string): Promise<Member | null> => {
     try {
-      const item: any = await apiClient.get<any>(`/customers/${id}`);
+      const item: any = await apiClient.get<any>(`/students/${id}`);
       if (!item) return null;
       return {
         id: item.id || id,
@@ -89,21 +92,14 @@ export const membersApi = {
         joinDate: item.joinDate || item.created_at || '',
         age: Number(item.age) || 0,
         gender: item.gender || '',
-        weight: Number(item.weight) || 0,
-        bodyFat: Number(item.bodyFat) || 0,
-        goal: item.goal || '',
-        trainer: item.trainer || '',
-        enable_workout_videos: item.enable_workout_videos !== undefined ? Boolean(item.enable_workout_videos) : true,
+        employee: item.employee || '',
       };
     } catch (_err) {
       return null;
     }
   },
-  toggleWorkoutVideoAccess: async (id: string, enable: boolean): Promise<any> => {
-    return apiClient.patch(`/customers/${id}/workout-video-access`, { enable_workout_videos: enable });
-  },
   update: async (id: string, data: any): Promise<any> => {
-    return apiClient.patch(`/customers/${id}`, data);
+    return apiClient.patch(`/students/${id}`, data);
   },
   create: async (data: Partial<Member> & {
     role?: string;
@@ -116,18 +112,18 @@ export const membersApi = {
     start_date?: string;
     expiry_date?: string;
     branch?: string;
-    primary_gym_location?: string;
+    primary_vahd_location?: string;
   }): Promise<any> => {
-    return apiClient.post('/customers/onboard', {
+    return apiClient.post('/students/onboard', {
       full_name: data.name,
       email: data.email,
       phone: data.phone,
-      role: data.role || 'CUSTOMER',
+      role: data.role || 'student',
       gender: data.gender,
       age: data.age ? Number(data.age) : undefined,
-      goal: data.goal,
-      branch: data.branch || data.primary_gym_location,
-      primary_gym_location: data.primary_gym_location || data.branch,
+      goal: (data as any).goal,
+      branch: data.branch || data.primary_vahd_location,
+      primary_vahd_location: data.primary_vahd_location || data.branch,
       membership_plan: data.membership,
       plan_price: data.plan_price,
       payment_method: data.payment_method || 'Cash',
@@ -137,7 +133,6 @@ export const membersApi = {
       transaction_id: data.transaction_id,
       start_date: data.start_date,
       expiry_date: data.expiry_date,
-      enable_workout_videos: data.enable_workout_videos !== undefined ? data.enable_workout_videos : true,
     });
   },
 };

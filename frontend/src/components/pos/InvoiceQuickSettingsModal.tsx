@@ -236,7 +236,7 @@ export function InvoiceQuickSettingsModal({
               const parsed = JSON.parse(storedComp);
               const found = res.items.find((c) => c.id === parsed.id);
               if (found) targetComp = found;
-            } catch {}
+            } catch { }
           }
           setActiveCompany(targetComp);
 
@@ -598,11 +598,10 @@ export function InvoiceQuickSettingsModal({
               <button
                 type="button"
                 onClick={() => setActiveTab("invoice")}
-                className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer ${
-                  activeTab === "invoice"
+                className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer ${activeTab === "invoice"
                     ? "bg-indigo-50 text-indigo-700 border border-indigo-100 shadow-2xs"
                     : "text-slate-600 hover:bg-slate-50 hover:text-slate-900 border border-transparent"
-                }`}
+                  }`}
               >
                 <Receipt className="w-4 h-4 text-indigo-600 shrink-0" />
                 <span>Invoice Details</span>
@@ -611,11 +610,10 @@ export function InvoiceQuickSettingsModal({
               <button
                 type="button"
                 onClick={() => setActiveTab("item")}
-                className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer ${
-                  activeTab === "item"
+                className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer ${activeTab === "item"
                     ? "bg-indigo-50 text-indigo-700 border border-indigo-100 shadow-2xs"
                     : "text-slate-600 hover:bg-slate-50 hover:text-slate-900 border border-transparent"
-                }`}
+                  }`}
               >
                 <Layers className="w-4 h-4 text-indigo-600 shrink-0" />
                 <span>Item Table Columns</span>
@@ -624,11 +622,10 @@ export function InvoiceQuickSettingsModal({
               <button
                 type="button"
                 onClick={() => setActiveTab("tax_finance")}
-                className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer ${
-                  activeTab === "tax_finance"
+                className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer ${activeTab === "tax_finance"
                     ? "bg-indigo-50 text-indigo-700 border border-indigo-100 shadow-2xs"
                     : "text-slate-600 hover:bg-slate-50 hover:text-slate-900 border border-transparent"
-                }`}
+                  }`}
               >
                 <Landmark className="w-4 h-4 text-indigo-600 shrink-0" />
                 <div className="truncate">
@@ -640,11 +637,10 @@ export function InvoiceQuickSettingsModal({
               <button
                 type="button"
                 onClick={() => setActiveTab("google_reviews")}
-                className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer ${
-                  activeTab === "google_reviews"
+                className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer ${activeTab === "google_reviews"
                     ? "bg-amber-50 text-amber-800 border border-amber-200 shadow-2xs"
                     : "text-slate-600 hover:bg-slate-50 hover:text-slate-900 border border-transparent"
-                }`}
+                  }`}
               >
                 <QrCode className="w-4 h-4 text-amber-600 shrink-0" />
                 <div className="truncate">
@@ -695,14 +691,12 @@ export function InvoiceQuickSettingsModal({
                     <button
                       type="button"
                       onClick={() => handleToggle("customSequenceEnabled")}
-                      className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors duration-200 cursor-pointer ${
-                        draftSettings.customSequenceEnabled ? "bg-indigo-600" : "bg-slate-300"
-                      }`}
+                      className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors duration-200 cursor-pointer ${draftSettings.customSequenceEnabled ? "bg-indigo-600" : "bg-slate-300"
+                        }`}
                     >
                       <div
-                        className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-200 ${
-                          draftSettings.customSequenceEnabled ? "translate-x-5" : "translate-x-0"
-                        }`}
+                        className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-200 ${draftSettings.customSequenceEnabled ? "translate-x-5" : "translate-x-0"
+                          }`}
                       />
                     </button>
                   </div>
@@ -923,14 +917,12 @@ export function InvoiceQuickSettingsModal({
                   <button
                     type="button"
                     onClick={() => handleToggle("showPurchasePrice")}
-                    className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors duration-200 cursor-pointer ${
-                      draftSettings.showPurchasePrice ? "bg-indigo-600" : "bg-slate-300"
-                    }`}
+                    className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors duration-200 cursor-pointer ${draftSettings.showPurchasePrice ? "bg-indigo-600" : "bg-slate-300"
+                      }`}
                   >
                     <div
-                      className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-200 ${
-                        draftSettings.showPurchasePrice ? "translate-x-5" : "translate-x-0"
-                      }`}
+                      className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-200 ${draftSettings.showPurchasePrice ? "translate-x-5" : "translate-x-0"
+                        }`}
                     />
                   </button>
                 </div>
@@ -948,14 +940,12 @@ export function InvoiceQuickSettingsModal({
                   <button
                     type="button"
                     onClick={() => handleToggle("showItemImage")}
-                    className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors duration-200 cursor-pointer ${
-                      draftSettings.showItemImage ? "bg-indigo-600" : "bg-slate-300"
-                    }`}
+                    className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors duration-200 cursor-pointer ${draftSettings.showItemImage ? "bg-indigo-600" : "bg-slate-300"
+                      }`}
                   >
                     <div
-                      className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-200 ${
-                        draftSettings.showItemImage ? "translate-x-5" : "translate-x-0"
-                      }`}
+                      className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-200 ${draftSettings.showItemImage ? "translate-x-5" : "translate-x-0"
+                        }`}
                     />
                   </button>
                 </div>
@@ -976,14 +966,12 @@ export function InvoiceQuickSettingsModal({
                   <button
                     type="button"
                     onClick={() => handleToggle("showPriceHistory")}
-                    className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors duration-200 cursor-pointer ${
-                      draftSettings.showPriceHistory ? "bg-indigo-600" : "bg-slate-300"
-                    }`}
+                    className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors duration-200 cursor-pointer ${draftSettings.showPriceHistory ? "bg-indigo-600" : "bg-slate-300"
+                      }`}
                   >
                     <div
-                      className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-200 ${
-                        draftSettings.showPriceHistory ? "translate-x-5" : "translate-x-0"
-                      }`}
+                      className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-200 ${draftSettings.showPriceHistory ? "translate-x-5" : "translate-x-0"
+                        }`}
                     />
                   </button>
                 </div>
@@ -1187,11 +1175,10 @@ export function InvoiceQuickSettingsModal({
                               key={reg.id || reg.gstin}
                               type="button"
                               onClick={() => handleSelectGstRegistration(reg)}
-                              className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition-all cursor-pointer flex items-center gap-1.5 ${
-                                isSel
+                              className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition-all cursor-pointer flex items-center gap-1.5 ${isSel
                                   ? "bg-indigo-600 text-white border-indigo-600 shadow-2xs"
                                   : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
-                              }`}
+                                }`}
                             >
                               <span className="font-mono">{reg.gstin}</span>
                               <span className="opacity-80 text-[10px]">({reg.state_name || `State ${reg.state_code}`})</span>
@@ -1310,7 +1297,7 @@ export function InvoiceQuickSettingsModal({
                     <span>Bank & UPI Details (Printed on Invoices)</span>
                   </h3>
                   <p className="text-[11px] text-slate-500">
-                    These banking details are displayed in the footer of full tax invoices for direct NEFT/RTGS/UPI customer payments.
+                    These banking details are displayed in the footer of full tax invoices for direct NEFT/RTGS/UPI student payments.
                   </p>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -1488,7 +1475,7 @@ export function InvoiceQuickSettingsModal({
                           Google Review QR Code Integration
                         </h3>
                         <p className="text-xs text-amber-800 mt-0.5 leading-relaxed">
-                          Automatically print a 5-Star Google Review QR code on all sales invoices, thermal receipts, and delivery challans so customers can easily rate your business on Google.
+                          Automatically print a 5-Star Google Review QR code on all sales invoices, thermal receipts, and delivery challans so students can easily rate your business on Google.
                         </p>
                       </div>
                     </div>
@@ -1502,14 +1489,12 @@ export function InvoiceQuickSettingsModal({
                           google_review_enabled: !prev.google_review_enabled,
                         }))
                       }
-                      className={`w-12 h-6 flex items-center rounded-full p-1 transition-colors duration-200 cursor-pointer shrink-0 ${
-                        reviewForm.google_review_enabled ? "bg-amber-600" : "bg-slate-300"
-                      }`}
+                      className={`w-12 h-6 flex items-center rounded-full p-1 transition-colors duration-200 cursor-pointer shrink-0 ${reviewForm.google_review_enabled ? "bg-amber-600" : "bg-slate-300"
+                        }`}
                     >
                       <div
-                        className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-200 ${
-                          reviewForm.google_review_enabled ? "translate-x-6" : "translate-x-0"
-                        }`}
+                        className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-200 ${reviewForm.google_review_enabled ? "translate-x-6" : "translate-x-0"
+                          }`}
                       />
                     </button>
                   </div>
@@ -1519,7 +1504,7 @@ export function InvoiceQuickSettingsModal({
                       Status: {reviewForm.google_review_enabled ? "Active on All Receipts" : "Disabled"}
                     </span>
                     <span className="text-[11px] font-semibold text-amber-900">
-                      ⭐⭐⭐⭐⭐ Boost local search rankings & verified customer reviews
+                      ⭐⭐⭐⭐⭐ Boost local search rankings & verified student reviews
                     </span>
                   </div>
                 </div>

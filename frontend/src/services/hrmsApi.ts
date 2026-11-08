@@ -18,7 +18,7 @@ export interface EmployeeItem {
   salary: number;
   avatar: string;
   skills: string[];
-  gym_branch: string;
+  vahd_branch: string;
   emergency_contact: string;
   address?: string;
   district?: string;
@@ -46,7 +46,11 @@ export interface DepartmentItem {
   head_name: string;
   is_active: boolean;
   employee_count: number;
+  student_count?: number;
+  department_type?: 'student' | 'employee' | 'both';
+  extra_info?: string;
   employees?: MappedEmployee[];
+  students?: any[];
 }
 
 export interface DesignationItem {
@@ -89,6 +93,12 @@ export interface AttendanceRecord {
   date: string;
   check_in: string;
   check_out: string;
+  check_in_location?: string;
+  check_out_location?: string;
+  check_in_latitude?: number | null;
+  check_in_longitude?: number | null;
+  check_out_latitude?: number | null;
+  check_out_longitude?: number | null;
   status: string;
   work_hours: number;
   notes: string;
@@ -213,8 +223,8 @@ export function formatLeaveOptionLabel(leave: {
     paidType === 'PAID' || leave.is_paid
       ? 'Paid'
       : paidType === 'HALF_PAY'
-      ? 'Half Pay'
-      : 'Unpaid';
+        ? 'Half Pay'
+        : 'Unpaid';
 
   // Balance days formatting (dynamically accounts for remaining_days from API)
   const remaining = (leave as any).remaining_days ?? leave.balance?.remaining_days ?? leave.annual_quota ?? 0;
@@ -258,7 +268,6 @@ export interface LeaveItem {
 export interface PayrollItem {
   id: string;
   employee_id: string;
-  trainer_id?: string;
   employee_code: string;
   employee_name: string;
   initials?: string;
@@ -362,7 +371,7 @@ export interface GeofenceScheme {
   id: string;
   name: string;
   branch_name: string;
-  gym_name: string;
+  vahd_name: string;
   latitude: number;
   longitude: number;
   radius_meters: number;
@@ -372,6 +381,8 @@ export interface GeofenceScheme {
   shift_end_time: string;
   grace_period_mins: number;
   min_half_day_hours?: number | null;
+  allow_ot?: boolean;
+  min_ot_threshold_mins?: number;
   allowed_channels: string[];
   assigned_employee_ids: string[];
   is_active: boolean;
@@ -392,7 +403,7 @@ export interface PunchResponse {
 
 export const hrmsApi = {
   // Employees
-  getEmployees: (params?: { department?: string; status?: string; search?: string }) =>
+  getEmployees: (params?: { department?: string; status?: string; search?: string; branch_id?: string; ho_id?: string }) =>
     apiClient.get<EmployeeItem[]>('/hrms/employees', { params }),
   createEmployee: (payload: Partial<EmployeeItem>) =>
     apiClient.post<{ message: string; id: string; code: string }>('/hrms/employees', payload),
@@ -430,8 +441,8 @@ export const hrmsApi = {
     apiClient.delete<{ message: string }>(`/hrms/geofence-schemes/${schemeId}`),
 
   // Attendance
-  getAttendance: (date?: string) =>
-    apiClient.get<AttendanceRecord[]>('/hrms/attendance', { params: { date } }),
+  getAttendance: (date?: string, branch_id?: string) =>
+    apiClient.get<AttendanceRecord[]>('/hrms/attendance', { params: { date, branch_id } }),
   getAttendanceCorrections: (params?: {
     date?: string;
     status?: string;
@@ -440,8 +451,10 @@ export const hrmsApi = {
     district?: string;
     reason?: string;
     search?: string;
+    branch_id?: string;
+    ho_id?: string;
   }) => apiClient.get<AttendanceCorrectionItem[]>('/hrms/attendance/corrections', { params }),
-  getAttendanceCorrectionsStats: (params?: { date?: string }) =>
+  getAttendanceCorrectionsStats: (params?: { date?: string; branch_id?: string; ho_id?: string }) =>
     apiClient.get<AttendanceCorrectionStats>('/hrms/attendance/corrections/stats', { params }),
   createAttendanceCorrection: (payload: Partial<AttendanceCorrectionItem>) =>
     apiClient.post<{ message: string; id: string }>('/hrms/attendance/corrections', payload),
@@ -457,13 +470,14 @@ export const hrmsApi = {
     note?: string;
     latitude?: number | null;
     longitude?: number | null;
+    location?: string;
     method?: string;
     user_role?: string;
     branch?: string;
   }) => apiClient.post<PunchResponse>('/hrms/attendance/punch', payload),
 
   // Leave
-  getLeaves: () => apiClient.get<LeaveItem[]>('/hrms/leaves'),
+  getLeaves: (status?: string, branch_id?: string) => apiClient.get<LeaveItem[]>('/hrms/leaves', { params: { status, branch_id } }),
   applyLeave: (payload: {
     employee_id: string;
     leave_type?: string;
@@ -537,9 +551,9 @@ export const hrmsApi = {
   createCommission: (payload: any) => apiClient.post<any>('/hrms/payroll/commissions', payload),
 
   // Legacy Payroll
-  getPayroll: (month?: string, year?: number) =>
-    apiClient.get<PayrollItem[]>('/hrms/payroll', { params: { month, year } }),
-  generateBatchPayroll: (payload: { trainer_ids: string[]; month?: string; year?: number }) =>
+  getPayroll: (month?: string, year?: number, branch_id?: string) =>
+    apiClient.get<PayrollItem[]>('/hrms/payroll', { params: { month, year, branch_id } }),
+  generateBatchPayroll: (payload: { employee_ids: string[]; month?: string; year?: number }) =>
     apiClient.post<PayrollItem[]>('/hrms/payroll/generate-batch', payload),
   disbursePayroll: (payrollId: string, payload: { payment_method: string; transaction_reference?: string }) =>
     apiClient.post<{ message: string; id: string }>(`/hrms/payroll/${payrollId}/disburse`, payload),
@@ -600,5 +614,240 @@ export const hrmsApi = {
       time?: string;
       punch?: any;
     }>('/hrms/face/verify', payload),
+
+  // Shift Roster & Work Calendars
+  getWorkCalendars: () => apiClient.get<WorkCalendarItem[]>('/hrms/shifts/calendars'),
+  saveWorkCalendar: (payload: any) => apiClient.post<WorkCalendarItem>('/hrms/shifts/calendars', payload),
+  deleteWorkCalendar: (calId: string) => apiClient.delete<{ status: string; message: string }>(`/hrms/shifts/calendars/${calId}`),
+  addCalendarShiftTiming: (calId: string, payload: { name: string; start_time: string; end_time: string }) =>
+    apiClient.post<ShiftTimingItem>(`/hrms/shifts/calendars/${calId}/timings`, payload),
+  deleteCalendarShiftTiming: (calId: string, timingId: string) =>
+    apiClient.delete<{ status: string; message: string }>(`/hrms/shifts/calendars/${calId}/timings/${timingId}`),
+
+  // Shift Templates (Enterprise Shifts)
+  getShiftTemplates: () => apiClient.get<ShiftTemplateItem[]>('/hrms/shifts/templates'),
+  getShiftTemplateById: (templateId: string) => apiClient.get<ShiftTemplateItem>(`/hrms/shifts/templates/${templateId}`),
+  saveShiftTemplate: (payload: Partial<ShiftTemplateItem>) => apiClient.post<ShiftTemplateItem>('/hrms/shifts/templates', payload),
+  deleteShiftTemplate: (templateId: string) => apiClient.delete<{ status: string; message: string }>(`/hrms/shifts/templates/${templateId}`),
+
+  getShiftRoster: (params?: { start_date?: string; end_date?: string; department?: string; search?: string; view?: string; user_type?: 'employee' | 'student'; branch_id?: string; ho_id?: string }) =>
+    apiClient.get<ShiftRosterResponse>('/hrms/shifts/roster', { params }),
+  getShiftCell: (employee_id: string, date: string) =>
+    apiClient.get<any>('/hrms/shifts/roster/cell', { params: { employee_id, date } }),
+  assignShift: (payload: {
+    employee_ids?: string[];
+    employee_id?: string;
+    dates?: string[];
+    date?: string;
+    shift_code: string;
+    shift_name?: string;
+    start_time?: string;
+    end_time?: string;
+    shift_id?: string;
+    is_off?: boolean;
+  }) =>
+    apiClient.post<{ status: string; message: string; updated_count: number }>('/hrms/shifts/assign', payload),
+
+  // Company Holidays & Work Calendar Schemes
+  getHolidays: (params?: { year?: number; type?: string; search?: string }) =>
+    apiClient.get<CompanyHolidayItem[]>('/hrms/holidays', { params }),
+  saveHoliday: (payload: Partial<CompanyHolidayItem>) =>
+    apiClient.post<CompanyHolidayItem>('/hrms/holidays', payload),
+  deleteHoliday: (holidayId: string) =>
+    apiClient.delete<{ message: string; id: string }>(`/hrms/holidays/${holidayId}`),
+  preseedHolidays: (year?: number) =>
+    apiClient.post<{ status: string; message: string; inserted_count: number }>('/hrms/holidays/preseed', { year }),
+
+  // Monthly Attendance Matrix & Punch
+  getAttendanceMatrix: (params?: { year?: number; month?: number; department?: string; search?: string; user_type?: 'employee' | 'student' | string; branch_id?: string; ho_id?: string }) =>
+    apiClient.get<AttendanceMatrixResponse>('/hrms/attendance/matrix', { params }),
+  punchAttendance: (payload: {
+    employee_id: string;
+    action?: string;
+    status?: string;
+    time?: string;
+    check_in?: string;
+    check_out_time?: string;
+    check_out?: string;
+    date?: string;
+    note?: string;
+    notes?: string;
+    lat?: number;
+    lng?: number;
+    latitude?: number;
+    longitude?: number;
+    location?: string;
+    place?: string;
+    method?: string;
+    user_role?: string;
+  }) => apiClient.post<any>('/hrms/attendance/punch', payload),
+
+  // Password Reset (Students & Employees)
+  resetPassword: (payload: { target_type: 'student' | 'employee' | string; target_id: string; new_password: string }) =>
+    apiClient.post<{ status: string; message: string; target_id: string; target_name: string; email: string }>('/hrms/reset-password', payload),
 };
+
+export interface ShiftTimingItem {
+  id: string;
+  name: string;
+  start_time: string;
+  end_time: string;
+}
+
+export interface ShiftTemplateItem {
+  id: string;
+  code: string;
+  name: string;
+  start_time: string;
+  end_time: string;
+  duration_hours?: number;
+  break_mins: number;
+  grace_period_mins: number;
+  is_night_shift: boolean;
+  color: string;
+  is_active: boolean;
+  assign_type?: string;    // 'employee' | 'student' | 'both'
+  from_date?: string;      // YYYY-MM-DD
+  to_date?: string;        // YYYY-MM-DD
+  num_members?: number;    // headcount for this shift
+  member_ids?: string[];   // list of assigned employee/student IDs
+  work_days?: string[];    // ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+  branch_id?: string;
+  ho_id?: string;
+}
+
+export interface WorkCalendarItem {
+  id: string;
+  name: string;
+  calendar_type: string;
+  department: string;
+  is_default: boolean;
+  default_shift_code: string;
+  working_days: string[];
+  weekly_off_days: string[];
+  shift_timings?: ShiftTimingItem[];
+  is_active: boolean;
+  holidays_count?: number;
+}
+
+export interface CompanyHolidayItem {
+  id?: string;
+  calendar_id?: string;
+  name: string;
+  date: string;
+  formatted_date?: string;
+  day_name?: string;
+  year?: number;
+  holiday_type?: string;
+  description?: string;
+  is_optional?: boolean;
+}
+
+export interface DayMatrixCell {
+  code: 'P' | 'A' | 'PL' | 'WO' | 'HOL' | 'HD' | '-';
+  date: string;
+  status_label: string;
+  check_in?: string | null;
+  check_out?: string | null;
+  work_hours?: number | null;
+  method?: string | null;
+}
+
+export interface EmployeeMatrixRow {
+  id: string;
+  code: string;
+  name: string;
+  department: string;
+  designation: string;
+  initials: string;
+  avatar: string;
+  present_count: number;
+  absent_count: number;
+  leave_count: number;
+  payable_days: number;
+  days: Record<string, DayMatrixCell>;
+}
+
+export interface AttendanceMatrixResponse {
+  year: number;
+  month: number;
+  month_name: string;
+  days_in_month: {
+    day: number;
+    day_letter: string;
+    day_name: string;
+    formatted: string;
+    date_str: string;
+    is_today: boolean;
+    is_future: boolean;
+  }[];
+  summary: {
+    present_today: number;
+    absent: number;
+    on_leave: number;
+    avg_attendance_pct: number;
+    total_profiles: number;
+  };
+  employees: EmployeeMatrixRow[];
+  departments: string[];
+}
+
+export interface ShiftDayInfo {
+  shift_code: string;
+  shift_name: string;
+  start_time: string;
+  end_time: string;
+  is_off: boolean;
+  color: string;
+  time_range: string;
+  attendance_status?: string | null;
+  check_in?: string | null;
+  check_out?: string | null;
+  is_present?: boolean;
+}
+
+export interface EmployeeRosterRow {
+  id: string;
+  code: string;
+  name: string;
+  initials: string;
+  designation: string;
+  department: string;
+  avatar: string;
+  shifts: Record<string, ShiftDayInfo>;
+}
+
+export interface ShiftRosterResponse {
+  week_label: string;
+  start_date: string;
+  end_date: string;
+  dates: {
+    date: string;
+    day_name: string;
+    formatted: string;
+    full_str: string;
+    is_today: boolean;
+  }[];
+  summary: {
+    general: number;
+    morning: number;
+    evening: number;
+    night: number;
+    weekly_offs: number;
+  };
+  employees: EmployeeRosterRow[];
+  total_staff: number;
+  departments: string[];
+  shift_templates?: any[];
+  template_summaries?: {
+    id: string;
+    code: string;
+    name: string;
+    start_time: string;
+    end_time: string;
+    time_range: string;
+    color: string;
+    count: number;
+  }[];
+}
 

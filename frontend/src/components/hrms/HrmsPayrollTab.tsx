@@ -37,6 +37,20 @@ export function HrmsPayrollTab({ onSuccessToast }: HrmsPayrollTabProps) {
   const [selectedMonthIndex, setSelectedMonthIndex] = useState<number>(currentDate.getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState<number>(currentDate.getFullYear());
 
+  // Org / Branch filter — synced with Topbar
+  const [selectedBranch, setSelectedBranch] = useState<string>(() =>
+    localStorage.getItem('vahd_selected_org_id') || 'all'
+  );
+
+  useEffect(() => {
+    const handleOrgChange = (e: any) => {
+      const orgId = e?.detail?.id ?? localStorage.getItem('vahd_selected_org_id') ?? 'all';
+      setSelectedBranch(orgId);
+    };
+    window.addEventListener('vahd:org_changed', handleOrgChange);
+    return () => window.removeEventListener('vahd:org_changed', handleOrgChange);
+  }, []);
+
   const [employees, setEmployees] = useState<EmployeeItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
@@ -111,11 +125,13 @@ export function HrmsPayrollTab({ onSuccessToast }: HrmsPayrollTabProps) {
   const [commForm, setCommForm] = useState({ employee_id: '', target_quota: '', achieved_volume: '', commission_rate: '5', notes: '' });
 
   // Load Main Data
-  const loadData = async () => {
+  const loadData = async (branchId?: string) => {
     setLoading(true);
     try {
+      const bId = typeof branchId === 'string' ? branchId : (localStorage.getItem('vahd_selected_org_id') || 'all');
+      const branchFilter = bId && bId !== 'all' ? bId : undefined;
       const [empRes, structRes, procRes, tmplRes] = await Promise.all([
-        hrmsApi.getEmployees().catch(() => []),
+        hrmsApi.getEmployees({ branch_id: branchFilter }).catch(() => []),
         hrmsApi.getSalaryStructures().catch(() => []),
         hrmsApi.getPayrollProcessing(selectedMonthIndex, selectedYear).catch(() => null),
         hrmsApi.getPayslipTemplates().catch(() => [])
@@ -137,27 +153,27 @@ export function HrmsPayrollTab({ onSuccessToast }: HrmsPayrollTabProps) {
   };
 
   useEffect(() => {
-    loadData();
-  }, [selectedMonthIndex, selectedYear]);
+    loadData(selectedBranch);
+  }, [selectedMonthIndex, selectedYear, selectedBranch]);
 
   // Load Subtab Specific Data
   useEffect(() => {
     if (activeTab === 'pf') {
-      hrmsApi.getStatutoryPfReport(selectedMonthIndex, selectedYear).then(setPfData).catch(() => {});
+      hrmsApi.getStatutoryPfReport(selectedMonthIndex, selectedYear).then(setPfData).catch(() => { });
     } else if (activeTab === 'esi') {
-      hrmsApi.getStatutoryEsiReport(selectedMonthIndex, selectedYear).then(setEsiData).catch(() => {});
+      hrmsApi.getStatutoryEsiReport(selectedMonthIndex, selectedYear).then(setEsiData).catch(() => { });
     } else if (activeTab === 'tds') {
-      hrmsApi.getStatutoryTdsReport(selectedYear).then(setTdsData).catch(() => {});
+      hrmsApi.getStatutoryTdsReport(selectedYear).then(setTdsData).catch(() => { });
     } else if (activeTab === 'payslips') {
-      hrmsApi.getPayslipsArchive(payslipFilterMonth, selectedYear, payslipSearch).then(setPayslipsArchive).catch(() => {});
+      hrmsApi.getPayslipsArchive(payslipFilterMonth, selectedYear, payslipSearch).then(setPayslipsArchive).catch(() => { });
     } else if (activeTab === 'loans') {
-      hrmsApi.getLoans().then(setLoans).catch(() => {});
+      hrmsApi.getLoans().then(setLoans).catch(() => { });
     } else if (activeTab === 'advances') {
-      hrmsApi.getAdvances().then(setAdvances).catch(() => {});
+      hrmsApi.getAdvances().then(setAdvances).catch(() => { });
     } else if (activeTab === 'bonuses') {
-      hrmsApi.getBonuses().then(setBonuses).catch(() => {});
+      hrmsApi.getBonuses().then(setBonuses).catch(() => { });
     } else if (activeTab === 'commissions') {
-      hrmsApi.getCommissions().then(setCommissions).catch(() => {});
+      hrmsApi.getCommissions().then(setCommissions).catch(() => { });
     }
   }, [activeTab, selectedMonthIndex, selectedYear, payslipFilterMonth, payslipSearch]);
 
@@ -1236,7 +1252,7 @@ export function HrmsPayrollTab({ onSuccessToast }: HrmsPayrollTabProps) {
                   <div><span className="text-slate-400">Employee:</span> <span className="font-bold">Rahul Sharma</span></div>
                   <div><span className="text-slate-400">EMP Code:</span> <span className="font-mono font-bold">EMP-0001</span></div>
                   <div><span className="text-slate-400">Department:</span> <span className="font-semibold">Fitness & Training</span></div>
-                  <div><span className="text-slate-400">Designation:</span> <span className="font-semibold">Senior Trainer</span></div>
+                  <div><span className="text-slate-400">Designation:</span> <span className="font-semibold">Senior employee</span></div>
                 </div>
 
                 {/* Earnings & Deductions Tables */}

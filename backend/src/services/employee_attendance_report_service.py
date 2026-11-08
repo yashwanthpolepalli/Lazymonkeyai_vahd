@@ -9,12 +9,12 @@ from email.mime.application import MIMEApplication
 from datetime import datetime, date, timedelta
 from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session
-from sqlalchemy import or_, and_, func, desc, extract, String
+from sqlalchemy import or_, and_, func, desc, extract, String, cast
 
 from src.models.hrms import Employee, EmployeeAttendance, LeaveRequest, Department
 from src.models.biometric import BiometricLog
 from src.models.employee_report import EmployeeAttendanceReportLog
-from src.models.settings import GymBranch
+from src.models.settings import vahdBranch
 from src.config.settings import settings
 from src.utils.timezone import now_ist_naive
 
@@ -78,15 +78,42 @@ class EmployeeAttendanceReportService:
             raise ValueError(f"Employee with ID '{employee_id}' not found.")
 
         # Resolve organization/branch name
-        org_name = emp.gym_branch or "Main Branch"
+        org_name = emp.vahd_branch or ""
         if emp.branch_id:
-            branch = db.query(GymBranch).filter(GymBranch.id == emp.branch_id).first()
+            branch = db.query(vahdBranch).filter(vahdBranch.id == emp.branch_id).first()
             if branch:
-                org_name = branch.gym_name or branch.branch_name or org_name
+                org_name = branch.vahd_name or branch.branch_name or org_name
+        if not org_name:
+            db_b = db.query(vahdBranch).filter(vahdBranch.is_active == True).first()
+            org_name = (db_b.vahd_name or db_b.branch_name) if db_b else (settings.vahd_NAME or "")
+
+        # Build exhaustive match keys for this employee across models and formats
+        emp_match_ids = {str(emp.id), str(emp.id).replace("emp_", ""), f"emp_{emp.id}"}
+        if emp.code:
+            code_c = str(emp.code).strip()
+            num_c = code_c.replace("EMP-", "").strip()
+            emp_match_ids.update({code_c, num_c, num_c.zfill(4), f"EMP-{num_c.zfill(4)}", f"EMP-{num_c}"})
+        if emp.email:
+            emp_match_ids.add(emp.email.strip().lower())
+
+        from src.models.employee import employeeProfile
+        tr = db.query(employeeProfile).filter(
+            or_(
+                employeeProfile.id == emp.id.replace("emp_", ""),
+                employeeProfile.email.ilike(emp.email) if emp.email else False
+            )
+        ).first()
+        if tr:
+            emp_match_ids.add(str(tr.id))
+            emp_match_ids.add(f"tr_{tr.id}")
+            if tr.user_id:
+                emp_match_ids.add(str(tr.user_id))
+                emp_match_ids.add(f"emp_{tr.user_id}")
+                emp_match_ids.add(f"usr_{tr.user_id}")
 
         # 1. Fetch EmployeeAttendance records
         att_records = db.query(EmployeeAttendance).filter(
-            EmployeeAttendance.employee_id == emp.id,
+            EmployeeAttendance.employee_id.in_(list(emp_match_ids)),
             EmployeeAttendance.date >= start_date,
             EmployeeAttendance.date <= end_date
         ).all()
@@ -94,7 +121,7 @@ class EmployeeAttendanceReportService:
 
         # 2. Fetch approved LeaveRequests overlapping this month
         leave_records = db.query(LeaveRequest).filter(
-            LeaveRequest.employee_id == emp.id,
+            LeaveRequest.employee_id.in_(list(emp_match_ids)),
             LeaveRequest.status == "Approved",
             LeaveRequest.start_date <= end_date,
             LeaveRequest.end_date >= start_date
@@ -107,16 +134,28 @@ class EmployeeAttendanceReportService:
                 leave_days.add(cur.day)
                 cur += timedelta(days=1)
 
-        # 3. Fetch BiometricLogs (check both customer_id=emp.id and trainer_id / code)
-        bio_logs = db.query(BiometricLog).filter(
-            or_(
-                BiometricLog.customer_id == emp.id,
-                func.cast(BiometricLog.meta_data, String).ilike(f"%{emp.code}%")
-            ),
+        # 3. Fetch BiometricLogs (check student_id, user_id, employee_id, and code)
+        raw_bio_logs = db.query(BiometricLog).filter(
             BiometricLog.timestamp >= start_dt,
             BiometricLog.timestamp <= end_dt,
             BiometricLog.status != "DENIED"
         ).order_by(BiometricLog.timestamp.asc()).all()
+
+        bio_logs = []
+        for bl in raw_bio_logs:
+            sid = str(bl.student_id or "")
+            meta = bl.meta_data or {}
+            m_uid = str(meta.get("user_id") or meta.get("employee_id") or "")
+            m_code = str(meta.get("employee_code") or meta.get("code") or "")
+            m_email = str(meta.get("email") or "").strip().lower()
+            if (
+                sid in emp_match_ids
+                or sid.replace("emp_", "") in emp_match_ids
+                or m_uid in emp_match_ids
+                or m_code in emp_match_ids
+                or (emp.email and m_email == emp.email.strip().lower())
+            ):
+                bio_logs.append(bl)
 
         bio_by_day: Dict[int, List[BiometricLog]] = {}
         for bl in bio_logs:
@@ -228,7 +267,7 @@ class EmployeeAttendanceReportService:
             "phone": emp.phone or "--",
             "designation": emp.designation or "Employee",
             "department": emp.department or "General",
-            "gym_branch": emp.gym_branch or "",
+            "vahd_branch": emp.vahd_branch or "",
             "branch_id": emp.branch_id,
             "organization_name": org_name,
             "owner_id": emp.owner_id,
@@ -539,7 +578,8 @@ class EmployeeAttendanceReportService:
                 employee_code=emp_code,
                 email=emp_email or "MISSING_EMAIL",
                 branch_id=report.get("branch_id"),
-                gym_branch=report.get("gym_branch"),
+                tenant_id=report.get("branch_id"),
+                vahd_branch=report.get("vahd_branch"),
                 owner_id=report.get("owner_id"),
                 ho_id=report.get("ho_id"),
                 year=target_year,
@@ -718,12 +758,24 @@ class EmployeeAttendanceReportService:
                 part['Content-Disposition'] = f'attachment; filename="{csv_filename}"'
                 msg.attach(part)
 
-                with smtplib.SMTP(smtp_host, smtp_port, local_hostname='localhost', timeout=15) as server:
-                    server.ehlo()
-                    server.starttls()
-                    server.ehlo()
-                    server.login(smtp_user, smtp_pass)
-                    server.sendmail(from_email, [emp_email], msg.as_string())
+                # Send via SMTP with automatic Port 587 STARTTLS / Port 465 SSL fallback
+                try:
+                    if int(smtp_port) == 465:
+                        with smtplib.SMTP_SSL(smtp_host, 465, timeout=15) as server:
+                            server.login(smtp_user, smtp_pass)
+                            server.sendmail(from_email, [emp_email], msg.as_string())
+                    else:
+                        with smtplib.SMTP(smtp_host, int(smtp_port), timeout=15) as server:
+                            server.ehlo()
+                            server.starttls()
+                            server.ehlo()
+                            server.login(smtp_user, smtp_pass)
+                            server.sendmail(from_email, [emp_email], msg.as_string())
+                except Exception as _conn_err:
+                    # Retry with direct SSL on port 465 if port 587 connection was unexpectedly closed by firewall/ISP
+                    with smtplib.SMTP_SSL(smtp_host, 465, timeout=15) as server:
+                        server.login(smtp_user, smtp_pass)
+                        server.sendmail(from_email, [emp_email], msg.as_string())
 
                 logger.info(f"✅ Successfully sent monthly attendance email to {emp_email}")
             except Exception as e:
@@ -762,7 +814,8 @@ class EmployeeAttendanceReportService:
                 employee_code=emp_code,
                 email=emp_email,
                 branch_id=report.get("branch_id"),
-                gym_branch=report.get("gym_branch"),
+                tenant_id=report.get("branch_id"),
+                vahd_branch=report.get("vahd_branch"),
                 owner_id=report.get("owner_id"),
                 ho_id=report.get("ho_id"),
                 year=target_year,
@@ -821,14 +874,35 @@ class EmployeeAttendanceReportService:
         )
 
         if branch_id and branch_id != "all":
-            query = query.filter(Employee.branch_id == branch_id)
+            matched_b = db.query(vahdBranch).filter(
+                or_(vahdBranch.id == branch_id, vahdBranch.branch_name == branch_id, vahdBranch.vahd_name == branch_id)
+            ).first()
+            b_ids = [branch_id]
+            b_names = [branch_id]
+            if matched_b:
+                b_ids.append(matched_b.id)
+                if matched_b.branch_name:
+                    b_names.append(matched_b.branch_name)
+                if matched_b.vahd_name:
+                    b_names.append(matched_b.vahd_name)
+
+            b_conds = [
+                Employee.branch_id.in_(b_ids),
+                cast(Employee.secondary_branches, String).ilike(f"%{branch_id}%"),
+                cast(Employee.meta_data, String).ilike(f"%{branch_id}%")
+            ]
+            for bn in b_names:
+                b_conds.append(Employee.vahd_branch.ilike(f"%{bn}%"))
+                b_conds.append(cast(Employee.secondary_branches, String).ilike(f"%{bn}%"))
+                b_conds.append(cast(Employee.meta_data, String).ilike(f"%{bn}%"))
+            query = query.filter(or_(*b_conds))
         elif owner_id:
             query = query.filter(Employee.owner_id == owner_id)
         elif ho_id:
             query = query.filter(
                 or_(
                     Employee.ho_id == ho_id,
-                    Employee.branch_id.in_([b.id for b in db.query(GymBranch).filter(GymBranch.ho_id == ho_id).all()])
+                    Employee.branch_id.in_([b.id for b in db.query(vahdBranch).filter(vahdBranch.ho_id == ho_id).all()])
                 )
             )
 
@@ -890,7 +964,7 @@ class EmployeeAttendanceReportService:
         target_year = int(year or now.year)
         target_month = int(month or now.month)
 
-        branches_dict = {b.id: b for b in db.query(GymBranch).all()}
+        branches_dict = {b.id: b for b in db.query(vahdBranch).all()}
 
         query = db.query(Employee).filter(
             or_(
@@ -901,11 +975,32 @@ class EmployeeAttendanceReportService:
             )
         )
         if branch_id and branch_id != "all":
-            query = query.filter(Employee.branch_id == branch_id)
+            matched_b = db.query(vahdBranch).filter(
+                or_(vahdBranch.id == branch_id, vahdBranch.branch_name == branch_id, vahdBranch.vahd_name == branch_id)
+            ).first()
+            b_ids = [branch_id]
+            b_names = [branch_id]
+            if matched_b:
+                b_ids.append(matched_b.id)
+                if matched_b.branch_name:
+                    b_names.append(matched_b.branch_name)
+                if matched_b.vahd_name:
+                    b_names.append(matched_b.vahd_name)
+
+            b_conds = [
+                Employee.branch_id.in_(b_ids),
+                cast(Employee.secondary_branches, String).ilike(f"%{branch_id}%"),
+                cast(Employee.meta_data, String).ilike(f"%{branch_id}%")
+            ]
+            for bn in b_names:
+                b_conds.append(Employee.vahd_branch.ilike(f"%{bn}%"))
+                b_conds.append(cast(Employee.secondary_branches, String).ilike(f"%{bn}%"))
+                b_conds.append(cast(Employee.meta_data, String).ilike(f"%{bn}%"))
+            query = query.filter(or_(*b_conds))
         elif owner_id:
             query = query.filter(Employee.owner_id == owner_id)
         elif ho_id:
-            ho_branch_ids = [b.id for b in db.query(GymBranch).filter(GymBranch.ho_id == ho_id).all()]
+            ho_branch_ids = [b.id for b in db.query(vahdBranch).filter(vahdBranch.ho_id == ho_id).all()]
             query = query.filter(or_(Employee.ho_id == ho_id, Employee.branch_id.in_(ho_branch_ids)))
 
         employees = query.all()
@@ -973,8 +1068,8 @@ class EmployeeAttendanceReportService:
 
             full_name = f"{emp.first_name} {emp.last_name or ''}".strip()
             branch_obj = branches_dict.get(emp.branch_id)
-            branch_label = branch_obj.branch_name if branch_obj else (emp.gym_branch or "Main Branch")
-            gym_label = branch_obj.gym_name if branch_obj else ""
+            branch_label = branch_obj.branch_name if branch_obj else (emp.vahd_branch or "")
+            vahd_label = branch_obj.vahd_name if branch_obj else ""
 
             items.append({
                 "employee_id": emp.id,
@@ -984,10 +1079,10 @@ class EmployeeAttendanceReportService:
                 "phone": emp.phone or "--",
                 "designation": emp.designation or "Employee",
                 "department": emp.department or "Operations",
-                "gym_branch": emp.gym_branch or branch_label,
+                "vahd_branch": emp.vahd_branch or branch_label,
                 "branch_id": emp.branch_id,
                 "branch_name": branch_label,
-                "gym_name": gym_label,
+                "vahd_name": vahd_label,
                 "total_working_days": working_days,
                 "days_present": days_present,
                 "days_absent": days_absent,
@@ -1041,7 +1136,7 @@ class EmployeeAttendanceReportService:
                 "employee_code": l.employee_code,
                 "email": l.email,
                 "branch_id": l.branch_id,
-                "gym_branch": l.gym_branch,
+                "vahd_branch": l.vahd_branch,
                 "year": l.year,
                 "month": l.month,
                 "month_name": l.month_name,

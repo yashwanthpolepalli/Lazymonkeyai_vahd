@@ -1,21 +1,22 @@
 import { useState, useEffect, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/Badge';
 import { Icon } from '@/components/ui/Icon';
 import { apiClient } from '@/services/apiClient';
 import { api } from '@/services/api';
+import { hrmsApi } from '@/services/hrmsApi';
 import { useAuth } from '@/context/AuthContext';
 import { notifyModuleVisibilityChanged } from '@/config/navigation';
 import { CoursesPage } from '@/pages/owner/CoursesPage';
-import { ReportsPage } from '@/pages/owner/ReportsPage';
 import { CompanyManagement } from '@/components/erp/CompanyManagement';
 import { MasterDataSettings } from '@/components/settings/MasterDataSettings';
+import { OwnerPermissionsTab } from '@/components/settings/OwnerPermissionsTab';
 import { cn } from '@/utils/cn';
 
 export interface SettingCardConfig {
   id: string;
   title: string;
-  type: 'master' | 'courses' | 'reports' | 'erp' | 'general';
+  type: 'master' | 'courses' | 'reports' | 'erp' | 'general' | 'permissions';
   categoryKey?: string;
   icon: string;
   bgLight: string;
@@ -100,7 +101,7 @@ export const SETTING_CARDS: SettingCardConfig[] = [
     bgLight: 'bg-blue-50 dark:bg-blue-950/40',
     textColor: 'text-blue-600',
     borderLight: 'border-blue-200/70',
-    description: 'Veterinary clinics & hospitals'
+    description: ' clinics & hospitals'
   },
   {
     id: 'roles',
@@ -133,7 +134,18 @@ export const SETTING_CARDS: SettingCardConfig[] = [
     bgLight: 'bg-teal-50 dark:bg-teal-950/40',
     textColor: 'text-teal-600',
     borderLight: 'border-teal-200/70',
-    description: 'Clinical & admin divisions'
+    description: ' admin divisions'
+  },
+  {
+    id: 'technical_skills',
+    title: 'Technical Skills',
+    type: 'master',
+    categoryKey: 'technical_skills',
+    icon: 'code',
+    bgLight: 'bg-violet-50 dark:bg-violet-950/40',
+    textColor: 'text-violet-600',
+    borderLight: 'border-violet-200/70',
+    description: 'Technical skills, certifications & student/employee mapping'
   },
   {
     id: 'qualifications',
@@ -155,7 +167,7 @@ export const SETTING_CARDS: SettingCardConfig[] = [
     bgLight: 'bg-slate-100 dark:bg-slate-800',
     textColor: 'text-slate-700 dark:text-slate-200',
     borderLight: 'border-slate-300/70',
-    description: 'Veterinary medical branches'
+    description: ' medical branches'
   },
   {
     id: 'leave_reasons',
@@ -179,16 +191,6 @@ export const SETTING_CARDS: SettingCardConfig[] = [
     description: 'Branch courses & streams'
   },
   {
-    id: 'reports',
-    title: 'Reports',
-    type: 'reports',
-    icon: 'bar-chart-3',
-    bgLight: 'bg-blue-50 dark:bg-blue-950/40',
-    textColor: 'text-blue-600',
-    borderLight: 'border-blue-200/70',
-    description: 'Reports & performance logs'
-  },
-  {
     id: 'erp',
     title: 'ERP & Google Reviews',
     type: 'erp',
@@ -200,22 +202,39 @@ export const SETTING_CARDS: SettingCardConfig[] = [
   },
   {
     id: 'general',
-    title: 'General Profile',
+    title: 'Profile & Account',
     type: 'general',
-    icon: 'settings',
+    icon: 'user-check',
     bgLight: 'bg-violet-50 dark:bg-violet-950/40',
     textColor: 'text-violet-600',
     borderLight: 'border-violet-200/70',
-    description: 'Profile, contact & security'
+    description: 'Admin profile & password reset'
+  },
+  {
+    id: 'permissions',
+    title: 'Permissions',
+    type: 'permissions',
+    icon: 'shield-check',
+    bgLight: 'bg-emerald-50 dark:bg-emerald-950/40',
+    textColor: 'text-emerald-600',
+    borderLight: 'border-emerald-200/70',
+    description: 'Owner roles & module access'
   },
 ];
 
 export function SettingsPage() {
   const { user, updateUser } = useAuth();
+  const navigate = useNavigate();
   const isHo = user?.role === 'ho';
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const rawTab = searchParams.get('tab')?.toLowerCase();
+
+  useEffect(() => {
+    if (rawTab === 'reports' || rawTab === 'report' || rawTab === 'analytics') {
+      navigate(`/${isHo ? 'ho' : 'owner'}/reports`, { replace: true });
+    }
+  }, [rawTab, isHo, navigate]);
 
   const getInitialSection = (): string | null => {
     if (!rawTab) return null;
@@ -233,9 +252,14 @@ export function SettingsPage() {
     if (rawTab === 'qualification') return 'qualifications';
     if (rawTab === 'specialization') return 'specializations';
     if (rawTab === 'course' || rawTab === 'memberships' || rawTab === 'plans') return 'courses';
+    if (rawTab === 'general' || rawTab === 'profile' || rawTab === 'account' || rawTab === 'password' || rawTab === 'reset-password' || rawTab === 'security') return 'general';
     if (rawTab === 'report' || rawTab === 'analytics') return 'reports';
-    if (rawTab === 'company' || rawTab === 'reviews' || rawTab === 'google-reviews') return 'erp';
-    if (rawTab === 'general' || rawTab === 'profile' || rawTab === 'security') return 'general';
+    if (rawTab === 'role' || rawTab === 'roles') {
+      return 'roles';
+    }
+    if (rawTab === 'permission' || rawTab === 'permissions' || rawTab === 'roles-permissions' || rawTab === 'owner-permissions') {
+      return 'permissions';
+    }
     return null;
   };
 
@@ -262,12 +286,12 @@ export function SettingsPage() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // General Settings State
-  const [gymName, setGymName] = useState('');
-  const [gymPhone, setGymPhone] = useState('');
-  const [gymEmail, setGymEmail] = useState('');
-  const [gymAddress, setGymAddress] = useState('');
-  const [currency, setCurrency] = useState('INR (₹)');
-  const [timeZone, setTimeZone] = useState('Asia/Kolkata (GMT +5:30)');
+  const [vahdName, setvahdName] = useState('');
+  const [vahdPhone, setvahdPhone] = useState('');
+  const [vahdEmail, setvahdEmail] = useState('');
+  const [vahdAddress, setvahdAddress] = useState('');
+  const [currency, setCurrency] = useState('');
+  const [timeZone, setTimeZone] = useState('');
   const [openingTime, setOpeningTime] = useState('');
   const [closingTime, setClosingTime] = useState('');
   const [gstNumber, setGstNumber] = useState('');
@@ -275,8 +299,8 @@ export function SettingsPage() {
   // Owner / Head Office Profile State (now under General tab)
   const [ownerName, setOwnerName] = useState(() => user?.name || '');
   const [ownerEmail, setOwnerEmail] = useState(() => user?.email || '');
-  const [ownerPhone, setOwnerPhone] = useState('');
-  const [ownerRole, setOwnerRole] = useState(() => (user?.role === 'ho' ? 'Head Office Admin' : 'Owner'));
+  const [ownerPhone, setOwnerPhone] = useState(() => user?.phone || '');
+  const [ownerRole, setOwnerRole] = useState(() => user?.role_title || user?.role || '');
   const [ownerAvatar, setOwnerAvatar] = useState<string>(() => user?.avatar || localStorage.getItem('vahd_owner_avatar') || '');
 
   // Devices & Hardware Config State
@@ -288,26 +312,97 @@ export function SettingsPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(true);
 
+  // Password reset state (matching Employee & Student Login design)
+  const [showPassword, setShowPassword] = useState(false);
+  const [savingPassword, setSavingPassword] = useState(false);
+  const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError(null);
+    setPasswordSuccess(null);
+
+    const cleanPwd = newPassword.trim();
+    if (!cleanPwd || cleanPwd.length < 4) {
+      setPasswordError('New password must be at least 4 characters long.');
+      return;
+    }
+
+    if (cleanPwd !== confirmPassword.trim()) {
+      setPasswordError('Passwords do not match. Please ensure both fields are identical.');
+      return;
+    }
+
+    setSavingPassword(true);
+    try {
+      let success = false;
+      let msg = '';
+      try {
+        const res = await api.auth.changePassword(cleanPwd, currentPassword.trim() || undefined);
+        if (res && res.message) msg = res.message;
+        success = true;
+      } catch (_authErr) {
+        // Fallback to hrms resetPassword endpoint
+        const resHrms = await hrmsApi.resetPassword({
+          target_type: user?.role || (isHo ? 'ho' : 'owner'),
+          target_id: user?.id || user?.email || '',
+          new_password: cleanPwd,
+        });
+        if (resHrms && resHrms.message) msg = resHrms.message;
+        success = true;
+      }
+
+      if (success) {
+        setPasswordSuccess(msg || 'Password updated successfully!');
+        setNewPassword('');
+        setConfirmPassword('');
+        setCurrentPassword('');
+        triggerToast('Password updated successfully!');
+      }
+    } catch (err: any) {
+      setPasswordError(
+        err?.response?.data?.detail ||
+        err?.message ||
+        'Failed to update password. Please check your network and try again.'
+      );
+    } finally {
+      setSavingPassword(false);
+    }
+  };
+
+  const handleGeneratePassword = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789@#$';
+    let generated = '';
+    for (let i = 0; i < 10; i++) {
+      generated += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setNewPassword(generated);
+    setConfirmPassword(generated);
+    setShowPassword(true);
+    setPasswordError(null);
+  };
+
   // Notification Preferences State
   // Load existing settings, owner profile from backend DB on mount
   useEffect(() => {
     localStorage.removeItem('vahd_enable_pos');
     localStorage.removeItem('vahd_enable_inventory');
     Promise.all([
-      apiClient.get<any>('/gym/settings').catch(() => null),
+      apiClient.get<any>('/vahd/settings').catch(() => null),
       api.auth.me().catch(() => null),
-    ]).then(([gymRes, userRes]) => {
-      if (gymRes) {
-        if (gymRes.gym_name) setGymName(gymRes.gym_name);
-        if (gymRes.phone) setGymPhone(gymRes.phone);
-        if (gymRes.email) setGymEmail(gymRes.email);
-        if (gymRes.address) setGymAddress(gymRes.address);
-        if (gymRes.gstin) setGstNumber(gymRes.gstin);
-        if (gymRes.opening_time) setOpeningTime(gymRes.opening_time);
-        if (gymRes.closing_time) setClosingTime(gymRes.closing_time);
-        if (gymRes.currency) setCurrency(gymRes.currency);
-        if (gymRes.timezone) setTimeZone(gymRes.timezone);
-        if (gymRes.essl_bioserver_url) setEsslUrl(gymRes.essl_bioserver_url);
+    ]).then(([vahdRes, userRes]) => {
+      if (vahdRes) {
+        if (vahdRes.vahd_name) setvahdName(vahdRes.vahd_name);
+        if (vahdRes.phone) setvahdPhone(vahdRes.phone);
+        if (vahdRes.email) setvahdEmail(vahdRes.email);
+        if (vahdRes.address) setvahdAddress(vahdRes.address);
+        if (vahdRes.gstin) setGstNumber(vahdRes.gstin);
+        if (vahdRes.opening_time) setOpeningTime(vahdRes.opening_time);
+        if (vahdRes.closing_time) setClosingTime(vahdRes.closing_time);
+        if (vahdRes.currency) setCurrency(vahdRes.currency);
+        if (vahdRes.timezone) setTimeZone(vahdRes.timezone);
+        if (vahdRes.essl_bioserver_url) setEsslUrl(vahdRes.essl_bioserver_url);
         notifyModuleVisibilityChanged();
       }
       if (userRes) {
@@ -315,13 +410,8 @@ export function SettingsPage() {
         if (fullName) setOwnerName(fullName);
         if (userRes.email) setOwnerEmail(userRes.email);
         if ((userRes as any).phone) setOwnerPhone((userRes as any).phone);
-        if (userRes.role) {
-          const cleanRole = userRes.role.toLowerCase();
-          setOwnerRole(
-            cleanRole === 'owner' ? 'Owner' :
-            cleanRole === 'ho' ? 'Head Office Admin' :
-            userRes.role.toUpperCase()
-          );
+        if (userRes.role_title || userRes.role) {
+          setOwnerRole(userRes.role_title || userRes.role);
         }
         const loadedAvatar = (userRes as any).avatar_url || (userRes as any).avatar;
         if (loadedAvatar) {
@@ -339,7 +429,7 @@ export function SettingsPage() {
   };
 
   const getInitials = (name: string) => {
-    if (!name) return 'AR';
+    if (!name) return '';
     const parts = name.trim().split(/\s+/);
     if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
     return parts[0].slice(0, 2).toUpperCase();
@@ -384,26 +474,40 @@ export function SettingsPage() {
     triggerToast('🗑️ Profile photo removed');
   };
 
-  const handleSaveProfile = () => {
-    updateUser({
-      name: ownerName,
-      email: ownerEmail,
-      avatar: ownerAvatar,
-    });
-    if (ownerAvatar) {
-      localStorage.setItem('vahd_owner_avatar', ownerAvatar);
+  const [savingProfile, setSavingProfile] = useState(false);
+
+  const handleSaveProfile = async () => {
+    setSavingProfile(true);
+    try {
+      await apiClient.put('/auth/me', {
+        full_name: ownerName.trim(),
+        phone: ownerPhone.trim(),
+        avatar_url: ownerAvatar,
+      });
+      updateUser({
+        name: ownerName.trim(),
+        phone: ownerPhone.trim(),
+        avatar: ownerAvatar,
+      });
+      if (ownerAvatar) {
+        localStorage.setItem('vahd_owner_avatar', ownerAvatar);
+      }
+      setHasUnsavedChanges(false);
+      triggerToast('✅ Profile updated successfully in database!');
+    } catch (err: any) {
+      triggerToast('⚠️ ' + (err?.response?.data?.detail || err?.message || 'Failed to update profile.'));
+    } finally {
+      setSavingProfile(false);
     }
-    setHasUnsavedChanges(false);
-    triggerToast(`✅ ${isHo ? 'Head Office administrator' : 'Owner'} profile and photo updated successfully!`);
   };
 
   const handleSaveSettings = async () => {
     try {
-      await apiClient.post('/gym/settings', {
-        gym_name: gymName,
-        phone: gymPhone,
-        email: gymEmail,
-        address: gymAddress,
+      await apiClient.post('/vahd/settings', {
+        vahd_name: vahdName,
+        phone: vahdPhone,
+        email: vahdEmail,
+        address: vahdAddress,
         gstin: gstNumber,
         currency: currency,
         timezone: timeZone,
@@ -413,17 +517,27 @@ export function SettingsPage() {
         enable_pos: true,
         enable_inventory: true,
       });
+      if (ownerName || ownerPhone || ownerAvatar) {
+        await apiClient.put('/auth/me', {
+          full_name: ownerName.trim(),
+          phone: ownerPhone.trim(),
+          avatar_url: ownerAvatar,
+        }).catch(() => null);
+        updateUser({
+          name: ownerName.trim(),
+          phone: ownerPhone.trim(),
+          avatar: ownerAvatar,
+          vahdName: vahdName,
+        });
+      }
       localStorage.removeItem('vahd_enable_pos');
       localStorage.removeItem('vahd_enable_inventory');
       notifyModuleVisibilityChanged();
-    } catch (_err) {}
-
-    setHasUnsavedChanges(false);
-    triggerToast(
-      isHo
-        ? 'Head Office settings and profile configurations saved successfully!'
-        : 'Settings and profile configurations saved successfully!'
-    );
+      setHasUnsavedChanges(false);
+      triggerToast('Settings and profile configurations saved successfully to database!');
+    } catch (_err) {
+      triggerToast('⚠️ Failed to save settings.');
+    }
   };
 
   const activeCard = SETTING_CARDS.find(
@@ -451,7 +565,7 @@ export function SettingsPage() {
               Settings
             </h1>
             <p className="text-xs text-slate-500 font-medium">
-              Master data — geography, clinical, HR, finance, pharmacy, and fodder
+              Master data — geography, , HR, finance, pharmacy, and fodder
             </p>
           </div>
 
@@ -461,9 +575,40 @@ export function SettingsPage() {
             <span className="text-xs font-bold text-blue-600">Settings</span>
           </div>
 
-          {/* 13 Setting Cards Grid */}
+          {/* Setting Cards Grid (Permissions strictly enforced for Owners) */}
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 gap-3 sm:gap-4 pt-1">
-            {SETTING_CARDS.map((card) => (
+            {SETTING_CARDS.filter((card) => {
+              if (isHo) return true;
+              if (card.id === 'permissions') {
+                return !!(user?.permissions && (user.permissions['permissions.view'] || user.permissions['permissions']));
+              }
+              if (!user?.permissions || Object.keys(user.permissions).length === 0) return true;
+              const perms = user.permissions;
+
+              // 1. Direct card check if explicitly granted/denied
+              const specificPerm = perms[`${card.id}.view`] ?? perms[card.id];
+              if (specificPerm !== undefined) {
+                return !!specificPerm;
+              }
+
+              // 2. Fallbacks for master data categories
+              if (card.type === 'master') {
+                return !!(perms['master_data.view'] || perms['master_data']);
+              }
+              if (card.id === 'courses') {
+                return !!(perms['courses.view'] || perms['courses']);
+              }
+              if (card.id === 'reports') {
+                return !!(perms['reports_section.view'] || perms['reports.view'] || perms['reports_attendance.view'] || perms['reports_financial.view']);
+              }
+              if (card.id === 'erp') {
+                return !!(perms['erp.view'] || perms['erp'] || perms['branch_profile.view'] || perms['settings.profile']);
+              }
+              if (card.id === 'general') {
+                return !!(perms['general.view'] || perms['general'] || perms['settings_section.view'] || perms['settings.view'] || perms['branch_profile.view'] || perms['settings.profile']);
+              }
+              return true;
+            }).map((card) => (
               <button
                 key={card.id}
                 type="button"
@@ -551,7 +696,7 @@ export function SettingsPage() {
                   {isHo ? 'Basic contact profile and head office operational parameters' : 'Basic contact profile and branch operational parameters'}
                 </p>
               </div>
-              <Badge variant="brand" dot>{gymName || (isHo ? (user?.ho_name || 'Central Head Office') : 'Primary Branch')}</Badge>
+              <Badge variant="brand" dot>{vahdName || user?.vahdName || user?.branchName || ''}</Badge>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -561,9 +706,9 @@ export function SettingsPage() {
                 </label>
                 <input
                   type="text"
-                  placeholder={isHo ? 'e.g. Central Head Office' : 'e.g. Main Branch'}
-                  value={gymName}
-                  onChange={(e) => { setGymName(e.target.value); setHasUnsavedChanges(true); }}
+                  placeholder="Organisation / Branch Name"
+                  value={vahdName}
+                  onChange={(e) => { setvahdName(e.target.value); setHasUnsavedChanges(true); }}
                   className="input-field text-xs font-bold"
                 />
               </div>
@@ -572,9 +717,9 @@ export function SettingsPage() {
                 <label className="text-xs font-bold text-navy-700 mb-1.5 block">Official Phone Number</label>
                 <input
                   type="text"
-                  placeholder="e.g. +91 98765 43210"
-                  value={gymPhone}
-                  onChange={(e) => { setGymPhone(e.target.value); setHasUnsavedChanges(true); }}
+                  placeholder="Official Phone Number"
+                  value={vahdPhone}
+                  onChange={(e) => { setvahdPhone(e.target.value); setHasUnsavedChanges(true); }}
                   className="input-field text-xs font-bold"
                 />
               </div>
@@ -583,9 +728,9 @@ export function SettingsPage() {
                 <label className="text-xs font-bold text-navy-700 mb-1.5 block">Support Email Address</label>
                 <input
                   type="email"
-                  placeholder="e.g. contact@vahd.ai"
-                  value={gymEmail}
-                  onChange={(e) => { setGymEmail(e.target.value); setHasUnsavedChanges(true); }}
+                  placeholder="Official Email Address"
+                  value={vahdEmail}
+                  onChange={(e) => { setvahdEmail(e.target.value); setHasUnsavedChanges(true); }}
                   className="input-field text-xs font-bold"
                 />
               </div>
@@ -594,7 +739,7 @@ export function SettingsPage() {
                 <label className="text-xs font-bold text-navy-700 mb-1.5 block">GSTIN / Tax Reg Number</label>
                 <input
                   type="text"
-                  placeholder="e.g. 29ABCDE1234F1Z5"
+                  placeholder="GSTIN / Registration Number"
                   value={gstNumber}
                   onChange={(e) => { setGstNumber(e.target.value); setHasUnsavedChanges(true); }}
                   className="input-field text-xs font-bold font-mono uppercase"
@@ -608,6 +753,7 @@ export function SettingsPage() {
                   onChange={(e) => { setCurrency(e.target.value); setHasUnsavedChanges(true); }}
                   className="input-field text-xs font-bold"
                 >
+                  <option value="">Select Currency</option>
                   <option value="INR (₹)">Indian Rupee (INR ₹)</option>
                   <option value="USD ($)">US Dollar (USD $)</option>
                   <option value="AED (AED)">UAE Dirham (AED)</option>
@@ -621,6 +767,7 @@ export function SettingsPage() {
                   onChange={(e) => { setTimeZone(e.target.value); setHasUnsavedChanges(true); }}
                   className="input-field text-xs font-bold"
                 >
+                  <option value="">Select Time Zone</option>
                   <option value="Asia/Kolkata (GMT +5:30)">Asia/Kolkata (GMT +5:30)</option>
                   <option value="UTC (GMT +0:00)">UTC (GMT +0:00)</option>
                   <option value="America/New_York (EST)">America/New_York (EST)</option>
@@ -631,9 +778,9 @@ export function SettingsPage() {
                 <label className="text-xs font-bold text-navy-700 mb-1.5 block">Physical Address</label>
                 <input
                   type="text"
-                  placeholder="e.g. 123 Main Street, Suite 100, City, State"
-                  value={gymAddress}
-                  onChange={(e) => { setGymAddress(e.target.value); setHasUnsavedChanges(true); }}
+                  placeholder="Physical Address"
+                  value={vahdAddress}
+                  onChange={(e) => { setvahdAddress(e.target.value); setHasUnsavedChanges(true); }}
                   className="input-field text-xs font-bold"
                 />
               </div>
@@ -646,7 +793,7 @@ export function SettingsPage() {
                   <label className="text-xs font-semibold text-navy-500 block mb-1">Opening Time</label>
                   <input
                     type="text"
-                    placeholder="e.g. 06:00 AM"
+                    placeholder="Opening Time (e.g. 09:00 AM)"
                     value={openingTime}
                     onChange={(e) => { setOpeningTime(e.target.value); setHasUnsavedChanges(true); }}
                     className="input-field text-xs font-bold"
@@ -656,7 +803,7 @@ export function SettingsPage() {
                   <label className="text-xs font-semibold text-navy-500 block mb-1">Closing Time</label>
                   <input
                     type="text"
-                    placeholder="e.g. 10:00 PM"
+                    placeholder="Closing Time (e.g. 06:00 PM)"
                     value={closingTime}
                     onChange={(e) => { setClosingTime(e.target.value); setHasUnsavedChanges(true); }}
                     className="input-field text-xs font-bold"
@@ -677,7 +824,7 @@ export function SettingsPage() {
                   {isHo ? 'Personal credentials and head office administrative access privileges' : 'Personal details and administrative access privileges'}
                 </p>
               </div>
-              <Badge variant="brand">{isHo ? 'Head Office Admin' : 'Administrator'}</Badge>
+              <Badge variant="brand">{ownerRole || user?.role_title || (user?.role ? user.role.toUpperCase() : '')}</Badge>
             </div>
 
             {/* Profile Photo Upload Section */}
@@ -698,11 +845,11 @@ export function SettingsPage() {
                   {ownerAvatar ? (
                     <img
                       src={ownerAvatar}
-                      alt={ownerName || (isHo ? 'Head Office' : 'Owner')}
+                      alt={ownerName || user?.name || ''}
                       className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                     />
                   ) : (
-                    <span>{getInitials(ownerName || user?.name || (isHo ? 'Head Office' : 'Owner'))}</span>
+                    <span>{getInitials(ownerName || user?.name || '')}</span>
                   )}
 
                   <div className="absolute inset-0 bg-navy-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[10px] font-bold gap-1">
@@ -714,7 +861,7 @@ export function SettingsPage() {
                 </div>
 
                 <div className="space-y-1">
-                  <h4 className="text-sm font-bold text-navy-900">{ownerName || user?.name || 'User'}</h4>
+                  <h4 className="text-sm font-bold text-navy-900">{ownerName || user?.name || ''}</h4>
                   <p className="text-xs text-navy-500 font-medium">{ownerRole}</p>
                   <div className="flex items-center gap-2 pt-1">
                     <button
@@ -800,74 +947,132 @@ export function SettingsPage() {
             </div>
           </div>
 
-          {/* Section 3: Security & Credentials */}
-          <div className="card p-6 border border-navy-100 bg-white space-y-6 shadow-sm rounded-3xl">
-            <div className="flex items-center justify-between border-b border-navy-100 pb-4">
-              <div>
-                <h3 className="text-base font-bold text-navy-900">Security & Credentials</h3>
-                <p className="text-xs text-navy-400">Password management and multi-factor authentication setup</p>
+          {/* Section 3: Security & Password Reset (Design matching Employee & Student Login) */}
+          <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-xs space-y-5">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-purple-50 text-purple-600 border border-purple-200/70 flex items-center justify-center shrink-0">
+                  <Icon name="key" size={18} />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900">Security & Password Reset</h3>
+                  <p className="text-xs text-slate-500 font-medium">Set and customize your personal account password</p>
+                </div>
               </div>
               <Badge variant="success" dot>Secured</Badge>
             </div>
 
-            <div className="space-y-4">
+            {passwordSuccess && (
+              <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-800 flex items-center gap-2.5 animate-fade-in shadow-2xs">
+                <Icon name="check-circle" size={16} className="text-emerald-600 shrink-0" />
+                <span>{passwordSuccess}</span>
+              </div>
+            )}
+
+            {passwordError && (
+              <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-xs font-bold text-rose-700 flex items-center gap-2.5 animate-fade-in shadow-2xs">
+                <Icon name="alert-circle" size={16} className="text-rose-600 shrink-0" />
+                <span>{passwordError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleResetPassword} className="space-y-4">
               <div>
-                <label className="text-xs font-bold text-navy-700 mb-1.5 block">Current Password</label>
-                <input
-                  type="password"
-                  placeholder="••••••••"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  className="input-field text-xs font-bold"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-bold text-navy-700 mb-1.5 block">New Password</label>
+                <label className="text-xs font-bold text-slate-700 mb-1.5 block">Current Password (Optional)</label>
+                <div className="relative">
+                  <Icon name="key" size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type="password"
-                    placeholder="••••••••"
+                    placeholder="Enter current password if known"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/60 text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-purple-500 focus:bg-white transition"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-bold text-slate-700">New Password *</label>
+                  <button
+                    type="button"
+                    onClick={handleGeneratePassword}
+                    className="text-[11px] font-bold text-purple-600 hover:text-purple-800 hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <Icon name="sparkles" size={12} />
+                    <span>Auto-Generate</span>
+                  </button>
+                </div>
+                <div className="relative">
+                  <Icon name="lock" size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Enter new password (min. 4 characters)"
                     value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    className="input-field text-xs font-bold"
+                    onChange={(e) => {
+                      setNewPassword(e.target.value);
+                      setPasswordError(null);
+                    }}
+                    required
+                    minLength={4}
+                    className="w-full pl-9 pr-10 py-2.5 rounded-xl border border-slate-200 bg-slate-50/60 text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-purple-500 focus:bg-white transition"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  >
+                    <Icon name={showPassword ? 'eye-off' : 'eye'} size={15} />
+                  </button>
                 </div>
+              </div>
 
-                <div>
-                  <label className="text-xs font-bold text-navy-700 mb-1.5 block">Confirm New Password</label>
+              <div>
+                <label className="text-xs font-bold text-slate-700 mb-1.5 block">Confirm New Password *</label>
+                <div className="relative">
+                  <Icon name="check-circle" size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
-                    type="password"
-                    placeholder="••••••••"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Re-enter your new password"
                     value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="input-field text-xs font-bold"
+                    onChange={(e) => {
+                      setConfirmPassword(e.target.value);
+                      setPasswordError(null);
+                    }}
+                    required
+                    minLength={4}
+                    className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/60 text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-purple-500 focus:bg-white transition"
                   />
                 </div>
               </div>
-            </div>
 
-            <div className="p-4 rounded-2xl bg-navy-50/70 border border-navy-100 flex items-center justify-between">
-              <div className="space-y-1">
-                <div className="text-xs font-bold text-navy-900">Two-Factor Authentication (2FA)</div>
-                <div className="text-xs text-navy-400">Require authenticator app passcode on login</div>
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-100 flex items-start gap-2.5 text-[11px] text-slate-500 leading-relaxed font-medium">
+                <Icon name="shield" size={15} className="text-purple-600 shrink-0 mt-0.5" />
+                <span>
+                  Your password will be updated instantly in the secure database. You can use your registered email (<strong>{user?.email}</strong>) and your new password to sign in on all devices.
+                </span>
               </div>
-              <button
-                onClick={() => setTwoFactorEnabled(!twoFactorEnabled)}
-                className={cn(
-                  'btn-secondary text-xs py-1.5 px-3 font-bold',
-                  twoFactorEnabled ? 'text-emerald-700 border-emerald-200 bg-emerald-50' : ''
-                )}
-              >
-                {twoFactorEnabled ? 'Enabled' : 'Enable 2FA'}
-              </button>
-            </div>
 
-            <div className="flex justify-end">
-              <button onClick={() => triggerToast('Security settings updated')} className="btn-primary text-xs py-2.5 px-4 flex items-center gap-2">
-                <Icon name="shield" size={15} /> Update Security Settings
-              </button>
-            </div>
+              <div className="pt-2 flex items-center justify-end">
+                <button
+                  type="submit"
+                  disabled={savingPassword || !newPassword}
+                  className="px-6 py-2.5 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white shadow-md shadow-purple-600/20 transition flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  {savingPassword ? (
+                    <>
+                      <Icon name="loader" size={14} className="animate-spin" />
+                      <span>Updating Password...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Icon name="key" size={14} />
+                      <span>Update Password</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
@@ -903,36 +1108,6 @@ export function SettingsPage() {
       )}
 
       {/* ───────────────────────────────────────────────────────────────── */}
-      {/* VIEW 4: REPORTS & ANALYTICS                                       */}
-      {/* ───────────────────────────────────────────────────────────────── */}
-      {selectedSection === 'reports' && (
-        <div className="space-y-4 animate-fade-in">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-3">
-            <div>
-              <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-1">
-                <span className="hover:text-blue-600 cursor-pointer" onClick={() => handleSelectSection(null)}>Home</span>
-                <Icon name="chevron-right" size={12} />
-                <span className="hover:text-blue-600 cursor-pointer" onClick={() => handleSelectSection(null)}>Settings</span>
-                <Icon name="chevron-right" size={12} />
-                <span className="text-slate-800 dark:text-slate-200 font-bold">Reports</span>
-              </div>
-              <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Reports</h2>
-              <p className="text-xs text-slate-500 font-medium">Settings · Executive Reports & Analytics</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => handleSelectSection(null)}
-              className="px-3.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
-            >
-              <Icon name="chevron-left" size={14} />
-              <span>Back</span>
-            </button>
-          </div>
-          <ReportsPage embedded={true} />
-        </div>
-      )}
-
-      {/* ───────────────────────────────────────────────────────────────── */}
       {/* VIEW 5: ERP & GOOGLE REVIEWS                                      */}
       {/* ───────────────────────────────────────────────────────────────── */}
       {selectedSection === 'erp' && (
@@ -960,6 +1135,13 @@ export function SettingsPage() {
           </div>
           <CompanyManagement />
         </div>
+      )}
+
+      {/* ───────────────────────────────────────────────────────────────── */}
+      {/* VIEW 6: PERMISSION MATRIX MANAGEMENT                              */}
+      {/* ───────────────────────────────────────────────────────────────── */}
+      {selectedSection === 'permissions' && (
+        <OwnerPermissionsTab onBack={() => handleSelectSection(null)} />
       )}
     </div>
   );

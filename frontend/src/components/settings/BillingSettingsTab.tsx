@@ -4,7 +4,7 @@ import { api } from '@/services/api';
 import { cn } from '@/utils/cn';
 
 interface BillingSettingsData {
-  gym_name: string;
+  vahd_name: string;
   address: string;
   gstin: string;
   sac_code: string;
@@ -25,7 +25,7 @@ interface BillingSettingsData {
 }
 
 const EMPTY_BILLING_SETTINGS: BillingSettingsData = {
-  gym_name: '',
+  vahd_name: '',
   address: '',
   gstin: '',
   sac_code: '',
@@ -98,7 +98,7 @@ export function BillingSettingsTab() {
       const res = await api.settings.billing();
       if (res) {
         setSettings({
-          gym_name: res.gym_name || '',
+          vahd_name: res.vahd_name || '',
           address: res.address || '',
           gstin: res.gstin || '',
           sac_code: res.sac_code || '',
@@ -673,8 +673,8 @@ export function BillingSettingsTab() {
                 <input
                   type="text"
                   placeholder="e.g. VAHD ENTERPRISE"
-                  value={settings.gym_name}
-                  onChange={(e) => setSettings((p) => ({ ...p, gym_name: e.target.value }))}
+                  value={settings.vahd_name}
+                  onChange={(e) => setSettings((p) => ({ ...p, vahd_name: e.target.value }))}
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-bold focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
@@ -957,7 +957,7 @@ export function BillingSettingsTab() {
             <div className="bg-slate-50/90 border border-slate-200/80 rounded-2xl p-4 font-mono text-xs space-y-2.5 shadow-inner">
               <div className="text-center border-b border-dashed border-slate-300 pb-2.5 space-y-1">
                 <div className="font-black tracking-wider uppercase text-slate-900 text-xs">
-                  {settings.gym_name.trim() ? settings.gym_name : 'VAHD ENTERPRISE'}
+                  {settings.vahd_name.trim() ? settings.vahd_name : 'VAHD ENTERPRISE'}
                 </div>
                 <div className="text-[10px] text-slate-500 font-bold">
                   GSTIN: {settings.gstin.trim() ? settings.gstin : 'NOT REGISTERED / EXEMPT'}

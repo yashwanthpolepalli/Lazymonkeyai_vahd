@@ -10,7 +10,7 @@ import { Button } from "../ui/button";
 import { useCurrency } from "@/hooks/use-currency";
 
 export function PaymentHistory() {
-    const { currency, formatCurrency } = useCurrency();
+  const { currency, formatCurrency } = useCurrency();
   const [payments, setPayments] = useState<any[]>([]);
   const [bills, setBills] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -22,10 +22,10 @@ export function PaymentHistory() {
       created_at: txn.payment_date || new Date().toISOString(),
       payment_method: txn.payment_method,
       amount: txn.amount_paid,
-      customer_name: bill?.supplier_name || "Vendor",
+      student_name: bill?.supplier_name || "Vendor",
       cashier_name: "Admin"
     });
-    
+
     // Slight delay to allow state to set
     setTimeout(() => {
       triggerThermalPrint();
@@ -105,9 +105,9 @@ export function PaymentHistory() {
                       <td className="py-4 px-6 font-semibold">{txn.payment_method}</td>
                       <td className="py-4 px-6 font-mono text-xs text-muted-foreground text-right">{txn.reference_number || "—"}</td>
                       <td className="py-4 px-6 text-center">
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
                           onClick={() => handlePrint(txn, bill)}
                           title="Print Receipt"
@@ -125,8 +125,8 @@ export function PaymentHistory() {
       </Card>
 
       {printedPayment && (
-        <ThermalReceiptPrinter 
-          bill={printedPayment} 
+        <ThermalReceiptPrinter
+          bill={printedPayment}
         />
       )}
     </div>

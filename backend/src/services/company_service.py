@@ -83,8 +83,8 @@ class CompanyService:
                 msg = MIMEMultipart()
                 msg["From"] = f"{sender_name} <{mail_from}>" if sender_name else mail_from
                 msg["To"] = recipient_email
-                msg["Subject"] = "SMTP Handshake Verification - Gym ERP"
-                body = "This is a verification email from your Gym ERP System. Outbound SMTP connection is working correctly."
+                msg["Subject"] = "SMTP Handshake Verification - vahd ERP"
+                body = "This is a verification email from your vahd ERP System. Outbound SMTP connection is working correctly."
                 msg.attach(MIMEText(body, "plain"))
                 smtp.sendmail(mail_from, [recipient_email], msg.as_string())
 

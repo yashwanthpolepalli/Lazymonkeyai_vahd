@@ -1,17 +1,17 @@
 import { apiClient } from './apiClient';
 import { dashboardApi } from './dashboardApi';
 import { membersApi } from './membersApi';
-import { trainersApi } from './trainersApi';
+import { employeesApi } from './employeesApi';
 import { biometricService } from './biometric';
 import type { User } from '@/types/auth';
 
 export { apiClient } from './apiClient';
 export { dashboardApi } from './dashboardApi';
 export { membersApi } from './membersApi';
-export { trainersApi } from './trainersApi';
+export { employeesApi } from './employeesApi';
 export { biometricService } from './biometric';
 
-export { customerApi } from './customerApi';
+export { studentApi } from './studentApi';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export const api = {
@@ -33,16 +33,16 @@ export const api = {
           userRole.includes('admin')
             ? 'super_admin'
             : userRole.includes('ho') || userRole.includes('head_office')
-            ? 'ho'
-            : userRole.includes('owner')
-            ? 'owner'
-            : userRole.includes('employee') || userRole.includes('trainer') || userRole.includes('staff')
-            ? 'employee'
-            : 'student'
+              ? 'ho'
+              : userRole.includes('owner')
+                ? 'owner'
+                : userRole.includes('employee') || userRole.includes('employee') || userRole.includes('staff')
+                  ? 'employee'
+                  : 'student'
         ) as User['role'];
 
         return {
-          id: res.user_id || res.customer_id || '',
+          id: res.user_id || res.student_id || '',
           name: res.full_name || email.split('@')[0] || '',
           email: res.email || email,
           phone: res.phone || '',
@@ -50,15 +50,17 @@ export const api = {
           avatar: res.avatar_url || '',
           ho_id: res.ho_id || '',
           hoId: res.ho_id || '',
-          gymId: res.gym_id || '',
-          gymName: res.gym_name || '',
-          branchName: res.branch_name || '',
+          vahdId: res.vahd_id || '',
+          vahdName: res.vahd_name || res.organization_name || res.branch_name || '',
+          branchName: res.branch_name || res.vahd_name || '',
+          permissions: res.permissions || {},
+          role_title: res.role_title || '',
         };
       } catch (err) {
         throw err;
       }
     },
-    signup: async (data: { full_name: string; email: string; password: string; phone?: string; gym_name?: string }): Promise<User> => {
+    signup: async (data: { full_name: string; email: string; password: string; phone?: string; vahd_name?: string }): Promise<User> => {
       try {
         const res = await apiClient.post<any>('/auth/signup', {
           ...data,
@@ -74,10 +76,10 @@ export const api = {
           userRole.includes('admin')
             ? 'super_admin'
             : userRole.includes('owner')
-            ? 'owner'
-            : userRole.includes('employee') || userRole.includes('trainer') || userRole.includes('staff')
-            ? 'employee'
-            : 'student'
+              ? 'owner'
+              : userRole.includes('employee') || userRole.includes('employee') || userRole.includes('staff')
+                ? 'employee'
+                : 'student'
         ) as User['role'];
 
         return {
@@ -87,8 +89,8 @@ export const api = {
           phone: res.phone || data.phone || '',
           role: role,
           avatar: res.avatar_url || '',
-          gymId: res.gym_id || '',
-          gymName: res.gym_name || data.gym_name || '',
+          vahdId: res.vahd_id || '',
+          vahdName: res.vahd_name || data.vahd_name || '',
           branchName: res.branch_name || '',
         };
       } catch (err) {
@@ -104,16 +106,16 @@ export const api = {
           userRole.includes('admin')
             ? 'super_admin'
             : userRole.includes('ho') || userRole.includes('head_office')
-            ? 'ho'
-            : userRole.includes('owner')
-            ? 'owner'
-            : userRole.includes('employee') || userRole.includes('trainer') || userRole.includes('staff')
-            ? 'employee'
-            : 'student'
+              ? 'ho'
+              : userRole.includes('owner')
+                ? 'owner'
+                : userRole.includes('employee') || userRole.includes('employee') || userRole.includes('staff')
+                  ? 'employee'
+                  : 'student'
         ) as User['role'];
 
         return {
-          id: res.user_id || res.customer_id || '',
+          id: res.user_id || res.student_id || '',
           name: res.full_name || res.email?.split('@')[0] || '',
           email: res.email || '',
           phone: res.phone || '',
@@ -121,29 +123,39 @@ export const api = {
           avatar: res.avatar_url || '',
           ho_id: res.ho_id || '',
           hoId: res.ho_id || '',
-          gymId: res.gym_id || '',
-          gymName: res.gym_name || '',
-          branchName: res.branch_name || '',
+          vahdId: res.vahd_id || '',
+          vahdName: res.vahd_name || res.organization_name || res.branch_name || '',
+          branchName: res.branch_name || res.vahd_name || '',
+          permissions: res.permissions || {},
+          role_title: res.role_title || '',
         };
       } catch (_err) {
         return null;
       }
     },
+    changePassword: async (password: string, currentPassword?: string): Promise<{ status: string; message: string }> => {
+      return apiClient.post('/auth/change-password', {
+        new_password: password,
+        password: password,
+        current_password: currentPassword,
+      });
+    },
   },
   dashboard: {
     ...dashboardApi,
     ownerKpis: (): Promise<any[]> => apiClient.get('/dashboard/owner-kpis'),
-    superAdminKpis: (): Promise<any[]> => apiClient.get('/dashboard/super-admin-kpis'),
-    trainerKpis: (): Promise<any[]> => apiClient.get('/dashboard/trainer-kpis'),
-    customerKpis: (): Promise<any[]> => apiClient.get('/dashboard/customer-kpis'),
+    superAdminKpis: (hoId?: string): Promise<any[]> =>
+      apiClient.get(`/dashboard/super-admin-kpis${hoId && hoId !== 'all' ? `?ho_id=${encodeURIComponent(hoId)}` : ''}`),
+    employeeKpis: (): Promise<any[]> => apiClient.get('/dashboard/employee-kpis'),
+    studentKpis: (): Promise<any[]> => apiClient.get('/dashboard/student-kpis'),
     activity: (): Promise<any[]> => apiClient.get('/dashboard/activity'),
     attention: (): Promise<any[]> => apiClient.get('/dashboard/attention'),
-    customerRadar: (): Promise<any> => apiClient.get('/dashboard/radar'),
+    studentRadar: (): Promise<any> => apiClient.get('/dashboard/radar'),
     revenue: (): Promise<any> => apiClient.get('/dashboard/revenue'),
   },
-  customers: membersApi,
+  students: membersApi,
   members: membersApi,
-  trainers: trainersApi,
+  employees: employeesApi,
   biometrics: {
     ...biometricService,
     analytics: (role?: string, physical_only = false): Promise<any> => {
@@ -170,10 +182,6 @@ export const api = {
     transactions: (params?: any): Promise<any> => apiClient.get('/payments/transactions', { params }),
     membershipTransactions: (params?: any): Promise<any> => apiClient.get('/courses/transactions', { params }),
   },
-  aiCoach: {
-    recommendations: (): Promise<any[]> => apiClient.get('/customer/ai/recommendation'),
-    chat: (message: string): Promise<any> => apiClient.post('/ai-coach/chat', { message }),
-  },
   crm: {
     leads: (): Promise<any[]> => apiClient.get('/crm/leads'),
     updateLead: (id: string, status: string): Promise<any> => apiClient.patch(`/crm/leads/${id}`, { status }),
@@ -182,20 +190,21 @@ export const api = {
     products: (): Promise<any[]> => apiClient.get('/pos/products'),
   },
   settings: {
-    get: (): Promise<any> => apiClient.get('/gym/settings'),
-    update: (payload: any): Promise<any> => apiClient.post('/gym/settings', payload),
-    billing: (): Promise<any> => apiClient.get('/gym/billing'),
-    saveBilling: (payload: any): Promise<any> => apiClient.post('/gym/billing', payload),
+    get: (): Promise<any> => apiClient.get('/vahd/settings'),
+    update: (payload: any): Promise<any> => apiClient.post('/vahd/settings', payload),
+    billing: (): Promise<any> => apiClient.get('/vahd/billing'),
+    saveBilling: (payload: any): Promise<any> => apiClient.post('/vahd/billing', payload),
   },
   inventory: {
     products: (): Promise<any[]> => apiClient.get('/inventory/products'),
   },
   superAdmin: {
-    gyms: (): Promise<any[]> => apiClient.get('/superadmin/gyms'),
-    onboardGym: (payload: any): Promise<any> => apiClient.post('/superadmin/gyms', payload),
-    deleteOrganization: (gymId: string): Promise<any> => apiClient.delete(`/superadmin/organizations/${gymId}`),
-    bulkDeleteOrganizations: (gymIds: string[]): Promise<any> => apiClient.post('/superadmin/organizations/bulk-delete', { gym_ids: gymIds }),
-    updateGymStatus: (gymId: string, status: string): Promise<any> => apiClient.patch(`/superadmin/gyms/${gymId}/status`, { status }),
+    vahds: (hoId?: string): Promise<any[]> =>
+      apiClient.get(`/superadmin/vahds${hoId && hoId !== 'all' ? `?ho_id=${encodeURIComponent(hoId)}` : ''}`),
+    onboardvahd: (payload: any): Promise<any> => apiClient.post('/superadmin/vahds', payload),
+    deleteOrganization: (vahdId: string): Promise<any> => apiClient.delete(`/superadmin/organizations/${vahdId}`),
+    bulkDeleteOrganizations: (vahdIds: string[]): Promise<any> => apiClient.post('/superadmin/organizations/bulk-delete', { vahd_ids: vahdIds }),
+    updatevahdStatus: (vahdId: string, status: string): Promise<any> => apiClient.patch(`/superadmin/vahds/${vahdId}/status`, { status }),
     resetOwnerCredentials: (userId: string, newPassword?: string): Promise<any> => apiClient.post(`/superadmin/owners/${userId}/reset-credentials`, { password: newPassword, new_password: newPassword }),
     updateOwnerStatus: (userId: string, isActive: boolean): Promise<any> => apiClient.patch(`/superadmin/owners/${userId}/status`, { is_active: isActive }),
     users: (): Promise<any[]> => apiClient.get('/superadmin/users'),

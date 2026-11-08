@@ -19,18 +19,26 @@ import {
   downloadDesignationSampleCsv,
   downloadCourseSampleXlsx,
   downloadCourseSampleCsv,
+  downloadShiftTemplateSampleXlsx,
+  downloadShiftTemplateSampleCsv,
+  downloadHolidaySampleXlsx,
+  downloadHolidaySampleCsv,
   normalizeCourseImportRow,
+  normalizeShiftTemplateImportRow,
+  normalizeHolidayImportRow,
   type StudentImportRow,
   type EmployeeImportRow,
   type DepartmentImportRow,
   type DesignationImportRow,
   type CourseImportRow,
+  type ShiftTemplateImportRow,
+  type HolidayImportRow,
 } from '@/lib/bulk-import-export-utils';
 
 export interface HrmsBulkImportModalProps {
   isOpen: boolean;
   onClose: () => void;
-  type: 'students' | 'employees' | 'departments' | 'designations' | 'courses';
+  type: 'students' | 'employees' | 'departments' | 'designations' | 'courses' | 'shift_templates' | 'holidays';
   onSuccess: (count: number) => void;
 }
 
@@ -55,16 +63,22 @@ export function HrmsBulkImportModal({
   const isDepartment = type === 'departments';
   const isDesignation = type === 'designations';
   const isCourse = type === 'courses';
+  const isShiftTemplate = type === 'shift_templates';
+  const isHoliday = type === 'holidays';
 
   const typeTitle = isStudent
     ? 'Students'
     : isEmployee
-    ? 'Employees'
-    : isDepartment
-    ? 'Departments'
-    : isDesignation
-    ? 'Designations'
-    : 'Courses & Programs';
+      ? 'Employees'
+      : isDepartment
+        ? 'Departments'
+        : isDesignation
+          ? 'Designations'
+          : isShiftTemplate
+            ? 'Shift Templates'
+            : isHoliday
+              ? 'Holidays'
+              : 'Courses & Programs';
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0];
@@ -110,6 +124,12 @@ export function HrmsBulkImportModal({
       } else if (isDesignation) {
         const rows = rawData.map(normalizeDesignationImportRow);
         setParsedRows(rows);
+      } else if (isShiftTemplate) {
+        const rows = rawData.map(normalizeShiftTemplateImportRow);
+        setParsedRows(rows);
+      } else if (isHoliday) {
+        const rows = rawData.map(normalizeHolidayImportRow);
+        setParsedRows(rows);
       } else {
         const rows = rawData.map(normalizeCourseImportRow);
         setParsedRows(rows);
@@ -136,6 +156,12 @@ export function HrmsBulkImportModal({
     } else if (isDesignation) {
       const desg = r as DesignationImportRow;
       return Boolean(desg.title?.trim());
+    } else if (isShiftTemplate) {
+      const st = r as ShiftTemplateImportRow;
+      return Boolean(st.code?.trim() && st.name?.trim());
+    } else if (isHoliday) {
+      const h = r as HolidayImportRow;
+      return Boolean(h.name?.trim() && h.date?.trim());
     } else {
       const c = r as CourseImportRow;
       return Boolean(c.name?.trim());
@@ -152,6 +178,22 @@ export function HrmsBulkImportModal({
     setProgress(0);
     setErrorMsg(null);
 
+    let userHoId: string | undefined = undefined;
+    let userOwnerId: string | undefined = undefined;
+    let userBranchId: string | undefined = undefined;
+    const selectedOrgId = localStorage.getItem('vahd_selected_org_id');
+    try {
+      const uStr = localStorage.getItem('vahd_user');
+      if (uStr) {
+        const parsed = JSON.parse(uStr);
+        const role = (parsed?.role || '').toUpperCase();
+        userHoId = parsed?.ho_id || (['HEAD_OFFICE', 'HO'].includes(role) ? parsed?.id : undefined);
+        userOwnerId = parsed?.owner_id || (['OWNER'].includes(role) ? parsed?.id : undefined);
+        userBranchId = parsed?.branch_id || undefined;
+      }
+    } catch {}
+    const defaultBranchId = (selectedOrgId && selectedOrgId !== 'all') ? selectedOrgId : userBranchId;
+
     let successCount = 0;
     const total = validRows.length;
 
@@ -162,57 +204,101 @@ export function HrmsBulkImportModal({
           const s = row as StudentImportRow;
           const courseStr = s.course?.trim() || '';
           const mediumStr = s.medium?.trim() || '';
+          const deptStr = s.department?.trim() || '';
+          const cleanParentMobile = s.parentPhone?.trim() || '';
           const studentEmail = s.email?.trim() || (s.phone ? `${s.phone}@student.portal` : `${s.fullName.toLowerCase().replace(/[^a-z0-9]/g, '')}${Date.now() % 10000}@student.portal`);
-          
+
           const payload = {
             full_name: s.fullName.toUpperCase().trim(),
             email: studentEmail.toLowerCase(),
             phone: s.phone?.trim() || '',
+            parent_phone: cleanParentMobile || undefined,
+            member_code: s.rollNo?.trim() || undefined,
+            roll_no: s.rollNo?.trim() || undefined,
+            qualification: s.qualification?.trim() || undefined,
+            specialization: s.specialization?.trim() || undefined,
+            department: deptStr || undefined,
             gender: (s.gender || '').toLowerCase(),
             age: s.age ? Number(s.age) : undefined,
             role: 'STUDENT',
             goal: courseStr ? `${courseStr}${mediumStr ? ` (${mediumStr} Medium)` : ''}` : 'Student Admission',
             status: s.status || 'ACTIVE',
+            branch_id: defaultBranchId,
+            ho_id: userHoId,
+            owner_id: userOwnerId,
+            primary_vahd_location: s.branch?.trim() || undefined,
             meta_data: {
               admission_type: 'DEGREE_ADMISSION',
               course: courseStr,
               medium: mediumStr,
+              department: deptStr,
+              qualification: s.qualification?.trim() || undefined,
+              specialization: s.specialization?.trim() || undefined,
+              branch_id: defaultBranchId,
+              ho_id: userHoId,
+              owner_id: userOwnerId,
               academic_year: s.academicYear || `${new Date().getFullYear()} - ${new Date().getFullYear() + 1}`,
+              roll_number: s.rollNo?.trim() || undefined,
+              student_number: s.rollNo?.trim() || undefined,
+              code: s.rollNo?.trim() || undefined,
               father_name: s.fatherName?.toUpperCase().trim() || '',
               mother_name: s.motherName?.toUpperCase().trim() || '',
-              permanent_address: {
-                door_no: s.doorNo || '',
-                street: s.street || '',
-                village: s.village || '',
-                mandal: s.mandal || '',
-                district: s.district || '',
-                state: s.state || '',
-                mobile: s.phone || '',
-              },
-              present_address: {
-                door_no: s.doorNo || '',
-                street: s.street || '',
-                village: s.village || '',
-                mandal: s.mandal || '',
-                district: s.district || '',
-                state: s.state || '',
-                mobile: s.phone || '',
-              },
-              dob: s.dob || '',
-              age: s.age || '',
+              parent_phone: cleanParentMobile,
+              parent_occupation: s.parentOccupation || '',
+              annual_income: s.annualIncome || '',
+              blood_group: s.bloodGroup || '',
               caste: s.caste || '',
               sub_caste: s.subCaste || '',
+              mother_tongue: s.motherTongue || '',
+              nationality: s.nationality || '',
+              marital_status: s.maritalStatus || '',
+              place_of_birth: s.placeOfBirth || '',
+              identification_marks: [s.identificationMark1 || '', s.identificationMark2 || ''].filter(Boolean),
               aadhar_number: s.aadharNumber || '',
+              dob: s.dob || '',
+              age: s.age || '',
+              gender: s.gender || '',
+              permanent_address: {
+                door_no: s.permDoorNo || '',
+                street: s.permStreet || '',
+                village: s.permVillage || '',
+                mandal: s.permMandal || '',
+                district: s.permDistrict || '',
+                state: s.permState || '',
+                mobile: s.permMobile || s.phone || '',
+              },
+              present_address: {
+                door_no: s.presDoorNo || '',
+                street: s.presStreet || '',
+                village: s.presVillage || '',
+                mandal: s.presMandal || '',
+                district: s.presDistrict || '',
+                state: s.presState || '',
+                mobile: s.presMobile || '',
+                telephone: s.telephone || '',
+              },
               enrolled_at: new Date().toISOString(),
             },
           };
 
-          await apiClient.post('/customers', payload).catch(() => null);
+          await apiClient.post('/students', payload).catch(() => null);
+
+          // Auto-sync student department into backend DB with student classification
+          if (deptStr) {
+            await hrmsApi.createDepartment({
+              name: deptStr,
+              code: deptStr.replace(/[^A-Za-z0-9]/g, '').slice(0, 4).toUpperCase() || 'DEPT',
+              description: `Student Academic Department: ${deptStr}`,
+              is_active: true,
+              extra_info: 'student',
+              department_type: 'student',
+            } as any).catch(() => null);
+          }
         } else if (isEmployee) {
           const e = row as EmployeeImportRow;
           const empEmail = e.email?.trim() || (e.phone ? `${e.phone}@staff.portal` : `${e.fullName.toLowerCase().replace(/[^a-z0-9]/g, '')}${Date.now() % 10000}@staff.portal`);
           const parts = e.fullName.trim().split(' ');
-          
+
           const payload = {
             full_name: e.fullName.trim(),
             first_name: parts[0] || e.fullName.trim(),
@@ -222,26 +308,89 @@ export function HrmsBulkImportModal({
             designation: e.designation?.trim() || '',
             department: e.department?.trim() || '',
             gender: e.gender ? e.gender.trim().toLowerCase() : '',
-            code: e.code ? e.code.replace(/\D/g, '') : undefined,
-            employment_type: e.employmentType?.trim() || '',
+            code: e.code ? e.code.trim() : undefined,
+            role: e.role?.trim() || 'STAFF',
+            employment_type: e.employmentType?.trim() || 'Full-Time',
             joined_date: e.joinedDate?.trim() || '',
             salary: e.salary ? Number(e.salary) : 0,
-            gym_branch: e.branch?.trim() || '',
-            specialization: e.specialization?.trim() || '',
-            status: e.status?.trim() || '',
+            vahd_branch: e.branch?.trim() || '',
+            branch_id: defaultBranchId,
+            ho_id: userHoId,
+            owner_id: userOwnerId,
+            specialization: e.areaOfService?.trim() || '',
+            aadhar_number: e.aadharNumber?.trim() || '',
+            pan_number: e.panNumber?.trim() || '',
+            account_number: e.accountNumber?.trim() || '',
+            ifsc_code: e.ifscCode?.trim() || '',
+            address: e.presentAddress?.trim() || e.permanentAddress?.trim() || '',
+            emergency_contact: e.emergencyContactNo ? `${e.emergencyName || ''} (${e.emergencyRelationship || ''}): ${e.emergencyContactNo}` : (e.emergencyContactNo || ''),
+            skills: e.technicalSkills ? e.technicalSkills.split(',').map((s) => s.trim()).filter(Boolean) : [],
+            status: e.status?.trim() || 'Active',
             is_active: e.status ? e.status.toLowerCase() !== 'inactive' : true,
+            meta_data: {
+              form_title: 'PERSONAL DETAILS FORM',
+              employee_code: e.code?.trim() || undefined,
+              father_name: e.fatherName?.trim() || '',
+              dob: e.dob?.trim() || '',
+              age: e.age ? String(e.age) : '',
+              blood_group: e.bloodGroup?.trim() || '',
+              religion: e.religion?.trim() || '',
+              caste: e.caste?.trim() || '',
+              gender: e.gender ? e.gender.trim() : '',
+              marital_status: e.maritalStatus?.trim() || '',
+              work_experience_years: e.workExperienceYears?.trim() || '',
+              area_of_service: e.areaOfService?.trim() || '',
+              present_address: e.presentAddress?.trim() || '',
+              permanent_address: e.permanentAddress?.trim() || '',
+              emergency_details: {
+                name: e.emergencyName?.trim() || '',
+                relationship: e.emergencyRelationship?.trim() || '',
+                address: e.emergencyAddress?.trim() || '',
+                contact_no: e.emergencyContactNo?.trim() || '',
+                note: e.emergencyNote?.trim() || '',
+              },
+              post_details: {
+                location: e.branch?.trim() || '',
+                department: e.department?.trim() || '',
+                designation: e.designation?.trim() || '',
+                joining_date: e.joinedDate?.trim() || '',
+                role: e.role || 'STAFF',
+                technical_skills: e.technicalSkills?.trim() || '',
+              },
+              bank_details: {
+                account_holder_name: e.accountHolderName?.trim() || '',
+                bank_name: e.bankName?.trim() || '',
+                account_number: e.accountNumber?.trim() || '',
+                branch_city: e.bankBranchCity?.trim() || '',
+                account_type: e.bankAccountType?.trim() || 'Savings',
+                ifsc_code: e.ifscCode?.trim() || '',
+                pan_no: e.panNumber?.trim() || '',
+              },
+              reference_contact: {
+                name: e.refName?.trim() || '',
+                company: e.refCompany?.trim() || '',
+                address: e.refAddress?.trim() || '',
+                post: e.refPost?.trim() || '',
+                telephone: e.refTelephone?.trim() || '',
+                contact_no: e.refContactNo?.trim() || '',
+              },
+              enrolled_at: new Date().toISOString(),
+            }
           };
 
           await hrmsApi.createEmployee(payload).catch(() => null);
         } else if (isDepartment) {
           const d = row as DepartmentImportRow;
+          const rawType = ((d as any).type || (d as any).department_type || (d as any).extra_info || '').toLowerCase().trim();
           await hrmsApi.createDepartment({
             name: d.name.trim(),
             code: d.code?.trim() || '',
             head_name: d.headName?.trim() || '',
             description: d.description?.trim() || '',
             is_active: d.status ? d.status.toLowerCase() !== 'inactive' : true,
-          }).catch(() => null);
+            department_type: rawType || undefined,
+            extra_info: rawType || undefined,
+          } as any).catch(() => null);
         } else if (isDesignation) {
           const desg = row as DesignationImportRow;
           await hrmsApi.createDesignation({
@@ -249,6 +398,28 @@ export function HrmsBulkImportModal({
             department: desg.department?.trim() || '',
             level: desg.level?.trim() || '',
             description: desg.description?.trim() || '',
+          }).catch(() => null);
+        } else if (isShiftTemplate) {
+          const st = row as ShiftTemplateImportRow;
+          await hrmsApi.saveShiftTemplate({
+            code: st.code.trim().toUpperCase(),
+            name: st.name.trim(),
+            start_time: st.start_time?.trim() || '',
+            end_time: st.end_time?.trim() || '',
+            break_mins: st.break_mins !== undefined && st.break_mins !== null && (st.break_mins as any) !== '' ? Number(st.break_mins) : 0,
+            grace_period_mins: st.grace_period_mins !== undefined && st.grace_period_mins !== null && (st.grace_period_mins as any) !== '' ? Number(st.grace_period_mins) : 0,
+            is_night_shift: Boolean(st.is_night_shift),
+            color: st.color?.trim() || '',
+          }).catch(() => null);
+        } else if (isHoliday) {
+          const h = row as HolidayImportRow;
+          const year = parseInt(h.date.split('-')[0], 10) || (h.date ? new Date(h.date).getFullYear() : undefined);
+          await hrmsApi.saveHoliday({
+            name: h.name.trim(),
+            date: h.date.trim(),
+            year: year,
+            holiday_type: h.holiday_type?.trim() || '',
+            description: h.description?.trim() || undefined,
           }).catch(() => null);
         } else {
           const c = row as CourseImportRow;
@@ -301,7 +472,7 @@ export function HrmsBulkImportModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/70 backdrop-blur-xs overflow-y-auto animate-fade-in font-sans">
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-4xl shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col">
-        
+
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-800 text-white p-5 flex items-center justify-between shadow-md">
           <div className="flex items-center gap-3">
@@ -328,7 +499,7 @@ export function HrmsBulkImportModal({
 
         {/* Body Content */}
         <div className="p-5 sm:p-6 overflow-y-auto space-y-5 text-slate-800 dark:text-slate-200">
-          
+
           {/* Quick Template Download Banner */}
           <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
@@ -353,6 +524,8 @@ export function HrmsBulkImportModal({
                   else if (isEmployee) downloadEmployeeSampleXlsx();
                   else if (isDepartment) downloadDepartmentSampleXlsx();
                   else if (isDesignation) downloadDesignationSampleXlsx();
+                  else if (isShiftTemplate) downloadShiftTemplateSampleXlsx();
+                  else if (isHoliday) downloadHolidaySampleXlsx();
                   else downloadCourseSampleXlsx();
                 }}
                 className="px-3 py-1.5 rounded-xl text-xs font-extrabold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 hover:bg-emerald-100 flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
@@ -367,6 +540,8 @@ export function HrmsBulkImportModal({
                   else if (isEmployee) downloadEmployeeSampleCsv();
                   else if (isDepartment) downloadDepartmentSampleCsv();
                   else if (isDesignation) downloadDesignationSampleCsv();
+                  else if (isShiftTemplate) downloadShiftTemplateSampleCsv();
+                  else if (isHoliday) downloadHolidaySampleCsv();
                   else downloadCourseSampleCsv();
                 }}
                 className="px-3 py-1.5 rounded-xl text-xs font-extrabold bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-700 hover:bg-blue-100 flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
@@ -464,44 +639,64 @@ export function HrmsBulkImportModal({
                         {isDepartment
                           ? 'DEPARTMENT NAME'
                           : isDesignation
-                          ? 'DESIGNATION TITLE'
-                          : isCourse
-                          ? 'COURSE / PROGRAM NAME'
-                          : 'FULL NAME'}
+                            ? 'DESIGNATION TITLE'
+                            : isCourse
+                              ? 'COURSE / PROGRAM NAME'
+                              : isShiftTemplate
+                                ? 'SHIFT CODE & NAME'
+                                : isHoliday
+                                  ? 'HOLIDAY NAME'
+                                  : 'FULL NAME'}
                       </th>
                       <th className="p-2.5">
                         {isDepartment
                           ? 'CODE'
                           : isDesignation
-                          ? 'DEPARTMENT'
-                          : isCourse
-                          ? 'CATEGORY / DEPT'
-                          : 'EMAIL'}
+                            ? 'DEPARTMENT'
+                            : isCourse
+                              ? 'CATEGORY / DEPT'
+                              : isShiftTemplate
+                                ? 'START TIME'
+                                : isHoliday
+                                  ? 'DATE (YYYY-MM-DD)'
+                                  : 'EMAIL'}
                       </th>
                       <th className="p-2.5">
                         {isDepartment
                           ? 'HEAD OF DEPT'
                           : isDesignation
-                          ? 'CAREER LEVEL'
-                          : isCourse
-                          ? 'DURATION'
-                          : 'PHONE'}
+                            ? 'CAREER LEVEL'
+                            : isCourse
+                              ? 'DURATION'
+                              : isShiftTemplate
+                                ? 'END TIME'
+                                : isHoliday
+                                  ? 'HOLIDAY TYPE'
+                                  : 'PHONE'}
                       </th>
                       <th className="p-2.5">
                         {isDepartment || isDesignation || isCourse
                           ? 'DESCRIPTION'
-                          : isStudent
-                          ? 'COURSE & MEDIUM'
-                          : 'DESIGNATION & DEPT'}
+                          : isShiftTemplate
+                            ? 'BREAK / GRACE'
+                            : isHoliday
+                              ? 'DESCRIPTION'
+                              : isStudent
+                                ? 'COURSE & MEDIUM'
+                                : 'DESIGNATION & DEPT'}
                       </th>
                       <th className="p-2.5">
                         {isDepartment || isDesignation
                           ? 'STATUS'
                           : isCourse
-                          ? 'TUITION FEE (₹)'
-                          : isStudent
-                          ? 'FATHER NAME'
-                          : 'LOCATION'}
+                            ? 'TUITION FEE (₹)'
+                            : isShiftTemplate
+                              ? 'NIGHT SHIFT'
+                              : isHoliday
+                                ? 'YEAR'
+                                : isStudent
+                                  ? 'FATHER NAME'
+                                  : 'LOCATION'}
                       </th>
                       <th className="p-2.5 text-center">VALIDATION</th>
                     </tr>
@@ -511,12 +706,16 @@ export function HrmsBulkImportModal({
                       const isValid = isStudent
                         ? Boolean((row as StudentImportRow).fullName && ((row as StudentImportRow).email || (row as StudentImportRow).phone))
                         : isEmployee
-                        ? Boolean((row as EmployeeImportRow).fullName && ((row as EmployeeImportRow).email || (row as EmployeeImportRow).phone))
-                        : isDepartment
-                        ? Boolean((row as DepartmentImportRow).name?.trim())
-                        : isDesignation
-                        ? Boolean((row as DesignationImportRow).title?.trim())
-                        : Boolean((row as CourseImportRow).name?.trim());
+                          ? Boolean((row as EmployeeImportRow).fullName && ((row as EmployeeImportRow).email || (row as EmployeeImportRow).phone))
+                          : isDepartment
+                            ? Boolean((row as DepartmentImportRow).name?.trim())
+                            : isDesignation
+                              ? Boolean((row as DesignationImportRow).title?.trim())
+                              : isShiftTemplate
+                                ? Boolean((row as ShiftTemplateImportRow).code?.trim() && (row as ShiftTemplateImportRow).name?.trim())
+                                : isHoliday
+                                  ? Boolean((row as HolidayImportRow).name?.trim() && (row as HolidayImportRow).date?.trim())
+                                  : Boolean((row as CourseImportRow).name?.trim());
 
                       return (
                         <tr
@@ -531,44 +730,64 @@ export function HrmsBulkImportModal({
                             {isDepartment
                               ? (row.name || <span className="text-rose-500 italic">Missing Name</span>)
                               : isDesignation
-                              ? (row.title || <span className="text-rose-500 italic">Missing Title</span>)
-                              : isCourse
-                              ? (row.name || <span className="text-rose-500 italic">Missing Course</span>)
-                              : (row.fullName || <span className="text-rose-500 italic">Missing Name</span>)}
+                                ? (row.title || <span className="text-rose-500 italic">Missing Title</span>)
+                                : isCourse
+                                  ? (row.name || <span className="text-rose-500 italic">Missing Course</span>)
+                                  : isShiftTemplate
+                                    ? (`${row.code || '—'} · ${row.name || ''}` || <span className="text-rose-500 italic">Missing Code/Name</span>)
+                                    : isHoliday
+                                      ? (row.name || <span className="text-rose-500 italic">Missing Name</span>)
+                                      : (row.fullName || <span className="text-rose-500 italic">Missing Name</span>)}
                           </td>
                           <td className="p-2.5 text-slate-600 dark:text-slate-400 text-[11px]">
                             {isDepartment
                               ? row.code || '—'
                               : isDesignation
-                              ? row.department || 'ALL'
-                              : isCourse
-                              ? row.category || 'General'
-                              : row.email || '—'}
+                                ? row.department || 'ALL'
+                                : isCourse
+                                  ? row.category || 'General'
+                                  : isShiftTemplate
+                                    ? row.start_time || '—'
+                                    : isHoliday
+                                      ? row.date || '—'
+                                      : row.email || '—'}
                           </td>
                           <td className="p-2.5 text-slate-600 dark:text-slate-400 text-[11px]">
                             {isDepartment
                               ? row.headName || '—'
                               : isDesignation
-                              ? row.level || 'Mid'
-                              : isCourse
-                              ? (row.durationYears ? `${row.durationYears} Years` : row.durationMonths ? `${row.durationMonths} Months` : '1 Year')
-                              : row.phone || '—'}
+                                ? row.level || 'Mid'
+                                : isCourse
+                                  ? (row.durationYears ? `${row.durationYears} Years` : row.durationMonths ? `${row.durationMonths} Months` : '1 Year')
+                                  : isShiftTemplate
+                                    ? row.end_time || '—'
+                                    : isHoliday
+                                      ? row.holiday_type || '—'
+                                      : row.phone || '—'}
                           </td>
                           <td className="p-2.5 text-slate-700 dark:text-slate-300 max-w-[200px] truncate">
                             {isDepartment || isDesignation || isCourse
                               ? row.description || '—'
-                              : isStudent
-                              ? `${row.course || 'General'} (${row.medium || 'English'})`
-                              : `${row.designation || 'Staff'} (${row.department || 'General'})`}
+                              : isShiftTemplate
+                                ? `Break: ${row.break_mins ?? 0}m · Grace: ${row.grace_period_mins ?? 0}m`
+                                : isHoliday
+                                  ? row.description || '—'
+                                  : isStudent
+                                    ? `${row.course || 'General'} (${row.medium || 'English'})`
+                                    : `${row.designation || 'Staff'} (${row.department || 'General'})`}
                           </td>
                           <td className="p-2.5 text-slate-600 dark:text-slate-400 text-[11px]">
                             {isDepartment || isDesignation
                               ? row.status || 'Active'
                               : isCourse
-                              ? (row.price ? `₹${Number(row.price).toLocaleString()}` : '₹0')
-                              : isStudent
-                              ? row.fatherName || '—'
-                              : row.branch || '—'}
+                                ? (row.price ? `₹${Number(row.price).toLocaleString()}` : '₹0')
+                                : isShiftTemplate
+                                  ? (row.is_night_shift ? 'Yes (Night)' : 'No (Day)')
+                                  : isHoliday
+                                    ? (row.date?.split('-')[0] || '—')
+                                    : isStudent
+                                      ? row.fatherName || '—'
+                                      : row.branch || '—'}
                           </td>
                           <td className="p-2.5 text-center">
                             {isValid ? (

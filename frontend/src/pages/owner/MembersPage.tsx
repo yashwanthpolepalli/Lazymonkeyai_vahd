@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/context/AuthContext';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Badge } from '@/components/ui/Badge';
 import { Icon } from '@/components/ui/Icon';
@@ -43,15 +44,30 @@ const riskConfig: Record<Member['risk'], { variant: 'success' | 'warning' | 'dan
   high: { variant: 'danger', label: 'High' },
 };
 
-const filters = ['All', 'Active', 'Inactive', 'Expiring', 'High Risk', 'VIP', 'New', 'Trial'] as const;
+const filters = ['All', 'Active', 'Inactive'] as const;
+type FilterType = typeof filters[number];
 
 export function MembersPage() {
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedBranch, setSelectedBranch] = useState<string>(() => {
+    return localStorage.getItem('vahd_selected_org_id') || 'all';
+  });
   const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState<typeof filters[number]>('All');
+  const [filter, setFilter] = useState<FilterType>('All');
+  const [attendanceFilter, setAttendanceFilter] = useState<'All' | '>=75' | '60-74' | '<60' | '0'>('All');
   const [enrollOpen, setEnrollOpen] = useState(false);
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
+
+  // Synchronize with Topbar organization / branch switcher
+  useEffect(() => {
+    const handleOrgChanged = (e: any) => {
+      const orgId = e?.detail?.id ?? localStorage.getItem('vahd_selected_org_id') ?? 'all';
+      setSelectedBranch(orgId);
+    };
+    window.addEventListener('vahd:org_changed', handleOrgChanged);
+    return () => window.removeEventListener('vahd:org_changed', handleOrgChanged);
+  }, []);
 
   // Renewal Modal state
   const [renewalOpen, setRenewalOpen] = useState(false);
@@ -69,6 +85,9 @@ export function MembersPage() {
   const [renewing, setRenewing] = useState(false);
 
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const roleUpper = (user?.role || '').toUpperCase();
+  const isEmployeeView = roleUpper === 'EMPLOYEE' || roleUpper === 'STAFF' || window.location.pathname.startsWith('/employee');
 
   // Dynamic workout programs structured 100% from database plans
   const workoutPrograms = (() => {
@@ -92,7 +111,7 @@ export function MembersPage() {
         ? Boolean(cp.is_combo || cp.isCombo)
         : Boolean((cp.category || '').includes('_') || cp.name.includes('+'));
       const isClass = (cp.category || '').includes('dance') || (cp.category || '').includes('yoga') || (cp.category || '').includes('zumba');
-      const isPt = (cp.category || '').includes('pt') || (cp.category || '').includes('trainer');
+      const isPt = (cp.category || '').includes('pt') || (cp.category || '').includes('employee');
       const programType: 'combos' | 'training' | 'classes' | 'pt' = isCombo ? 'combos' : isClass ? 'classes' : isPt ? 'pt' : 'training';
 
       const key = cp.id || cp.name.trim();
@@ -108,7 +127,7 @@ export function MembersPage() {
           isCombo,
           badge: cp.badge || (isCombo ? 'Combo' : ''),
           color: cp.color || (isCombo ? 'from-rose-500 to-pink-600' : isPt ? 'from-amber-500 to-yellow-600' : isClass ? 'from-purple-500 to-indigo-600' : 'from-brand-500 to-brand-700'),
-          features: cp.features?.length ? cp.features : ['Full Access', 'Gym Floor & Facilities', 'Locker & Assessment'],
+          features: cp.features?.length ? cp.features : ['Full Access', 'vahd Floor & Facilities', 'Locker & Assessment'],
           plans: [cp],
         });
       } else {
@@ -170,8 +189,9 @@ export function MembersPage() {
 
   const fetchMembers = () => {
     setLoading(true);
-    api.customers
-      .list()
+    const branchParam = selectedBranch && selectedBranch !== 'all' ? { branch_id: selectedBranch } : undefined;
+    api.students
+      .list(branchParam)
       .then((data) => {
         setMembers(data || []);
       })
@@ -185,7 +205,7 @@ export function MembersPage() {
 
   useEffect(() => {
     fetchMembers();
-  }, []);
+  }, [selectedBranch]);
 
   const fetchDynamicPlans = () => {
     apiClient.get<PlanItem[]>('/courses/plans')
@@ -210,7 +230,7 @@ export function MembersPage() {
           setRenewalIncludeGst(isEngineActive);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   // Auto calculate renewal expiry date when duration or start date changes
@@ -224,28 +244,38 @@ export function MembersPage() {
   };
 
   const filtered = members.filter((m) => {
+    const isAll = !selectedBranch || selectedBranch.toLowerCase() === 'all';
+    if (!isAll) {
+      const bTarget = selectedBranch.toLowerCase();
+      const mBranchId = (m.branch_id || '').toLowerCase();
+      const mBranch = (m.branch || '').toLowerCase();
+      const matchesBranch = mBranchId === bTarget || mBranch === bTarget || mBranch.includes(bTarget) || bTarget.includes(mBranch);
+      if (!matchesBranch && mBranchId && mBranch) return false;
+    }
+
     const name = m.name || (m as any).full_name || '';
     const email = m.email || '';
     const phone = m.phone || '';
+    const course = m.course || m.membership || '';
+    const parentPhone = m.parent_phone || '';
     const matchesSearch = !search ||
       name.toLowerCase().includes(search.toLowerCase()) ||
       phone.includes(search) ||
-      email.toLowerCase().includes(search.toLowerCase());
+      email.toLowerCase().includes(search.toLowerCase()) ||
+      course.toLowerCase().includes(search.toLowerCase()) ||
+      parentPhone.includes(search);
     const matchesFilter = filter === 'All' ||
       (filter === 'Active' && m.status === 'active') ||
-      (filter === 'Inactive' && m.status === 'inactive') ||
-      (filter === 'Expiring' && m.status === 'expiring') ||
-      (filter === 'High Risk' && m.risk === 'high') ||
-      (filter === 'VIP' && m.status === 'vip') ||
-      (filter === 'Trial' && m.status === 'trial') ||
-      (filter === 'New' && (() => {
-        if (!m.joinDate) return false;
-        const join = new Date(m.joinDate).getTime();
-        if (isNaN(join)) return false;
-        const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
-        return join >= thirtyDaysAgo;
-      })());
-    return matchesSearch && matchesFilter;
+      (filter === 'Inactive' && m.status === 'inactive');
+
+    const attPct = Number(m.attendance) || 0;
+    const matchesAttendance = attendanceFilter === 'All' ||
+      (attendanceFilter === '>=75' && attPct >= 75) ||
+      (attendanceFilter === '60-74' && attPct >= 60 && attPct < 75) ||
+      (attendanceFilter === '<60' && attPct < 60) ||
+      (attendanceFilter === '0' && attPct === 0);
+
+    return matchesSearch && matchesFilter && matchesAttendance;
   });
 
   const selectedMembers = members.filter((m) => selectedMemberIds.includes(m.id));
@@ -310,7 +340,7 @@ export function MembersPage() {
           setPlans(res);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
 
     setRenewalOpen(true);
   };
@@ -369,63 +399,89 @@ export function MembersPage() {
     <div className="space-y-6 animate-fade-in pb-8">
       <PageHeader
         title="Students"
-        breadcrumb={['Owner', 'Students']}
+        breadcrumb={[isEmployeeView ? 'Employee' : 'Owner', 'Students']}
         actions={
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleOpenRenewalModal}
-              disabled={selectedMemberIds.length === 0}
-              className={cn(
-                'btn-secondary flex items-center gap-2 text-sm font-semibold transition-all',
-                selectedMemberIds.length > 0
-                  ? 'border-brand-500 text-brand-600 bg-brand-50 ring-2 ring-brand-500/20 shadow-glow'
-                  : 'opacity-50 cursor-not-allowed'
-              )}
-            >
-              <Icon name="refresh-cw" size={16} /> Renewal {selectedMemberIds.length > 0 && `(${selectedMemberIds.length})`}
-            </button>
-            <button onClick={() => setEnrollOpen(true)} className="btn-primary flex items-center gap-2">
-              <Icon name="plus" size={16} /> Add Student
-            </button>
-          </div>
+          !isEmployeeView ? (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleOpenRenewalModal}
+                disabled={selectedMemberIds.length === 0}
+                className={cn(
+                  'btn-secondary flex items-center gap-2 text-sm font-semibold transition-all',
+                  selectedMemberIds.length > 0
+                    ? 'border-brand-500 text-brand-600 bg-brand-50 ring-2 ring-brand-500/20 shadow-glow'
+                    : 'opacity-50 cursor-not-allowed'
+                )}
+              >
+                <Icon name="refresh-cw" size={16} /> Renewal {selectedMemberIds.length > 0 && `(${selectedMemberIds.length})`}
+              </button>
+              <button onClick={() => setEnrollOpen(true)} className="btn-primary flex items-center gap-2">
+                <Icon name="plus" size={16} /> Add Student
+              </button>
+            </div>
+          ) : undefined
         }
       />
 
       <div className="card p-4">
-        <div className="flex flex-col sm:flex-row gap-3 mb-4">
+        <div className="flex flex-col sm:flex-row gap-3 mb-4 items-stretch sm:items-center">
           <div className="relative flex-1">
             <Icon name="search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-navy-400" />
             <input
               type="text"
-              placeholder="Search students by name, phone or email..."
+              placeholder="Search students by name, phone, email or course..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="input-field pl-9"
+              className="input-field pl-9 w-full"
             />
           </div>
-          <div className="flex flex-wrap gap-2">
-            {filters.map((f) => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={cn(
-                  'px-3 py-2 rounded-lg text-xs font-semibold transition-all',
-                  filter === f ? 'bg-brand-600 text-white' : 'bg-navy-50 text-navy-500 hover:bg-navy-100'
-                )}
-              >
-                {f}
-              </button>
-            ))}
+
+          {/* Attendance Filter (Left side of status filter) */}
+          <div className="relative min-w-[170px]">
+            <select
+              value={attendanceFilter}
+              onChange={(e) => setAttendanceFilter(e.target.value as any)}
+              className="input-field py-2.5 pr-9 pl-3 text-xs font-semibold text-navy-700 bg-white border border-navy-200 rounded-xl appearance-none cursor-pointer w-full focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+            >
+              <option value="All">All Attendance</option>
+              <option value=">=75">≥ 75% (Eligible)</option>
+              <option value="60-74">60% – 74% (Average)</option>
+              <option value="<60">&lt; 60% (Shortage)</option>
+              <option value="0">0% (No Attendance)</option>
+            </select>
+            <Icon
+              name="chevron-down"
+              size={14}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-navy-400 pointer-events-none"
+            />
+          </div>
+
+          {/* Status Filter */}
+          <div className="relative min-w-[150px]">
+            <select
+              value={filter}
+              onChange={(e) => setFilter(e.target.value as FilterType)}
+              className="input-field py-2.5 pr-9 pl-3 text-xs font-semibold text-navy-700 bg-white border border-navy-200 rounded-xl appearance-none cursor-pointer w-full focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+            >
+              <option value="All">All Status</option>
+              <option value="Active">Active</option>
+              <option value="Inactive">Inactive</option>
+            </select>
+            <Icon
+              name="chevron-down"
+              size={14}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-navy-400 pointer-events-none"
+            />
           </div>
         </div>
 
         {loading ? (
-          <SkeletonTable rows={8} cols={9} />
+          <SkeletonTable rows={8} cols={isEmployeeView ? 7 : 9} />
         ) : filtered.length === 0 ? (
           <EmptyState icon="!" title="No students found" description="Try adjusting your search or filters." />
         ) : (
           <div className="overflow-x-auto -mx-4 px-4">
-            <table className="w-full min-w-[950px]">
+            <table className={cn('w-full', isEmployeeView ? 'min-w-[800px]' : 'min-w-[950px]')}>
               <thead>
                 <tr className="border-b border-navy-100">
                   <th className="px-3 py-3 w-10 text-center">
@@ -436,25 +492,35 @@ export function MembersPage() {
                       className="w-4 h-4 rounded border-navy-300 text-brand-600 focus:ring-brand-500 cursor-pointer"
                     />
                   </th>
-                  {['Student', 'Program / Membership', 'Status', 'Attendance', 'Last Visit', 'Expiry', 'Revenue', 'Risk', ''].map((h) => (
-                    <th key={h} className="text-left text-xs font-semibold text-navy-400 uppercase tracking-wider px-3 py-3">{h}</th>
+                  {(isEmployeeView
+                    ? ['Student', 'Email', 'Course', 'Parent No', 'Status', 'Attendance', '']
+                    : ['Student', 'Course', 'Status', 'Attendance', 'Last Visit', 'Expiry', 'Revenue', 'Risk', '']
+                  ).map((h, i) => (
+                    <th key={h || i} className="text-left text-xs font-semibold text-navy-400 uppercase tracking-wider px-3 py-3">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((m) => {
-                  const name = m.name || (m as any).full_name || 'Member';
-                  const initials = name ? name.split(' ').map((n: string) => n[0]).join('').slice(0, 2) : 'M';
+                  const name = m.name || (m as any).full_name || 'Student';
+                  const initials = name ? name.split(' ').map((n: string) => n[0]).join('').slice(0, 2) : 'S';
                   const statusConf = statusConfig[m.status] || { variant: 'success', label: m.status || 'Active' };
                   const riskConf = riskConfig[m.risk] || { variant: 'success', label: m.risk || 'Low' };
                   const isSelected = selectedMemberIds.includes(m.id);
+                  const parentPhone = m.parent_phone || '';
+                  const courseName = m.course || m.membership || 'General';
 
                   return (
                     <tr
                       key={m.id}
-                      onClick={() => navigate(`/owner/customers/${m.id}`)}
+                      onClick={() => {
+                        if (!isEmployeeView) {
+                          navigate(`/owner/students/${m.id}`);
+                        }
+                      }}
                       className={cn(
-                        'border-b border-navy-50 hover:bg-navy-50 cursor-pointer transition-colors',
+                        'border-b border-navy-50 hover:bg-navy-50 transition-colors',
+                        !isEmployeeView && 'cursor-pointer',
                         isSelected && 'bg-brand-50/50'
                       )}
                     >
@@ -473,12 +539,44 @@ export function MembersPage() {
                           </div>
                           <div className="min-w-0">
                             <div className="text-sm font-semibold text-navy-900 truncate">{name}</div>
-                            <div className="text-xs text-navy-500 font-medium truncate">{m.phone || m.email || '—'}</div>
+                            <div className="text-xs text-navy-600 font-mono font-medium truncate">{m.phone || '—'}</div>
                           </div>
                         </div>
                       </td>
-                      <td className="px-3 py-3 text-sm text-navy-600 font-medium">{m.membership}</td>
+
+                      {/* Email Column (Employee View) */}
+                      {isEmployeeView && (
+                        <td className="px-3 py-3 text-sm text-navy-600 font-medium truncate max-w-[200px]">
+                          {m.email ? (
+                            <span className="text-navy-700">{m.email}</span>
+                          ) : (
+                            <span className="text-navy-400">—</span>
+                          )}
+                        </td>
+                      )}
+
+                      {/* Course Column (both Employee & Owner) */}
+                      <td className="px-3 py-3 text-sm text-navy-700 font-medium">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-brand-50 text-brand-700 border border-brand-200">
+                          {courseName}
+                        </span>
+                      </td>
+
+                      {/* Parent No Column (Employee View) */}
+                      {isEmployeeView && (
+                        <td className="px-3 py-3 text-sm text-navy-600 font-mono font-medium">
+                          {parentPhone ? (
+                            <span>{parentPhone}</span>
+                          ) : (
+                            <span className="text-navy-400">—</span>
+                          )}
+                        </td>
+                      )}
+
+                      {/* Status Column */}
                       <td className="px-3 py-3"><Badge variant={statusConf.variant}>{statusConf.label}</Badge></td>
+
+                      {/* Attendance Column */}
                       <td className="px-3 py-3">
                         <div className="flex items-center gap-2">
                           <div className="w-16 h-1.5 rounded-full bg-navy-100 overflow-hidden">
@@ -487,10 +585,17 @@ export function MembersPage() {
                           <span className="text-xs text-navy-500 font-medium">{m.attendance || 0}%</span>
                         </div>
                       </td>
-                      <td className="px-3 py-3 text-sm text-navy-500">{m.lastVisit}</td>
-                      <td className="px-3 py-3 text-sm font-medium text-navy-700">{formatDateDDMMYY(m.expiry)}</td>
-                      <td className="px-3 py-3 text-sm font-semibold text-navy-900">{m.revenue}</td>
-                      <td className="px-3 py-3"><Badge variant={riskConf.variant}>{riskConf.label}</Badge></td>
+
+                      {/* Owner-only Columns: Last Visit, Expiry, Revenue, Risk */}
+                      {!isEmployeeView && (
+                        <>
+                          <td className="px-3 py-3 text-sm text-navy-500">{m.lastVisit || '—'}</td>
+                          <td className="px-3 py-3 text-sm font-medium text-navy-700">{formatDateDDMMYY(m.expiry)}</td>
+                          <td className="px-3 py-3 text-sm font-semibold text-navy-900">{m.revenue}</td>
+                          <td className="px-3 py-3"><Badge variant={riskConf.variant}>{riskConf.label}</Badge></td>
+                        </>
+                      )}
+
                       <td className="px-3 py-3"><Icon name="chevron-right" size={16} className="text-navy-300" /></td>
                     </tr>
                   );
@@ -545,8 +650,8 @@ export function MembersPage() {
               <div className="space-y-3">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
-                    <label className="text-xs font-bold text-navy-900 block">Select Program & Training Plan</label>
-                    <p className="text-[11px] text-navy-400">Choose workout program and duration tier. Price and billing auto-accommodate.</p>
+                    <label className="text-xs font-bold text-navy-900 block">Select Membership Plan</label>
+                    <p className="text-[11px] text-navy-400">Choose membership plan and duration tier. Price and billing auto-accommodate.</p>
                   </div>
                   <div className="relative min-w-[180px]">
                     <input
@@ -807,8 +912,8 @@ export function MembersPage() {
                     {/* Dynamic POS Payment Terminal Selector */}
                     <PaymentTerminalSelector
                       totalAmount={totalAmount}
-                      customerName={selectedMembers[0]?.name || ''}
-                      customerPhone={selectedMembers[0]?.phone || ''}
+                      studentName={selectedMembers[0]?.name || ''}
+                      studentPhone={selectedMembers[0]?.phone || ''}
                       selectedMethod={renewalPaymentMethod}
                       onMethodChange={(method, payload) => {
                         setRenewalPaymentMethod(method);

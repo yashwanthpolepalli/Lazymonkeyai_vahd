@@ -4,34 +4,31 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from src.config.settings import settings
 
-def generate_enrollment_password(full_name: str, phone: str) -> str:
+def generate_enrollment_password(full_name: str = "", phone: str = "") -> str:
     """
-    Generates dynamic credentials per owner specification:
-    Password = First 4 characters of full name (lowercase) + Last 4 digits of phone number
-    Example: Name='butter', Phone='+4486881111' → 'butt1111'
+    Generates dynamic credentials for enrolled student and employee accounts:
+    Password = pvnr + Last 4 digits of registered phone number
+    Example: Phone='+919876543210' → 'pvnr3210'
     """
-    clean_name = re.sub(r'[^a-zA-Z]', '', full_name or '').lower()
-    first_4 = clean_name[:4].ljust(4, 'x')
-
     digits_phone = re.sub(r'\D', '', phone or '0000')
     last_4 = digits_phone[-4:] if len(digits_phone) >= 4 else digits_phone.zfill(4)
 
-    return f"{first_4}{last_4}"
+    return f"pvnr{last_4}"
 
 
-def send_enrollment_email(to_email: str, full_name: str, password: str, role: str = "CUSTOMER", plan_name: str = None) -> bool:
+def send_enrollment_email(to_email: str, full_name: str, password: str, role: str = "student", plan_name: str = None) -> bool:
     """
-    Sends automated welcome email with login credentials to a newly enrolled customer or trainer.
+    Sends automated welcome email with login credentials to a newly enrolled student or employee.
     All branding text is pulled dynamically from settings — zero hardcoded strings.
     """
-    gym_name = settings.GYM_NAME
-    gym_tagline = settings.GYM_PLATFORM_TAGLINE
+    vahd_name = settings.vahd_NAME
+    vahd_tagline = settings.vahd_PLATFORM_TAGLINE
     from_email = settings.SMTP_FROM_EMAIL or settings.SMTP_USER or ""
 
-    if role and role.upper() == "TRAINER":
+    if role and role.upper() == "employee":
         role = "EMPLOYEE"
 
-    subject = f"Welcome to {gym_name} — Your {role.title()} Account Credentials"
+    subject = f"Welcome to {vahd_name} — Your {role.title()} Account Credentials"
 
     plan_html = (
         f'<div class="field-group" style="margin-top:14px;padding-top:14px;border-top:1px dashed #cbd5e1;">'
@@ -166,12 +163,12 @@ def send_enrollment_email(to_email: str, full_name: str, password: str, role: st
   <div class="wrapper">
     <div class="header">
       <div class="logo-badge">👑</div>
-      <h1 class="title">{gym_name.upper()}</h1>
+      <h1 class="title">{vahd_name.upper()}</h1>
       <div class="subtitle">Official Account Registration Confirmation</div>
     </div>
     <div class="greeting">Hello {full_name},</div>
     <div class="intro-text">
-      Your <strong>{role.title()}</strong> account has been successfully enrolled on the <strong>{gym_name}</strong> Platform. Here are your account credentials to log in:
+      Your <strong>{role.title()}</strong> account has been successfully enrolled on the <strong>{vahd_name}</strong> Platform. Here are your account credentials to log in:
     </div>
     <div class="cred-box">
       <div class="field-group">
@@ -186,11 +183,11 @@ def send_enrollment_email(to_email: str, full_name: str, password: str, role: st
     </div>
     <div class="formula-box">
       <p class="formula-text">
-        🔑 <strong>Password Formula:</strong> First 4 letters of your name + Last 4 digits of your registered phone number.
+        🔑 <strong>Password Formula:</strong> pvnr + Last 4 digits of your registered phone number (e.g. pvnr1234).
       </p>
     </div>
     <div class="footer">
-      <strong>{gym_name}</strong> {gym_tagline}<br />
+      <strong>{vahd_name}</strong> {vahd_tagline}<br />
       Automated System Dispatch &bull; Please keep your credentials secure.
     </div>
   </div>
@@ -198,7 +195,7 @@ def send_enrollment_email(to_email: str, full_name: str, password: str, role: st
 </html>"""
 
     print("\n" + "=" * 68)
-    print(f"📧 [{gym_name}] ENROLLMENT EMAIL DISPATCHED")
+    print(f"📧 [{vahd_name}] ENROLLMENT EMAIL DISPATCHED")
     print("=" * 68)
     print(f"  • Recipient : {to_email}")
     print(f"  • Name      : {full_name}")
@@ -222,10 +219,23 @@ def send_enrollment_email(to_email: str, full_name: str, password: str, role: st
             msg["To"] = to_email
             msg.attach(MIMEText(html_body, "html"))
 
-            with smtplib.SMTP(smtp_host, smtp_port) as server:
-                server.starttls()
-                server.login(smtp_user, smtp_pass)
-                server.sendmail(smtp_user, to_email, msg.as_string())
+            try:
+                if int(smtp_port) == 465:
+                    with smtplib.SMTP_SSL(smtp_host, 465, timeout=15) as server:
+                        server.login(smtp_user, smtp_pass)
+                        server.sendmail(from_email or smtp_user, to_email, msg.as_string())
+                else:
+                    with smtplib.SMTP(smtp_host, int(smtp_port), timeout=15) as server:
+                        server.ehlo()
+                        server.starttls()
+                        server.ehlo()
+                        server.login(smtp_user, smtp_pass)
+                        server.sendmail(from_email or smtp_user, to_email, msg.as_string())
+            except Exception:
+                # SSL port 465 fallback if port 587 connection was closed by ISP/network
+                with smtplib.SMTP_SSL(smtp_host, 465, timeout=15) as server:
+                    server.login(smtp_user, smtp_pass)
+                    server.sendmail(from_email or smtp_user, to_email, msg.as_string())
             print(f"✅ SMTP email successfully sent to {to_email}")
         except Exception as e:
             print(f"⚠️  SMTP dispatch warning (credentials logged to console): {e}")

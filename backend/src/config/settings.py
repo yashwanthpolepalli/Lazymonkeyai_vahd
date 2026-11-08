@@ -40,17 +40,23 @@ def construct_db_url() -> str:
             pass
     
     # Fallback to local SQLite database when configured PostgreSQL server is offline/refused
-    sqlite_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "gym.db"))
+    sqlite_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "vahd.db"))
     return f"sqlite:///{sqlite_path}"
 
 class Settings(BaseSettings):
-    PROJECT_NAME: str = os.getenv("GYM_NAME", "VAHD Enterprise Management Platform")
-    GYM_NAME: str = os.getenv("GYM_NAME", "VAHD Enterprise")
-    GYM_PLATFORM_TAGLINE: str = os.getenv("GYM_PLATFORM_TAGLINE", "AI Enterprise Platform")
+    PROJECT_NAME: str = os.getenv("vahd_NAME", "VAHD Enterprise Management Platform")
+    vahd_NAME: str = os.getenv("vahd_NAME", "VAHD Enterprise")
+    vahd_PLATFORM_TAGLINE: str = os.getenv("vahd_PLATFORM_TAGLINE", "AI Enterprise Platform")
     API_V1_STR: str = "/api"
     SECRET_KEY: Optional[str] = os.getenv("SECRET_KEY")
     ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))
+
+    # ─── Phase-2 Tenancy Enforcement ───────────────────────────────────
+    # When True, TenantSession auto-injects WHERE tenant_id IN (scope) on
+    # every ORM read and stamps writes. Set to "false" to run in legacy
+    # (unenforced) mode while Phase 2 is being rolled out.
+    TENANT_ENFORCE: bool = os.getenv("TENANT_ENFORCE", "true").lower() in ("1", "true", "yes", "on")
 
     # Individual Database Parameters strictly fetched from .env
     DB_USER: Optional[str] = os.getenv("DB_USER")

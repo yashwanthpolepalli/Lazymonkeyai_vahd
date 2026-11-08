@@ -8,7 +8,7 @@ interface ErrorStateProps {
 
 export function ErrorState({
   title = 'Unable to Load Data',
-  message = 'The gym server could not be reached. Please check your connection and try again.',
+  message = 'The vahd server could not be reached. Please check your connection and try again.',
   onRetry,
 }: ErrorStateProps) {
   return (

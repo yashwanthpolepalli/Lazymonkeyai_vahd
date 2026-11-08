@@ -8,7 +8,8 @@ class Membership(Base):
     __tablename__ = "memberships"
 
     id = Column(String, primary_key=True, index=True)
-    customer_id = Column(String, ForeignKey("customers.id"), index=True, nullable=False)
+    tenant_id = Column(String, nullable=True, index=True)
+    student_id = Column(String, ForeignKey("students.id"), index=True, nullable=False)
     plan_name = Column(String, nullable=True)
     plan_type = Column(String, nullable=True)
     status = Column(String, nullable=True)
@@ -24,4 +25,4 @@ class Membership(Base):
     created_at = Column(DateTime, default=now_ist_naive)
     updated_at = Column(DateTime, default=now_ist_naive, onupdate=now_ist_naive)
 
-    customer = relationship("Customer", back_populates="memberships")
+    student = relationship("student", back_populates="memberships")

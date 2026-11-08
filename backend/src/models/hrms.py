@@ -1,14 +1,16 @@
 import uuid
 from datetime import datetime, date
-from sqlalchemy import Column, String, Float, Integer, Boolean, DateTime, Date, Text, ForeignKey, JSON
+from sqlalchemy import Column, String, Float, Integer, Boolean, DateTime, Date, Text, ForeignKey, JSON, UniqueConstraint
 from src.database import Base
 
 class Employee(Base):
     __tablename__ = "hrms_employees"
-    __table_args__ = {'extend_existing': True}
+    __table_args__ = (UniqueConstraint("tenant_id", "code", name="uq_hrms_emp_tenant_code"),
+                      {"extend_existing": True})
 
     id = Column(String, primary_key=True, default=lambda: f"emp_{uuid.uuid4().hex[:8]}")
-    code = Column(String, nullable=False, unique=True, index=True)
+    tenant_id = Column(String, nullable=True, index=True)  # vahdBranch.id — canonical org/branch scope
+    code = Column(String, nullable=False, index=True)
     first_name = Column(String, nullable=False)
     last_name = Column(String, nullable=True)
     email = Column(String, nullable=False, index=True)
@@ -24,8 +26,9 @@ class Employee(Base):
     status = Column(String, nullable=True)
     salary = Column(Float, nullable=True)
     avatar = Column(String, nullable=True)
-    gym_branch = Column(String, nullable=True)
+    vahd_branch = Column(String, nullable=True)
     branch_id = Column(String, nullable=True, index=True)
+    secondary_branches = Column(JSON, nullable=True)
     ho_id = Column(String, nullable=True, index=True)
     owner_id = Column(String, nullable=True, index=True)
     address = Column(String, nullable=True)
@@ -33,14 +36,19 @@ class Employee(Base):
     qualification = Column(String, nullable=True)
     specialization = Column(String, nullable=True)
     skills = Column(JSON, nullable=True)
+    meta_data = Column(JSON, nullable=True)
+    shift_code = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 class Department(Base):
     __tablename__ = "hrms_departments"
-    __table_args__ = {'extend_existing': True}
+    __table_args__ = (UniqueConstraint("tenant_id", "name", name="uq_hrms_dept_tenant_name"),
+                      UniqueConstraint("tenant_id", "code", name="uq_hrms_dept_tenant_code"),
+                      {"extend_existing": True})
 
     id = Column(String, primary_key=True, default=lambda: f"dept_{uuid.uuid4().hex[:8]}")
-    name = Column(String, nullable=False, unique=True)
+    tenant_id = Column(String, nullable=True, index=True)
+    name = Column(String, nullable=False, index=True)
     code = Column(String, nullable=False)
     description = Column(String, nullable=True)
     head_name = Column(String, nullable=True)
@@ -52,6 +60,7 @@ class Designation(Base):
     __table_args__ = {'extend_existing': True}
 
     id = Column(String, primary_key=True, default=lambda: f"desg_{uuid.uuid4().hex[:8]}")
+    tenant_id = Column(String, nullable=True, index=True)
     title = Column(String, nullable=False)
     department = Column(String, nullable=False)
     level = Column(String, nullable=True)
@@ -63,6 +72,7 @@ class Team(Base):
     __table_args__ = {'extend_existing': True}
 
     id = Column(String, primary_key=True, default=lambda: f"team_{uuid.uuid4().hex[:8]}")
+    tenant_id = Column(String, nullable=True, index=True)
     name = Column(String, nullable=False)
     department = Column(String, nullable=False)
     lead_name = Column(String, nullable=True)
@@ -74,6 +84,7 @@ class EmployeeDocument(Base):
     __table_args__ = {'extend_existing': True}
 
     id = Column(String, primary_key=True, default=lambda: f"doc_{uuid.uuid4().hex[:8]}")
+    tenant_id = Column(String, nullable=True, index=True)
     employee_id = Column(String, ForeignKey("hrms_employees.id", ondelete="CASCADE"), nullable=False)
     title = Column(String, nullable=False)
     doc_type = Column(String, nullable=True)
@@ -87,23 +98,36 @@ class EmployeeAttendance(Base):
     __table_args__ = {'extend_existing': True}
 
     id = Column(String, primary_key=True, default=lambda: f"att_{uuid.uuid4().hex[:8]}")
-    employee_id = Column(String, ForeignKey("hrms_employees.id", ondelete="CASCADE"), nullable=False)
+    tenant_id = Column(String, nullable=True, index=True)
+    employee_id = Column(String, nullable=False, index=True)
     date = Column(Date, nullable=True)
     check_in = Column(String, nullable=True)
     check_out = Column(String, nullable=True)
+    check_in_location = Column(String, nullable=True)
+    check_out_location = Column(String, nullable=True)
+    check_in_latitude = Column(Float, nullable=True)
+    check_in_longitude = Column(Float, nullable=True)
+    check_out_latitude = Column(Float, nullable=True)
+    check_out_longitude = Column(Float, nullable=True)
     status = Column(String, nullable=True)
     work_hours = Column(Float, nullable=True)
     device_id = Column(String, nullable=True)
+    shift_id = Column(String, nullable=True)
+    shift_code = Column(String, nullable=True)
+    shift_name = Column(String, nullable=True)
     notes = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 class LeaveType(Base):
     __tablename__ = "hrms_leave_types"
-    __table_args__ = {'extend_existing': True}
+    __table_args__ = (UniqueConstraint("tenant_id", "name", name="uq_hrms_lt_tenant_name"),
+                      UniqueConstraint("tenant_id", "code", name="uq_hrms_lt_tenant_code"),
+                      {"extend_existing": True})
 
     id = Column(String, primary_key=True, default=lambda: f"lt_{uuid.uuid4().hex[:8]}")
-    name = Column(String, nullable=False, unique=True)
-    code = Column(String, nullable=False, unique=True)
+    tenant_id = Column(String, nullable=True, index=True)
+    name = Column(String, nullable=False, index=True)
+    code = Column(String, nullable=False, index=True)
     category = Column(String, nullable=True)
     description = Column(Text, nullable=True)
     paid_type = Column(String, nullable=False)
@@ -129,6 +153,7 @@ class EmployeeLeaveBalance(Base):
     __table_args__ = {'extend_existing': True}
 
     id = Column(String, primary_key=True, default=lambda: f"bal_{uuid.uuid4().hex[:8]}")
+    tenant_id = Column(String, nullable=True, index=True)
     employee_id = Column(String, ForeignKey("hrms_employees.id", ondelete="CASCADE"), nullable=False)
     leave_type_id = Column(String, ForeignKey("hrms_leave_types.id", ondelete="CASCADE"), nullable=False)
     year = Column(Integer, nullable=True)
@@ -143,6 +168,7 @@ class LeaveRequest(Base):
     __table_args__ = {'extend_existing': True}
 
     id = Column(String, primary_key=True, default=lambda: f"leave_{uuid.uuid4().hex[:8]}")
+    tenant_id = Column(String, nullable=True, index=True)
     employee_id = Column(String, ForeignKey("hrms_employees.id", ondelete="CASCADE"), nullable=False)
     leave_type_id = Column(String, nullable=True)
     leave_type = Column(String, nullable=False)
@@ -163,6 +189,7 @@ class PayrollRecord(Base):
     __table_args__ = {'extend_existing': True}
 
     id = Column(String, primary_key=True, default=lambda: f"pay_{uuid.uuid4().hex[:8]}")
+    tenant_id = Column(String, nullable=True, index=True)
     employee_id = Column(String, ForeignKey("hrms_employees.id", ondelete="CASCADE"), nullable=False)
     month = Column(String, nullable=False)
     year = Column(Integer, nullable=True)
@@ -180,6 +207,7 @@ class RecruitmentJob(Base):
     __table_args__ = {'extend_existing': True}
 
     id = Column(String, primary_key=True, default=lambda: f"job_{uuid.uuid4().hex[:8]}")
+    tenant_id = Column(String, nullable=True, index=True)
     title = Column(String, nullable=False)
     department = Column(String, nullable=False)
     openings = Column(Integer, nullable=True)
@@ -195,6 +223,7 @@ class JobApplicant(Base):
     __table_args__ = {'extend_existing': True}
 
     id = Column(String, primary_key=True, default=lambda: f"app_{uuid.uuid4().hex[:8]}")
+    tenant_id = Column(String, nullable=True, index=True)
     job_id = Column(String, ForeignKey("hrms_recruitment_jobs.id", ondelete="CASCADE"), nullable=True)
     name = Column(String, nullable=False)
     email = Column(String, nullable=False)
@@ -211,6 +240,7 @@ class EmployeePerformance(Base):
     __table_args__ = {'extend_existing': True}
 
     id = Column(String, primary_key=True, default=lambda: f"perf_{uuid.uuid4().hex[:8]}")
+    tenant_id = Column(String, nullable=True, index=True)
     employee_id = Column(String, ForeignKey("hrms_employees.id", ondelete="CASCADE"), nullable=False)
     review_period = Column(String, nullable=False)
     score = Column(Float, nullable=True)
@@ -225,6 +255,7 @@ class ExitRequest(Base):
     __table_args__ = {'extend_existing': True}
 
     id = Column(String, primary_key=True, default=lambda: f"exit_{uuid.uuid4().hex[:8]}")
+    tenant_id = Column(String, nullable=True, index=True)
     employee_id = Column(String, ForeignKey("hrms_employees.id", ondelete="CASCADE"), nullable=False)
     resignation_date = Column(Date, nullable=True)
     last_working_day = Column(Date, nullable=False)
@@ -236,12 +267,14 @@ class ExitRequest(Base):
 
 class GeofenceScheme(Base):
     __tablename__ = "hrms_geofence_schemes"
-    __table_args__ = {'extend_existing': True}
+    __table_args__ = (UniqueConstraint("tenant_id", "name", name="uq_hrms_gfscheme_tenant_name"),
+                      {"extend_existing": True})
 
     id = Column(String, primary_key=True, default=lambda: f"scheme_{uuid.uuid4().hex[:8]}")
-    name = Column(String, nullable=False, unique=True)
+    tenant_id = Column(String, nullable=True, index=True)
+    name = Column(String, nullable=False, index=True)
     branch_name = Column(String, nullable=True)
-    gym_name = Column(String, nullable=True)
+    vahd_name = Column(String, nullable=True)
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)
     radius_meters = Column(Integer, nullable=True)
@@ -251,6 +284,8 @@ class GeofenceScheme(Base):
     shift_end_time = Column(String, nullable=True)
     grace_period_mins = Column(Integer, nullable=True)
     min_half_day_hours = Column(Float, nullable=True)
+    allow_ot = Column(Boolean, nullable=True, default=True)
+    min_ot_threshold_mins = Column(Integer, nullable=True, default=60)
     allowed_channels = Column(JSON, nullable=True)
     assigned_employee_ids = Column(JSON, nullable=True)
     is_active = Column(Boolean, nullable=True)
@@ -260,10 +295,12 @@ class GeofenceScheme(Base):
 
 class SalaryStructure(Base):
     __tablename__ = "hrms_salary_structures"
-    __table_args__ = {'extend_existing': True}
+    __table_args__ = (UniqueConstraint("tenant_id", "employee_id", name="uq_hrms_salstruct_tenant_emp"),
+                      {"extend_existing": True})
 
     id = Column(String, primary_key=True, default=lambda: f"sal_{uuid.uuid4().hex[:8]}")
-    employee_id = Column(String, ForeignKey("hrms_employees.id", ondelete="CASCADE"), nullable=False, unique=True)
+    tenant_id = Column(String, nullable=True, index=True)
+    employee_id = Column(String, ForeignKey("hrms_employees.id", ondelete="CASCADE"), nullable=False, index=True)
     basic_salary = Column(Float, nullable=True)
     hra = Column(Float, nullable=True)
     other_allowances = Column(Float, nullable=True)
@@ -283,6 +320,7 @@ class Payslip(Base):
     __table_args__ = {'extend_existing': True}
 
     id = Column(String, primary_key=True, default=lambda: f"slip_{uuid.uuid4().hex[:8]}")
+    tenant_id = Column(String, nullable=True, index=True)
     employee_id = Column(String, ForeignKey("hrms_employees.id", ondelete="CASCADE"), nullable=False)
     month = Column(Integer, nullable=False)
     year = Column(Integer, nullable=False)
@@ -313,6 +351,7 @@ class PayslipTemplate(Base):
     __table_args__ = {'extend_existing': True}
 
     id = Column(String, primary_key=True, default=lambda: f"tmpl_{uuid.uuid4().hex[:8]}")
+    tenant_id = Column(String, nullable=True, index=True)
     name = Column(String, nullable=False)
     description = Column(String, nullable=True)
     theme_color = Column(String, nullable=True)
@@ -329,6 +368,7 @@ class EmployeeLoan(Base):
     __table_args__ = {'extend_existing': True}
 
     id = Column(String, primary_key=True, default=lambda: f"loan_{uuid.uuid4().hex[:8]}")
+    tenant_id = Column(String, nullable=True, index=True)
     employee_id = Column(String, ForeignKey("hrms_employees.id", ondelete="CASCADE"), nullable=False)
     loan_type = Column(String, nullable=True)
     principal_amount = Column(Float, nullable=False)
@@ -349,6 +389,7 @@ class SalaryAdvance(Base):
     __table_args__ = {'extend_existing': True}
 
     id = Column(String, primary_key=True, default=lambda: f"adv_{uuid.uuid4().hex[:8]}")
+    tenant_id = Column(String, nullable=True, index=True)
     employee_id = Column(String, ForeignKey("hrms_employees.id", ondelete="CASCADE"), nullable=False)
     amount = Column(Float, nullable=False)
     month = Column(Integer, nullable=True)
@@ -365,6 +406,7 @@ class EmployeeBonus(Base):
     __table_args__ = {'extend_existing': True}
 
     id = Column(String, primary_key=True, default=lambda: f"bon_{uuid.uuid4().hex[:8]}")
+    tenant_id = Column(String, nullable=True, index=True)
     employee_id = Column(String, ForeignKey("hrms_employees.id", ondelete="CASCADE"), nullable=False)
     title = Column(String, nullable=False)
     bonus_type = Column(String, nullable=True)
@@ -381,6 +423,7 @@ class SalesCommission(Base):
     __table_args__ = {'extend_existing': True}
 
     id = Column(String, primary_key=True, default=lambda: f"comm_{uuid.uuid4().hex[:8]}")
+    tenant_id = Column(String, nullable=True, index=True)
     employee_id = Column(String, ForeignKey("hrms_employees.id", ondelete="CASCADE"), nullable=False)
     month = Column(Integer, nullable=False)
     year = Column(Integer, nullable=False)
@@ -399,6 +442,7 @@ class CommissionSlabPlan(Base):
     __table_args__ = {'extend_existing': True}
 
     id = Column(String, primary_key=True, default=lambda: f"slab_{uuid.uuid4().hex[:8]}")
+    tenant_id = Column(String, nullable=True, index=True)
     name = Column(String, nullable=False)
     slabs = Column(JSON, nullable=True)
     milestone_bonus_amt = Column(Float, nullable=True)
@@ -412,6 +456,7 @@ class PayGrade(Base):
     __table_args__ = {'extend_existing': True}
 
     id = Column(String, primary_key=True, default=lambda: f"grd_{uuid.uuid4().hex[:8]}")
+    tenant_id = Column(String, nullable=True, index=True)
     name = Column(String, nullable=False)
     designation_id = Column(String, ForeignKey("hrms_designations.id", ondelete="SET NULL"), nullable=True)
     min_salary = Column(Float, nullable=True)
@@ -425,11 +470,12 @@ class AttendanceCorrection(Base):
     __table_args__ = {'extend_existing': True}
 
     id = Column(String, primary_key=True, default=lambda: f"corr_{uuid.uuid4().hex[:8]}")
+    tenant_id = Column(String, nullable=True, index=True)
     person_type = Column(String, nullable=False, default="EMPLOYEE")  # 'EMPLOYEE' | 'STUDENT'
     person_id = Column(String, nullable=True)
     person_name = Column(String, nullable=False)
     person_code = Column(String, nullable=True)  # Employee Code or Roll No
-    designation = Column(String, nullable=True)  # e.g., 'Veterinary Assistant', 'B.Tech Student'
+    designation = Column(String, nullable=True)  # e.g., ' Assistant', 'B.Tech Student'
     department = Column(String, nullable=True)  # e.g., 'VA', 'CSE', 'Animal Husbandry'
     district = Column(String, nullable=True)  # e.g., 'Warangal', 'Adilabad', 'Rangareddy', 'Mancherial', 'Nirmal'
     place = Column(String, nullable=True)  # e.g., 'PVC Bhanjipet', 'DLDA Rangareddy', 'PVC Rangapet', 'Campus Main'
@@ -444,6 +490,91 @@ class AttendanceCorrection(Base):
     approved_at = Column(DateTime, nullable=True)
     rejection_reason = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class EmployeeShiftRoster(Base):
+    __tablename__ = "hrms_shift_rosters"
+    __table_args__ = {'extend_existing': True}
+
+    id = Column(String, primary_key=True, default=lambda: f"roster_{uuid.uuid4().hex[:8]}")
+    tenant_id = Column(String, nullable=True, index=True)
+    employee_id = Column(String, nullable=False, index=True)
+    date = Column(Date, nullable=False, index=True)
+    shift_id = Column(String, nullable=True)
+    shift_code = Column(String, nullable=True)
+    shift_name = Column(String, nullable=True)
+    start_time = Column(String, nullable=True)
+    end_time = Column(String, nullable=True)
+    is_weekly_off = Column(Boolean, default=False)
+    status = Column(String, nullable=True)
+    notes = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class ShiftTemplate(Base):
+    __tablename__ = "hrms_shift_templates"
+    __table_args__ = (UniqueConstraint("tenant_id", "code", name="uq_hrms_shift_tmpl_tenant_code"),
+                      {"extend_existing": True})
+
+    id = Column(String, primary_key=True, default=lambda: f"shift_{uuid.uuid4().hex[:8]}")
+    tenant_id = Column(String, nullable=True, index=True)
+    code = Column(String, nullable=False, index=True)
+    name = Column(String, nullable=False)
+    start_time = Column(String, nullable=True)
+    end_time = Column(String, nullable=True)
+    duration_hours = Column(Float, nullable=True)
+    break_mins = Column(Integer, nullable=True)
+    grace_period_mins = Column(Integer, nullable=True)
+    is_night_shift = Column(Boolean, default=False)
+    color = Column(String, nullable=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    # Org-scoped shift assignment fields
+    assign_type = Column(String, nullable=True)       # 'employee', 'student', 'both'
+    from_date = Column(String, nullable=True)          # YYYY-MM-DD
+    to_date = Column(String, nullable=True)            # YYYY-MM-DD
+    num_members = Column(Integer, nullable=True)       # target headcount
+    member_ids = Column(JSON, nullable=True)           # list of assigned employee/student IDs
+    work_days = Column(JSON, nullable=True)            # ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+    branch_id = Column(String, nullable=True)          # org / branch scope
+    ho_id = Column(String, nullable=True)              # head-office scope
+
+
+class WorkCalendarPolicy(Base):
+    __tablename__ = "hrms_work_calendars"
+    __table_args__ = {'extend_existing': True}
+
+    id = Column(String, primary_key=True, default=lambda: f"cal_{uuid.uuid4().hex[:8]}")
+    tenant_id = Column(String, nullable=True, index=True)
+    name = Column(String, nullable=False)
+    department = Column(String, nullable=True)
+    calendar_type = Column(String, nullable=True)
+    is_default = Column(Boolean, default=False)
+    default_shift_code = Column(String, nullable=True)
+    working_days = Column(JSON, default=list)
+    weekly_off_days = Column(JSON, default=list)
+    shift_timings = Column(JSON, default=list)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class CompanyHoliday(Base):
+    __tablename__ = "hrms_holidays"
+    __table_args__ = {'extend_existing': True}
+
+    id = Column(String, primary_key=True, default=lambda: f"hol_{uuid.uuid4().hex[:8]}")
+    tenant_id = Column(String, nullable=True, index=True)
+    calendar_id = Column(String, nullable=True)
+    name = Column(String, nullable=False)
+    date = Column(Date, nullable=False, index=True)
+    year = Column(Integer, nullable=False, index=True)
+    holiday_type = Column(String, nullable=True)
+    description = Column(String, nullable=True)
+    is_optional = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
 
 
 

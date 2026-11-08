@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import type { KpiSummary } from '@/types/dashboard';
-import { trainersApi } from '@/services/trainersApi';
+import { employeesApi } from '@/services/employeesApi';
 import { hrmsApi } from '@/services/hrmsApi';
 import { cn } from '@/utils/cn';
 
@@ -24,15 +24,15 @@ export function DashboardKPIs({ summary }: DashboardKPIsProps) {
   useEffect(() => {
     const fetchEmployeeData = async () => {
       try {
-        const [trainersRes, attendanceRes, leavesRes] = await Promise.all([
-          trainersApi.list().catch(() => []),
+        const [employeesRes, attendanceRes, leavesRes] = await Promise.all([
+          employeesApi.list().catch(() => []),
           hrmsApi.getAttendance().catch(() => []),
           hrmsApi.getLeaves().catch(() => []),
         ]);
 
-        const totalEmp = Array.isArray(trainersRes) ? trainersRes.length : 0;
-        const totalBase = Array.isArray(trainersRes)
-          ? trainersRes.reduce((acc: number, t: any) => acc + (Number(t.base_monthly_salary) || 0), 0)
+        const totalEmp = Array.isArray(employeesRes) ? employeesRes.length : 0;
+        const totalBase = Array.isArray(employeesRes)
+          ? employeesRes.reduce((acc: number, t: any) => acc + (Number(t.base_monthly_salary) || 0), 0)
           : 0;
 
         const todayIso = new Date().toISOString().split('T')[0];

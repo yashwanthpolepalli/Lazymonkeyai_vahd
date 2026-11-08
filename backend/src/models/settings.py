@@ -1,15 +1,16 @@
 from src.utils.timezone import now_ist_naive
 import datetime
-from sqlalchemy import Column, String, Boolean, DateTime, Float, JSON, Integer
+from sqlalchemy import Column, String, Boolean, DateTime, Float, JSON, Integer, UniqueConstraint
 from src.database.base import Base
 
 class Branch(Base):
     __tablename__ = "branches"
 
     id = Column(String, primary_key=True, index=True)
+    tenant_id = Column(String, nullable=True, index=True)
     owner_id = Column(String, nullable=True, index=True)
     ho_id = Column(String, nullable=True, index=True)
-    gym_name = Column(String, nullable=True, default="") # real column — the gym/organisation name
+    vahd_name = Column(String, nullable=True, default="") # real column — the vahd/organisation name
     name = Column(String, nullable=True, default="")      # legacy alias kept for compatibility
     branch_name = Column(String, nullable=False)
     city = Column(String, nullable=True, default="")
@@ -26,9 +27,9 @@ class Branch(Base):
     created_at = Column(DateTime, default=now_ist_naive)
 
     def __init__(self, **kwargs):
-        val = kwargs.get("gym_name") or kwargs.get("name") or kwargs.get("branch_name") or ""
-        if not kwargs.get("gym_name"):
-            kwargs["gym_name"] = val
+        val = kwargs.get("vahd_name") or kwargs.get("name") or kwargs.get("branch_name") or ""
+        if not kwargs.get("vahd_name"):
+            kwargs["vahd_name"] = val
         if not kwargs.get("name"):
             kwargs["name"] = val
         super().__init__(**kwargs)
@@ -41,7 +42,12 @@ class Setting(Base):
     name = Column(String, nullable=True, default="")
     address = Column(String, nullable=True)
     phone = Column(String, nullable=True)
+    email = Column(String, nullable=True)
     gstin = Column(String, nullable=True)
+    currency = Column(String, nullable=True)
+    timezone = Column(String, nullable=True)
+    opening_time = Column(String, nullable=True)
+    closing_time = Column(String, nullable=True)
     essl_bioserver_url = Column(String, nullable=True)
     enable_auto_sms = Column(Boolean, nullable=True, default=False)
     enable_gate_autolock = Column(Boolean, nullable=True, default=False)
@@ -70,19 +76,22 @@ class Setting(Base):
     updated_at = Column(DateTime, default=now_ist_naive, onupdate=now_ist_naive)
 
     @property
-    def gym_name(self) -> str:
+    def vahd_name(self) -> str:
         return self.name or ""
 
-    @gym_name.setter
-    def gym_name(self, value: str):
+    @vahd_name.setter
+    def vahd_name(self, value: str):
         self.name = value
 
 
 class PaymentMethod(Base):
     __tablename__ = "payment_methods"
+    __table_args__ = (UniqueConstraint("tenant_id", "name", name="uq_paymethod_tenant_name"),
+                      {"extend_existing": True})
 
     id = Column(String, primary_key=True, index=True)
-    name = Column(String, nullable=False, unique=True)
+    tenant_id = Column(String, nullable=True, index=True)
+    name = Column(String, nullable=False, index=True)
     code = Column(String, nullable=True)
     icon = Column(String, nullable=True)
     is_active = Column(Boolean, default=True)
@@ -108,6 +117,7 @@ class MasterData(Base):
     __table_args__ = {'extend_existing': True}
 
     id = Column(String, primary_key=True, index=True)
+    tenant_id = Column(String, nullable=True, index=True)
     category = Column(String, nullable=False, index=True)
     name = Column(String, nullable=False, index=True)
     code = Column(String, nullable=True)
@@ -118,10 +128,13 @@ class MasterData(Base):
     extra_info = Column(String, nullable=True)
     level = Column(String, nullable=True)
     display_order = Column(Integer, nullable=True, default=0)
+    check_in_time = Column(String, nullable=True)
+    check_out_time = Column(String, nullable=True)
+    days = Column(String, nullable=True)
     created_at = Column(DateTime, default=now_ist_naive)
     updated_at = Column(DateTime, default=now_ist_naive, onupdate=now_ist_naive)
 
 
 # Backward-compatible aliases
-GymBranch = Branch
-GymSetting = Setting
+vahdBranch = Branch
+vahdSetting = Setting

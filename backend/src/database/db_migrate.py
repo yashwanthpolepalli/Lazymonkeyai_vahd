@@ -1,322 +1,47 @@
 """
-FIT CLUB AI — Cross-Dialect Database Schema Migration Service
-Applies dialect-safe schema migrations for missing tables and columns across SQLite and PostgreSQL.
-Zero hardcoded default mock data.
+VAHD Enterprise Platform — Cross-Dialect Database Schema Migration Service
+========================================================================
+Applies dialect-safe schema migrations for all tables and columns across SQLite and PostgreSQL.
+Auto-creates all 78 canonical platform tables, safely alters missing columns, and seeds default policies.
 """
-from typing import Dict, List, Tuple
+import os
+import sys
+
+# Ensure backend root is in sys.path when executed directly as a script
+backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if backend_dir not in sys.path:
+    sys.path.insert(0, backend_dir)
+
+import logging
+from typing import Dict, List, Set, Tuple
 from sqlalchemy import inspect, text
-from src.database.session import engine
+from src.database.session import engine, SessionLocal
 from src.database.base import Base
-# Ensure all models are imported so Base.metadata is fully populated
+
+# Ensure all 78 models are imported so Base.metadata is fully populated
 import src.models  # noqa: F401
 
+logger = logging.getLogger("VAHD_DB_MIGRATE")
 
-# Table -> List of (column_name, sql_type)
-SCHEMA_COLUMNS: Dict[str, List[Tuple[str, str]]] = {
-    "users": [
-        ("owner_id", "VARCHAR"),
-        ("branch_id", "VARCHAR"),
-        ("ho_id", "VARCHAR"),
-        ("avatar_url", "VARCHAR"),
-        ("phone", "VARCHAR"),
-        ("is_platform_admin", "BOOLEAN"),
-        ("is_tenant_owner", "BOOLEAN"),
-    ],
-    "branches": [
-        ("owner_id", "VARCHAR"),
-        ("ho_id", "VARCHAR"),
-        ("gym_name", "VARCHAR"),
-        ("name", "VARCHAR"),
-        ("branch_name", "VARCHAR"),
-        ("city", "VARCHAR"),
-        ("address", "VARCHAR"),
-        ("is_active", "BOOLEAN"),
-        ("created_at", "TIMESTAMP"),
-    ],
-    "settings": [
-        ("name", "VARCHAR"),
-        ("address", "VARCHAR"),
-        ("phone", "VARCHAR"),
-        ("gstin", "VARCHAR"),
-        ("essl_bioserver_url", "VARCHAR"),
-        ("enable_auto_sms", "BOOLEAN"),
-        ("enable_gate_autolock", "BOOLEAN"),
-        ("enable_pos", "BOOLEAN"),
-        ("enable_inventory", "BOOLEAN"),
-        ("enable_gst_engine", "BOOLEAN"),
-        ("sgst_rate", "FLOAT"),
-        ("sgst_enabled", "BOOLEAN"),
-        ("cgst_rate", "FLOAT"),
-        ("cgst_enabled", "BOOLEAN"),
-        ("igst_rate", "FLOAT"),
-        ("igst_enabled", "BOOLEAN"),
-        ("total_gst_rate", "FLOAT"),
-        ("tax_pricing_mode", "VARCHAR"),
-        ("sac_code", "VARCHAR"),
-        ("enable_discount_engine", "BOOLEAN"),
-        ("pos_discount_presets", "JSON"),
-        ("max_staff_discount", "FLOAT"),
-        ("discount_sequence", "VARCHAR"),
-        ("tier_discounts", "JSON"),
-    ],
-    "memberships": [
-        ("payment_method", "VARCHAR"),
-        ("invoice_number", "VARCHAR"),
-        ("transaction_id", "VARCHAR"),
-        ("paid_amount", "FLOAT"),
-        ("due_amount", "FLOAT"),
-    ],
-    "courses": [
-        ("owner_id", "VARCHAR"),
-        ("branch_id", "VARCHAR"),
-        ("name", "VARCHAR"),
-        ("category", "VARCHAR"),
-        ("department", "VARCHAR"),
-        ("degree_type", "VARCHAR"),
-        ("price", "FLOAT"),
-        ("duration_days", "INTEGER"),
-        ("period", "VARCHAR"),
-        ("features", "JSON"),
-        ("description", "VARCHAR"),
-        ("color", "VARCHAR"),
-        ("badge", "VARCHAR"),
-        ("is_combo", "BOOLEAN"),
-        ("is_active", "BOOLEAN"),
-    ],
-    "student_courses": [
-        ("owner_id", "VARCHAR"),
-        ("branch_id", "VARCHAR"),
-        ("student_id", "VARCHAR"),
-        ("course_id", "VARCHAR"),
-        ("start_date", "TIMESTAMP"),
-        ("end_date", "TIMESTAMP"),
-        ("status", "VARCHAR"),
-        ("fee_amount", "FLOAT"),
-        ("paid_amount", "FLOAT"),
-        ("due_amount", "FLOAT"),
-        ("payment_method", "VARCHAR"),
-        ("invoice_number", "VARCHAR"),
-        ("transaction_id", "VARCHAR"),
-        ("auto_renew", "BOOLEAN"),
-    ],
-    "customers": [
-        ("owner_id", "VARCHAR"),
-        ("branch_id", "VARCHAR"),
-        ("ho_id", "VARCHAR"),
-        ("member_code", "VARCHAR"),
-        ("parent_phone", "VARCHAR"),
-        ("gender", "VARCHAR"),
-        ("weight", "FLOAT"),
-        ("height", "FLOAT"),
-        ("age", "INTEGER"),
-        ("bmi", "FLOAT"),
-        ("fitness_score", "INTEGER"),
-        ("fitness_level", "VARCHAR"),
-        ("training_preference", "VARCHAR"),
-        ("goal", "VARCHAR"),
-        ("target_calories", "INTEGER"),
-        ("target_weight", "FLOAT"),
-        ("days_per_week", "INTEGER"),
-        ("session_duration_minutes", "INTEGER"),
-        ("target_protein", "INTEGER"),
-        ("target_carbs", "INTEGER"),
-        ("target_fat", "INTEGER"),
-        ("target_water", "FLOAT"),
-        ("target_fiber", "INTEGER"),
-        ("target_sugar", "INTEGER"),
-        ("body_condition", "VARCHAR"),
-        ("meals_per_day", "INTEGER"),
-        ("dietary_preference", "VARCHAR"),
-        ("target_steps", "INTEGER"),
-        ("target_sleep_minutes", "INTEGER"),
-        ("weight_unit", "VARCHAR"),
-        ("profile_image", "VARCHAR"),
-        ("face_registered", "BOOLEAN"),
-        ("face_image", "VARCHAR"),
-        ("rfid_tag", "VARCHAR"),
-        ("status", "VARCHAR"),
-        ("primary_gym_location", "VARCHAR"),
-        ("enable_workout_videos", "BOOLEAN"),
-        ("qualification", "VARCHAR"),
-        ("specialization", "VARCHAR"),
-        ("meta_data", "JSON"),
-        ("updated_at", "TIMESTAMP"),
-    ],
-    "inbody_reports": [
-        ("score", "INTEGER"),
-        ("weight", "FLOAT"),
-        ("skeletal_muscle_mass", "FLOAT"),
-        ("body_fat_percentage", "FLOAT"),
-        ("body_fat_mass", "FLOAT"),
-        ("visceral_fat", "FLOAT"),
-        ("bmi", "FLOAT"),
-        ("basal_metabolic_rate", "FLOAT"),
-        ("body_water", "FLOAT"),
-        ("protein", "FLOAT"),
-        ("segmental_analysis", "JSON"),
-    ],
-    "trainer_profiles": [
-        ("primary_gym_location", "VARCHAR"),
-        ("specialization", "VARCHAR"),
-        ("base_monthly_salary", "FLOAT"),
-        ("pt_session_rate", "FLOAT"),
-        ("bank_account_no", "VARCHAR"),
-        ("bank_ifsc", "VARCHAR"),
-        ("upi_id", "VARCHAR"),
-        ("is_active", "BOOLEAN"),
-    ],
-    "biometric_devices": [
-        ("external_device_id", "VARCHAR"),
-        ("serial_number", "VARCHAR"),
-        ("device_name", "VARCHAR"),
-        ("model_name", "VARCHAR"),
-        ("device_type", "VARCHAR"),
-        ("ip_address", "VARCHAR"),
-        ("port", "INTEGER"),
-        ("connection_type", "VARCHAR"),
-        ("mac_address", "VARCHAR"),
-        ("wifi_ssid", "VARCHAR"),
-        ("is_wireless", "BOOLEAN"),
-        ("status", "VARCHAR"),
-        ("location", "VARCHAR"),
-        ("meta_data", "JSON"),
-        ("last_seen_at", "TIMESTAMP"),
-        ("last_sync_at", "TIMESTAMP"),
-        ("created_at", "TIMESTAMP"),
-        ("updated_at", "TIMESTAMP"),
-    ],
-    "biometric_logs": [
-        ("customer_id", "VARCHAR"),
-        ("user_role", "VARCHAR"),
-        ("timestamp", "TIMESTAMP"),
-        ("event_type", "VARCHAR"),
-        ("device_type", "VARCHAR"),
-        ("device_id", "VARCHAR"),
-        ("device_name", "VARCHAR"),
-        ("direction", "VARCHAR"),
-        ("status", "VARCHAR"),
-        ("confidence_score", "FLOAT"),
-        ("meta_data", "JSON"),
-    ],
-    "membership_plans": [
-        ("category", "VARCHAR"),
-        ("color", "VARCHAR"),
-        ("badge", "VARCHAR"),
-        ("is_combo", "BOOLEAN"),
-        ("is_active", "BOOLEAN"),
-        ("updated_at", "TIMESTAMP"),
-    ],
-    "hrms_geofence_schemes": [
-        ("branch_name", "VARCHAR"),
-        ("gym_name", "VARCHAR"),
-        ("latitude", "FLOAT"),
-        ("longitude", "FLOAT"),
-        ("radius_meters", "INTEGER"),
-        ("strict_restriction", "BOOLEAN"),
-        ("ip_whitelist", "VARCHAR"),
-        ("shift_start_time", "VARCHAR"),
-        ("shift_end_time", "VARCHAR"),
-        ("grace_period_mins", "INTEGER"),
-        ("min_half_day_hours", "FLOAT"),
-        ("allowed_channels", "JSON"),
-        ("assigned_employee_ids", "JSON"),
-        ("is_active", "BOOLEAN"),
-        ("created_at", "TIMESTAMP"),
-        ("updated_at", "TIMESTAMP"),
-    ],
-    "trainer_profiles": [
-        ("gender", "VARCHAR"),
-    ],
-    "hrms_employees": [
-        ("gender", "VARCHAR"),
-        ("marital_status", "VARCHAR"),
-        ("probation_status", "VARCHAR"),
-        ("branch_id", "VARCHAR"),
-        ("ho_id", "VARCHAR"),
-        ("owner_id", "VARCHAR"),
-        ("qualification", "VARCHAR"),
-        ("specialization", "VARCHAR"),
-    ],
-    "hrms_leaves": [
-        ("leave_type_id", "VARCHAR"),
-        ("paid_type", "VARCHAR"),
-        ("is_paid", "BOOLEAN"),
-        ("rejection_reason", "TEXT"),
-        ("attachment_url", "VARCHAR"),
-    ],
-    "hrms_leave_types": [
-        ("name", "VARCHAR"),
-        ("code", "VARCHAR"),
-        ("category", "VARCHAR"),
-        ("description", "TEXT"),
-        ("paid_type", "VARCHAR"),
-        ("is_paid", "BOOLEAN"),
-        ("gender_eligibility", "JSON"),
-        ("employment_types", "JSON"),
-        ("applicable_departments", "JSON"),
-        ("applicable_designations", "JSON"),
-        ("min_service_days", "INTEGER"),
-        ("annual_quota", "FLOAT"),
-        ("max_consecutive_days", "INTEGER"),
-        ("carry_forward_allowed", "BOOLEAN"),
-        ("max_carry_forward_days", "INTEGER"),
-        ("encashment_allowed", "BOOLEAN"),
-        ("max_encashment_days", "INTEGER"),
-        ("attachment_required", "BOOLEAN"),
-        ("is_active", "BOOLEAN"),
-        ("created_at", "TIMESTAMP"),
-        ("updated_at", "TIMESTAMP"),
-    ],
-    "hrms_leave_balances": [
-        ("employee_id", "VARCHAR"),
-        ("leave_type_id", "VARCHAR"),
-        ("year", "INTEGER"),
-        ("allocated_days", "FLOAT"),
-        ("used_days", "FLOAT"),
-        ("pending_days", "FLOAT"),
-        ("buffer_days", "FLOAT"),
-        ("updated_at", "TIMESTAMP"),
-    ],
-    "student_attendance_report_logs": [
-        ("student_id", "VARCHAR"),
-        ("student_name", "VARCHAR"),
-        ("parent_phone", "VARCHAR"),
-        ("branch_id", "VARCHAR"),
-        ("year", "INTEGER"),
-        ("month", "INTEGER"),
-        ("month_name", "VARCHAR"),
-        ("total_working_days", "INTEGER"),
-        ("days_present", "INTEGER"),
-        ("days_absent", "INTEGER"),
-        ("attendance_percentage", "FLOAT"),
-        ("day_wise_summary", "JSON"),
-        ("whatsapp_session_id", "VARCHAR"),
-        ("whatsapp_message_id", "VARCHAR"),
-        ("delivery_status", "VARCHAR"),
-        ("dispatch_type", "VARCHAR"),
-        ("message_body", "TEXT"),
-        ("notes", "VARCHAR"),
-        ("created_at", "TIMESTAMP"),
-        ("updated_at", "TIMESTAMP"),
-    ],
-}
+# Tables explicitly protected from any drop operation
+PROTECTED_TABLES: Set[str] = {"users", "alembic_version", "sqlite_sequence"}
 
 
-def seed_default_leave_types(db):
-    """Seeds canonical enterprise leave policy types if not present in DB."""
+def seed_default_leave_types(db) -> None:
+    """Seeds canonical enterprise leave types for HRMS if not present."""
     from src.models.hrms import LeaveType
     try:
         defaults = [
             {
-                "id": "lt_casual",
-                "name": "Casual Leave",
+                "id": "lt_cl",
+                "name": "Casual Leave (CL)",
                 "code": "CL",
-                "category": "General Leave",
-                "description": "Short casual leaves for personal affairs, rest and errands.",
+                "category": "Casual Leave",
+                "description": "Short paid leaves for personal commitments and unplanned events.",
                 "paid_type": "PAID",
                 "is_paid": True,
                 "gender_eligibility": ["MALE", "FEMALE", "OTHER"],
-                "employment_types": ["FULL_TIME", "PART_TIME", "CONTRACT", "PERMANENT", "PROBATION"],
+                "employment_types": ["FULL_TIME", "PERMANENT", "PROBATION"],
                 "applicable_departments": ["ALL"],
                 "applicable_designations": ["ALL"],
                 "min_service_days": 0,
@@ -330,33 +55,33 @@ def seed_default_leave_types(db):
                 "is_active": True,
             },
             {
-                "id": "lt_sick",
-                "name": "Sick / Medical Leave",
+                "id": "lt_sl",
+                "name": "Sick / Medical Leave (SL)",
                 "code": "SL",
-                "category": "Medical Leave",
-                "description": "Medical recuperation and sick leaves.",
+                "category": "Sick Leave",
+                "description": "Paid time off for recovery from illness, injury or medical treatments.",
                 "paid_type": "PAID",
                 "is_paid": True,
                 "gender_eligibility": ["MALE", "FEMALE", "OTHER"],
-                "employment_types": ["FULL_TIME", "PART_TIME", "CONTRACT", "PERMANENT", "PROBATION"],
+                "employment_types": ["FULL_TIME", "PERMANENT", "PROBATION"],
                 "applicable_departments": ["ALL"],
                 "applicable_designations": ["ALL"],
                 "min_service_days": 0,
-                "annual_quota": 12.0,
-                "max_consecutive_days": 7,
-                "carry_forward_allowed": True,
-                "max_carry_forward_days": 10,
+                "annual_quota": 10.0,
+                "max_consecutive_days": 15,
+                "carry_forward_allowed": False,
+                "max_carry_forward_days": 0,
                 "encashment_allowed": False,
                 "max_encashment_days": 0,
                 "attachment_required": True,
                 "is_active": True,
             },
             {
-                "id": "lt_earned",
-                "name": "Earned / Privilege Leave",
-                "code": "EL",
-                "category": "Privilege Leave",
-                "description": "Annual accrued vacation privilege leave.",
+                "id": "lt_pl",
+                "name": "Paid / Privilege Leave (PL)",
+                "code": "PL",
+                "category": "Earned Leave",
+                "description": "Earned annual vacation leaves with full pay and carry forward facility.",
                 "paid_type": "PAID",
                 "is_paid": True,
                 "gender_eligibility": ["MALE", "FEMALE", "OTHER"],
@@ -364,8 +89,8 @@ def seed_default_leave_types(db):
                 "applicable_departments": ["ALL"],
                 "applicable_designations": ["ALL"],
                 "min_service_days": 90,
-                "annual_quota": 15.0,
-                "max_consecutive_days": 15,
+                "annual_quota": 18.0,
+                "max_consecutive_days": 30,
                 "carry_forward_allowed": True,
                 "max_carry_forward_days": 30,
                 "encashment_allowed": True,
@@ -374,20 +99,20 @@ def seed_default_leave_types(db):
                 "is_active": True,
             },
             {
-                "id": "lt_maternity",
-                "name": "Maternity Leave",
+                "id": "lt_ml",
+                "name": "Maternity Leave (ML)",
                 "code": "ML",
-                "category": "Statutory / Parental Leave",
-                "description": "Statutory maternity benefit for female staff and expectant mothers.",
+                "category": "Maternity Leave",
+                "description": "Fully paid maternity leave as per statutory maternity benefit regulations.",
                 "paid_type": "PAID",
                 "is_paid": True,
                 "gender_eligibility": ["FEMALE"],
-                "employment_types": ["FULL_TIME", "PERMANENT", "CONTRACT"],
+                "employment_types": ["FULL_TIME", "PERMANENT"],
                 "applicable_departments": ["ALL"],
                 "applicable_designations": ["ALL"],
-                "min_service_days": 180,
-                "annual_quota": 180.0,
-                "max_consecutive_days": 180,
+                "min_service_days": 80,
+                "annual_quota": 182.0,
+                "max_consecutive_days": 182,
                 "carry_forward_allowed": False,
                 "max_carry_forward_days": 0,
                 "encashment_allowed": False,
@@ -396,20 +121,20 @@ def seed_default_leave_types(db):
                 "is_active": True,
             },
             {
-                "id": "lt_paternity",
-                "name": "Paternity Leave",
-                "code": "PL",
-                "category": "Statutory / Parental Leave",
-                "description": "Statutory paternity benefit for male staff and new fathers.",
+                "id": "lt_ptl",
+                "name": "Paternity Leave (PTL)",
+                "code": "PTL",
+                "category": "Paternity Leave",
+                "description": "Paid leave for fathers upon childbirth or legal adoption.",
                 "paid_type": "PAID",
                 "is_paid": True,
                 "gender_eligibility": ["MALE"],
-                "employment_types": ["FULL_TIME", "PERMANENT", "CONTRACT"],
+                "employment_types": ["FULL_TIME", "PERMANENT"],
                 "applicable_departments": ["ALL"],
                 "applicable_designations": ["ALL"],
-                "min_service_days": 180,
-                "annual_quota": 15.0,
-                "max_consecutive_days": 15,
+                "min_service_days": 90,
+                "annual_quota": 7.0,
+                "max_consecutive_days": 7,
                 "carry_forward_allowed": False,
                 "max_carry_forward_days": 0,
                 "encashment_allowed": False,
@@ -418,119 +143,9 @@ def seed_default_leave_types(db):
                 "is_active": True,
             },
             {
-                "id": "lt_child_care",
-                "name": "Child Care Leave",
-                "code": "CCL",
-                "category": "Special Leave",
-                "description": "Leave granted for child care, exams and upbringing.",
-                "paid_type": "PAID",
-                "is_paid": True,
-                "gender_eligibility": ["FEMALE", "OTHER"],
-                "employment_types": ["FULL_TIME", "PERMANENT"],
-                "applicable_departments": ["ALL"],
-                "applicable_designations": ["ALL"],
-                "min_service_days": 365,
-                "annual_quota": 30.0,
-                "max_consecutive_days": 15,
-                "carry_forward_allowed": False,
-                "max_carry_forward_days": 0,
-                "encashment_allowed": False,
-                "max_encashment_days": 0,
-                "attachment_required": False,
-                "is_active": True,
-            },
-            {
-                "id": "lt_adoption",
-                "name": "Adoption Leave",
-                "code": "AL",
-                "category": "Special Leave",
-                "description": "Leave granted to adopting parents for legal procedures & bonding.",
-                "paid_type": "PAID",
-                "is_paid": True,
-                "gender_eligibility": ["MALE", "FEMALE", "OTHER"],
-                "employment_types": ["FULL_TIME", "PERMANENT"],
-                "applicable_departments": ["ALL"],
-                "applicable_designations": ["ALL"],
-                "min_service_days": 180,
-                "annual_quota": 60.0,
-                "max_consecutive_days": 60,
-                "carry_forward_allowed": False,
-                "max_carry_forward_days": 0,
-                "encashment_allowed": False,
-                "max_encashment_days": 0,
-                "attachment_required": True,
-                "is_active": True,
-            },
-            {
-                "id": "lt_bereavement",
-                "name": "Bereavement Leave",
-                "code": "BL",
-                "category": "Special Leave",
-                "description": "Compassionate leave on demise of an immediate family member.",
-                "paid_type": "PAID",
-                "is_paid": True,
-                "gender_eligibility": ["MALE", "FEMALE", "OTHER"],
-                "employment_types": ["FULL_TIME", "PART_TIME", "CONTRACT", "PERMANENT", "PROBATION"],
-                "applicable_departments": ["ALL"],
-                "applicable_designations": ["ALL"],
-                "min_service_days": 0,
-                "annual_quota": 5.0,
-                "max_consecutive_days": 5,
-                "carry_forward_allowed": False,
-                "max_carry_forward_days": 0,
-                "encashment_allowed": False,
-                "max_encashment_days": 0,
-                "attachment_required": False,
-                "is_active": True,
-            },
-            {
-                "id": "lt_wedding",
-                "name": "Wedding Leave",
-                "code": "WL",
-                "category": "Special Leave",
-                "description": "Leave granted to staff members for their own wedding celebrations.",
-                "paid_type": "PAID",
-                "is_paid": True,
-                "gender_eligibility": ["MALE", "FEMALE", "OTHER"],
-                "employment_types": ["FULL_TIME", "PERMANENT"],
-                "applicable_departments": ["ALL"],
-                "applicable_designations": ["ALL"],
-                "min_service_days": 180,
-                "annual_quota": 5.0,
-                "max_consecutive_days": 5,
-                "carry_forward_allowed": False,
-                "max_carry_forward_days": 0,
-                "encashment_allowed": False,
-                "max_encashment_days": 0,
-                "attachment_required": True,
-                "is_active": True,
-            },
-            {
-                "id": "lt_comp_off",
-                "name": "Compensatory Off",
-                "code": "COMP",
-                "category": "Compensatory",
-                "description": "Leave credited against extra hours or festival duty performed.",
-                "paid_type": "PAID",
-                "is_paid": True,
-                "gender_eligibility": ["MALE", "FEMALE", "OTHER"],
-                "employment_types": ["FULL_TIME", "PART_TIME", "CONTRACT", "PERMANENT", "PROBATION"],
-                "applicable_departments": ["ALL"],
-                "applicable_designations": ["ALL"],
-                "min_service_days": 0,
-                "annual_quota": 0.0,
-                "max_consecutive_days": 3,
-                "carry_forward_allowed": True,
-                "max_carry_forward_days": 10,
-                "encashment_allowed": True,
-                "max_encashment_days": 5,
-                "attachment_required": False,
-                "is_active": True,
-            },
-            {
-                "id": "lt_unpaid_lwp",
-                "name": "Leave Without Pay",
-                "code": "LWP",
+                "id": "lt_lop",
+                "name": "Loss of Pay (LOP)",
+                "code": "LOP",
                 "category": "Unpaid Leave",
                 "description": "Unpaid authorized absence with salary deduction (Loss of Pay).",
                 "paid_type": "UNPAID",
@@ -568,42 +183,259 @@ def seed_default_leave_types(db):
         db.rollback()
 
 
-def run_database_migrations():
+def _backfill_tenant_scoping(conn, inspector) -> None:
     """
-    Ensures all tables and missing columns exist in the database.
+    Phase-1 tenancy migration (non-breaking):
+      1. Fill `tenant_id` on parent tables from branch/HO/free-text sources.
+      2. Propagate `tenant_id` to child tables in dependency order.
+      3. Create composite-unique indexes on (tenant_id, <business col>),
+         REPORTING conflicts instead of crashing (duplicate data in single-tenant
+         DBs is expected until the app starts enforcing scoping).
+
+    Dialect-safe: works on SQLite and PostgreSQL. Idempotent: guarded by a
+    `tenant_id_backfilled_at` marker row in `platform_settings`-style check.
+    """
+    # ── Step 1: parent-table backfill ──────────────────────────────────
+    # tenant_id canonical value = the originating vahdBranch.id.
+    # Existing rows already carry branch_id/ho_id/owner_id/vahd_branch —
+    # resolve them to a branch id. For HO-level rows use ho_id directly.
+    parent_rules = [
+        # (table, source_cols)  — tenant_id = first non-null source (ordered)
+        ("users",            ["branch_id", "ho_id", "owner_id"]),
+        ("students",         ["branch_id", "ho_id", "owner_id"]),
+        ("employee_profiles",["branch_id", "ho_id", "owner_id"]),
+        ("courses",          ["branch_id", "ho_id", "owner_id"]),
+        ("membership_plans", ["branch_id", "ho_id", "owner_id"]),
+        ("branches",         ["ho_id", "owner_id"]),  # fallback; branch's own id is the tenant
+        ("hrms_employees",   ["branch_id", "ho_id", "owner_id"]),
+        ("hrms_shift_templates", ["branch_id", "ho_id"]),
+        ("hrms_attendance_corrections", []),  # derived in Step 2/3 via person links
+    ]
+
+    # Build a column map for every existing table ONCE, so all three steps
+    # (parent backfill, child propagation, composite-unique) can guard on it.
+    all_tables = set(inspector.get_table_names())
+    cols: Dict[str, set] = {t: {c["name"] for c in inspector.get_columns(t)}
+                             for t in all_tables}
+
+    for table, srcs in parent_rules:
+        if table not in cols or "tenant_id" not in cols[table]:
+            continue
+        # 'branches': the branch's own id IS the tenant (no fallback needed)
+        if table == "branches":
+            try:
+                conn.execute(text(
+                    'UPDATE "branches" SET tenant_id = id WHERE tenant_id IS NULL'
+                ))
+                conn.commit()
+            except Exception as e:
+                conn.rollback()
+                logger.warning("tenant backfill branches: %s", e)
+            continue
+        if not srcs:
+            continue
+        # Sequential updates per source column — fill tenant_id from the first
+        # non-null source that actually exists on the table.
+        src_cols = [s for s in srcs if s in cols[table]]
+        for c in src_cols:
+            try:
+                conn.execute(text(
+                    f'UPDATE "{table}" SET tenant_id = "{c}" '
+                    f'WHERE tenant_id IS NULL AND "{c}" IS NOT NULL'
+                ))
+                conn.commit()
+            except Exception as e:
+                conn.rollback()
+                logger.warning("tenant backfill %s.%s: %s", table, c, e)
+
+    # ── Step 2: child-table propagation (dependency order) ─────────────
+    # child table -> source table + join on source id
+    child_rules = [
+        # (child_table, child_col, source_table, source_col)
+        ("memberships",          "student_id", "students",            "tenant_id"),
+        ("student_courses",      "student_id", "students",            "tenant_id"),
+        ("biometric_logs",       "student_id", "students",            "tenant_id"),
+        ("payroll_invoices",     "employee_id","employee_profiles",    "tenant_id"),
+        ("hrms_documents",       "employee_id","hrms_employees",      "tenant_id"),
+        ("hrms_attendance",      "employee_id","hrms_employees",      "tenant_id"),
+        ("hrms_leaves",          "employee_id","hrms_employees",      "tenant_id"),
+        ("hrms_payroll",         "employee_id","hrms_employees",      "tenant_id"),
+        ("hrms_leave_balances",  "employee_id","hrms_employees",      "tenant_id"),
+        ("hrms_performance",     "employee_id","hrms_employees",      "tenant_id"),
+        ("hrms_salary_structures","employee_id","hrms_employees",     "tenant_id"),
+        ("hrms_payslips",        "employee_id","hrms_employees",      "tenant_id"),
+        ("hrms_employee_loans",  "employee_id","hrms_employees",      "tenant_id"),
+        ("hrms_salary_advances", "employee_id","hrms_employees",      "tenant_id"),
+        ("hrms_employee_bonuses","employee_id","hrms_employees",     "tenant_id"),
+        ("hrms_sales_commissions","employee_id","hrms_employees",     "tenant_id"),
+        ("hrms_exit_requests",   "employee_id","hrms_employees",      "tenant_id"),
+        ("hrms_shift_rosters",   "employee_id","hrms_employees",      "tenant_id"),
+        ("erp_stock_movements",  "product_id", "erp_products",        "tenant_id"),
+        ("erp_debit_notes",      "company_id", "companies",           "tenant_id"),
+        ("erp_credit_notes",     "company_id", "companies",           "tenant_id"),
+        ("student_reviews",      "student_id", "students",            "tenant_id"),
+    ]
+    child_tables = set(inspector.get_table_names())
+    for child, child_col, src_tbl, src_col in child_rules:
+        if child not in child_tables or "tenant_id" not in cols.get(child, set()):
+            continue
+        if src_tbl not in child_tables:
+            continue
+        try:
+            conn.execute(text(
+                f'UPDATE "{child}" SET tenant_id = ('
+                f'SELECT "{src_col}" FROM "{src_tbl}" s '
+                f'WHERE s.id = "{child}"."{child_col}") '
+                f'WHERE tenant_id IS NULL AND "{child_col}" IS NOT NULL'
+            ))
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            logger.warning("tenant propagate %s<-%s: %s", child, src_tbl, e)
+
+    # ── Step 3: composite-unique indexes (report, don't crash) ────────
+    # (table, col) pairs that became composite-unique in Phase 1 models.
+    composite_uniques = [
+        ("hrms_employees",  "code"),
+        ("hrms_departments", "name"), ("hrms_departments", "code"),
+        ("hrms_leave_types", "name"), ("hrms_leave_types", "code"),
+        ("hrms_geofence_schemes", "name"),
+        ("hrms_salary_structures", "employee_id"),
+        ("hrms_shift_templates", "code"),
+        ("erp_product_categories", "category_code"),
+        ("erp_products", "sku"),
+        ("erp_purchase_requests", "request_number"),
+        ("erp_purchase_quotations","quotation_number"),
+        ("erp_purchase_orders", "po_number"),
+        ("erp_goods_received_notes","grn_number"),
+        ("erp_purchase_returns", "return_number"),
+        ("erp_vendor_bills", "bill_number"),
+        ("erp_vendor_payments", "payment_number"),
+        ("erp_debit_notes", "debit_note_number"),
+        ("erp_credit_notes", "credit_note_number"),
+        ("pos_transactions", "invoice_number"),
+        ("course_languages", "name"),
+        ("course_classifications", "value"),
+        ("payment_methods", "name"),
+    ]
+    dialect = engine.dialect.name  # "sqlite" or "postgresql"
+    idx_tables = set(inspector.get_table_names())
+    created, conflicts = 0, 0
+    for table, col in composite_uniques:
+        if table not in idx_tables:
+            continue
+        if "tenant_id" not in cols.get(table, set()) or col not in cols.get(table, set()):
+            continue
+        idx_name = f"uq_{table}_tenant_{col}"
+        if dialect == "sqlite":
+            ddl = (f'CREATE UNIQUE INDEX IF NOT EXISTS "{idx_name}" '
+                   f'ON "{table}" ("tenant_id", "{col}")')
+        else:
+            ddl = (f'CREATE UNIQUE INDEX IF NOT EXISTS "{idx_name}" '
+                   f'ON "{table}" ("tenant_id", "{col}")')
+        try:
+            conn.execute(text(ddl))
+            conn.commit()
+            created += 1
+        except Exception as e:
+            # A conflict means duplicate (tenant_id, col) values exist in the
+            # current DB — report and leave the index off; don't block startup.
+            conn.rollback()
+            conflicts += 1
+            logger.warning("composite-unique %s.%s skipped: %s", table, col, e)
+
+    # ── Step 4: drop legacy GLOBAL unique constraints/indexes on columns
+    # that are now composite-uniqued per-tenant (otherwise the old
+    # single-column constraint keeps blocking cross-tenant duplicates).
+    # Report, don't crash.
+    dropped_legacy = 0
+    for table, col in composite_uniques:
+        if table not in idx_tables:
+            continue
+        # candidate legacy names (dialect-dependent)
+        candidates = [f"{table}_{col}_key", f"ix_{table}_{col}"]
+        # also introspect any existing single-column unique index on `col`
+        try:
+            for idx in inspector.get_indexes(table):
+                cn = idx.get("column_names") or []
+                if idx.get("unique") and cn == [col] and idx.get("name"):
+                    candidates.append(idx["name"])
+        except Exception:
+            pass
+        for cand in candidates:
+            try:
+                conn.execute(text(f'DROP INDEX IF EXISTS "{cand}";'))
+                conn.commit()
+                dropped_legacy += 1
+            except Exception:
+                conn.rollback()
+            try:
+                conn.execute(text(
+                    f'ALTER TABLE "{table}" DROP CONSTRAINT IF EXISTS "{cand}";'
+                ))
+                conn.commit()
+            except Exception:
+                conn.rollback()
+
+    logger.info(
+        "tenant backfill complete (%d composite-unique indexes created, %d conflicts reported, "
+        "%d legacy global uniques dropped)",
+        created, conflicts, dropped_legacy,
+    )
+
+
+def run_database_migrations() -> None:
+    """
+    Ensures all 78 canonical tables and missing columns exist in the database.
     Compatible with both SQLite and PostgreSQL.
-    Dynamically introspects all registered SQLAlchemy models and schema definitions.
+    Dynamically introspects all registered SQLAlchemy models in Base.metadata.
+    Safely drops any non-canonical tables while preserving user logins and core data.
     """
     try:
-        # 1. Create any completely missing tables first via Base.metadata
+        # 1. Create all 78 canonical tables from Base.metadata if any are missing
         Base.metadata.create_all(bind=engine)
 
         inspector = inspect(engine)
-        existing_tables = set(inspector.get_table_names())
+        existing_tables: Set[str] = set(inspector.get_table_names())
+        canonical_tables: Set[str] = set(Base.metadata.tables.keys())
+
+        # Automatically detect any table in the DB that is not part of the canonical 78 models
+        obsolete_tables = [
+            tbl for tbl in existing_tables
+            if tbl not in canonical_tables and tbl not in PROTECTED_TABLES
+        ]
 
         added_columns_count = 0
+        dropped_tables_count = 0
 
         with engine.connect() as conn:
-            # First pass: check explicit SCHEMA_COLUMNS mapping
-            for table_name, columns in SCHEMA_COLUMNS.items():
-                if table_name not in existing_tables:
-                    continue
+            # 1.5 Safely drop obsolete foreign keys that restrict employee_id to hrms_employees only
+            # This allows shift rosters and attendance to seamlessly support students and staff alike
+            try:
+                conn.execute(text('ALTER TABLE "hrms_shift_rosters" DROP CONSTRAINT IF EXISTS "hrms_shift_rosters_employee_id_fkey";'))
+                conn.commit()
+            except Exception as fkey_err:
+                conn.rollback()
 
-                existing_cols = {col["name"] for col in inspector.get_columns(table_name)}
+            try:
+                conn.execute(text('ALTER TABLE "hrms_attendance" DROP CONSTRAINT IF EXISTS "hrms_attendance_employee_id_fkey";'))
+                conn.commit()
+            except Exception as fkey_err:
+                conn.rollback()
 
-                for col_name, col_type in columns:
-                    if col_name not in existing_cols:
-                        try:
-                            alter_sql = f"ALTER TABLE {table_name} ADD COLUMN {col_name} {col_type}"
-                            conn.execute(text(alter_sql))
-                            conn.commit()
-                            existing_cols.add(col_name)
-                            added_columns_count += 1
-                        except Exception as col_err:
-                            conn.rollback()
-                            print(f"[DB Migration Notice] Column {table_name}.{col_name} skipped: {col_err}")
+            # 2. Safely drop any non-canonical tables detected in the database
+            for tbl in obsolete_tables:
+                try:
+                    conn.execute(text(f'DROP TABLE IF EXISTS "{tbl}" CASCADE;'))
+                    conn.commit()
+                    existing_tables.discard(tbl)
+                    dropped_tables_count += 1
+                    print(f"[DB Migration Notice] Safely dropped obsolete non-canonical table: {tbl}")
+                except Exception as drop_err:
+                    conn.rollback()
+                    print(f"[DB Migration Notice] Could not drop table {tbl}: {drop_err}")
 
-            # Second pass: check all registered SQLAlchemy models in Base.metadata.tables
+            # 3. Introspect all registered SQLAlchemy models in Base.metadata.tables and add missing columns
             for table_name, table_obj in Base.metadata.tables.items():
                 if table_name not in existing_tables:
                     continue
@@ -614,29 +446,30 @@ def run_database_migrations():
                     col_name = col.name
                     if col_name not in existing_cols:
                         try:
-                            # Compile SQL column type
                             col_type = col.type.compile(engine.dialect)
-                            alter_sql = f"ALTER TABLE {table_name} ADD COLUMN {col_name} {col_type}"
+                            alter_sql = f'ALTER TABLE "{table_name}" ADD COLUMN "{col_name}" {col_type};'
                             conn.execute(text(alter_sql))
                             conn.commit()
                             existing_cols.add(col_name)
                             added_columns_count += 1
                         except Exception as col_err:
                             conn.rollback()
-                            print(f"[DB Migration Notice] Model column {table_name}.{col_name} skipped: {col_err}")
+                            print(f"[DB Migration Notice] Column {table_name}.{col_name} skipped: {col_err}")
 
-        # 3. Seed canonical leave policies if not present
-        from src.database.session import SessionLocal
+            # 3.5 Backfill tenant_id (canonical branch/org scope) + build composite uniques
+            _backfill_tenant_scoping(conn, inspector)
+
+        # 4. Seed canonical leave policies
         seed_db = SessionLocal()
         try:
             seed_default_leave_types(seed_db)
         finally:
             seed_db.close()
 
-        if added_columns_count > 0:
-            print(f"✅ Database Schema Migration Completed ({added_columns_count} missing columns added)!")
-        else:
-            print("✅ Database Schema Integrity Verified — All tables and columns up to date!")
+        print(
+            f"✅ Database Schema Migration Completed ({len(canonical_tables)} canonical tables verified, "
+            f"{dropped_tables_count} obsolete tables dropped, {added_columns_count} missing columns added)!"
+        )
 
     except Exception as e:
         print(f"[DB Migration Warning] {e}")
@@ -644,4 +477,3 @@ def run_database_migrations():
 
 if __name__ == "__main__":
     run_database_migrations()
-

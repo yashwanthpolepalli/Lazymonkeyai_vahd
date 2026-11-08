@@ -39,15 +39,15 @@ export interface FullInvoiceData {
   transporter_id?: string;
   eway_bill_number?: string;
   eway_bill_date?: string;
-  customerName?: string;
-  customerPhone?: string;
-  customerEmail?: string;
-  customerCompany?: string;
-  customerGST?: string;
-  customerAddress?: string;
-  customerBillingAddress?: string;
-  customerShippingAddress?: string;
-  customerType?: string;
+  studentName?: string;
+  studentPhone?: string;
+  studentEmail?: string;
+  studentCompany?: string;
+  studentGST?: string;
+  studentAddress?: string;
+  studentBillingAddress?: string;
+  studentShippingAddress?: string;
+  studentType?: string;
   items?: Array<{
     product_id?: string;
     product_name?: string;
@@ -127,9 +127,9 @@ export function FullInvoicePrinter({
         }
 
         // 1. Try resolving Google Review URL immediately from localStorage
-        const activeCompRaw = localStorage.getItem('bos_active_company') || 
-                              localStorage.getItem(`bos_active_company_${tenant?.id}`) ||
-                              localStorage.getItem('bos_active_company_default');
+        const activeCompRaw = localStorage.getItem('bos_active_company') ||
+          localStorage.getItem(`bos_active_company_${tenant?.id}`) ||
+          localStorage.getItem('bos_active_company_default');
         if (activeCompRaw) {
           const parsed = JSON.parse(activeCompRaw);
           if (parsed?.google_review_url) {
@@ -145,8 +145,8 @@ export function FullInvoicePrinter({
               setFetchedReviewUrl(active.google_review_url);
             }
           }
-        }).catch(() => {});
-      } catch {}
+        }).catch(() => { });
+      } catch { }
     }
   }, [isOpen, tenant?.id]);
 
@@ -173,7 +173,7 @@ export function FullInvoicePrinter({
     showTaxSplit: true,
     showBankDetails: false,
     showSignature: true,
-    showCustomerDetails: true,
+    showstudentDetails: true,
     showProductName: true,
     showPrice: true,
     showMRP: true,
@@ -185,16 +185,16 @@ export function FullInvoicePrinter({
   const theme =
     template.themeName ||
     (template.name?.toLowerCase().includes('marg') || template.id?.includes('marg') ? 'marg_pharma' :
-     template.name?.toLowerCase().includes('fmcg') || template.id?.includes('fmcg') ? 'fmcg_distributor' :
-     template.name?.toLowerCase().includes('parle') || template.id?.includes('parle') ? 'parle_teal' :
-     template.name?.toLowerCase().includes('agri') || template.id?.includes('agri') || template.name?.toLowerCase().includes('seed') || template.id?.includes('seed') ? 'agri_seeds' :
-     template.name?.toLowerCase().includes('luxury') || template.id?.includes('luxury') ? 'luxury' :
-     template.name?.toLowerCase().includes('tally') || template.id?.includes('tally') ? 'tally' :
-     template.name?.toLowerCase().includes('adv') || template.id?.includes('adv') ? 'adv_gst' :
-     template.name?.toLowerCase().includes('billbook') || template.id?.includes('billbook') ? 'billbook' :
-     template.name?.toLowerCase().includes('modern') || template.id?.includes('modern') ? 'modern' :
-     template.name?.toLowerCase().includes('god') || template.id?.includes('god') ? 'culture_god' :
-     'stylish');
+      template.name?.toLowerCase().includes('fmcg') || template.id?.includes('fmcg') ? 'fmcg_distributor' :
+        template.name?.toLowerCase().includes('parle') || template.id?.includes('parle') ? 'parle_teal' :
+          template.name?.toLowerCase().includes('agri') || template.id?.includes('agri') || template.name?.toLowerCase().includes('seed') || template.id?.includes('seed') ? 'agri_seeds' :
+            template.name?.toLowerCase().includes('luxury') || template.id?.includes('luxury') ? 'luxury' :
+              template.name?.toLowerCase().includes('tally') || template.id?.includes('tally') ? 'tally' :
+                template.name?.toLowerCase().includes('adv') || template.id?.includes('adv') ? 'adv_gst' :
+                  template.name?.toLowerCase().includes('billbook') || template.id?.includes('billbook') ? 'billbook' :
+                    template.name?.toLowerCase().includes('modern') || template.id?.includes('modern') ? 'modern' :
+                      template.name?.toLowerCase().includes('god') || template.id?.includes('god') ? 'culture_god' :
+                        'stylish');
 
   const isMargPharma = theme === 'marg_pharma';
   const isFmcg = theme === 'fmcg_distributor';
@@ -381,19 +381,19 @@ export function FullInvoicePrinter({
   }, []);
 
   // 2. GST State Detection
-  const billingAddr = invoice.customerBillingAddress || invoice.customerAddress || invoice.billing_address || '';
-  const shippingAddr = invoice.customerShippingAddress || invoice.shipping_address || billingAddr;
+  const billingAddr = invoice.studentBillingAddress || invoice.studentAddress || invoice.billing_address || '';
+  const shippingAddr = invoice.studentShippingAddress || invoice.shipping_address || billingAddr;
 
-  const customerState = extractGstState(
-    invoice.customerGST,
+  const studentState = extractGstState(
+    invoice.studentGST,
     shippingAddr || billingAddr,
-    invoice.customerState || invoice.shipping_state || invoice.billing_state
+    invoice.studentState || invoice.shipping_state || invoice.billing_state
   );
 
   const isInterState = Boolean(
     invoice.gst_type === 'igst' ||
     invoice.is_interstate === true ||
-    (sellerState.code && customerState.code && sellerState.code !== customerState.code)
+    (sellerState.code && studentState.code && sellerState.code !== studentState.code)
   );
 
   // 3. Tax & GST Breakdown Calculation
@@ -401,7 +401,7 @@ export function FullInvoicePrinter({
     items,
     isInterState,
     sellerState,
-    customerState
+    studentState
   );
 
   let calculatedDiscount = 0;
@@ -419,8 +419,8 @@ export function FullInvoicePrinter({
     invoice.tax_amount !== undefined && Number(invoice.tax_amount) > 0
       ? invoice.tax_amount
       : (invoice.cgst_amount || invoice.sgst_amount || invoice.igst_amount
-          ? (Number(invoice.cgst_amount || 0) + Number(invoice.sgst_amount || 0) + Number(invoice.igst_amount || 0))
-          : gstBreakdown.totalTax)
+        ? (Number(invoice.cgst_amount || 0) + Number(invoice.sgst_amount || 0) + Number(invoice.igst_amount || 0))
+        : gstBreakdown.totalTax)
   );
 
   const taxableSubtotal = Number(
@@ -578,7 +578,7 @@ export function FullInvoicePrinter({
               if (document.body.contains(iframe)) {
                 document.body.removeChild(iframe);
               }
-            } catch {}
+            } catch { }
           }, 3000);
         }
       }, 450);
@@ -619,7 +619,7 @@ export function FullInvoicePrinter({
         className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 overflow-y-auto print:static print:inset-auto print:p-0 print:m-0 print:w-full print:h-auto print:overflow-visible print:bg-white print:backdrop-blur-none"
       >
         <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden print:static print:w-full print:max-w-none print:max-h-none print:h-auto print:overflow-visible print:shadow-none print:border-none print:rounded-none print:m-0 print:p-0 print:bg-white">
-          
+
           <div className="px-6 py-3.5 bg-slate-900 text-white flex flex-wrap items-center justify-between gap-3 print:hidden">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-blue-600 rounded-xl">
@@ -633,7 +633,7 @@ export function FullInvoicePrinter({
                   </span>
                 </h3>
                 <p className="text-xs text-slate-300 flex items-center gap-2 mt-0.5">
-                                 <select
+                  <select
                     value={selectedTemplateId || template.id}
                     onChange={(e) => setSelectedTemplateId(e.target.value)}
                     className="bg-slate-800 text-blue-300 border border-slate-700 rounded px-2 py-0.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
@@ -677,11 +677,9 @@ export function FullInvoicePrinter({
             <div
               id="a4-invoice-printable-area"
               ref={printContainerRef}
-              className={`mx-auto bg-white ${
-                isCustomReplica ? 'p-1 md:p-2 max-w-4xl' : 'p-6 md:p-8 max-w-3xl space-y-4 shadow-md rounded-xl'
-              } text-slate-900 text-xs print:static print:w-full print:max-w-none print:shadow-none print:rounded-none print:border-none print:p-0 print:m-0 ${
-                !isCustomReplica && isTally ? 'border-2 border-double border-slate-900' : !isCustomReplica ? 'border border-slate-200' : ''
-              }`}
+              className={`mx-auto bg-white ${isCustomReplica ? 'p-1 md:p-2 max-w-4xl' : 'p-6 md:p-8 max-w-3xl space-y-4 shadow-md rounded-xl'
+                } text-slate-900 text-xs print:static print:w-full print:max-w-none print:shadow-none print:rounded-none print:border-none print:p-0 print:m-0 ${!isCustomReplica && isTally ? 'border-2 border-double border-slate-900' : !isCustomReplica ? 'border border-slate-200' : ''
+                }`}
               style={{
                 fontFamily: fontFamily,
                 backgroundColor: template.paperBgColor || '#ffffff',
@@ -750,9 +748,8 @@ export function FullInvoicePrinter({
                   )}
 
                   <div
-                    className={`flex items-start justify-between border-b pb-4 z-10 relative ${
-                      isTally ? 'border-slate-900 border-b-2' : 'border-slate-200'
-                    }`}
+                    className={`flex items-start justify-between border-b pb-4 z-10 relative ${isTally ? 'border-slate-900 border-b-2' : 'border-slate-200'
+                      }`}
                     style={(!isTally && !isSimple && !isModern) ? { borderBottom: `2px solid ${primaryColor}` } : {}}
                   >
                     <div className="space-y-1 max-w-[60%]">
@@ -816,32 +813,31 @@ export function FullInvoicePrinter({
                     </div>
                   </div>
 
-                  {f.showCustomerDetails && (() => {
-                    const billingAddr = invoice.customerBillingAddress || invoice.customerAddress || invoice.billing_address || '';
-                    const shippingAddr = invoice.customerShippingAddress || invoice.shipping_address || billingAddr;
+                  {f.showstudentDetails && (() => {
+                    const billingAddr = invoice.studentBillingAddress || invoice.studentAddress || invoice.billing_address || '';
+                    const shippingAddr = invoice.studentShippingAddress || invoice.shipping_address || billingAddr;
 
                     return (
                       <div className="space-y-2 z-10 relative">
                         <div
-                          className={`grid grid-cols-3 gap-3 p-3 rounded-xl border ${
-                            isModern ? 'bg-slate-50 border-slate-200' :
-                            isLuxury ? 'bg-amber-50/40 border-amber-200' :
-                            isTally ? 'bg-white border-slate-900' : 'bg-slate-50/80 border-slate-200'
-                          }`}
+                          className={`grid grid-cols-3 gap-3 p-3 rounded-xl border ${isModern ? 'bg-slate-50 border-slate-200' :
+                              isLuxury ? 'bg-amber-50/40 border-amber-200' :
+                                isTally ? 'bg-white border-slate-900' : 'bg-slate-50/80 border-slate-200'
+                            }`}
                         >
                           {/* 1. Billed To Column */}
                           <div className="space-y-0.5">
-                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Billed To (Customer Details)</span>
-                            <h4 className="font-bold text-slate-900 text-xs">{invoice.customerName || 'Walk-in Customer'}</h4>
-                            {invoice.customerCompany && <p className="text-[10px] font-semibold text-slate-700">{invoice.customerCompany}</p>}
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Billed To (student Details)</span>
+                            <h4 className="font-bold text-slate-900 text-xs">{invoice.studentName || 'Walk-in student'}</h4>
+                            {invoice.studentCompany && <p className="text-[10px] font-semibold text-slate-700">{invoice.studentCompany}</p>}
                             {billingAddr ? (
                               <p className="text-[10px] text-slate-600 leading-tight">{billingAddr}</p>
                             ) : (
                               <p className="text-[10px] text-slate-400 italic">No billing address specified</p>
                             )}
-                            {invoice.customerPhone && <p className="text-[10px] text-slate-600">Ph: {invoice.customerPhone}</p>}
-                            {invoice.customerEmail && <p className="text-[10px] text-slate-600">Email: {invoice.customerEmail}</p>}
-                            {invoice.customerGST && <p className="text-[10px] font-bold text-slate-800">GSTIN: {invoice.customerGST}</p>}
+                            {invoice.studentPhone && <p className="text-[10px] text-slate-600">Ph: {invoice.studentPhone}</p>}
+                            {invoice.studentEmail && <p className="text-[10px] text-slate-600">Email: {invoice.studentEmail}</p>}
+                            {invoice.studentGST && <p className="text-[10px] font-bold text-slate-800">GSTIN: {invoice.studentGST}</p>}
                           </div>
 
                           {/* 2. Shipped To Column (Always clearly displayed) */}
@@ -849,14 +845,14 @@ export function FullInvoicePrinter({
                             <span className="text-[9px] font-bold text-indigo-500 uppercase tracking-wider block flex items-center gap-1">
                               Shipped To (Delivery Destination)
                             </span>
-                            <h4 className="font-bold text-slate-900 text-xs">{invoice.customerCompany || invoice.customerName || 'Consignee / Recipient'}</h4>
+                            <h4 className="font-bold text-slate-900 text-xs">{invoice.studentCompany || invoice.studentName || 'Consignee / Recipient'}</h4>
                             {shippingAddr ? (
                               <p className="text-[10px] text-slate-700 font-medium leading-tight">{shippingAddr}</p>
                             ) : (
                               <p className="text-[10px] text-slate-500 leading-tight">Same as Billing Address</p>
                             )}
-                            {invoice.customerPhone && <p className="text-[10px] text-slate-600">Contact: {invoice.customerPhone}</p>}
-                            {invoice.customerGST && <p className="text-[10px] font-semibold text-slate-700">GSTIN: {invoice.customerGST}</p>}
+                            {invoice.studentPhone && <p className="text-[10px] text-slate-600">Contact: {invoice.studentPhone}</p>}
+                            {invoice.studentGST && <p className="text-[10px] font-semibold text-slate-700">GSTIN: {invoice.studentGST}</p>}
                           </div>
 
                           {/* 3. Place of Supply & Payment Mode Column */}
@@ -864,12 +860,12 @@ export function FullInvoicePrinter({
                             <div>
                               <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Place of Supply</span>
                               <p className="text-[10px] font-bold text-slate-800 mt-0.5">
-                                {isInterState ? `${customerState.name} (${customerState.code}) - Inter-State` : `${sellerState.name} (${sellerState.code}) - Intra-State`}
+                                {isInterState ? `${studentState.name} (${studentState.code}) - Inter-State` : `${sellerState.name} (${sellerState.code}) - Intra-State`}
                               </p>
-                              {(invoice.pricing_mode || invoice.customerType) && (
+                              {(invoice.pricing_mode || invoice.studentType) && (
                                 <p className="text-[9px] font-semibold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded inline-block border border-indigo-100 mt-0.5">
-                                  {invoice.pricing_mode ? `Tier: ${invoice.pricing_mode === "B2B" ? "B2B Contract" : invoice.pricing_mode}` : `Category: ${invoice.customerType}`}
-                                  {(invoice.customerGST || (invoice as any).customer_gstin || (invoice as any).customer_gst) ? " • B2B (GST Registered)" : ""}
+                                  {invoice.pricing_mode ? `Tier: ${invoice.pricing_mode === "B2B" ? "B2B Contract" : invoice.pricing_mode}` : `Category: ${invoice.studentType}`}
+                                  {(invoice.studentGST || (invoice as any).student_gstin || (invoice as any).student_gst) ? " • B2B (GST Registered)" : ""}
                                 </p>
                               )}
                             </div>
@@ -886,7 +882,7 @@ export function FullInvoicePrinter({
                           <div className="grid grid-cols-4 gap-2.5 p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[10px] font-medium">
                             {invoice.po_number && (
                               <div className="space-y-0.5">
-                                <span className="text-[8.5px] font-bold text-slate-400 uppercase tracking-wider block">Customer PO / Order Ref</span>
+                                <span className="text-[8.5px] font-bold text-slate-400 uppercase tracking-wider block">student PO / Order Ref</span>
                                 <span className="font-bold text-slate-800 font-mono text-[11px] block">{invoice.po_number}</span>
                                 {invoice.po_date && <span className="text-slate-500 block text-[9px]">PO Date: {formatDisplayDate(invoice.po_date)}</span>}
                               </div>
@@ -968,7 +964,7 @@ export function FullInvoicePrinter({
                                   {!isInterState ? (
                                     <div>
                                       <span>{taxRate ? `${taxRate}%` : '0%'}</span>
-                                      {taxRate > 0 && <span className="text-[9px] text-slate-400 block font-normal leading-none mt-0.5">({(taxRate/2)}%+{(taxRate/2)}%)</span>}
+                                      {taxRate > 0 && <span className="text-[9px] text-slate-400 block font-normal leading-none mt-0.5">({(taxRate / 2)}%+{(taxRate / 2)}%)</span>}
                                     </div>
                                   ) : (
                                     <div>
@@ -997,7 +993,7 @@ export function FullInvoicePrinter({
                           </span>
                         </span>
                         <span className="text-[9px] text-slate-600 font-medium">
-                          Supply: {isInterState ? `${customerState.name} (${customerState.code})` : `${sellerState.name} (${sellerState.code})`}
+                          Supply: {isInterState ? `${studentState.name} (${studentState.code})` : `${sellerState.name} (${sellerState.code})`}
                         </span>
                       </div>
                       <table className="w-full border-collapse text-[10.5px]">

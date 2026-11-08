@@ -143,7 +143,7 @@ def seed_database():
         if not branch:
             branch = Branch(
                 id="branch_main",
-                gym_name="VAHD Enterprise Platform",
+                vahd_name="VAHD Enterprise Platform",
                 branch_name="Main Headquarters Branch",
                 city="Hyderabad",
                 address="100 Tech City Boulevard, Madhapur, Hyderabad",
@@ -267,12 +267,12 @@ def seed_database():
             db.flush()
             print("  ✅ Student profile created for student@vahd.com.")
 
-        mem = db.query(Membership).filter(Membership.customer_id == "stu_student_main").first()
+        mem = db.query(Membership).filter(Membership.student_id == "stu_student_main").first()
         if not mem:
             now = now_ist_naive()
             mem = Membership(
                 id="mem_student_main",
-                customer_id="stu_student_main",
+                student_id="stu_student_main",
                 plan_name="Annual Professional Certification Course",
                 plan_type="Annual",
                 status="ACTIVE",

@@ -77,6 +77,8 @@ export interface studentAttendanceData {
   today_check_out?: string | null;
   last_visit: string | null;
   history: studentAttendanceHistory[];
+  absent_days?: number;
+  leaves_count?: number;
 }
 
 export interface studentBiometricStatus {

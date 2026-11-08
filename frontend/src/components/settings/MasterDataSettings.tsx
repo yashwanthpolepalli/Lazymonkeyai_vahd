@@ -1117,12 +1117,12 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
             </div>
             <div>
               <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-0.5">
-                <span className="hover cursor-pointer flex items-center gap-1" onClick={() => (onBack ? onBack() : setSelectedCatId(null))}>
+                <span className="hover:text-blue-600 hover:underline cursor-pointer transition-colors flex items-center gap-1" onClick={() => (onBack ? onBack() : setSelectedCatId(null))}>
                   <Icon name="home" size={12} />
                   <span>Home</span>
                 </span>
                 <Icon name="chevron-right" size={12} />
-                <span className="hover cursor-pointer" onClick={() => (onBack ? onBack() : setSelectedCatId(null))}>Settings</span>
+                <span className="hover:text-blue-600 hover:underline cursor-pointer transition-colors" onClick={() => (onBack ? onBack() : setSelectedCatId(null))}>Settings</span>
                 <Icon name="chevron-right" size={12} />
                 <span className="text-slate-800 font-bold">{selectedCategory.title}</span>
               </div>
@@ -1136,25 +1136,6 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
           </div>
 
           <div className="flex flex-wrap items-center gap-2 self-start md:self-center">
-            {/* Back Button */}
-            <button
-              type="button"
-              onClick={() => {
-                if (onBack) {
-                  onBack();
-                } else {
-                  setSelectedCatId(null);
-                }
-                setSearchQuery('');
-                setStatusFilter('all');
-                setSelectedItemIds([]);
-              }}
-              className="px-3.5 py-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
-            >
-              <Icon name="arrow-left" size={13} />
-              <span>Back to Settings</span>
-            </button>
-
             {/* Import & Export Buttons */}
             {canImport && (
               <>
@@ -1271,7 +1252,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                   'flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer',
                   skillTab === 'all'
                     ? 'bg-white text-violet-700 shadow-xs border border-violet-200'
-                    : 'text-slate-600 hover:border-slate-300:text-slate-900'
+                    : 'text-slate-600 hover:text-slate-900'
                 )}
               >
                 <Icon name="code" size={15} className={skillTab === 'all' ? 'text-violet-600' : 'text-slate-400'} />
@@ -1291,7 +1272,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                   'flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer',
                   skillTab === 'employees'
                     ? 'bg-white text-emerald-700 shadow-xs border border-emerald-200'
-                    : 'text-slate-600 hover:border-slate-300:text-slate-900'
+                    : 'text-slate-600 hover:text-slate-900'
                 )}
               >
                 <Icon name="briefcase" size={15} className={skillTab === 'employees' ? 'text-emerald-600' : 'text-slate-400'} />
@@ -1311,7 +1292,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                   'flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer',
                   skillTab === 'students'
                     ? 'bg-white text-indigo-700 shadow-xs border border-indigo-200'
-                    : 'text-slate-600 hover:border-slate-300:text-slate-900'
+                    : 'text-slate-600 hover:text-slate-900'
                 )}
               >
                 <Icon name="graduation-cap" size={15} className={skillTab === 'students' ? 'text-indigo-600' : 'text-slate-400'} />
@@ -1338,7 +1319,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                   'flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer',
                   deptTab === 'students'
                     ? 'bg-white text-indigo-700 shadow-xs border border-indigo-200'
-                    : 'text-slate-600 hover:border-slate-300:text-slate-900'
+                    : 'text-slate-600 hover:text-slate-900'
                 )}
               >
                 <Icon name="graduation-cap" size={15} className={deptTab === 'students' ? 'text-indigo-600' : 'text-slate-400'} />
@@ -1358,7 +1339,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                   'flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer',
                   deptTab === 'employees'
                     ? 'bg-white text-emerald-700 shadow-xs border border-emerald-200'
-                    : 'text-slate-600 hover:border-slate-300:text-slate-900'
+                    : 'text-slate-600 hover:text-slate-900'
                 )}
               >
                 <Icon name="briefcase" size={15} className={deptTab === 'employees' ? 'text-emerald-600' : 'text-slate-400'} />
@@ -1378,7 +1359,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                   'flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer',
                   deptTab === 'all'
                     ? 'bg-white text-blue-700 shadow-xs border border-blue-200'
-                    : 'text-slate-600 hover:border-slate-300:text-slate-900'
+                    : 'text-slate-600 hover:text-slate-900'
                 )}
               >
                 <Icon name="layers" size={15} className={deptTab === 'all' ? 'text-blue-600' : 'text-slate-400'} />
@@ -1417,7 +1398,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                   'px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1.5',
                   statusFilter === 'all'
                     ? 'bg-white text-slate-900 shadow-2xs'
-                    : 'text-slate-500 hover:border-slate-300:text-slate-700'
+                    : 'text-slate-500 hover:text-slate-700'
                 )}
                 title="Show all records"
               >
@@ -1453,7 +1434,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                   'px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1.5',
                   statusFilter === 'inactive'
                     ? 'bg-slate-700 text-white shadow-2xs font-extrabold'
-                    : 'text-slate-500 hover:border-slate-300:text-slate-700'
+                    : 'text-slate-500 hover:text-slate-700'
                 )}
                 title="Show inactive records only"
               >

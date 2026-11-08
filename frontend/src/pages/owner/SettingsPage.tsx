@@ -721,14 +721,6 @@ export function SettingsPage() {
             <div className="flex items-center gap-2 self-start sm:self-center">
               <button
                 type="button"
-                onClick={() => handleSelectSection(null)}
-                className="px-3.5 py-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
-              >
-                <Icon name="arrow-left" size={13} />
-                <span>Back to Settings</span>
-              </button>
-              <button
-                type="button"
                 onClick={handleSaveSettings}
                 className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-orange-500 hover:opacity-95 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
               >
@@ -1154,14 +1146,6 @@ export function SettingsPage() {
                 <p className="text-xs text-slate-500 font-medium">Settings · Branch Courses &amp; Stream Structures</p>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => handleSelectSection(null)}
-              className="px-3.5 py-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer self-start sm:self-center"
-            >
-              <Icon name="arrow-left" size={13} />
-              <span>Back to Settings</span>
-            </button>
           </div>
           <CoursesPage embedded={true} />
         </div>
@@ -1192,14 +1176,6 @@ export function SettingsPage() {
                 <p className="text-xs text-slate-500 font-medium">Settings · Organization Details &amp; Online Reputation Sync</p>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => handleSelectSection(null)}
-              className="px-3.5 py-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer self-start sm:self-center"
-            >
-              <Icon name="arrow-left" size={13} />
-              <span>Back to Settings</span>
-            </button>
           </div>
           <CompanyManagement />
         </div>

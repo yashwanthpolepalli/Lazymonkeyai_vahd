@@ -580,12 +580,12 @@ export function OwnerPermissionsTab({ onBack }: Props) {
           </div>
           <div>
             <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-0.5">
-              <span className="hover cursor-pointer flex items-center gap-1" onClick={() => (onBack ? onBack() : null)}>
+              <span className="hover:text-blue-600 hover:underline cursor-pointer transition-colors flex items-center gap-1" onClick={() => (onBack ? onBack() : null)}>
                 <Icon name="home" size={12} />
                 <span>Home</span>
               </span>
               <Icon name="chevron-right" size={12} />
-              <span className="hover cursor-pointer" onClick={() => (onBack ? onBack() : null)}>
+              <span className="hover:text-blue-600 hover:underline cursor-pointer transition-colors" onClick={() => (onBack ? onBack() : null)}>
                 Settings
               </span>
               <Icon name="chevron-right" size={12} />
@@ -597,16 +597,6 @@ export function OwnerPermissionsTab({ onBack }: Props) {
         </div>
 
         <div className="flex flex-wrap items-center gap-2 self-start md:self-center">
-          {/* Back button */}
-          <button
-            type="button"
-            onClick={() => (onBack ? onBack() : null)}
-            className="px-3.5 py-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
-          >
-            <Icon name="arrow-left" size={13} />
-            <span>Back to Settings</span>
-          </button>
-
           {/* Delete All button */}
           <button
             type="button"

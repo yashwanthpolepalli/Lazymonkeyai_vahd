@@ -516,12 +516,13 @@ export const HoDashboard: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#FAFBFD] w-full px-4 sm:px-6 py-4 space-y-4">
       {/* ── TOP BANNER SECTION ────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden pt-1 pb-1 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        {/* Soft Mesh Gradient in Top-Right corner matching screenshot */}
-        <div className="absolute right-0 -top-6 w-[450px] h-36 pointer-events-none overflow-hidden select-none">
-          <div className="absolute -top-12 -right-8 w-96 h-44 bg-gradient-to-bl from-orange-400/40 via-rose-300/35 to-purple-400/15 rounded-full blur-3xl" />
-          <div className="absolute top-2 right-12 w-64 h-24 bg-gradient-to-l from-amber-300/30 via-pink-400/25 to-indigo-300/10 rounded-full blur-2xl" />
-        </div>
+      <div className="relative overflow-hidden rounded-2xl pt-3 pb-3 px-2 sm:px-3 flex flex-col md:flex-row md:items-center justify-between gap-4 min-h-[105px]">
+        {/* Exact Flowing Waves Background Graphic from Reference Screenshot */}
+        <img
+          src="/dashboard-banner-bg.png"
+          alt=""
+          className="absolute right-0 top-0 h-full w-auto max-w-[850px] object-cover object-right pointer-events-none select-none z-0"
+        />
 
         <div className="relative z-10 space-y-1">
           <div className="inline-flex items-center gap-2">
@@ -593,82 +594,82 @@ export const HoDashboard: React.FC = () => {
             {/* KPI 1: Organizations Scope */}
             <div
               onClick={() => navigate('/ho/organisations')}
-              className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs relative overflow-hidden flex items-start gap-3.5 group hover:border-purple-300 hover:shadow-sm transition-all cursor-pointer"
+              className="rounded-2xl border border-slate-200/90 bg-gradient-to-br from-white via-white to-purple-50/40 p-5 shadow-2xs relative overflow-hidden flex items-start gap-4 group hover:border-purple-300 transition-all cursor-pointer"
               title="Click to view full Organisations Attendance Matrix"
             >
-              <div className="w-11 h-11 rounded-2xl bg-purple-50 text-purple-600 border border-purple-100 flex items-center justify-center shrink-0">
-                <Icon name="building-2" size={20} />
+              <div className="w-12 h-12 rounded-2xl bg-purple-50/80 border border-purple-100 flex items-center justify-center shrink-0">
+                <Icon name="building-2" size={20} className="text-purple-600" />
               </div>
               <div className="space-y-0.5 min-w-0">
                 <span className="text-[10px] font-black uppercase tracking-wider text-slate-800">
                   ORGANIZATIONS
                 </span>
-                <div className="text-2xl sm:text-[28px] font-black text-slate-900 leading-none">
+                <div className="text-3xl font-black text-slate-900 leading-tight mt-1">
                   {data?.is_filtered ? '1' : data?.total_organizations ?? 0}
                 </div>
-                <p className="text-[11px] font-medium text-slate-400 truncate pt-0.5">
+                <p className="text-xs text-slate-400 font-medium mt-1 truncate">
                   Active branches under Head Office
                 </p>
               </div>
-              <div className="absolute -bottom-6 -right-6 w-24 h-24 bg-purple-100/40 rounded-full blur-xl pointer-events-none" />
+              <div className="absolute -bottom-8 -right-8 w-28 h-28 bg-purple-100/50 rounded-full blur-2xl pointer-events-none" />
             </div>
 
             {/* KPI 2: Total Employees */}
-            <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs relative overflow-hidden flex items-start gap-3.5 group hover:border-sky-300 transition-all">
-              <div className="w-11 h-11 rounded-2xl bg-sky-50 text-sky-600 border border-sky-100 flex items-center justify-center shrink-0">
-                <Icon name="users" size={20} />
+            <div className="rounded-2xl border-2 border-sky-400/90 bg-gradient-to-br from-white via-sky-50/30 to-sky-100/60 p-5 shadow-2xs relative overflow-hidden flex items-start gap-4 group hover:border-sky-500 transition-all">
+              <div className="w-12 h-12 rounded-2xl bg-sky-50 border border-sky-100 flex items-center justify-center shrink-0">
+                <Icon name="users" size={20} className="text-sky-500" />
               </div>
               <div className="space-y-0.5 min-w-0">
                 <span className="text-[10px] font-black uppercase tracking-wider text-slate-800">
                   TOTAL STAFF
                 </span>
-                <div className="text-2xl sm:text-[28px] font-black text-slate-900 leading-none">
+                <div className="text-3xl font-black text-slate-900 leading-tight mt-1">
                   {data?.total_employees ?? 0}
                 </div>
-                <p className="text-[11px] font-bold text-emerald-600 flex items-center gap-1.5 pt-0.5 truncate">
+                <p className="text-xs text-emerald-600 font-bold flex items-center gap-1.5 mt-1 truncate">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block shrink-0" />
                   <span>Active HRMS employees</span>
                 </p>
               </div>
-              <div className="absolute -bottom-6 -right-6 w-24 h-24 bg-sky-100/60 rounded-full blur-xl pointer-events-none" />
+              <div className="absolute -bottom-8 -right-8 w-32 h-32 bg-sky-200/50 rounded-full blur-2xl pointer-events-none" />
             </div>
 
             {/* KPI 3: Total Students */}
-            <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs relative overflow-hidden flex items-start gap-3.5 group hover:border-amber-300 transition-all">
-              <div className="w-11 h-11 rounded-2xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center shrink-0">
-                <Icon name="graduation-cap" size={20} />
+            <div className="rounded-2xl border border-amber-300/80 bg-gradient-to-br from-white via-amber-50/20 to-amber-100/50 p-5 shadow-2xs relative overflow-hidden flex items-start gap-4 group hover:border-amber-400 transition-all">
+              <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-100 flex items-center justify-center shrink-0">
+                <Icon name="graduation-cap" size={20} className="text-amber-600" />
               </div>
               <div className="space-y-0.5 min-w-0">
                 <span className="text-[10px] font-black uppercase tracking-wider text-slate-800">
                   TOTAL STUDENTS
                 </span>
-                <div className="text-2xl sm:text-[28px] font-black text-slate-900 leading-none">
+                <div className="text-3xl font-black text-slate-900 leading-tight mt-1">
                   {data?.total_students ?? 0}
                 </div>
-                <p className="text-[11px] font-bold text-blue-600 truncate pt-0.5">
+                <p className="text-xs text-blue-600 font-medium mt-1 truncate">
                   Enrolled students
                 </p>
               </div>
-              <div className="absolute -bottom-6 -right-6 w-24 h-24 bg-amber-100/50 rounded-full blur-xl pointer-events-none" />
+              <div className="absolute -bottom-8 -right-8 w-32 h-32 bg-amber-200/50 rounded-full blur-2xl pointer-events-none" />
             </div>
 
             {/* KPI 4: Today's Attendance */}
-            <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs relative overflow-hidden flex items-start gap-3.5 group hover:border-rose-300 transition-all">
-              <div className="w-11 h-11 rounded-2xl bg-rose-50 text-rose-500 border border-rose-100 flex items-center justify-center shrink-0">
-                <Icon name="activity" size={20} />
+            <div className="rounded-2xl border border-slate-200/90 bg-gradient-to-br from-white via-rose-50/20 to-rose-100/50 p-5 shadow-2xs relative overflow-hidden flex items-start gap-4 group hover:border-rose-300 transition-all">
+              <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-center shrink-0">
+                <Icon name="activity" size={20} className="text-rose-500" />
               </div>
               <div className="space-y-0.5 min-w-0">
                 <span className="text-[10px] font-black uppercase tracking-wider text-slate-800">
                   TODAY'S ATTENDANCE
                 </span>
-                <div className="text-2xl sm:text-[28px] font-black text-slate-900 leading-none">
+                <div className="text-3xl font-black text-slate-900 leading-tight mt-1">
                   {data?.today_punches ?? 0}
                 </div>
-                <p className="text-[11px] font-medium text-amber-600 truncate pt-0.5">
+                <p className="text-xs text-amber-600 font-medium mt-1 truncate">
                   {data?.attendance_rate ?? 0}% overall check-in rate
                 </p>
               </div>
-              <div className="absolute -bottom-6 -right-6 w-24 h-24 bg-rose-100/50 rounded-full blur-xl pointer-events-none" />
+              <div className="absolute -bottom-8 -right-8 w-32 h-32 bg-rose-200/50 rounded-full blur-2xl pointer-events-none" />
             </div>
           </div>
 

@@ -99,62 +99,62 @@ const combinedAttendanceCards: ReportCardConfig[] = [
   {
     id: 'student-attendance',
     title: 'Student Attendance Report',
-    description: 'Monthly student biometric attendance, course performance and downloadable CSV & PDF statements',
+    description: 'Monthly student biometric attendance, course performance and downloadable CSV & PDF statements.',
     icon: 'graduation-cap',
     iconBg: 'bg-blue-50 text-blue-600 border border-blue-100',
     iconColor: 'text-blue-600',
-    badge: 'Students',
+    badge: 'STUDENTS',
     category: 'students',
   },
   {
     id: 'employee-attendance',
     title: 'Employee Attendance Report',
-    description: 'Staff biometric statements, monthly work hours breakdown, presents/absents and downloadable statements',
+    description: 'Staff biometric statements, monthly work hours breakdown, presents/absents and downloadable statements.',
     icon: 'user-check',
     iconBg: 'bg-emerald-50 text-emerald-600 border border-emerald-100',
     iconColor: 'text-emerald-600',
-    badge: 'Employees',
+    badge: 'EMPLOYEES',
     category: 'employees',
   },
   {
     id: 'branch-consolidated',
     title: 'Multi-Branch Consolidated Report',
-    description: 'Head Office multi-campus attendance consolidated overview with direct Excel spreadsheets and PDF statements',
+    description: 'Head Office multi-campus attendance consolidated overview with direct Excel spreadsheets and PDF statements.',
     icon: 'building-2',
     iconBg: 'bg-purple-50 text-purple-600 border border-purple-100',
     iconColor: 'text-purple-600',
-    badge: 'Multi-Branch',
+    badge: 'MULTI-BRANCH',
     category: 'branches',
   },
   {
     id: 'daily-attendance',
     title: 'Daily Attendance Report',
-    description: 'Detailed shift check-in/out logs per employee with geofence & verification mode',
-    icon: 'clipboard-list',
-    iconBg: 'bg-blue-50 text-blue-600 border border-blue-100',
-    iconColor: 'text-blue-600',
+    description: 'Detailed shift check-in/out logs per employee with geofence & verification mode.',
+    icon: 'clipboard-check',
+    iconBg: 'bg-sky-50 text-sky-600 border border-sky-100',
+    iconColor: 'text-sky-600',
     category: 'employees',
   },
   {
     id: 'daily-abstract',
     title: 'Daily Abstract',
-    description: 'District & mandal aggregated present, late, absent counts and percentages',
-    icon: 'file-bar-chart',
-    iconBg: 'bg-indigo-50 text-indigo-600 border border-indigo-100',
-    iconColor: 'text-indigo-600',
+    description: 'District & mandal aggregated present, late, absent counts and percentages.',
+    icon: 'bar-chart-2',
+    iconBg: 'bg-purple-50 text-purple-600 border border-purple-100',
+    iconColor: 'text-purple-600',
   },
   {
     id: 'attendance-abstract',
     title: 'Attendance Abstract',
-    description: 'Place of working summaries, branch operational status and roster ratios',
+    description: 'Place of working summaries, branch operational status and roster ratios.',
     icon: 'table',
-    iconBg: 'bg-sky-50 text-sky-600 border border-sky-100',
-    iconColor: 'text-sky-600',
+    iconBg: 'bg-blue-50 text-blue-600 border border-blue-100',
+    iconColor: 'text-blue-600',
   },
   {
     id: 'range-attendance',
     title: 'Range Attendance',
-    description: 'Custom date range shift analysis, multi-day summaries and exportable roster matrices',
+    description: 'Custom date range shift analysis, multi-day summaries and exportable roster matrices.',
     icon: 'calendar',
     iconBg: 'bg-cyan-50 text-cyan-600 border border-cyan-100',
     iconColor: 'text-cyan-600',
@@ -162,7 +162,7 @@ const combinedAttendanceCards: ReportCardConfig[] = [
   {
     id: 'late-attendance-report',
     title: 'Late Attendance Report',
-    description: 'Log of staff arriving past grace period with timestamp variance & penalty markers',
+    description: 'Log of staff arriving past grace period with timestamp variance & penalty markers.',
     icon: 'clock',
     iconBg: 'bg-amber-50 text-amber-600 border border-amber-100',
     iconColor: 'text-amber-600',
@@ -170,7 +170,7 @@ const combinedAttendanceCards: ReportCardConfig[] = [
   {
     id: 'not-logged-out-report',
     title: 'Not Logged Out Report',
-    description: 'Employees with missing clock-out timestamps requiring administrative override',
+    description: 'Employees with missing clock-out timestamps requiring administrative override.',
     icon: 'alert-circle',
     iconBg: 'bg-rose-50 text-rose-600 border border-rose-100',
     iconColor: 'text-rose-600',
@@ -2815,87 +2815,140 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
   // MAIN REPORTS HUB / DIRECTORY (Matching User Screenshot 1)
   // ─────────────────────────────────────────────────────────────────────────────
 
-  const renderCard = (card: ReportCardConfig) => (
-    <div
-      key={card.id}
-      onClick={() => setSelectedReport(card.id)}
-      className="bg-white rounded-2xl p-5 border border-navy-100/90 shadow-2xs hover:shadow-md hover:border-blue-300 hover:-translate-y-0.5 transition-all duration-200 flex flex-col items-center text-center cursor-pointer group relative overflow-hidden"
-    >
-      {card.badge && (
-        <span className="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase bg-blue-50 text-blue-700 border border-blue-200/80">
-          {card.badge}
-        </span>
-      )}
-      {/* Top soft icon with container */}
+  const renderCard = (card: ReportCardConfig) => {
+    const isSpecial = card.id === 'employee-attendance';
+    return (
       <div
+        key={card.id}
+        onClick={() => setSelectedReport(card.id)}
         className={cn(
-          'w-14 h-14 rounded-2xl flex items-center justify-center mb-3.5 shadow-xs transition-transform group-hover:scale-105',
-          card.iconBg
+          'rounded-2xl p-4 sm:p-5 shadow-2xs hover:shadow-md transition-all duration-200 flex flex-col justify-between text-left cursor-pointer group relative overflow-hidden min-h-[175px]',
+          isSpecial
+            ? 'bg-gradient-to-br from-white via-white to-purple-50/50 border-2 border-indigo-400/90 hover:border-indigo-500 ring-2 ring-indigo-500/10'
+            : 'bg-gradient-to-br from-white via-white to-slate-50/40 border border-slate-200/90 hover:border-slate-300'
         )}
       >
-        <Icon name={card.icon} size={26} className={card.iconColor} />
-      </div>
-
-      <h3 className="text-sm font-extrabold text-navy-900 group-hover:text-blue-600 transition-colors leading-tight mb-1">
-        {card.title}
-      </h3>
-      <p className="text-[11px] text-navy-400 font-medium leading-relaxed max-w-[220px]">
-        {card.description}
-      </p>
-    </div>
-  );
-
-  return (
-    <div className="space-y-6 animate-fade-in font-sans text-navy-900">
-      {/* Breadcrumb & Title */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <div className="text-xs text-navy-400 font-bold mb-1 flex items-center gap-1.5">
-            <span>Home</span>
-            <span>›</span>
-            <span className="text-navy-700">Reports</span>
+          {/* Top row: Icon on left, Badge on right */}
+          <div className="flex items-center justify-between gap-2">
+            <div
+              className={cn(
+                'w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-2xs transition-transform group-hover:scale-105',
+                card.iconBg
+              )}
+            >
+              <Icon name={card.icon} size={17} className={card.iconColor} />
+            </div>
+
+            {card.badge && (
+              <span
+                className={cn(
+                  'px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider',
+                  card.category === 'students'
+                    ? 'bg-blue-100/90 text-blue-700 border border-blue-200/70'
+                    : card.category === 'employees'
+                    ? 'bg-purple-100/90 text-purple-700 border border-purple-200/70'
+                    : 'bg-indigo-100/90 text-indigo-700 border border-indigo-200/70'
+                )}
+              >
+                {card.badge}
+              </span>
+            )}
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-navy-900 tracking-tight">
-            Reports &amp; Analytics
-          </h1>
-          <p className="text-xs text-navy-500 font-medium mt-0.5">
-            District-level analytics, exportable attendance statements, and multi-campus progress tracking
+
+          {/* Title & Description */}
+          <h3 className="text-sm font-black text-slate-900 group-hover:text-blue-600 transition-colors leading-snug mt-3 mb-1.5">
+            {card.title}
+          </h3>
+          <p className="text-[11px] text-slate-500 font-medium leading-relaxed">
+            {card.description}
           </p>
         </div>
 
+        {/* Bottom row: circular arrow button */}
+        <div className="flex justify-end pt-3">
+          <div
+            className={cn(
+              'w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200 shadow-2xs',
+              isSpecial
+                ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-orange-500 text-white shadow-md shadow-orange-500/25 group-hover:scale-110'
+                : 'bg-white border border-slate-200/90 text-slate-500 group-hover:text-slate-900 group-hover:border-slate-300 group-hover:translate-x-0.5'
+            )}
+          >
+            <Icon name="arrow-right" size={13} />
+          </div>
+        </div>
+
+        {/* Subtle bottom-right glow */}
+        <div
+          className={cn(
+            'absolute -bottom-8 -right-8 w-24 h-24 rounded-full blur-xl pointer-events-none opacity-40',
+            isSpecial ? 'bg-purple-200' : 'bg-slate-100'
+          )}
+        />
+      </div>
+    );
+  };
+
+  return (
+    <div className="min-h-full bg-transparent w-full px-4 sm:px-6 py-4 space-y-4 font-sans text-slate-900">
+      {/* Breadcrumb & Title */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1">
+        <div>
+          <div className="text-xs font-bold text-slate-600 mb-1 flex items-center gap-1.5">
+            <Icon name="home" size={13} className="text-blue-600" />
+            <span className="text-blue-600 hover:underline cursor-pointer">Home</span>
+            <span className="text-slate-400">›</span>
+            <span className="text-slate-900 font-black">Reports</span>
+          </div>
+          <div className="flex items-center gap-2.5 mt-1">
+            <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 border border-purple-100 flex items-center justify-center shrink-0 shadow-2xs">
+              <Icon name="bar-chart-2" size={17} />
+            </div>
+            <div>
+              <h1 className="text-2xl sm:text-[28px] font-black text-slate-900 tracking-tight leading-tight">
+                Reports &amp; Analytics
+              </h1>
+              <p className="text-xs sm:text-[13px] text-slate-500 font-medium">
+                District-level analytics, exportable attendance statements, and multi-campus progress tracking.
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* Global Search Bar */}
-        <div className="relative w-full sm:w-72">
-          <Icon name="search" size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-navy-400" />
+        <div className="relative w-full sm:w-80">
+          <Icon name="search" size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           <input
             type="text"
             placeholder="Search report modules..."
             value={searchReportDirectory}
             onChange={(e) => setSearchReportDirectory(e.target.value)}
-            className="w-full pl-9 pr-3.5 py-2 text-xs rounded-xl bg-white border border-navy-200 text-navy-900 placeholder:text-navy-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium shadow-2xs"
+            className="w-full pl-11 pr-4 py-2.5 text-xs rounded-full bg-white border border-slate-200/90 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-semibold shadow-2xs"
           />
         </div>
       </div>
 
-      {/* Category Navigation Pills matching Student / Employee portal design */}
-      <div className="flex flex-wrap items-center gap-2 p-1.5 bg-slate-100 rounded-2xl border border-slate-200/80 w-fit">
+      {/* Category Navigation Pills matching Reference Screenshot */}
+      <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pt-1">
         {[
-          { id: 'all', label: '🌟 All Report Modules', icon: 'layers' },
-          { id: 'students', label: '🎓 Students Attendance', icon: 'graduation-cap' },
-          { id: 'employees', label: '👥 Employees Attendance', icon: 'user-check' },
-          { id: 'branches', label: '🏫 Multi-Branch Consolidated', icon: 'building-2' },
+          { id: 'all', label: 'All Report Modules', icon: 'layers' },
+          { id: 'students', label: 'Students Attendance', icon: 'graduation-cap' },
+          { id: 'employees', label: 'Employees Attendance', icon: 'users' },
+          { id: 'branches', label: 'Multi-Branch Consolidated', icon: 'building-2' },
         ].map((tab) => (
           <button
             key={tab.id}
             type="button"
             onClick={() => setHubCategory(tab.id as any)}
             className={cn(
-              'flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer',
+              'flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap',
               hubCategory === tab.id
-                ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-orange-500 text-white shadow-md shadow-blue-500/20'
+                : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/90 shadow-2xs'
             )}
           >
-            <Icon name={tab.icon} size={14} />
+            <Icon name={tab.icon} size={14} className={hubCategory === tab.id ? 'text-white' : 'text-slate-500'} />
             <span>{tab.label}</span>
           </button>
         ))}
@@ -2903,9 +2956,9 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
 
       {/* SECTION 1: Combined Attendance Reports */}
       {(hubCategory === 'all' || hubCategory === 'students' || hubCategory === 'employees' || hubCategory === 'branches') && (
-        <div className="space-y-3.5">
-          <div className="flex items-center gap-2 text-sm font-extrabold text-blue-700">
-            <span className="text-base">📁</span>
+        <div className="space-y-3 pt-1">
+          <div className="flex items-center gap-2 text-sm font-black text-slate-900">
+            <Icon name="layers" size={16} className="text-purple-600" />
             <span>
               {hubCategory === 'students'
                 ? 'Student Attendance Statements & Exports'
@@ -2917,7 +2970,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
             </span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-3.5">
             {combinedAttendanceCards
               .filter((c) => {
                 if (hubCategory === 'students') return c.category === 'students';

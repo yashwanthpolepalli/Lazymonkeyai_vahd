@@ -19,9 +19,9 @@ export interface SettingCardConfig {
   type: 'master' | 'courses' | 'reports' | 'erp' | 'general' | 'permissions';
   categoryKey?: string;
   icon: string;
-  bgLight: string;
-  textColor: string;
-  borderLight: string;
+  iconBg: string;
+  iconColor: string;
+  waveColor: string;
   description: string;
 }
 
@@ -32,9 +32,9 @@ export const SETTING_CARDS: SettingCardConfig[] = [
     type: 'master',
     categoryKey: 'districts',
     icon: 'map',
-    bgLight: 'bg-sky-50 dark:bg-sky-950/40',
-    textColor: 'text-sky-600',
-    borderLight: 'border-sky-200/70',
+    iconBg: 'bg-sky-50 text-sky-600 border-sky-100',
+    iconColor: 'text-sky-600',
+    waveColor: 'text-sky-200/70',
     description: '33 Districts in Telangana'
   },
   {
@@ -43,9 +43,9 @@ export const SETTING_CARDS: SettingCardConfig[] = [
     type: 'master',
     categoryKey: 'mandals',
     icon: 'map-pin',
-    bgLight: 'bg-rose-50 dark:bg-rose-950/40',
-    textColor: 'text-rose-600',
-    borderLight: 'border-rose-200/70',
+    iconBg: 'bg-rose-50 text-rose-600 border-rose-100',
+    iconColor: 'text-rose-600',
+    waveColor: 'text-rose-200/70',
     description: 'Sub-district mandal units'
   },
   {
@@ -54,9 +54,9 @@ export const SETTING_CARDS: SettingCardConfig[] = [
     type: 'master',
     categoryKey: 'towns',
     icon: 'home',
-    bgLight: 'bg-amber-50 dark:bg-amber-950/40',
-    textColor: 'text-amber-600',
-    borderLight: 'border-amber-200/70',
+    iconBg: 'bg-amber-50 text-amber-600 border-amber-100',
+    iconColor: 'text-amber-600',
+    waveColor: 'text-amber-200/70',
     description: 'Local villages & wards'
   },
   {
@@ -65,9 +65,9 @@ export const SETTING_CARDS: SettingCardConfig[] = [
     type: 'master',
     categoryKey: 'gender_types',
     icon: 'users',
-    bgLight: 'bg-pink-50 dark:bg-pink-950/40',
-    textColor: 'text-pink-600',
-    borderLight: 'border-pink-200/70',
+    iconBg: 'bg-purple-50 text-purple-600 border-purple-100',
+    iconColor: 'text-purple-600',
+    waveColor: 'text-purple-200/70',
     description: 'Male, Female & Other types'
   },
   {
@@ -76,9 +76,9 @@ export const SETTING_CARDS: SettingCardConfig[] = [
     type: 'master',
     categoryKey: 'blood_groups',
     icon: 'droplet',
-    bgLight: 'bg-red-50 dark:bg-red-950/40',
-    textColor: 'text-red-600',
-    borderLight: 'border-red-200/70',
+    iconBg: 'bg-rose-50 text-rose-600 border-rose-100',
+    iconColor: 'text-rose-600',
+    waveColor: 'text-rose-200/70',
     description: 'A+, B+, O+, AB+ blood types'
   },
   {
@@ -87,9 +87,9 @@ export const SETTING_CARDS: SettingCardConfig[] = [
     type: 'master',
     categoryKey: 'castes',
     icon: 'tag',
-    bgLight: 'bg-purple-50 dark:bg-purple-950/40',
-    textColor: 'text-purple-600',
-    borderLight: 'border-purple-200/70',
+    iconBg: 'bg-purple-50 text-purple-600 border-purple-100',
+    iconColor: 'text-purple-600',
+    waveColor: 'text-purple-200/70',
     description: 'OC, BC, SC, ST & categories'
   },
   {
@@ -97,11 +97,11 @@ export const SETTING_CARDS: SettingCardConfig[] = [
     title: 'Type of Institution',
     type: 'master',
     categoryKey: 'institution_types',
-    icon: 'building',
-    bgLight: 'bg-blue-50 dark:bg-blue-950/40',
-    textColor: 'text-blue-600',
-    borderLight: 'border-blue-200/70',
-    description: ' clinics & hospitals'
+    icon: 'building-2',
+    iconBg: 'bg-sky-50 text-sky-600 border-sky-100',
+    iconColor: 'text-sky-600',
+    waveColor: 'text-sky-200/70',
+    description: 'clinics & hospitals'
   },
   {
     id: 'roles',
@@ -109,9 +109,9 @@ export const SETTING_CARDS: SettingCardConfig[] = [
     type: 'master',
     categoryKey: 'roles',
     icon: 'shield',
-    bgLight: 'bg-purple-50 dark:bg-purple-950/40',
-    textColor: 'text-purple-600',
-    borderLight: 'border-purple-200/70',
+    iconBg: 'bg-purple-50 text-purple-600 border-purple-100',
+    iconColor: 'text-purple-600',
+    waveColor: 'text-purple-200/70',
     description: 'System roles & privileges'
   },
   {
@@ -120,9 +120,9 @@ export const SETTING_CARDS: SettingCardConfig[] = [
     type: 'master',
     categoryKey: 'designations',
     icon: 'award',
-    bgLight: 'bg-indigo-50 dark:bg-indigo-950/40',
-    textColor: 'text-indigo-600',
-    borderLight: 'border-indigo-200/70',
+    iconBg: 'bg-blue-50 text-blue-600 border-blue-100',
+    iconColor: 'text-blue-600',
+    waveColor: 'text-blue-200/70',
     description: 'Officer departmental titles'
   },
   {
@@ -131,20 +131,20 @@ export const SETTING_CARDS: SettingCardConfig[] = [
     type: 'master',
     categoryKey: 'departments',
     icon: 'layers',
-    bgLight: 'bg-teal-50 dark:bg-teal-950/40',
-    textColor: 'text-teal-600',
-    borderLight: 'border-teal-200/70',
-    description: ' admin divisions'
+    iconBg: 'bg-emerald-50 text-emerald-600 border-emerald-100',
+    iconColor: 'text-emerald-600',
+    waveColor: 'text-emerald-200/70',
+    description: 'Admin divisions'
   },
   {
     id: 'technical_skills',
     title: 'Technical Skills',
     type: 'master',
     categoryKey: 'technical_skills',
-    icon: 'code',
-    bgLight: 'bg-violet-50 dark:bg-violet-950/40',
-    textColor: 'text-violet-600',
-    borderLight: 'border-violet-200/70',
+    icon: 'monitor',
+    iconBg: 'bg-indigo-50 text-indigo-600 border-indigo-100',
+    iconColor: 'text-indigo-600',
+    waveColor: 'text-indigo-200/70',
     description: 'Technical skills, certifications & student/employee mapping'
   },
   {
@@ -153,9 +153,9 @@ export const SETTING_CARDS: SettingCardConfig[] = [
     type: 'master',
     categoryKey: 'qualifications',
     icon: 'book-open',
-    bgLight: 'bg-cyan-50 dark:bg-cyan-950/40',
-    textColor: 'text-cyan-600',
-    borderLight: 'border-cyan-200/70',
+    iconBg: 'bg-cyan-50 text-cyan-600 border-cyan-100',
+    iconColor: 'text-cyan-600',
+    waveColor: 'text-cyan-200/70',
     description: 'Degrees, diplomas & SSC'
   },
   {
@@ -164,10 +164,10 @@ export const SETTING_CARDS: SettingCardConfig[] = [
     type: 'master',
     categoryKey: 'specializations',
     icon: 'file-text',
-    bgLight: 'bg-slate-100 dark:bg-slate-800',
-    textColor: 'text-slate-700 dark:text-slate-200',
-    borderLight: 'border-slate-300/70',
-    description: ' medical branches'
+    iconBg: 'bg-purple-50 text-purple-600 border-purple-100',
+    iconColor: 'text-purple-600',
+    waveColor: 'text-purple-200/70',
+    description: 'Medical branches'
   },
   {
     id: 'leave_reasons',
@@ -175,9 +175,9 @@ export const SETTING_CARDS: SettingCardConfig[] = [
     type: 'master',
     categoryKey: 'leave_reasons',
     icon: 'calendar',
-    bgLight: 'bg-emerald-50 dark:bg-emerald-950/40',
-    textColor: 'text-emerald-600',
-    borderLight: 'border-emerald-200/70',
+    iconBg: 'bg-emerald-50 text-emerald-600 border-emerald-100',
+    iconColor: 'text-emerald-600',
+    waveColor: 'text-emerald-200/70',
     description: 'Leave categories & quotas'
   },
   {
@@ -185,9 +185,9 @@ export const SETTING_CARDS: SettingCardConfig[] = [
     title: 'Courses',
     type: 'courses',
     icon: 'graduation-cap',
-    bgLight: 'bg-emerald-50 dark:bg-emerald-950/40',
-    textColor: 'text-emerald-600',
-    borderLight: 'border-emerald-200/70',
+    iconBg: 'bg-emerald-50 text-emerald-600 border-emerald-100',
+    iconColor: 'text-emerald-600',
+    waveColor: 'text-emerald-200/70',
     description: 'Branch courses & streams'
   },
   {
@@ -195,29 +195,29 @@ export const SETTING_CARDS: SettingCardConfig[] = [
     title: 'ERP & Google Reviews',
     type: 'erp',
     icon: 'star',
-    bgLight: 'bg-amber-50 dark:bg-amber-950/40',
-    textColor: 'text-amber-600',
-    borderLight: 'border-amber-200/70',
+    iconBg: 'bg-amber-50 text-amber-600 border-amber-100',
+    iconColor: 'text-amber-600',
+    waveColor: 'text-amber-200/70',
     description: 'Company & online review sync'
   },
   {
     id: 'general',
     title: 'Profile & Account',
     type: 'general',
-    icon: 'user-check',
-    bgLight: 'bg-violet-50 dark:bg-violet-950/40',
-    textColor: 'text-violet-600',
-    borderLight: 'border-violet-200/70',
+    icon: 'user-cog',
+    iconBg: 'bg-purple-50 text-purple-600 border-purple-100',
+    iconColor: 'text-purple-600',
+    waveColor: 'text-purple-200/70',
     description: 'Admin profile & password reset'
   },
   {
     id: 'permissions',
     title: 'Permissions',
     type: 'permissions',
-    icon: 'shield-check',
-    bgLight: 'bg-emerald-50 dark:bg-emerald-950/40',
-    textColor: 'text-emerald-600',
-    borderLight: 'border-emerald-200/70',
+    icon: 'key',
+    iconBg: 'bg-sky-50 text-sky-600 border-sky-100',
+    iconColor: 'text-sky-600',
+    waveColor: 'text-sky-200/70',
     description: 'Owner roles & module access'
   },
 ];
@@ -545,7 +545,7 @@ export function SettingsPage() {
   );
 
   return (
-    <div className="space-y-6 animate-fade-in relative pb-12">
+    <div className="min-h-full bg-transparent w-full px-4 sm:px-6 py-4 space-y-4 font-sans text-slate-900 animate-fade-in relative pb-12">
       {/* Toast Notification Popup */}
       {toastMessage && (
         <div className="fixed top-20 right-6 z-50 bg-emerald-900/90 text-white text-xs font-bold px-4 py-3 rounded-2xl shadow-2xl backdrop-blur-md border border-emerald-500/30 flex items-center gap-2.5 animate-slide-in">
@@ -555,28 +555,50 @@ export function SettingsPage() {
       )}
 
       {/* ───────────────────────────────────────────────────────────────── */}
-      {/* VIEW 1: 13 SETTING CARDS GRID (Exactly matching reference UI)       */}
+      {/* ───────────────────────────────────────────────────────────────── */}
+      {/* VIEW 1: 18 SETTING CARDS GRID (Exactly matching reference UI)       */}
       {/* ───────────────────────────────────────────────────────────────── */}
       {selectedSection === null && (
-        <div className="space-y-6 animate-fade-in">
-          {/* Header directly matching Screenshot */}
-          <div className="space-y-1">
-            <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight font-serif">
-              Settings
-            </h1>
-            <p className="text-xs text-slate-500 font-medium">
-              Master data — geography, , HR, finance, pharmacy, and fodder
-            </p>
+        <div className="space-y-4 animate-fade-in">
+          {/* Breadcrumb & Header directly matching Screenshot */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1">
+            <div>
+              <div className="text-xs font-bold text-slate-600 mb-1 flex items-center gap-1.5">
+                <Icon name="home" size={13} className="text-blue-600" />
+                <button
+                  type="button"
+                  onClick={() => handleSelectSection(null)}
+                  className="text-blue-600 hover:underline cursor-pointer"
+                >
+                  Home
+                </button>
+                <span className="text-slate-400">›</span>
+                <span className="text-slate-900 font-black">Settings</span>
+              </div>
+              <div className="flex items-center gap-2.5 mt-1">
+                <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 border border-purple-100 flex items-center justify-center shrink-0 shadow-2xs">
+                  <Icon name="settings" size={17} />
+                </div>
+                <div>
+                  <h1 className="text-2xl sm:text-[28px] font-black text-slate-900 tracking-tight leading-tight">
+                    Settings
+                  </h1>
+                  <p className="text-xs sm:text-[13px] text-slate-500 font-medium">
+                    Master data — geography, HR, finance, pharmacy, and fodder.
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* Subtab indicator */}
-          <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
-            <span className="text-blue-600 font-black text-sm">|</span>
-            <span className="text-xs font-bold text-blue-600">Settings</span>
+          {/* Subtab indicator matching Screenshot */}
+          <div className="flex items-center gap-2 pt-1 border-b border-slate-100 pb-2">
+            <span className="text-blue-600 font-black text-base">|</span>
+            <span className="text-xs font-black text-slate-900">Settings</span>
           </div>
 
-          {/* Setting Cards Grid (Permissions strictly enforced for Owners) */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 gap-3 sm:gap-4 pt-1">
+          {/* Setting Cards Grid (18 cards matching reference screenshot across 7 columns) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3 sm:gap-3.5 pt-1">
             {SETTING_CARDS.filter((card) => {
               if (isHo) return true;
               if (card.id === 'permissions') {
@@ -609,37 +631,59 @@ export function SettingsPage() {
               }
               return true;
             }).map((card) => (
-              <button
+              <div
                 key={card.id}
-                type="button"
                 onClick={() => handleSelectSection(card.id)}
-                className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 hover:border-blue-500 p-4 sm:p-5 flex flex-col items-center justify-center text-center gap-3 transition-all duration-200 hover:shadow-md hover:-translate-y-1 active:translate-y-0 cursor-pointer group shadow-2xs min-h-[135px]"
+                className="rounded-2xl p-4 sm:p-5 shadow-2xs hover:shadow-md transition-all duration-200 flex flex-col justify-between text-left cursor-pointer group relative overflow-hidden min-h-[160px] bg-white border border-slate-200/90 hover:border-slate-300"
               >
-                <div
-                  className={cn(
-                    'w-14 h-14 rounded-full flex items-center justify-center transition-transform group-hover:scale-110 shadow-2xs border',
-                    card.bgLight,
-                    card.textColor,
-                    card.borderLight
-                  )}
-                >
-                  <Icon name={card.icon} size={24} />
-                </div>
                 <div>
-                  <span className="text-xs font-bold text-slate-800 dark:text-slate-100 block leading-tight">
+                  {/* Top-left: Icon box */}
+                  <div
+                    className={cn(
+                      'w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-2xs transition-transform group-hover:scale-105 border',
+                      card.iconBg
+                    )}
+                  >
+                    <Icon name={card.icon} size={17} className={card.iconColor} />
+                  </div>
+
+                  {/* Title & Description */}
+                  <h3 className="text-sm font-black text-slate-900 group-hover:text-blue-600 transition-colors leading-snug mt-3 mb-1">
                     {card.title}
-                  </span>
-                  <span className="text-[10px] text-slate-400 font-medium mt-0.5 block line-clamp-1">
+                  </h3>
+                  <p className="text-[11px] text-slate-500 font-medium leading-relaxed">
                     {card.description}
-                  </span>
+                  </p>
                 </div>
-              </button>
+
+                {/* Bottom row: Arrow button */}
+                <div className="flex justify-end pt-3 relative z-10">
+                  <div className="w-7 h-7 rounded-full bg-white border border-slate-200/90 text-slate-500 group-hover:text-slate-900 group-hover:border-slate-300 group-hover:translate-x-0.5 flex items-center justify-center transition-all duration-200 shadow-2xs">
+                    <Icon name="arrow-right" size={13} />
+                  </div>
+                </div>
+
+                {/* Bottom decorative wave matching screenshot */}
+                <svg
+                  className={cn(
+                    'absolute -bottom-1 right-0 w-full h-12 pointer-events-none opacity-40 group-hover:opacity-70 transition-opacity',
+                    card.waveColor
+                  )}
+                  viewBox="0 0 160 50"
+                  fill="none"
+                  preserveAspectRatio="none"
+                >
+                  <path
+                    d="M0,50 Q45,28 95,38 T160,12 L160,50 Z"
+                    fill="currentColor"
+                  />
+                </svg>
+              </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* ───────────────────────────────────────────────────────────────── */}
       {/* VIEW 2: MASTER DATA DETAILED TABLE VIEWS (9 Categories)            */}
       {/* ───────────────────────────────────────────────────────────────── */}
       {selectedSection && activeCard?.type === 'master' && (
@@ -686,13 +730,13 @@ export function SettingsPage() {
             </div>
           </div>
           {/* Section 1: Branch Information / Head Office Information */}
-          <div className="card p-6 border border-navy-100 bg-white space-y-6 shadow-sm rounded-3xl">
-            <div className="flex items-center justify-between border-b border-navy-100 pb-4">
+          <div className="card p-6 border border-slate-200/90 bg-white space-y-6 shadow-sm rounded-3xl">
+            <div className="flex items-center justify-between border-b border-slate-200/90 pb-4">
               <div>
-                <h3 className="text-base font-bold text-navy-900">
+                <h3 className="text-base font-bold text-slate-900">
                   {isHo ? 'Head Office & Organisation Profile' : 'Branch Information'}
                 </h3>
-                <p className="text-xs text-navy-400">
+                <p className="text-xs text-slate-400">
                   {isHo ? 'Basic contact profile and head office operational parameters' : 'Basic contact profile and branch operational parameters'}
                 </p>
               </div>
@@ -701,7 +745,7 @@ export function SettingsPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="text-xs font-bold text-navy-700 mb-1.5 block">
+                <label className="text-xs font-bold text-slate-700 mb-1.5 block">
                   {isHo ? 'Head Office / Organisation Name' : 'Branch Name'}
                 </label>
                 <input
@@ -714,7 +758,7 @@ export function SettingsPage() {
               </div>
 
               <div>
-                <label className="text-xs font-bold text-navy-700 mb-1.5 block">Official Phone Number</label>
+                <label className="text-xs font-bold text-slate-700 mb-1.5 block">Official Phone Number</label>
                 <input
                   type="text"
                   placeholder="Official Phone Number"
@@ -725,7 +769,7 @@ export function SettingsPage() {
               </div>
 
               <div>
-                <label className="text-xs font-bold text-navy-700 mb-1.5 block">Support Email Address</label>
+                <label className="text-xs font-bold text-slate-700 mb-1.5 block">Support Email Address</label>
                 <input
                   type="email"
                   placeholder="Official Email Address"
@@ -736,7 +780,7 @@ export function SettingsPage() {
               </div>
 
               <div>
-                <label className="text-xs font-bold text-navy-700 mb-1.5 block">GSTIN / Tax Reg Number</label>
+                <label className="text-xs font-bold text-slate-700 mb-1.5 block">GSTIN / Tax Reg Number</label>
                 <input
                   type="text"
                   placeholder="GSTIN / Registration Number"
@@ -747,7 +791,7 @@ export function SettingsPage() {
               </div>
 
               <div>
-                <label className="text-xs font-bold text-navy-700 mb-1.5 block">Currency</label>
+                <label className="text-xs font-bold text-slate-700 mb-1.5 block">Currency</label>
                 <select
                   value={currency}
                   onChange={(e) => { setCurrency(e.target.value); setHasUnsavedChanges(true); }}
@@ -761,7 +805,7 @@ export function SettingsPage() {
               </div>
 
               <div>
-                <label className="text-xs font-bold text-navy-700 mb-1.5 block">Time Zone</label>
+                <label className="text-xs font-bold text-slate-700 mb-1.5 block">Time Zone</label>
                 <select
                   value={timeZone}
                   onChange={(e) => { setTimeZone(e.target.value); setHasUnsavedChanges(true); }}
@@ -775,7 +819,7 @@ export function SettingsPage() {
               </div>
 
               <div className="sm:col-span-2">
-                <label className="text-xs font-bold text-navy-700 mb-1.5 block">Physical Address</label>
+                <label className="text-xs font-bold text-slate-700 mb-1.5 block">Physical Address</label>
                 <input
                   type="text"
                   placeholder="Physical Address"
@@ -786,11 +830,11 @@ export function SettingsPage() {
               </div>
             </div>
 
-            <div className="border-t border-navy-100 pt-4 space-y-3">
-              <h4 className="text-xs font-bold text-navy-900">Operating Hours</h4>
+            <div className="border-t border-slate-200/90 pt-4 space-y-3">
+              <h4 className="text-xs font-bold text-slate-900">Operating Hours</h4>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs font-semibold text-navy-500 block mb-1">Opening Time</label>
+                  <label className="text-xs font-semibold text-slate-500 block mb-1">Opening Time</label>
                   <input
                     type="text"
                     placeholder="Opening Time (e.g. 09:00 AM)"
@@ -800,7 +844,7 @@ export function SettingsPage() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-navy-500 block mb-1">Closing Time</label>
+                  <label className="text-xs font-semibold text-slate-500 block mb-1">Closing Time</label>
                   <input
                     type="text"
                     placeholder="Closing Time (e.g. 06:00 PM)"
@@ -814,13 +858,13 @@ export function SettingsPage() {
           </div>
 
           {/* Section 2: Owner & Admin Profile */}
-          <div className="card p-6 border border-navy-100 bg-white space-y-6 shadow-sm rounded-3xl">
-            <div className="flex items-center justify-between border-b border-navy-100 pb-4">
+          <div className="card p-6 border border-slate-200/90 bg-white space-y-6 shadow-sm rounded-3xl">
+            <div className="flex items-center justify-between border-b border-slate-200/90 pb-4">
               <div>
-                <h3 className="text-base font-bold text-navy-900">
+                <h3 className="text-base font-bold text-slate-900">
                   {isHo ? 'Head Office Administrator Profile' : 'Owner & Admin Profile'}
                 </h3>
-                <p className="text-xs text-navy-400">
+                <p className="text-xs text-slate-400">
                   {isHo ? 'Personal credentials and head office administrative access privileges' : 'Personal details and administrative access privileges'}
                 </p>
               </div>
@@ -828,7 +872,7 @@ export function SettingsPage() {
             </div>
 
             {/* Profile Photo Upload Section */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5 p-5 rounded-2xl bg-navy-50/60 border border-navy-100">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5 p-5 rounded-2xl bg-slate-50/60 border border-slate-200/90">
               <div className="flex items-center gap-4">
                 <input
                   type="file"
@@ -861,8 +905,8 @@ export function SettingsPage() {
                 </div>
 
                 <div className="space-y-1">
-                  <h4 className="text-sm font-bold text-navy-900">{ownerName || user?.name || ''}</h4>
-                  <p className="text-xs text-navy-500 font-medium">{ownerRole}</p>
+                  <h4 className="text-sm font-bold text-slate-900">{ownerName || user?.name || ''}</h4>
+                  <p className="text-xs text-slate-500 font-medium">{ownerRole}</p>
                   <div className="flex items-center gap-2 pt-1">
                     <button
                       type="button"
@@ -886,8 +930,8 @@ export function SettingsPage() {
                 </div>
               </div>
 
-              <div className="text-left sm:text-right text-[11px] text-navy-400 space-y-0.5 border-t sm:border-t-0 pt-3 sm:pt-0 border-navy-200/60">
-                <p className="font-semibold text-navy-700">Profile Photo</p>
+              <div className="text-left sm:text-right text-[11px] text-slate-400 space-y-0.5 border-t sm:border-t-0 pt-3 sm:pt-0 border-slate-200/60">
+                <p className="font-semibold text-slate-700">Profile Photo</p>
                 <p>PNG, JPG, WebP (Max 5MB)</p>
                 <p className="text-brand-600 font-medium">Updates top navbar instantly</p>
               </div>
@@ -895,7 +939,7 @@ export function SettingsPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="text-xs font-bold text-navy-700 mb-1.5 block">Full Name</label>
+                <label className="text-xs font-bold text-slate-700 mb-1.5 block">Full Name</label>
                 <input
                   type="text"
                   value={ownerName}
@@ -905,7 +949,7 @@ export function SettingsPage() {
               </div>
 
               <div>
-                <label className="text-xs font-bold text-navy-700 mb-1.5 block">Email Address</label>
+                <label className="text-xs font-bold text-slate-700 mb-1.5 block">Email Address</label>
                 <input
                   type="email"
                   value={ownerEmail}
@@ -915,7 +959,7 @@ export function SettingsPage() {
               </div>
 
               <div>
-                <label className="text-xs font-bold text-navy-700 mb-1.5 block">Personal Phone</label>
+                <label className="text-xs font-bold text-slate-700 mb-1.5 block">Personal Phone</label>
                 <input
                   type="text"
                   value={ownerPhone}
@@ -925,17 +969,17 @@ export function SettingsPage() {
               </div>
 
               <div>
-                <label className="text-xs font-bold text-navy-700 mb-1.5 block">Administrative Role</label>
+                <label className="text-xs font-bold text-slate-700 mb-1.5 block">Administrative Role</label>
                 <input
                   type="text"
                   value={ownerRole}
                   disabled
-                  className="input-field text-xs font-bold opacity-60 bg-navy-50"
+                  className="input-field text-xs font-bold opacity-60 bg-slate-50"
                 />
               </div>
             </div>
 
-            <div className="flex items-center justify-end pt-3 border-t border-navy-100">
+            <div className="flex items-center justify-end pt-3 border-t border-slate-200/90">
               <button
                 type="button"
                 onClick={handleSaveProfile}

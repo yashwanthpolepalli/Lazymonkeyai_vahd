@@ -97,44 +97,34 @@ export function LivevahdActivity({ activity }: LivevahdActivityProps) {
     (activity || []).forEach((item) => {
       const dir = (item.direction || '').toUpperCase();
       const isLogout = dir.includes('OUT') || dir.includes('EXIT') || item.type === 'checkout';
-      // Skip ENROLL and other non-attendance events
-      if (!dir.includes('IN') && !dir.includes('OUT') && !dir.includes('EXIT') && !dir.includes('ENTRY') && item.type !== 'checkin' && item.type !== 'checkout') return;
 
-      const roleUpper = (item.userRole || '').toUpperCase();
-      const rawCustId = (item.studentId || '').trim();
-      const role = resolveRole(roleUpper, rawCustId);
+      const roleUpper = (
+        (item as any).resolved_role ||
+        (item as any).role ||
+        (item as any).person_role ||
+        ''
+      ).toUpperCase();
 
-      // Display ID: strip cust_usr_ prefix for employees
-      let displaystudentId = rawCustId;
-      if (role === 'Employee' && displaystudentId.startsWith('cust_usr_')) {
-        displaystudentId = displaystudentId.replace('cust_', '');
-      }
+      const rawCustId = (
+        (item as any).customer_id ||
+        (item as any).student_id ||
+        (item as any).user_id ||
+        (item as any).member_id ||
+        ''
+      );
 
-      // Name: use exactly what backend resolved — no generic overrides
-      const displayName = (item.title || '').trim();
-      if (!displayName) return; // skip if backend sent no name
-
+      const resolved = resolveRole(roleUpper, rawCustId);
+      const name = (item.person_name || item.name || '').trim() || 'Unknown Attendee';
       const { time, fullDateStr, sortTime } = formatTimestamp(item.timestamp, item.time);
-      const desc = item.description || '';
-
-      const rawLoc = (item.location || desc.split('·')[0]?.trim() || '').replace(/\s*\([^)]*\)/g, '').trim();
-      let rawDev = (item.device || desc.split('·')[1]?.trim() || '').trim();
-      if (rawDev.includes('(') && rawDev.includes(')')) {
-        const m = rawDev.match(/\(([^)]+)\)/);
-        if (m) rawDev = m[1].trim();
-      }
-      if (rawLoc.toLowerCase() === rawDev.toLowerCase()) {
-        rawDev = '';
-      }
 
       list.push({
-        id: item.id || `act-${Math.random().toString(36).slice(2)}`,
-        role,
+        id: item.id || `bio_${sortTime}_${Math.random()}`,
+        role: resolved,
         action: isLogout ? 'Check-out' : 'Check-in',
-        name: displayName,
-        studentId: displaystudentId,
-        location: rawLoc,
-        device: rawDev,
+        name,
+        studentId: (item as any).student_code || (item as any).employee_code || rawCustId || '',
+        location: (item as any).branch || (item as any).location || '',
+        device: item.device || (item as any).device_name || '',
         time,
         fullDateStr,
         status: isLogout ? 'warning' : 'success',
@@ -142,39 +132,26 @@ export function LivevahdActivity({ activity }: LivevahdActivityProps) {
       });
     });
 
-    // ── 2. HRMS attendance logs (supplement — deduped against biometric) ──────
-    employeeAttendance.forEach((emp) => {
-      const empDate = emp.date ? new Date(emp.date) : new Date();
-      const empName = (emp.employee_name || '').trim();
-      const empId = emp.employee_id || emp.employee_code || emp.id || '';
+    // ── 2. Supplemental HRMS attendance records ──────────────────────────────
+    employeeAttendance.forEach((emp: any) => {
+      const empName = emp.name || emp.employee_name || 'Staff Member';
+      const empId = emp.employee_code || emp.employee_id || emp.id || '';
 
-      if (!empName) return; // skip unknown employees
+      const processEntry = (timeVal: string, action: 'Check-in' | 'Check-out') => {
+        let dt = new Date();
+        let formattedTime = timeVal;
+        let fullDateStr = '';
 
-      const processEntry = (timeStr: string, action: 'Check-in' | 'Check-out') => {
-        const [h, m, s] = String(timeStr).split(':');
-        let h_val = parseInt(h, 10);
-        if (String(timeStr).toLowerCase().includes('pm') && h_val < 12) h_val += 12;
-        if (String(timeStr).toLowerCase().includes('am') && h_val === 12) h_val = 0;
-        const dt = new Date(empDate);
-        if (!isNaN(h_val)) dt.setHours(h_val, parseInt(m || '0', 10), parseInt(s || '0', 10));
-
-        // Deduplicate: skip if already in list within 5 minutes for same employee+action
-        const isDupe = list.some(
-          (l) =>
-            l.role === 'Employee' &&
-            l.name.toLowerCase() === empName.toLowerCase() &&
-            l.action === action &&
-            Math.abs(l._sortTime - dt.getTime()) < 5 * 60 * 1000
-        );
-        if (isDupe) return;
-
-        const formattedTime = timeStr.includes(':') ? timeStr.slice(0, 8) : timeStr;
-        const fullDateStr = emp.date
-          ? new Date(emp.date).toLocaleDateString([], { month: 'short', day: 'numeric' })
-          : '';
+        if (timeVal.includes('T') || timeVal.includes('-')) {
+          try {
+            dt = new Date(timeVal);
+            formattedTime = dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+            fullDateStr = dt.toLocaleDateString([], { month: 'short', day: 'numeric' });
+          } catch (_) { }
+        }
 
         list.push({
-          id: `hrms-${action === 'Check-in' ? 'in' : 'out'}-${emp.id || empName}`,
+          id: `hrms_${empId}_${action}_${dt.getTime()}`,
           role: 'Employee',
           action,
           name: empName,
@@ -207,23 +184,24 @@ export function LivevahdActivity({ activity }: LivevahdActivityProps) {
   }, [unifiedActivity, filter]);
 
   return (
-    <div className="card p-5 bg-white border border-navy-100/80 rounded-2xl shadow-xs space-y-4 flex flex-col justify-between">
+    <div className="p-5 bg-white border border-slate-200/90 rounded-2xl shadow-2xs space-y-4 relative overflow-hidden flex flex-col justify-between">
       <div>
-        {/* Header & Filter Controls */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-navy-100/60">
-          <div className="flex items-center gap-2">
-            <h3 className="text-xs font-black text-navy-900 tracking-wider uppercase flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>LIVE ACTIVITY</span>
+        {/* Header & Filter Controls matching Screenshot */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-100">
+          <div className="flex items-center gap-2.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+            <h3 className="text-base font-black text-slate-900 tracking-tight">
+              Live Activity
             </h3>
-            <span className="text-[11px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60">
-              • LIVE ({filteredItems.length})
+            <span className="text-xs text-emerald-700 font-bold bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200/90 flex items-center gap-1.5 shadow-2xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+              Live ({filteredItems.length})
             </span>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
-            {/* Filter Pills */}
-            <div className="flex items-center gap-1 bg-navy-100/70 p-1 rounded-xl border border-navy-200/50 text-[11px]">
+            {/* Filter Pills matching Screenshot */}
+            <div className="flex items-center gap-1 bg-slate-100/90 p-1 rounded-full border border-slate-200/80 text-xs">
               {[
                 { id: 'all', label: 'All' },
                 { id: 'students', label: 'Students' },
@@ -236,10 +214,10 @@ export function LivevahdActivity({ activity }: LivevahdActivityProps) {
                   type="button"
                   onClick={() => setFilter(f.id as any)}
                   className={cn(
-                    'px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer',
+                    'px-3.5 py-1 rounded-full font-bold transition-all cursor-pointer whitespace-nowrap',
                     filter === f.id
-                      ? 'bg-white text-brand-700 shadow-xs'
-                      : 'text-navy-500 hover:text-navy-900'
+                      ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
                   )}
                 >
                   {f.label}
@@ -249,13 +227,13 @@ export function LivevahdActivity({ activity }: LivevahdActivityProps) {
 
             {/* Scroll Buttons */}
             {filteredItems.length > 4 && (
-              <div className="flex items-center gap-0.5 bg-navy-50 border border-navy-100 rounded-lg p-0.5 shadow-2xs">
+              <div className="flex items-center gap-0.5 bg-slate-50 border border-slate-200 rounded-lg p-0.5 shadow-2xs">
                 <button
                   type="button"
                   onClick={() => handleScroll('up')}
                   title="Scroll Up"
                   aria-label="Scroll Up"
-                  className="p-1 rounded-md text-navy-500 hover:text-navy-900 hover:bg-white transition-all cursor-pointer"
+                  className="p-1 rounded-md text-slate-500 hover:text-slate-900 hover:bg-white transition-all cursor-pointer"
                 >
                   <Icon name="chevron-up" size={14} />
                 </button>
@@ -264,7 +242,7 @@ export function LivevahdActivity({ activity }: LivevahdActivityProps) {
                   onClick={() => handleScroll('down')}
                   title="Scroll Down"
                   aria-label="Scroll Down"
-                  className="p-1 rounded-md text-navy-500 hover:text-navy-900 hover:bg-white transition-all cursor-pointer"
+                  className="p-1 rounded-md text-slate-500 hover:text-slate-900 hover:bg-white transition-all cursor-pointer"
                 >
                   <Icon name="chevron-down" size={14} />
                 </button>
@@ -275,14 +253,21 @@ export function LivevahdActivity({ activity }: LivevahdActivityProps) {
 
         {/* Activity Stream */}
         {filteredItems.length === 0 ? (
-          <div className="py-10 text-center text-xs font-semibold text-navy-400 space-y-1">
-            <Icon name="activity" size={24} className="mx-auto text-navy-300 mb-2" />
-            <div>No check-in / check-out events found.</div>
+          <div className="py-14 text-center space-y-2 relative z-10">
+            <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 border border-purple-100 flex items-center justify-center mx-auto mb-3 shadow-2xs">
+              <Icon name="activity" size={24} className="text-purple-600" />
+            </div>
+            <h3 className="text-sm font-black text-slate-900">
+              No check-in / check-out events found.
+            </h3>
+            <p className="text-xs text-slate-500 font-medium max-w-sm mx-auto">
+              Once students or staff check in, their live activity will appear here.
+            </p>
           </div>
         ) : (
           <div
             ref={scrollRef}
-            className="max-h-[380px] overflow-y-auto space-y-2.5 pr-1.5 scroll-smooth overscroll-contain"
+            className="max-h-[380px] overflow-y-auto space-y-2.5 pr-1.5 scroll-smooth overscroll-contain relative z-10"
           >
             {filteredItems.map((item) => {
               // Generate initials purely from real name
@@ -300,7 +285,7 @@ export function LivevahdActivity({ activity }: LivevahdActivityProps) {
               return (
                 <div
                   key={item.id}
-                  className="flex items-center justify-between p-3 rounded-xl hover:bg-navy-50/90 transition-all group border border-navy-100/70 hover:border-navy-200 bg-white shadow-2xs hover:shadow-xs"
+                  className="flex items-center justify-between p-3.5 rounded-2xl hover:bg-slate-50/90 transition-all group border border-slate-100 hover:border-slate-200 bg-white shadow-2xs"
                 >
                   <div className="flex items-center gap-3.5 min-w-0">
                     {/* Avatar */}
@@ -324,21 +309,21 @@ export function LivevahdActivity({ activity }: LivevahdActivityProps) {
                     {/* Details */}
                     <div className="min-w-0 space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        {/* Real name from DB */}
-                        <h4 className="text-xs font-extrabold text-navy-900 group-hover:text-brand-600 transition-colors truncate">
+                        {/* Real name */}
+                        <h4 className="text-xs font-bold text-slate-900 group-hover:text-blue-600 transition-colors truncate">
                           {item.name}
                         </h4>
 
-                        {/* Real ID from DB */}
+                        {/* Real ID */}
                         {item.studentId && (
-                          <span className="px-1.5 py-0.5 rounded-md text-[10px] font-mono font-semibold bg-navy-100/80 text-navy-700 border border-navy-200/70">
+                          <span className="px-1.5 py-0.5 rounded-md text-[10px] font-mono font-semibold bg-slate-100 text-slate-700 border border-slate-200">
                             ID: {item.studentId}
                           </span>
                         )}
 
-                        {/* Role Badge — driven entirely by backend resolved_role */}
+                        {/* Role Badge */}
                         <span className={cn(
-                          'px-1.5 py-0.5 rounded-md text-[9px] font-extrabold uppercase tracking-wider',
+                          'px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider',
                           isEmployee
                             ? 'bg-purple-50 text-purple-700 border border-purple-200/60'
                             : 'bg-blue-50 text-blue-700 border border-blue-200/60'
@@ -348,7 +333,7 @@ export function LivevahdActivity({ activity }: LivevahdActivityProps) {
 
                         {/* Check-in / Check-out Badge */}
                         <span className={cn(
-                          'px-2 py-0.5 rounded-md text-[9px] font-extrabold uppercase tracking-wider inline-flex items-center gap-1',
+                          'px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider inline-flex items-center gap-1',
                           isCheckout
                             ? 'bg-amber-50 text-amber-800 border border-amber-200/80'
                             : 'bg-emerald-50 text-emerald-800 border border-emerald-200/80'
@@ -358,17 +343,17 @@ export function LivevahdActivity({ activity }: LivevahdActivityProps) {
                         </span>
                       </div>
 
-                      {/* Device & Location — only rendered when present in DB */}
+                      {/* Device & Location */}
                       {(item.location || item.device) && (
-                        <p className="text-[11px] font-medium text-navy-500 truncate flex items-center gap-1.5">
+                        <p className="text-[11px] font-medium text-slate-500 truncate flex items-center gap-1.5">
                           {item.location && (
-                            <span className="font-semibold text-navy-700">{item.location}</span>
+                            <span className="font-semibold text-slate-700">{item.location}</span>
                           )}
                           {item.location && item.device && item.device.toLowerCase() !== item.location.toLowerCase() && (
-                            <span className="text-navy-300">·</span>
+                            <span className="text-slate-300">·</span>
                           )}
                           {item.device && item.device.toLowerCase() !== item.location.toLowerCase() && (
-                            <span className="text-navy-400">{item.device}</span>
+                            <span className="text-slate-400">{item.device}</span>
                           )}
                         </p>
                       )}
@@ -378,12 +363,12 @@ export function LivevahdActivity({ activity }: LivevahdActivityProps) {
                   {/* Timestamp */}
                   <div className="shrink-0 ml-3 text-right">
                     {item.time && (
-                      <div className="text-xs font-mono font-bold text-navy-800 bg-navy-50/90 group-hover:bg-white px-2.5 py-1 rounded-lg border border-navy-100 group-hover:border-navy-200 transition-colors shadow-2xs">
+                      <div className="text-xs font-mono font-bold text-slate-800 bg-slate-50 group-hover:bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200 transition-colors shadow-2xs">
                         {item.time}
                       </div>
                     )}
                     {item.fullDateStr && (
-                      <span className="text-[10px] font-medium text-navy-400 block mt-0.5">
+                      <span className="text-[10px] font-medium text-slate-400 block mt-0.5">
                         {item.fullDateStr}
                       </span>
                     )}
@@ -393,18 +378,31 @@ export function LivevahdActivity({ activity }: LivevahdActivityProps) {
             })}
           </div>
         )}
+
+        {/* Soft bottom decorative wave matching screenshot */}
+        <svg
+          className="absolute -bottom-1 left-0 right-0 w-full h-16 pointer-events-none opacity-30 text-purple-200"
+          viewBox="0 0 160 50"
+          fill="none"
+          preserveAspectRatio="none"
+        >
+          <path
+            d="M0,50 Q45,28 95,38 T160,12 L160,50 Z"
+            fill="currentColor"
+          />
+        </svg>
       </div>
 
       {/* Footer */}
-      <div className="pt-3 border-t border-navy-100/80 flex items-center justify-between text-xs">
-        <span className="font-bold text-navy-400 inline-flex items-center gap-1.5">
+      <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs relative z-10">
+        <span className="font-bold text-slate-500 inline-flex items-center gap-1.5">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
           Real-time biometric attendance sync active
         </span>
         <button
           type="button"
           onClick={() => navigate('/owner/members')}
-          className="text-xs font-bold text-brand-600 hover:text-brand-700 hover:underline inline-flex items-center gap-1 transition-all cursor-pointer"
+          className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline inline-flex items-center gap-1 transition-all cursor-pointer"
         >
           <span>View All Activity</span>
           <Icon name="arrow-right" size={13} />

@@ -19,8 +19,6 @@ export function DashboardKPIs({ summary }: DashboardKPIsProps) {
     monthlyBase: 0,
   });
 
-
-
   useEffect(() => {
     const fetchEmployeeData = async () => {
       try {
@@ -70,150 +68,188 @@ export function DashboardKPIs({ summary }: DashboardKPIsProps) {
   const studentKpis = [
     {
       id: 'total_students',
-      label: 'TOTAL STUDENTS',
+      label: 'Total Students',
       value: totalStudents.toLocaleString(),
       change: '↑ Active enrolled',
-      isUp: true,
-      icon: 'users',
+      changeColor: 'text-emerald-600',
+      icon: 'graduation-cap',
       accentColor: 'text-blue-600',
       bgColor: 'bg-blue-50',
+      borderColor: 'border-blue-100/90',
+      waveColor: 'text-sky-200/60',
     },
     {
       id: 'present',
-      label: 'PRESENT',
+      label: 'Present',
       value: presentStudents.toLocaleString(),
       change: `${presentStudents} checked in today`,
-      isUp: true,
+      changeColor: 'text-emerald-600',
       icon: 'user-check',
       accentColor: 'text-emerald-600',
       bgColor: 'bg-emerald-50',
+      borderColor: 'border-emerald-100/90',
+      waveColor: 'text-emerald-200/60',
     },
     {
       id: 'leave',
-      label: 'LEAVE',
+      label: 'Leave',
       value: leaveStudents.toLocaleString(),
       change: `${leaveStudents} on approved leave`,
-      isUp: false,
+      changeColor: 'text-amber-600',
       icon: 'calendar',
       accentColor: 'text-amber-600',
       bgColor: 'bg-amber-50',
+      borderColor: 'border-amber-100/90',
+      waveColor: 'text-amber-200/60',
     },
     {
       id: 'absent',
-      label: 'ABSENT',
+      label: 'Absent',
       value: absentStudents.toLocaleString(),
       change: `${absentStudents} not checked in`,
-      isUp: false,
+      changeColor: 'text-rose-600',
       icon: 'user-x',
       accentColor: 'text-rose-600',
       bgColor: 'bg-rose-50',
+      borderColor: 'border-rose-100/90',
+      waveColor: 'text-rose-200/60',
     },
   ];
 
   const employeeKpis = [
     {
       id: 'total_employees',
-      label: 'TOTAL EMPLOYEES',
+      label: 'Total Employees',
       value: employeeStats.total.toLocaleString(),
       change: '↑ Registered staff',
-      isUp: true,
+      changeColor: 'text-emerald-600',
       icon: 'briefcase',
       accentColor: 'text-purple-600',
       bgColor: 'bg-purple-50',
+      borderColor: 'border-purple-100/90',
+      waveColor: 'text-purple-200/60',
     },
     {
       id: 'emp_present',
-      label: 'PRESENT',
+      label: 'Present',
       value: employeeStats.present.toLocaleString(),
       change: `${employeeStats.present} on duty today`,
-      isUp: true,
+      changeColor: 'text-emerald-600',
       icon: 'user-check',
       accentColor: 'text-emerald-600',
       bgColor: 'bg-emerald-50',
+      borderColor: 'border-emerald-100/90',
+      waveColor: 'text-emerald-200/60',
     },
     {
       id: 'emp_leave',
-      label: 'LEAVE',
+      label: 'Leave',
       value: employeeStats.leave.toLocaleString(),
       change: `${employeeStats.leave} on leave today`,
-      isUp: false,
+      changeColor: 'text-amber-600',
       icon: 'calendar',
       accentColor: 'text-amber-600',
       bgColor: 'bg-amber-50',
+      borderColor: 'border-amber-100/90',
+      waveColor: 'text-amber-200/60',
     },
     {
       id: 'emp_absent',
-      label: 'ABSENT',
+      label: 'Absent',
       value: employeeStats.absent.toLocaleString(),
       change: `${employeeStats.absent} absent today`,
-      isUp: false,
+      changeColor: 'text-rose-600',
       icon: 'user-x',
       accentColor: 'text-rose-600',
       bgColor: 'bg-rose-50',
+      borderColor: 'border-rose-100/90',
+      waveColor: 'text-rose-200/60',
     },
   ];
 
   const currentKpis = activeView === 'students' ? studentKpis : employeeKpis;
 
   return (
-    <div className="space-y-3.5">
-      {/* View Switcher Toggle */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5 p-1 bg-navy-100/70 rounded-xl border border-navy-200/60 w-fit">
+    <div className="space-y-4">
+      {/* View Switcher Toggle & Live Indicator matching Screenshot */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => setActiveView('students')}
             className={cn(
-              'px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer',
+              'px-4 py-2 rounded-full text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-2xs',
               activeView === 'students'
-                ? 'bg-white text-blue-700 shadow-xs ring-1 ring-black/5'
-                : 'text-navy-600 hover:text-navy-900'
+                ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white shadow-xs'
+                : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/90'
             )}
           >
-            <Icon name="users" size={14} className={activeView === 'students' ? 'text-blue-600' : 'text-navy-400'} />
+            <Icon name="users" size={14} className={activeView === 'students' ? 'text-white' : 'text-slate-500'} />
             <span>Students View</span>
           </button>
           <button
             type="button"
             onClick={() => setActiveView('employees')}
             className={cn(
-              'px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer',
+              'px-4 py-2 rounded-full text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-2xs',
               activeView === 'employees'
-                ? 'bg-white text-purple-700 shadow-xs ring-1 ring-black/5'
-                : 'text-navy-600 hover:text-navy-900'
+                ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white shadow-xs'
+                : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/90'
             )}
           >
-            <Icon name="user-check" size={14} className={activeView === 'employees' ? 'text-purple-600' : 'text-navy-400'} />
+            <Icon name="user-check" size={14} className={activeView === 'employees' ? 'text-white' : 'text-slate-500'} />
             <span>Employees View</span>
           </button>
         </div>
-        <span className="text-[11px] font-bold text-navy-400 uppercase tracking-wider hidden sm:inline-block">
-          {activeView === 'students' ? 'Showing Students Live Attendance & Metrics' : 'Showing Employee Staff Attendance & Metrics'}
-        </span>
+
+        {/* Live Attendance Status Indicator */}
+        <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block animate-pulse shrink-0"></span>
+          <span>
+            {activeView === 'students'
+              ? 'Showing Students Live Attendance & Metrics'
+              : 'Showing Employee Staff Attendance & Metrics'}
+          </span>
+        </div>
       </div>
 
       {/* 4 KPI Metric Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {currentKpis.map((kpi) => (
           <div
             key={kpi.id}
-            className="card p-5 bg-white border border-navy-100/80 rounded-2xl shadow-xs hover:shadow-md transition-all duration-200 flex flex-col justify-between group"
+            className="p-5 bg-white border border-slate-200/90 rounded-2xl shadow-2xs hover:shadow-md transition-all duration-200 relative overflow-hidden flex flex-col justify-between group"
           >
-            <div className="flex items-start justify-between">
-              <div>
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-navy-400">{kpi.label}</span>
-                <div className="text-2xl font-black text-navy-900 tracking-tight mt-1">{kpi.value}</div>
+            <div className="flex items-start gap-4 relative z-10">
+              <div className={cn('w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-2xs border', kpi.bgColor, kpi.accentColor, kpi.borderColor)}>
+                <Icon name={kpi.icon} size={22} className={kpi.accentColor} />
               </div>
-              <div className={`w-10 h-10 rounded-xl ${kpi.bgColor} ${kpi.accentColor} flex items-center justify-center shrink-0 shadow-xs`}>
-                <Icon name={kpi.icon} size={20} />
+              <div className="min-w-0 flex-1">
+                <span className="text-xs font-bold text-slate-600 block">{kpi.label}</span>
+                <div className="text-3xl font-black text-slate-900 tracking-tight leading-none mt-1">
+                  {kpi.value}
+                </div>
+                <div className={cn('text-xs font-bold mt-2 flex items-center gap-1', kpi.changeColor)}>
+                  {kpi.change}
+                </div>
               </div>
             </div>
 
-            <div className="mt-3">
-              <div className={`text-xs font-bold ${kpi.isUp ? 'text-emerald-600' : 'text-rose-600'} flex items-center gap-1`}>
-                {kpi.change}
-              </div>
-            </div>
+            {/* Bottom pastel wave accent matching mockup */}
+            <svg
+              className={cn(
+                'absolute -bottom-1 right-0 w-3/4 h-12 pointer-events-none opacity-40 group-hover:opacity-60 transition-opacity',
+                kpi.waveColor
+              )}
+              viewBox="0 0 160 50"
+              fill="none"
+              preserveAspectRatio="none"
+            >
+              <path
+                d="M0,50 Q45,28 95,38 T160,12 L160,50 Z"
+                fill="currentColor"
+              />
+            </svg>
           </div>
         ))}
       </div>

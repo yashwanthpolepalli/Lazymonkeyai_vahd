@@ -15,7 +15,7 @@ export function OwnerDashboard() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
+      <div className="px-4 sm:px-6 py-4 space-y-6">
         <DashboardSkeleton />
       </div>
     );
@@ -23,7 +23,7 @@ export function OwnerDashboard() {
 
   if (error) {
     return (
-      <div className="py-12">
+      <div className="px-4 sm:px-6 py-12">
         <ErrorState
           title="Unable to Load Dashboard"
           message={error}
@@ -38,8 +38,8 @@ export function OwnerDashboard() {
   const branchName = data?.vahd?.branch || user?.branch_name || '';
 
   return (
-    <div className="space-y-6 animate-fade-in pb-8">
-      {/* Level 1: Greeting Header */}
+    <div className="px-4 sm:px-6 py-4 space-y-5 font-sans text-slate-900 animate-fade-in relative pb-12">
+      {/* Level 1: Greeting Header with Breadcrumbs & Icon */}
       <DashboardHeader
         userName={userName}
         vahdName={vahdName}
@@ -56,9 +56,7 @@ export function OwnerDashboard() {
       />
 
       {/* Level 2: Live Activity (Unified Students & Employees Login / Logout stream) */}
-      <div>
-        <LivevahdActivity activity={data?.live_activity || []} />
-      </div>
+      <LivevahdActivity activity={data?.live_activity || []} />
     </div>
   );
 }

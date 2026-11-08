@@ -93,11 +93,16 @@ def enroll_employee_biometrics(payload: BiometricEnrollmentRequest, db: Session 
     try:
         return BiometricService.enroll_biometrics(
             db=db,
-            student_id=payload.student_id,
-            face_image_base64=payload.face_image_base64,
-            fingerprint_template=payload.fingerprint_template,
-            rfid_card_number=payload.rfid_card_number,
-            target_device_ids=payload.target_device_ids
+            employee_code=payload.employee_code,
+            employee_name=payload.employee_name,
+            employee_location=payload.employee_location,
+            employee_role=payload.employee_role,
+            employee_verification_type=payload.employee_verification_type,
+            employee_expiry_from=payload.employee_expiry_from,
+            employee_expiry_to=payload.employee_expiry_to,
+            employee_card_number=payload.employee_card_number,
+            group_id=payload.group_id,
+            employee_photo=payload.employee_photo,
         )
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

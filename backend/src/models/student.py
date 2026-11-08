@@ -8,6 +8,7 @@ class student(Base):
     __tablename__ = "students"
 
     id = Column(String, primary_key=True, index=True)
+    tenant_id = Column(String, nullable=True, index=True)
     user_id = Column(String, ForeignKey("users.id"), unique=True, nullable=False)
     employee_id = Column(String, ForeignKey("users.id"), nullable=True)
     owner_id = Column(String, ForeignKey("users.id"), nullable=True, index=True)

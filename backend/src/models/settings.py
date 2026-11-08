@@ -1,12 +1,13 @@
 from src.utils.timezone import now_ist_naive
 import datetime
-from sqlalchemy import Column, String, Boolean, DateTime, Float, JSON, Integer
+from sqlalchemy import Column, String, Boolean, DateTime, Float, JSON, Integer, UniqueConstraint
 from src.database.base import Base
 
 class Branch(Base):
     __tablename__ = "branches"
 
     id = Column(String, primary_key=True, index=True)
+    tenant_id = Column(String, nullable=True, index=True)
     owner_id = Column(String, nullable=True, index=True)
     ho_id = Column(String, nullable=True, index=True)
     vahd_name = Column(String, nullable=True, default="") # real column — the vahd/organisation name
@@ -85,9 +86,12 @@ class Setting(Base):
 
 class PaymentMethod(Base):
     __tablename__ = "payment_methods"
+    __table_args__ = (UniqueConstraint("tenant_id", "name", name="uq_paymethod_tenant_name"),
+                      {"extend_existing": True})
 
     id = Column(String, primary_key=True, index=True)
-    name = Column(String, nullable=False, unique=True)
+    tenant_id = Column(String, nullable=True, index=True)
+    name = Column(String, nullable=False, index=True)
     code = Column(String, nullable=True)
     icon = Column(String, nullable=True)
     is_active = Column(Boolean, default=True)
@@ -113,6 +117,7 @@ class MasterData(Base):
     __table_args__ = {'extend_existing': True}
 
     id = Column(String, primary_key=True, index=True)
+    tenant_id = Column(String, nullable=True, index=True)
     category = Column(String, nullable=False, index=True)
     name = Column(String, nullable=False, index=True)
     code = Column(String, nullable=True)

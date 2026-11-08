@@ -490,6 +490,47 @@ class BiometricService:
         return essl_client.update_employee_photo(payload["EmployeeCode"], payload["EmployeePhoto"])
 
     @staticmethod
+    def enroll_biometrics(
+        db: Session,
+        employee_code: str,
+        employee_name: str,
+        employee_location: str = "",
+        employee_role: str = "Normal",
+        employee_verification_type: str = "",
+        employee_expiry_from: str = "",
+        employee_expiry_to: str = "",
+        employee_card_number: str = "",
+        group_id: str = "",
+        employee_photo: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Enroll/update an employee on the eSSL turnstile hardware.
+
+        The eBioServerNew contract has no raw template-enroll operation —
+        enrollment is done through the documented UpdateEmployee(Ex) personnel
+        operations, optionally carrying the base64 face photo and card number.
+        The device(s) then capture their own templates during the next scan.
+        """
+        employee_code = (employee_code or "").strip()
+        employee_name = (employee_name or "").strip()
+        if not employee_code:
+            raise ValueError("employee_code is required to enroll biometrics")
+
+        op_name = "UpdateEmployeeEx" if employee_photo or employee_card_number else "UpdateEmployee"
+        result = essl_client.update_employee_ex(
+            employee_code, employee_name, employee_location,
+            employee_role, employee_verification_type,
+            employee_expiry_from, employee_expiry_to,
+            employee_card_number, group_id, employee_photo or "",
+        )
+        return {
+            "success": True,
+            "operation": op_name,
+            "employee_code": employee_code,
+            "vendor_response": result,
+            "message": f"Biometric enrollment request pushed to eSSL hardware for {employee_name}",
+        }
+
+    @staticmethod
     def call_update_employee_ex(payload: Dict[str, Any]) -> str:
         return essl_client.update_employee_ex(
             payload["EmployeeCode"], payload["EmployeeName"], payload.get("EmployeeLocation", ""),

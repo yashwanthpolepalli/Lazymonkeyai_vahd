@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, Integer, Float, Boolean, DateTime, Text, JSON, ForeignKey
+from sqlalchemy import Column, String, Integer, Float, Boolean, DateTime, Text, JSON, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
 from src.database.base import Base
 from src.utils.timezone import now_ist_naive
@@ -10,6 +10,7 @@ class Supplier(Base):
     __tablename__ = "erp_suppliers"
 
     id = Column(String, primary_key=True, index=True, default=lambda: f"sup_{uuid.uuid4().hex[:8]}")
+    tenant_id = Column(String, nullable=True, index=True)
     name = Column(String(150), nullable=False, index=True)
     code = Column(String(50), index=True, nullable=True)
     type = Column(String(100), nullable=True)
@@ -31,9 +32,11 @@ class Supplier(Base):
 
 class PurchaseRequest(Base):
     __tablename__ = "erp_purchase_requests"
+    __table_args__ = (UniqueConstraint("tenant_id", "request_number", name="uq_pr_tenant_request_number"),)
 
     id = Column(String, primary_key=True, index=True, default=lambda: f"pr_{uuid.uuid4().hex[:8]}")
-    request_number = Column(String(50), index=True, unique=True, nullable=False)
+    tenant_id = Column(String, nullable=True, index=True)
+    request_number = Column(String(50), index=True, nullable=False)
     requester_name = Column(String(100), nullable=True)
     department = Column(String(100), nullable=True)
     priority = Column(String(50), default="Medium")
@@ -49,9 +52,11 @@ class PurchaseRequest(Base):
 
 class PurchaseQuotation(Base):
     __tablename__ = "erp_purchase_quotations"
+    __table_args__ = (UniqueConstraint("tenant_id", "quotation_number", name="uq_quotation_tenant_quotation_number"),)
 
     id = Column(String, primary_key=True, index=True, default=lambda: f"rfq_{uuid.uuid4().hex[:8]}")
-    quotation_number = Column(String(50), index=True, unique=True, nullable=False)
+    tenant_id = Column(String, nullable=True, index=True)
+    quotation_number = Column(String(50), index=True, nullable=False)
     purchase_request_id = Column(String, nullable=True)
     purchase_request_number = Column(String, nullable=True)
     supplier_id = Column(String, nullable=True)
@@ -71,9 +76,11 @@ class PurchaseQuotation(Base):
 
 class PurchaseOrder(Base):
     __tablename__ = "erp_purchase_orders"
+    __table_args__ = (UniqueConstraint("tenant_id", "po_number", name="uq_po_tenant_po_number"),)
 
     id = Column(String, primary_key=True, index=True, default=lambda: f"po_{uuid.uuid4().hex[:8]}")
-    po_number = Column(String(50), index=True, unique=True, nullable=False)
+    tenant_id = Column(String, nullable=True, index=True)
+    po_number = Column(String(50), index=True, nullable=False)
     supplier_id = Column(String, nullable=True)
     supplier_name = Column(String(150), nullable=False)
     supplier_gstin = Column(String(50), nullable=True)
@@ -97,9 +104,11 @@ class PurchaseOrder(Base):
 
 class GoodsReceivedNote(Base):
     __tablename__ = "erp_goods_received_notes"
+    __table_args__ = (UniqueConstraint("tenant_id", "grn_number", name="uq_grn_tenant_grn_number"),)
 
     id = Column(String, primary_key=True, index=True, default=lambda: f"grn_{uuid.uuid4().hex[:8]}")
-    grn_number = Column(String(50), index=True, unique=True, nullable=False)
+    tenant_id = Column(String, nullable=True, index=True)
+    grn_number = Column(String(50), index=True, nullable=False)
     po_id = Column(String, nullable=True)
     po_number = Column(String(50), index=True, nullable=False)
     supplier_name = Column(String(150), nullable=False)
@@ -117,9 +126,11 @@ class GoodsReceivedNote(Base):
 
 class PurchaseReturn(Base):
     __tablename__ = "erp_purchase_returns"
+    __table_args__ = (UniqueConstraint("tenant_id", "return_number", name="uq_preturn_tenant_return_number"),)
 
     id = Column(String, primary_key=True, index=True, default=lambda: f"prt_{uuid.uuid4().hex[:8]}")
-    return_number = Column(String(50), index=True, unique=True, nullable=False)
+    tenant_id = Column(String, nullable=True, index=True)
+    return_number = Column(String(50), index=True, nullable=False)
     po_number = Column(String(50), nullable=True)
     grn_number = Column(String(50), nullable=True)
     supplier_name = Column(String(150), nullable=False)
@@ -135,9 +146,11 @@ class PurchaseReturn(Base):
 
 class VendorBill(Base):
     __tablename__ = "erp_vendor_bills"
+    __table_args__ = (UniqueConstraint("tenant_id", "bill_number", name="uq_bill_tenant_bill_number"),)
 
     id = Column(String, primary_key=True, index=True, default=lambda: f"bill_{uuid.uuid4().hex[:8]}")
-    bill_number = Column(String(50), index=True, unique=True, nullable=False)
+    tenant_id = Column(String, nullable=True, index=True)
+    bill_number = Column(String(50), index=True, nullable=False)
     vendor_invoice_number = Column(String(100), nullable=False)
     supplier_name = Column(String(150), nullable=False)
     supplier_gstin = Column(String(50), nullable=True)
@@ -158,9 +171,11 @@ class VendorBill(Base):
 
 class VendorPayment(Base):
     __tablename__ = "erp_vendor_payments"
+    __table_args__ = (UniqueConstraint("tenant_id", "payment_number", name="uq_vpayment_tenant_payment_number"),)
 
     id = Column(String, primary_key=True, index=True, default=lambda: f"vpay_{uuid.uuid4().hex[:8]}")
-    payment_number = Column(String(50), index=True, unique=True, nullable=False)
+    tenant_id = Column(String, nullable=True, index=True)
+    payment_number = Column(String(50), index=True, nullable=False)
     bill_id = Column(String, nullable=True)
     bill_number = Column(String(50), nullable=True)
     supplier_name = Column(String(150), nullable=False)
@@ -176,9 +191,11 @@ class VendorPayment(Base):
 
 class DebitNote(Base):
     __tablename__ = "erp_debit_notes"
+    __table_args__ = (UniqueConstraint("tenant_id", "debit_note_number", name="uq_debitnote_tenant_debit_note_number"),)
 
     id = Column(String, primary_key=True, index=True, default=lambda: f"dn_{uuid.uuid4().hex[:8]}")
-    debit_note_number = Column(String(50), index=True, unique=True, nullable=False)
+    tenant_id = Column(String, nullable=True, index=True)
+    debit_note_number = Column(String(50), index=True, nullable=False)
     supplier_id = Column(String, nullable=True)
     supplier_name = Column(String(150), nullable=False)
     bill_number = Column(String(50), nullable=True)
@@ -195,9 +212,11 @@ class DebitNote(Base):
 
 class CreditNote(Base):
     __tablename__ = "erp_credit_notes"
+    __table_args__ = (UniqueConstraint("tenant_id", "credit_note_number", name="uq_creditnote_tenant_credit_note_number"),)
 
     id = Column(String, primary_key=True, index=True, default=lambda: f"cn_{uuid.uuid4().hex[:8]}")
-    credit_note_number = Column(String(50), index=True, unique=True, nullable=False)
+    tenant_id = Column(String, nullable=True, index=True)
+    credit_note_number = Column(String(50), index=True, nullable=False)
     vendor_ref_number = Column(String(100), nullable=True)
     supplier_id = Column(String, nullable=True)
     supplier_name = Column(String(150), nullable=False)

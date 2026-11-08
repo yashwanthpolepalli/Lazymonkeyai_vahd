@@ -8,6 +8,7 @@ class Membership(Base):
     __tablename__ = "memberships"
 
     id = Column(String, primary_key=True, index=True)
+    tenant_id = Column(String, nullable=True, index=True)
     student_id = Column(String, ForeignKey("students.id"), index=True, nullable=False)
     plan_name = Column(String, nullable=True)
     plan_type = Column(String, nullable=True)

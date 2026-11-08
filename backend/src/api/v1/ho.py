@@ -48,6 +48,9 @@ def get_ho_organizations(
     if is_super:
         branches = db.query(vahdBranch).filter(vahdBranch.is_active == True).all()
     else:
+        # STRICT TENANT SCOPE: an HO with no branches yet sees an empty
+        # directory — never the whole system. (The old fallback to ALL active
+        # branches leaked every other organization's institutions/owners.)
         branches = db.query(vahdBranch).filter(
             or_(
                 vahdBranch.ho_id == ho_id,
@@ -56,8 +59,6 @@ def get_ho_organizations(
             ),
             vahdBranch.is_active == True
         ).all()
-        if not branches:
-            branches = db.query(vahdBranch).filter(vahdBranch.is_active == True).all()
 
     result = []
     for b in branches:
@@ -904,9 +905,12 @@ def _gather_ho_branch_attendance(
         b_query = b_query.filter(
             or_(vahdBranch.ho_id == ho_id, vahdBranch.owner_id == ho_id)
         )
+    is_scoped = bool(ho_id and ho_id != "ho_default")
     branches = b_query.all()
-    if not branches:
-        # Fallback to all active branches so reports are populated across campus locations
+    if not branches and not is_scoped:
+        # Unscoped (super-admin / no HO context): use all active branches.
+        # For a scoped HO user we must NOT widen to every org's branches —
+        # an empty directory stays empty (no cross-organization leak).
         branches = db.query(vahdBranch).filter(vahdBranch.is_active == True).all()
 
     if not branches:

@@ -27,7 +27,13 @@ from src.api.v1.reviews import router as reviews_router
 from src.api.v1.procurement import router as procurement_router
 from src.api.v1.ho import router as ho_router
 
-api_router = APIRouter()
+from src.api.deps import apply_tenant_scope
+
+# Global Phase-2 tenancy enforcement: apply_tenant_scope runs as a router-level
+# dependency on EVERY route, so the request's tenant scope (contextvar consumed
+# by TenantSession) is always set from the JWT — even for the hundreds of
+# endpoints that never declare get_current_user themselves.
+api_router = APIRouter(dependencies=[Depends(apply_tenant_scope)])
 api_router.include_router(ho_router)
 api_router.include_router(auth_router)
 api_router.include_router(students_main_router)

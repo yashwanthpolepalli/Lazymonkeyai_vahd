@@ -8,6 +8,7 @@ class BiometricLog(Base):
     __tablename__ = "biometric_logs"
 
     id = Column(String, primary_key=True, index=True)
+    tenant_id = Column(String, nullable=True, index=True)
     student_id = Column(String, ForeignKey("students.id"), index=True, nullable=True)
     user_role = Column(String, default="student")  # student, employee, OWNER, MANAGER, STAFF
     timestamp = Column(DateTime, default=now_ist_naive)

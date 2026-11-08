@@ -1,15 +1,17 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, Integer, Float, Boolean, DateTime, Text, JSON, ForeignKey
+from sqlalchemy import Column, String, Integer, Float, Boolean, DateTime, Text, JSON, ForeignKey, UniqueConstraint
 from src.database.base import Base
 from src.utils.timezone import now_ist_naive
 
 
 class PosTransaction(Base):
     __tablename__ = "pos_transactions"
+    __table_args__ = (UniqueConstraint("tenant_id", "invoice_number", name="uq_postxn_tenant_invoice_number"),)
 
     id = Column(String, primary_key=True, index=True, default=lambda: f"pos_{uuid.uuid4().hex[:8]}")
-    invoice_number = Column(String(100), unique=True, index=True, nullable=False)
+    tenant_id = Column(String, nullable=True, index=True)
+    invoice_number = Column(String(100), index=True, nullable=False)
     session_id = Column(String(100), nullable=True)
     student_id = Column(String, nullable=True, index=True)
     student_name = Column(String(255), default="Walk-in student")
@@ -35,6 +37,7 @@ class PosSession(Base):
     __tablename__ = "pos_sessions"
 
     id = Column(String, primary_key=True, index=True, default=lambda: f"sess_{uuid.uuid4().hex[:8]}")
+    tenant_id = Column(String, nullable=True, index=True)
     cashier_id = Column(String, nullable=True)
     cashier_name = Column(String(100), default="Sandy Owner")
     opening_cash = Column(Float, default=5000.0)

@@ -8,6 +8,7 @@ class PayrollInvoice(Base):
     __tablename__ = "payroll_invoices"
 
     id = Column(String, primary_key=True, index=True)
+    tenant_id = Column(String, nullable=True, index=True)
     employee_id = Column(String, ForeignKey("employee_profiles.id"), nullable=False, index=True)
     month_year = Column(String, nullable=False, index=True)  # e.g., "2026-08"
     days_present = Column(Integer, default=0)

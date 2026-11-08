@@ -7,6 +7,7 @@ class BiometricDevice(Base):
     __tablename__ = "biometric_devices"
 
     id = Column(String, primary_key=True, index=True)
+    tenant_id = Column(String, nullable=True, index=True)
     external_device_id = Column(String, nullable=True, index=True)
     serial_number = Column(String, nullable=True, index=True)
     device_name = Column(String, nullable=True)

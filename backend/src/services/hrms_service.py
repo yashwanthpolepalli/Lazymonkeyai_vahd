@@ -2589,6 +2589,73 @@ class HrmsService:
             "message": "Attendance correction request submitted successfully"
         }
 
+    @staticmethod
+    def update_attendance_correction(
+        db: Session, correction_id: str, payload: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Update pending attendance correction details.
+
+        Only 'Pending' corrections are editable; approved/rejected records are
+        immutable (status transitions go through the dedicated approve/reject
+        flow to preserve the audit trail).
+
+        Looked up by primary key; the TenantSession auto-filters the query to
+        the caller's tenant scope, so a correction belonging to another
+        organization is not visible and cannot be modified (returns not found).
+        """
+        corr = db.query(AttendanceCorrection).filter(
+            AttendanceCorrection.id == correction_id
+        ).first()
+        if not corr:
+            raise ValueError(f"Attendance correction request '{correction_id}' not found")
+        if (corr.status or "").lower() != "pending":
+            raise ValueError("Only pending attendance correction requests can be edited")
+
+        if "in_time" in payload and payload["in_time"] is not None:
+            corr.in_time = str(payload["in_time"]).strip()
+        if "out_time" in payload and payload["out_time"] is not None:
+            corr.out_time = str(payload["out_time"]).strip()
+        if "reason" in payload and payload["reason"] is not None:
+            corr.reason = str(payload["reason"]).strip()
+        if "reason_details" in payload and payload["reason_details"] is not None:
+            corr.reason_details = str(payload["reason_details"]).strip()
+        if "date" in payload and payload["date"]:
+            try:
+                corr.date = datetime.strptime(str(payload["date"])[:10], "%Y-%m-%d").date()
+            except Exception:
+                pass
+
+        db.commit()
+        db.refresh(corr)
+        return {
+            "id": corr.id,
+            "person_name": corr.person_name,
+            "status": corr.status,
+            "message": "Attendance correction request updated successfully"
+        }
+
+    @staticmethod
+    def delete_attendance_correction(db: Session, correction_id: str) -> Dict[str, Any]:
+        """Delete a pending attendance correction record.
+
+        Tenant-scoped: if the correction belongs to another organization the
+        TenantSession filter hides it and it is reported as 'not found'.
+        """
+        corr = db.query(AttendanceCorrection).filter(
+            AttendanceCorrection.id == correction_id
+        ).first()
+        if not corr:
+            raise ValueError(f"Attendance correction request '{correction_id}' not found")
+        if (corr.status or "").lower() != "pending":
+            raise ValueError("Only pending attendance correction requests can be deleted")
+
+        db.delete(corr)
+        db.commit()
+        return {
+            "id": correction_id,
+            "message": "Attendance correction request deleted successfully"
+        }
+
 
 
     # -------------------------------------------------------------

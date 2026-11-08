@@ -467,6 +467,7 @@ class StudentAttendanceReportService:
                 student_name=report.get("student_name", "Unknown"),
                 parent_phone="MISSING",
                 branch_id=report.get("branch_id"),
+                tenant_id=report.get("branch_id"),
                 year=report.get("year"),
                 month=report.get("month"),
                 month_name=report.get("month_name"),
@@ -517,6 +518,7 @@ class StudentAttendanceReportService:
             student_name=report.get("student_name"),
             parent_phone=parent_phone,
             branch_id=report.get("branch_id"),
+            tenant_id=report.get("branch_id"),
             year=report.get("year"),
             month=report.get("month"),
             month_name=report.get("month_name"),
@@ -741,7 +743,8 @@ class StudentAttendanceReportService:
         db: Session,
         year: Optional[int] = None,
         month: Optional[int] = None,
-        limit: int = 100
+        limit: int = 100,
+        branch_id: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """Returns the chronological audit log of all sent WhatsApp reports."""
         query = db.query(StudentAttendanceReportLog)
@@ -749,6 +752,15 @@ class StudentAttendanceReportService:
             query = query.filter(StudentAttendanceReportLog.year == year)
         if month:
             query = query.filter(StudentAttendanceReportLog.month == month)
+        if branch_id and str(branch_id).lower() not in ["all", "", "none", "undefined", "null"]:
+            # Match by canonical tenant/branch id; fall back to the legacy
+            # branch_id/tenant_id columns already stamped on the log rows.
+            query = query.filter(
+                or_(
+                    StudentAttendanceReportLog.branch_id == branch_id,
+                    StudentAttendanceReportLog.tenant_id == branch_id
+                )
+            )
 
         logs = query.order_by(desc(StudentAttendanceReportLog.created_at)).limit(limit).all()
         return [

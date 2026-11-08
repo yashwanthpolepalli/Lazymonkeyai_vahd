@@ -7,6 +7,7 @@ class Company(Base):
     __tablename__ = "companies"
 
     id = Column(String, primary_key=True, index=True, default=lambda: f"comp_{uuid.uuid4().hex[:8]}")
+    tenant_id = Column(String, nullable=True, index=True)
     name = Column(String, nullable=False, index=True)
     legal_name = Column(String, nullable=False)
     company_type = Column(String, nullable=True)
@@ -48,6 +49,7 @@ class studentReview(Base):
     __tablename__ = "student_reviews"
 
     id = Column(String, primary_key=True, index=True, default=lambda: f"rev_{uuid.uuid4().hex[:8]}")
+    tenant_id = Column(String, nullable=True, index=True)
     company_id = Column(String, nullable=True, index=True)
     student_id = Column(String, nullable=True, index=True)
     student_name = Column(String, nullable=False)

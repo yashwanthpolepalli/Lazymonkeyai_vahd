@@ -8,6 +8,7 @@ class employeeProfile(Base):
     __tablename__ = "employee_profiles"
 
     id = Column(String, primary_key=True, index=True)
+    tenant_id = Column(String, nullable=True, index=True)
     user_id = Column(String, ForeignKey("users.id"), unique=True, nullable=True)
     full_name = Column(String, nullable=False)
     email = Column(String, unique=True, index=True, nullable=False)

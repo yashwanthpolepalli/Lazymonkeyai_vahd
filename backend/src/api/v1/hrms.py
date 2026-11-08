@@ -243,6 +243,30 @@ def approve_attendance_correction(correction_id: str, payload: dict = None, db: 
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+def _correction_value_error(msg: str) -> HTTPException:
+    """404 when the correction isn't found (or belongs to another org);
+    400 for state conflicts like 'only pending requests can be edited'."""
+    code = 404 if "not found" in msg.lower() else 400
+    return HTTPException(status_code=code, detail=msg)
+
+@router.put("/attendance/corrections/{correction_id}")
+def update_attendance_correction(correction_id: str, payload: dict, db: Session = Depends(get_db)):
+    try:
+        return HrmsService.update_attendance_correction(db, correction_id, payload)
+    except ValueError as e:
+        raise _correction_value_error(str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.delete("/attendance/corrections/{correction_id}")
+def delete_attendance_correction(correction_id: str, db: Session = Depends(get_db)):
+    try:
+        return HrmsService.delete_attendance_correction(db, correction_id)
+    except ValueError as e:
+        raise _correction_value_error(str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.put("/attendance/corrections/{correction_id}/reject")
 def reject_attendance_correction(correction_id: str, payload: dict = None, db: Session = Depends(get_db)):
     rejection_reason = (payload or {}).get("rejection_reason", "Rejected by administrator")

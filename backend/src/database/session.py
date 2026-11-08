@@ -10,7 +10,12 @@ engine = create_engine(
     pool_pre_ping=True
 )
 
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+from src.database.tenant_session import TenantSession
+
+# Sessions are TenantSession instances (Phase 2 tenancy layer). When no
+# tenant scope is set (background jobs, platform-admin, unauthenticated
+# requests) they behave exactly like a plain Session.
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine, class_=TenantSession)
 
 def get_db():
     db = SessionLocal()

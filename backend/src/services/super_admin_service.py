@@ -854,6 +854,26 @@ class SuperAdminService:
         db.execute(text("DELETE FROM students WHERE branch_id = :bid"), {"bid": clean_id})
         db.execute(text("UPDATE users SET branch_id = NULL WHERE branch_id = :bid"), {"bid": clean_id})
 
+        # 4.5 Tenant-keyed safety net: every entity table now carries
+        # tenant_id (= branch id). The deletes above also match on
+        # branch_id / free-text names so they cover legacy rows without a
+        # stamped tenant; this purge catches anything stamped tenant_id
+        # that the name/branch_id passes missed.
+        from src.models import (
+            Membership, StudentCourse, StudentAttendanceReportLog,
+            EmployeeAttendanceReportLog, BiometricLog, ShiftTemplate,
+        )
+        tenant_tables_to_purge = [
+            StudentAttendanceReportLog, EmployeeAttendanceReportLog,
+            ShiftTemplate, Membership, StudentCourse, BiometricLog,
+        ]
+        for _tbl in tenant_tables_to_purge:
+            db.query(_tbl).filter(_tbl.tenant_id == clean_id).delete(synchronize_session=False)
+        db.query(student).filter(student.tenant_id == clean_id).delete(synchronize_session=False)
+        db.query(Employee).filter(Employee.tenant_id == clean_id).delete(synchronize_session=False)
+        db.query(employeeProfile).filter(employeeProfile.tenant_id == clean_id).delete(synchronize_session=False)
+        db.query(Course).filter(Course.tenant_id == clean_id).delete(synchronize_session=False)
+
         # 5. Delete the branch itself
         db.delete(branch)
 

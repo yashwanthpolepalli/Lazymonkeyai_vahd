@@ -44,6 +44,12 @@ class Settings(BaseSettings):
     ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))
 
+    # ─── Phase-2 Tenancy Enforcement ───────────────────────────────────
+    # When True, TenantSession auto-injects WHERE tenant_id IN (scope) on
+    # every ORM read and stamps writes. Set to "false" to run in legacy
+    # (unenforced) mode while Phase 2 is being rolled out.
+    TENANT_ENFORCE: bool = os.getenv("TENANT_ENFORCE", "true").lower() in ("1", "true", "yes", "on")
+
     # Individual Database Parameters strictly fetched from .env
     DB_USER: Optional[str] = os.getenv("DB_USER")
     DB_PASSWORD: Optional[str] = os.getenv("DB_PASSWORD")

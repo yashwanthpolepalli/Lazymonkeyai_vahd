@@ -37,8 +37,15 @@ def get_student_slot_bookings(
     student_id: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
-    from src.services.slot_booking_service import SlotBookingService
-    return SlotBookingService.get_all_bookings(db, branch=branch, date=date, student_id=student_id)
+    # The slot-booking service module has not been implemented yet; return a
+    # structured "not available" payload instead of an import-time 500.
+    return {
+        "available": False,
+        "items": [],
+        "total": 0,
+        "message": "Slot bookings are not yet available on this platform.",
+        "filters": {"branch": branch, "date": date, "student_id": student_id},
+    }
 
 @router.get("/{student_id}")
 def get_student(student_id: str, db: Session = Depends(get_db)):
@@ -141,12 +148,14 @@ def get_attendance_reports_overview(
 def get_attendance_report_logs(
     year: Optional[int] = Query(None),
     month: Optional[int] = Query(None),
+    branch_id: Optional[str] = Query(None),
     limit: int = Query(100),
     db: Session = Depends(get_db)
 ):
     """Retrieves persistent audit log of all sent WhatsApp reports."""
+    effective_branch = branch_id if branch_id and branch_id.lower() != "all" else None
     return StudentAttendanceReportService.get_dispatched_logs(
-        db, year=year, month=month, limit=limit
+        db, year=year, month=month, limit=limit, branch_id=effective_branch
     )
 
 @router.post("/attendance-reports/dispatch-monthly")
@@ -257,8 +266,8 @@ def get_students_attendance_overview(year: Optional[int] = Query(None), month: O
     return get_attendance_reports_overview(year=year, month=month, branch_id=branch_id, current_user=current_user, db=db)
 
 @students_router.get("/attendance-reports/logs")
-def get_students_attendance_logs(year: Optional[int] = Query(None), month: Optional[int] = Query(None), limit: int = Query(100), db: Session = Depends(get_db)):
-    return get_attendance_report_logs(year=year, month=month, limit=limit, db=db)
+def get_students_attendance_logs(year: Optional[int] = Query(None), month: Optional[int] = Query(None), branch_id: Optional[str] = Query(None), limit: int = Query(100), db: Session = Depends(get_db)):
+    return get_attendance_report_logs(year=year, month=month, branch_id=branch_id, limit=limit, db=db)
 
 @students_router.post("/attendance-reports/dispatch-monthly")
 def dispatch_students_monthly_attendance(payload: Dict[str, Any] = Body(default={}), current_user: Optional[User] = Depends(get_current_user), db: Session = Depends(get_db)):

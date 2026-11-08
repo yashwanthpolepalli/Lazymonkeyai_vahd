@@ -7,6 +7,7 @@ class MembershipPlan(Base):
     __tablename__ = "membership_plans"
 
     id = Column(String, primary_key=True, index=True)
+    tenant_id = Column(String, nullable=True, index=True)
     owner_id = Column(String, nullable=True, index=True)
     branch_id = Column(String, nullable=True, index=True)
     name = Column(String, nullable=False)

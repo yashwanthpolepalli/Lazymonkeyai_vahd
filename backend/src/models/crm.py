@@ -11,6 +11,7 @@ class PushNotificationTemplate(Base):
     __tablename__ = "push_notification_templates"
 
     id = Column(String, primary_key=True, index=True, default=lambda: f"tpl_{uuid.uuid4().hex[:8]}")
+    tenant_id = Column(String, nullable=True, index=True)
     name = Column(String, nullable=False)
     category = Column(String, default="hrms", index=True)  # hrms, pos, inventory, system
     title_template = Column(String, nullable=False)
@@ -26,6 +27,7 @@ class NotificationBroadcast(Base):
     __tablename__ = "notification_broadcasts"
 
     id = Column(String, primary_key=True, index=True, default=lambda: f"bc_{uuid.uuid4().hex[:8]}")
+    tenant_id = Column(String, nullable=True, index=True)
     title = Column(String, nullable=False)
     body = Column(Text, nullable=False)
     category = Column(String, default="system")
@@ -43,6 +45,7 @@ class LiveNotification(Base):
     __tablename__ = "live_notifications"
 
     id = Column(String, primary_key=True, index=True, default=lambda: f"notif_{uuid.uuid4().hex[:8]}")
+    tenant_id = Column(String, nullable=True, index=True)
     user_id = Column(String, nullable=True, index=True)
     title = Column(String, nullable=False)
     body = Column(Text, nullable=False)
@@ -68,6 +71,7 @@ class WhatsAppSessionModel(Base):
     __tablename__ = "whatsapp_sessions"
 
     id = Column(String, primary_key=True, index=True)  # phone number (e.g. 919908297963)
+    tenant_id = Column(String, nullable=True, index=True)
     session_id = Column(String, index=True, nullable=False)
     status = Column(String, default="QR_READY")  # QR_READY, CONNECTED, DISCONNECTED, PAIRING
     qr = Column(Text, nullable=True)
@@ -81,6 +85,7 @@ class WhatsAppMessageModel(Base):
     __tablename__ = "whatsapp_messages"
 
     id = Column(String, primary_key=True, index=True, default=lambda: f"wam_{uuid.uuid4().hex[:8]}")
+    tenant_id = Column(String, nullable=True, index=True)
     session_id = Column(String, index=True, nullable=False)
     phone = Column(String, index=True, nullable=False)
     body = Column(Text, nullable=False)

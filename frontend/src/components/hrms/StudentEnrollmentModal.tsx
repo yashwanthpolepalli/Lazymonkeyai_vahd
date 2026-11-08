@@ -1077,7 +1077,7 @@ export function StudentEnrollmentModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/70 backdrop-blur-sm overflow-y-auto animate-fade-in">
-      <div className="bg-white dark:bg-slate-900 border-2 border-slate-300 dark:border-slate-700 rounded-3xl w-full max-w-4xl shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col">
+      <div className="bg-white border-2 border-slate-300 rounded-3xl w-full max-w-4xl shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col">
 
         {/* Hidden Logo File Input */}
         <input
@@ -1094,7 +1094,7 @@ export function StudentEnrollmentModal({
             {/* Logo box (Clickable to upload / change logo) */}
             <div
               onClick={() => logoInputRef.current?.click()}
-              className="relative group w-12 h-12 rounded-2xl bg-white/15 hover:bg-white/25 flex items-center justify-center border border-white/25 cursor-pointer shrink-0 transition overflow-hidden shadow-xs"
+              className="relative group w-12 h-12 rounded-2xl bg-white/15 hover flex items-center justify-center border border-white/25 cursor-pointer shrink-0 transition overflow-hidden shadow-xs"
               title="Click to Upload / Change Logo"
             >
               {collegeLogo ? (
@@ -1119,7 +1119,7 @@ export function StudentEnrollmentModal({
                     value={collegeName}
                     onChange={(e) => setCollegeName(e.target.value)}
                     placeholder="e.g. SRI SAI DEGREE COLLEGE - BOBBILI"
-                    className="w-full px-3 py-1.5 bg-white/15 border border-white/30 rounded-xl text-xs font-black uppercase text-white placeholder:text-blue-200 focus:outline-none focus:ring-2 focus:ring-white/40"
+                    className="w-full px-3 py-1.5 bg-white/15 border border-white/30 rounded-xl text-xs font-black uppercase text-white placeholder:text-white/60 focus:outline-none focus:ring-2 focus:ring-white/40"
                   />
                 </div>
                 <div>
@@ -1131,21 +1131,21 @@ export function StudentEnrollmentModal({
                     value={affiliation}
                     onChange={(e) => setAffiliation(e.target.value)}
                     placeholder="e.g. Affiliated to ANDHRA UNIVERSITY"
-                    className="w-full px-3 py-1.5 bg-white/15 border border-white/30 rounded-xl text-xs font-semibold text-white placeholder:text-blue-200 focus:outline-none focus:ring-2 focus:ring-white/40"
+                    className="w-full px-3 py-1.5 bg-white/15 border border-white/30 rounded-xl text-xs font-semibold text-white placeholder:text-white/60 focus:outline-none focus:ring-2 focus:ring-white/40"
                   />
                 </div>
                 <div className="flex items-center gap-2 pt-1 flex-wrap">
                   <button
                     type="button"
                     onClick={handleSaveBranding}
-                    className="px-3 py-1 bg-white text-blue-900 rounded-lg text-xs font-black flex items-center gap-1.5 shadow-sm hover:bg-blue-50 transition cursor-pointer"
+                    className="px-3 py-1 bg-white text-blue-900 rounded-lg text-xs font-black flex items-center gap-1.5 shadow-sm hover transition cursor-pointer"
                   >
                     <Icon name="check" size={13} /> Save Header
                   </button>
                   <button
                     type="button"
                     onClick={() => logoInputRef.current?.click()}
-                    className="px-2.5 py-1 bg-white/20 hover:bg-white/30 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
+                    className="px-2.5 py-1 bg-white/20 hover text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
                   >
                     <Icon name="upload" size={12} /> {collegeLogo ? 'Change Logo' : 'Upload Logo'}
                   </button>
@@ -1156,7 +1156,7 @@ export function StudentEnrollmentModal({
                         setCollegeLogo(null);
                         localStorage.removeItem('ssdc_college_logo');
                       }}
-                      className="px-2.5 py-1 bg-rose-500/30 hover:bg-rose-500/50 text-rose-100 rounded-lg text-xs font-bold transition cursor-pointer"
+                      className="px-2.5 py-1 bg-rose-500/30 hover text-rose-100 rounded-lg text-xs font-bold transition cursor-pointer"
                     >
                       Remove Logo
                     </button>
@@ -1164,7 +1164,7 @@ export function StudentEnrollmentModal({
                   <button
                     type="button"
                     onClick={() => setEditingHeader(false)}
-                    className="px-2.5 py-1 text-blue-200 hover:text-white text-xs font-bold transition cursor-pointer"
+                    className="px-2.5 py-1 text-blue-200 hover text-xs font-bold transition cursor-pointer"
                   >
                     Cancel
                   </button>
@@ -1173,20 +1173,20 @@ export function StudentEnrollmentModal({
             ) : (
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="text-base sm:text-lg font-black tracking-wide leading-tight uppercase truncate">
+                  <h1 className="text-base sm font-black tracking-wide leading-tight uppercase truncate">
                     {studentToEdit ? 'EDIT STUDENT ADMISSION DETAILS' : (collegeName || 'STUDENT ADMISSION FORM')}
                   </h1>
                   <button
                     type="button"
                     onClick={() => setEditingHeader(true)}
-                    className="px-2 py-0.5 rounded-lg bg-white/15 hover:bg-white/25 text-white text-[11px] font-bold flex items-center gap-1 border border-white/20 transition cursor-pointer"
+                    className="px-2 py-0.5 rounded-lg bg-white/15 hover text-white text-[11px] font-bold flex items-center gap-1 border border-white/20 transition cursor-pointer"
                     title="Edit Form Name & Logo"
                   >
                     <Icon name="edit" size={11} />
                     <span>Edit Name & Logo</span>
                   </button>
                 </div>
-                <p className="text-[11px] sm:text-xs text-blue-100 font-semibold tracking-wider truncate">
+                <p className="text-[11px] sm text-blue-100 font-semibold tracking-wider truncate">
                   {affiliation ? `(${affiliation}) • ` : ''}{studentToEdit ? 'Update Admission Dossier' : 'Student Admission Form'}
                 </p>
               </div>
@@ -1197,7 +1197,7 @@ export function StudentEnrollmentModal({
             <button
               type="button"
               onClick={handlePrint}
-              className="px-3 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-black flex items-center gap-1.5 transition border border-white/20 shadow-xs cursor-pointer"
+              className="px-3 py-1.5 rounded-xl bg-white/15 hover text-white text-xs font-black flex items-center gap-1.5 transition border border-white/20 shadow-xs cursor-pointer"
               title="Print Official Admission Form (A4)"
             >
               <Icon name="printer" size={14} />
@@ -1206,7 +1206,7 @@ export function StudentEnrollmentModal({
             <button
               type="button"
               onClick={() => { stopCamera(); onClose(); }}
-              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition cursor-pointer"
+              className="w-8 h-8 rounded-full bg-white/10 hover text-white flex items-center justify-center transition cursor-pointer"
             >
               <Icon name="x" size={18} />
             </button>
@@ -1214,7 +1214,7 @@ export function StudentEnrollmentModal({
         </div>
 
         {/* Form Body Container */}
-        <form onSubmit={handleSubmit} className="p-4 sm:p-6 overflow-y-auto space-y-6 text-xs text-slate-800 dark:text-slate-200">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6 overflow-y-auto space-y-6 text-xs text-slate-800">
 
           {errorMsg && (
             <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold flex items-center gap-2">
@@ -1224,15 +1224,15 @@ export function StudentEnrollmentModal({
           )}
 
           {/* Academic Header & Dynamic Medium + Course Dropdown Selectors */}
-          <div className="border-2 border-slate-800 dark:border-slate-600 rounded-2xl p-4 bg-slate-50/60 dark:bg-slate-800/40 space-y-3.5 shadow-xs">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-700 pb-2.5">
-              <span className="font-extrabold uppercase tracking-wide text-slate-900 dark:text-white text-xs">
+          <div className="border-2 border-slate-800 rounded-2xl p-4 bg-slate-50/60 space-y-3.5 shadow-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-2.5">
+              <span className="font-extrabold uppercase tracking-wide text-slate-900 text-xs">
                 APPLICATION FORM
               </span>
               <div className="flex items-center gap-3 flex-wrap">
                 {branchesList.length > 0 ? (
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400">Institution:</span>
+                    <span className="text-[11px] font-bold text-slate-600">Institution:</span>
                     <select
                       value={selectedBranchId}
                       onChange={(e) => {
@@ -1243,7 +1243,7 @@ export function StudentEnrollmentModal({
                           setCollegeName(getOrgDisplayName(match));
                         }
                       }}
-                      className="px-2 py-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-xs font-black text-blue-700 dark:text-blue-400 shadow-2xs uppercase cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500 max-w-[220px] truncate"
+                      className="px-2 py-1 bg-white border border-slate-300 rounded-lg text-xs font-black text-blue-700 shadow-2xs uppercase cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500 max-w-[220px] truncate"
                     >
                       {branchesList.map((b) => (
                         <option key={b.id} value={b.id}>
@@ -1254,32 +1254,32 @@ export function StudentEnrollmentModal({
                   </div>
                 ) : currentOrg ? (
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400">Organisation:</span>
-                    <span className="px-2.5 py-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-xs font-black text-blue-700 dark:text-blue-400 shadow-2xs uppercase">
+                    <span className="text-[11px] font-bold text-slate-600">Organisation:</span>
+                    <span className="px-2.5 py-1 bg-white border border-slate-300 rounded-lg text-xs font-black text-blue-700 shadow-2xs uppercase">
                       {getOrgDisplayName(currentOrg)}
                     </span>
                   </div>
                 ) : null}
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400">Academic Year:</span>
+                  <span className="text-[11px] font-bold text-slate-600">Academic Year:</span>
                   <input
                     type="text"
                     value={academicYear}
                     onChange={(e) => setAcademicYear(e.target.value)}
                     placeholder="Academic Year (e.g. 2026 - 2027)"
-                    className="w-32 px-2.5 py-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-xs font-bold text-center text-blue-700 dark:text-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-32 px-2.5 py-1 bg-white border border-slate-300 rounded-lg text-xs font-bold text-center text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400">Status:</span>
+                  <span className="text-[11px] font-bold text-slate-600">Status:</span>
                   <select
                     value={status}
                     onChange={(e) => setStatus(e.target.value)}
                     className={cn(
-                      'px-2.5 py-1 bg-white dark:bg-slate-900 border rounded-lg text-xs font-black focus:outline-none focus:ring-2 cursor-pointer shadow-xs',
+                      'px-2.5 py-1 bg-white border rounded-lg text-xs font-black focus:outline-none focus:ring-2 cursor-pointer shadow-xs',
                       status === 'ACTIVE'
-                        ? 'text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-700'
-                        : 'text-rose-700 dark:text-rose-400 border-rose-300 dark:border-rose-700'
+                        ? 'text-emerald-700 border-emerald-300'
+                        : 'text-rose-700 border-rose-300'
                     )}
                   >
                     <option value="ACTIVE">ACTIVE</option>
@@ -1294,14 +1294,14 @@ export function StudentEnrollmentModal({
 
               {/* Department Dropdown (4 cols) */}
               <div className="md:col-span-4 space-y-1.5">
-                <label className="block font-bold text-slate-800 dark:text-slate-200 text-xs">
+                <label className="block font-bold text-slate-800 text-xs">
                   Department:
                 </label>
                 <div className="relative">
                   <select
                     value={department}
                     onChange={(e) => setDepartment(e.target.value)}
-                    className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none pr-8 cursor-pointer shadow-xs"
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none pr-8 cursor-pointer shadow-xs"
                   >
                     <option value="">-- Select Department --</option>
                     {departmentOptions.map((dept) => (
@@ -1316,7 +1316,7 @@ export function StudentEnrollmentModal({
 
               {/* Medium of Instruction Dropdown (3 cols) */}
               <div className="md:col-span-3 space-y-1.5">
-                <label className="block font-bold text-slate-800 dark:text-slate-200 text-xs">
+                <label className="block font-bold text-slate-800 text-xs">
                   Medium of Instruction: <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
@@ -1332,7 +1332,7 @@ export function StudentEnrollmentModal({
                         setMedium(val);
                       }
                     }}
-                    className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none pr-8 cursor-pointer shadow-xs"
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none pr-8 cursor-pointer shadow-xs"
                   >
                     <option value="">-- Select Medium --</option>
                     {(languagesList.length > 0 ? languagesList : DEFAULT_LANGUAGES).map((lang) => (
@@ -1357,7 +1357,7 @@ export function StudentEnrollmentModal({
                         setMedium(e.target.value);
                       }}
                       placeholder="Enter Custom Medium"
-                      className="w-full px-3 py-1.5 bg-white dark:bg-slate-900 border border-blue-400 rounded-lg text-xs font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
+                      className="w-full px-3 py-1.5 bg-white border border-blue-400 rounded-lg text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
                       autoFocus
                     />
                   </div>
@@ -1366,7 +1366,7 @@ export function StudentEnrollmentModal({
 
               {/* Course Dropdown (5 cols) */}
               <div className="md:col-span-5 space-y-1.5">
-                <label className="block font-bold text-slate-800 dark:text-slate-200 text-xs">
+                <label className="block font-bold text-slate-800 text-xs">
                   Degree / Course Program: <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
@@ -1382,7 +1382,7 @@ export function StudentEnrollmentModal({
                         setCourse(val);
                       }
                     }}
-                    className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none pr-8 cursor-pointer shadow-xs"
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none pr-8 cursor-pointer shadow-xs"
                   >
                     <option value="">-- Select Course / Program --</option>
                     {(coursesList.length > 0 ? coursesList : DEFAULT_COURSES).map((c) => (
@@ -1407,7 +1407,7 @@ export function StudentEnrollmentModal({
                         setCourse(e.target.value);
                       }}
                       placeholder="Enter Course / Degree Program Name"
-                      className="w-full px-3 py-1.5 bg-white dark:bg-slate-900 border border-blue-400 rounded-lg text-xs font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
+                      className="w-full px-3 py-1.5 bg-white border border-blue-400 rounded-lg text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
                       autoFocus
                     />
                   </div>
@@ -1415,10 +1415,10 @@ export function StudentEnrollmentModal({
               </div>
 
               {/* Qualification & Specialization Fields (Full 12 columns across) */}
-              <div className="col-span-1 md:col-span-12 grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 mt-1 border-t border-slate-200 dark:border-slate-700">
+              <div className="col-span-1 md:col-span-12 grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 mt-1 border-t border-slate-200">
                 {/* Qualification Dropdown */}
                 <div className="space-y-1.5">
-                  <label className="block font-bold text-slate-800 dark:text-slate-200 text-xs">
+                  <label className="block font-bold text-slate-800 text-xs">
                     Highest Qualification:
                   </label>
                   <div className="relative">
@@ -1434,7 +1434,7 @@ export function StudentEnrollmentModal({
                           setQualification(val);
                         }
                       }}
-                      className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none pr-8 cursor-pointer shadow-xs"
+                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none pr-8 cursor-pointer shadow-xs"
                     >
                       <option value="">-- Select Qualification --</option>
                       {qualificationOptions.map((q) => (
@@ -1462,7 +1462,7 @@ export function StudentEnrollmentModal({
                           setQualification(e.target.value);
                         }}
                         placeholder="Enter Custom Qualification"
-                        className="w-full px-3 py-1.5 bg-white dark:bg-slate-900 border border-blue-400 rounded-lg text-xs font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
+                        className="w-full px-3 py-1.5 bg-white border border-blue-400 rounded-lg text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
                         autoFocus
                       />
                     </div>
@@ -1471,7 +1471,7 @@ export function StudentEnrollmentModal({
 
                 {/* Specialization Dropdown */}
                 <div className="space-y-1.5">
-                  <label className="block font-bold text-slate-800 dark:text-slate-200 text-xs">
+                  <label className="block font-bold text-slate-800 text-xs">
                     Specialization / Branch:
                   </label>
                   <div className="relative">
@@ -1487,7 +1487,7 @@ export function StudentEnrollmentModal({
                           setSpecialization(val);
                         }
                       }}
-                      className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none pr-8 cursor-pointer shadow-xs"
+                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none pr-8 cursor-pointer shadow-xs"
                     >
                       <option value="">-- Select Specialization / Branch --</option>
                       {specializationOptions.map((s) => (
@@ -1515,7 +1515,7 @@ export function StudentEnrollmentModal({
                           setSpecialization(e.target.value);
                         }}
                         placeholder="Enter Custom Specialization"
-                        className="w-full px-3 py-1.5 bg-white dark:bg-slate-900 border border-blue-400 rounded-lg text-xs font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
+                        className="w-full px-3 py-1.5 bg-white border border-blue-400 rounded-lg text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
                         autoFocus
                       />
                     </div>
@@ -1530,7 +1530,7 @@ export function StudentEnrollmentModal({
             {/* Left 9 Cols: Full Name, Father's Name, Mother's Name */}
             <div className="md:col-span-8 space-y-4">
               <div>
-                <label className="block font-bold text-slate-800 dark:text-slate-200 mb-1">
+                <label className="block font-bold text-slate-800 mb-1">
                   1. Full Name <span className="text-slate-500 font-medium">(In BLOCK Letters Only) (As Per SSC)</span> <span className="text-rose-500">*</span>
                 </label>
                 <input
@@ -1539,12 +1539,12 @@ export function StudentEnrollmentModal({
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value.toUpperCase())}
                   placeholder="E.G. sandy"
-                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl font-bold uppercase tracking-wider text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl font-bold uppercase tracking-wider text-slate-900 focus:ring-2 focus:ring-blue-500/30 focus"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-800 dark:text-slate-200 mb-1">
+                <label className="block font-bold text-slate-800 mb-1">
                   2. Father's / Guardian's Name <span className="text-slate-500 font-medium">(In BLOCK Letters Only)</span>
                 </label>
                 <input
@@ -1552,12 +1552,12 @@ export function StudentEnrollmentModal({
                   value={fatherName}
                   onChange={(e) => setFatherName(e.target.value.toUpperCase())}
                   placeholder="FATHER'S FULL NAME"
-                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl font-semibold uppercase tracking-wider text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl font-semibold uppercase tracking-wider text-slate-900 focus:ring-2 focus:ring-blue-500/30 focus"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-800 dark:text-slate-200 mb-1">
+                <label className="block font-bold text-slate-800 mb-1">
                   3. Mother's Name <span className="text-slate-500 font-medium">(In BLOCK Letters)</span>
                 </label>
                 <input
@@ -1565,12 +1565,12 @@ export function StudentEnrollmentModal({
                   value={motherName}
                   onChange={(e) => setMotherName(e.target.value.toUpperCase())}
                   placeholder="MOTHER'S FULL NAME"
-                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl font-semibold uppercase tracking-wider text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl font-semibold uppercase tracking-wider text-slate-900 focus:ring-2 focus:ring-blue-500/30 focus"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-800 dark:text-slate-200 mb-1">
+                <label className="block font-bold text-slate-800 mb-1">
                   4. Parent / Guardian Mobile Number <span className="text-rose-500">*</span>
                 </label>
                 <input
@@ -1580,16 +1580,16 @@ export function StudentEnrollmentModal({
                   value={parentMobile}
                   onChange={(e) => setParentMobile(e.target.value.replace(/\D/g, '').slice(0, 10))}
                   placeholder="9876543210"
-                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl font-semibold uppercase tracking-wider text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl font-semibold uppercase tracking-wider text-slate-900 focus:ring-2 focus:ring-blue-500/30 focus"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-800 dark:text-slate-200 mb-1">
+                <label className="block font-bold text-slate-800 mb-1">
                   5. Student Email Address <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-blue-600 dark:text-blue-400">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-blue-600">
                     <Icon name="mail" size={15} />
                   </div>
                   <input
@@ -1597,14 +1597,14 @@ export function StudentEnrollmentModal({
                     value={studentEmail}
                     onChange={(e) => setStudentEmail(e.target.value)}
                     placeholder="student.email@example.com"
-                    className="w-full pl-10 pr-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl font-semibold text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 shadow-2xs"
+                    className="w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl font-semibold text-slate-900 focus:ring-2 focus:ring-blue-500/30 focus shadow-2xs"
                   />
                 </div>
               </div>
             </div>
 
             {/* Right 3-4 Cols: Photo / Biometric Live Capture Box */}
-            <div className="md:col-span-4 flex flex-col items-center justify-center p-3 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-2xl bg-slate-50 dark:bg-slate-800/60 relative text-center min-h-[190px]">
+            <div className="md:col-span-4 flex flex-col items-center justify-center p-3 border-2 border-dashed border-slate-300 rounded-2xl bg-slate-50 relative text-center min-h-[190px]">
               {cameraActive ? (
                 <div className="w-full flex flex-col items-center space-y-2">
                   <video ref={videoRef} autoPlay playsInline muted className="w-36 h-36 object-cover rounded-xl border border-blue-500 shadow-sm" />
@@ -1612,14 +1612,14 @@ export function StudentEnrollmentModal({
                     <button
                       type="button"
                       onClick={capturePhoto}
-                      className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-[11px] shadow-sm flex items-center gap-1"
+                      className="px-3 py-1 bg-emerald-600 hover text-white rounded-lg font-bold text-[11px] shadow-sm flex items-center gap-1"
                     >
                       <Icon name="camera" size={13} /> Capture
                     </button>
                     <button
                       type="button"
                       onClick={stopCamera}
-                      className="px-3 py-1 bg-slate-600 hover:bg-slate-700 text-white rounded-lg font-bold text-[11px]"
+                      className="px-3 py-1 bg-slate-600 hover text-white rounded-lg font-bold text-[11px]"
                     >
                       Cancel
                     </button>
@@ -1632,14 +1632,14 @@ export function StudentEnrollmentModal({
                     <button
                       type="button"
                       onClick={startCamera}
-                      className="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 text-[10px] font-bold hover:bg-blue-100"
+                      className="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 text-[10px] font-bold hover"
                     >
                       Retake Cam
                     </button>
                     <button
                       type="button"
                       onClick={() => setPhotoBase64(null)}
-                      className="px-2.5 py-1 rounded-lg bg-rose-50 text-rose-700 text-[10px] font-bold hover:bg-rose-100"
+                      className="px-2.5 py-1 rounded-lg bg-rose-50 text-rose-700 text-[10px] font-bold hover"
                     >
                       Remove
                     </button>
@@ -1647,10 +1647,10 @@ export function StudentEnrollmentModal({
                 </div>
               ) : (
                 <div className="space-y-2 p-2">
-                  <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-600 mx-auto flex items-center justify-center">
+                  <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-600 mx-auto flex items-center justify-center">
                     <Icon name="user" size={24} />
                   </div>
-                  <div className="text-[11px] font-extrabold uppercase text-slate-700 dark:text-slate-300">
+                  <div className="text-[11px] font-extrabold uppercase text-slate-700">
                     Passport Photo / Face ID
                   </div>
                   <p className="text-[10px] text-slate-400">Attach passport photo or snap live webcam for Face Recognition</p>
@@ -1658,11 +1658,11 @@ export function StudentEnrollmentModal({
                     <button
                       type="button"
                       onClick={startCamera}
-                      className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-[11px] shadow-sm flex items-center gap-1.5"
+                      className="px-3 py-1.5 rounded-xl bg-blue-600 hover text-white font-bold text-[11px] shadow-sm flex items-center gap-1.5"
                     >
                       <Icon name="camera" size={13} /> Live Cam
                     </button>
-                    <label className="px-3 py-1.5 rounded-xl bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 text-slate-700 dark:text-white font-bold text-[11px] cursor-pointer">
+                    <label className="px-3 py-1.5 rounded-xl bg-slate-200 hover text-slate-700 font-bold text-[11px] cursor-pointer">
                       Upload
                       <input type="file" accept="image/*" onChange={handleFileUpload} className="hidden" />
                     </label>
@@ -1673,75 +1673,75 @@ export function StudentEnrollmentModal({
           </div>
 
           {/* 5. Permanent Postal Address */}
-          <div className="border border-slate-200 dark:border-slate-700 rounded-2xl p-4 bg-white dark:bg-slate-800/40 space-y-3">
-            <span className="font-extrabold text-slate-900 dark:text-white text-xs block underline uppercase tracking-wide">
+          <div className="border border-slate-200 rounded-2xl p-4 bg-white space-y-3">
+            <span className="font-extrabold text-slate-900 text-xs block underline uppercase tracking-wide">
               5. Permanent Postal Address:
             </span>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div>
-                <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">D.No :</label>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">D.No :</label>
                 <input
                   type="text"
                   value={permDoorNo}
                   onChange={(e) => setPermDoorNo(e.target.value)}
                   placeholder="Door / Flat No"
-                  className="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl"
+                  className="w-full px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl"
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">Street :</label>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">Street :</label>
                 <input
                   type="text"
                   value={permStreet}
                   onChange={(e) => setPermStreet(e.target.value)}
                   placeholder="Street / Colony"
-                  className="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl"
+                  className="w-full px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl"
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">Village / Town :</label>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">Village / Town :</label>
                 <input
                   type="text"
                   list="studentTownsList"
                   value={permVillage}
                   onChange={(e) => setPermVillage(e.target.value)}
                   placeholder="Bobbili / Town"
-                  className="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl"
+                  className="w-full px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl"
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">Mandal :</label>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">Mandal :</label>
                 <input
                   type="text"
                   list="studentMandalsList"
                   value={permMandal}
                   onChange={(e) => setPermMandal(e.target.value)}
                   placeholder="Mandal"
-                  className="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl"
+                  className="w-full px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl"
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">District :</label>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">District :</label>
                 <input
                   type="text"
                   list="studentDistrictsList"
                   value={permDistrict}
                   onChange={(e) => setPermDistrict(e.target.value)}
                   placeholder="Vizianagaram"
-                  className="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl"
+                  className="w-full px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl"
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">State :</label>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">State :</label>
                 <input
                   type="text"
                   value={permState}
                   onChange={(e) => setPermState(e.target.value)}
-                  className="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl"
+                  className="w-full px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl"
                 />
               </div>
               <div className="col-span-2">
-                <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">
                   Student Personal Mobile Number <span className="text-rose-500">*</span>:
                 </label>
                 <input
@@ -1750,19 +1750,19 @@ export function StudentEnrollmentModal({
                   value={permMobile}
                   onChange={(e) => setPermMobile(e.target.value)}
                   placeholder="9876543210"
-                  className="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl font-bold text-blue-700 dark:text-blue-400"
+                  className="w-full px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl font-bold text-blue-700"
                 />
               </div>
             </div>
           </div>
 
           {/* 6. Present Address for Correspondence */}
-          <div className="border border-slate-200 dark:border-slate-700 rounded-2xl p-4 bg-white dark:bg-slate-800/40 space-y-3">
+          <div className="border border-slate-200 rounded-2xl p-4 bg-white space-y-3">
             <div className="flex items-center justify-between">
-              <span className="font-extrabold text-slate-900 dark:text-white text-xs underline uppercase tracking-wide">
+              <span className="font-extrabold text-slate-900 text-xs underline uppercase tracking-wide">
                 6. Present Address for Correspondence:
               </span>
-              <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-blue-600 dark:text-blue-400">
+              <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-blue-600">
                 <input
                   type="checkbox"
                   checked={sameAsPermanent}
@@ -1774,85 +1774,85 @@ export function StudentEnrollmentModal({
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div>
-                <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">D.No :</label>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">D.No :</label>
                 <input
                   type="text"
                   value={presDoorNo}
                   onChange={(e) => setPresDoorNo(e.target.value)}
                   placeholder="D.No"
-                  className="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl"
+                  className="w-full px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl"
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">Street :</label>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">Street :</label>
                 <input
                   type="text"
                   value={presStreet}
                   onChange={(e) => setPresStreet(e.target.value)}
                   placeholder="Street"
-                  className="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl"
+                  className="w-full px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl"
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">Village / Town :</label>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">Village / Town :</label>
                 <input
                   type="text"
                   list="studentTownsList"
                   value={presVillage}
                   onChange={(e) => setPresVillage(e.target.value)}
                   placeholder="Village"
-                  className="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl"
+                  className="w-full px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl"
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">Mandal :</label>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">Mandal :</label>
                 <input
                   type="text"
                   list="studentMandalsList"
                   value={presMandal}
                   onChange={(e) => setPresMandal(e.target.value)}
                   placeholder="Mandal"
-                  className="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl"
+                  className="w-full px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl"
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">District :</label>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">District :</label>
                 <input
                   type="text"
                   list="studentDistrictsList"
                   value={presDistrict}
                   onChange={(e) => setPresDistrict(e.target.value)}
                   placeholder="District"
-                  className="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl"
+                  className="w-full px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl"
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">State :</label>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">State :</label>
                 <input
                   type="text"
                   value={presState}
                   onChange={(e) => setPresState(e.target.value)}
-                  className="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl"
+                  className="w-full px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl"
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">Telephone :</label>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">Telephone :</label>
                 <input
                   type="tel"
                   value={telephone}
                   onChange={(e) => setTelephone(e.target.value)}
                   placeholder="Landline / Alt"
-                  className="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl"
+                  className="w-full px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl"
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">Mobile :</label>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">Mobile :</label>
                 <input
                   type="tel"
                   value={presMobile}
                   onChange={(e) => setPresMobile(e.target.value)}
                   placeholder="Mobile"
-                  className="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl"
+                  className="w-full px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl"
                 />
               </div>
             </div>
@@ -1862,8 +1862,8 @@ export function StudentEnrollmentModal({
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
 
             {/* 7. Date of Birth & Age */}
-            <div className="border border-slate-200 dark:border-slate-700 rounded-2xl p-3 bg-white dark:bg-slate-800/40 space-y-2">
-              <label className="block font-bold text-slate-800 dark:text-slate-200">
+            <div className="border border-slate-200 rounded-2xl p-3 bg-white space-y-2">
+              <label className="block font-bold text-slate-800">
                 7. Date of Birth & Age:
               </label>
               <div className="grid grid-cols-2 gap-2">
@@ -1873,7 +1873,7 @@ export function StudentEnrollmentModal({
                     type="date"
                     value={dob}
                     onChange={(e) => handleDobChange(e.target.value)}
-                    className="w-full px-2.5 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl text-xs"
+                    className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-xs"
                   />
                 </div>
                 <div>
@@ -1883,22 +1883,22 @@ export function StudentEnrollmentModal({
                     value={age}
                     onChange={(e) => setAge(e.target.value)}
                     placeholder="Years"
-                    className="w-full px-2.5 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl text-xs font-bold"
+                    className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold"
                   />
                 </div>
               </div>
             </div>
 
             {/* 8. Sex / Gender Dropdown */}
-            <div className="border border-slate-200 dark:border-slate-700 rounded-2xl p-3 bg-white dark:bg-slate-800/40 space-y-1.5">
-              <label className="block font-bold text-slate-800 dark:text-slate-200 text-xs">
+            <div className="border border-slate-200 rounded-2xl p-3 bg-white space-y-1.5">
+              <label className="block font-bold text-slate-800 text-xs">
                 8. Sex / Gender: <span className="text-rose-500">*</span>
               </label>
               <div className="relative">
                 <select
                   value={gender}
                   onChange={(e) => setGender(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 cursor-pointer shadow-xs focus:ring-2 focus:ring-blue-500 appearance-none pr-8"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-800 cursor-pointer shadow-xs focus:ring-2 focus:ring-blue-500 appearance-none pr-8"
                 >
                   {dynamicGenders.map((g) => (
                     <option key={g} value={g}>{g}</option>
@@ -1911,8 +1911,8 @@ export function StudentEnrollmentModal({
             </div>
 
             {/* 10. Mother Tongue & Nationality */}
-            <div className="border border-slate-200 dark:border-slate-700 rounded-2xl p-3 bg-white dark:bg-slate-800/40 space-y-2">
-              <label className="block font-bold text-slate-800 dark:text-slate-200">
+            <div className="border border-slate-200 rounded-2xl p-3 bg-white space-y-2">
+              <label className="block font-bold text-slate-800">
                 10. Mother Tongue & Nationality:
               </label>
               <div className="grid grid-cols-2 gap-2">
@@ -1921,14 +1921,14 @@ export function StudentEnrollmentModal({
                   value={motherTongue}
                   onChange={(e) => setMotherTongue(e.target.value)}
                   placeholder="Mother Tongue"
-                  className="w-full px-2.5 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl"
+                  className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-xl"
                 />
                 <input
                   type="text"
                   value={nationality}
                   onChange={(e) => setNationality(e.target.value)}
                   placeholder="Nationality"
-                  className="w-full px-2.5 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl"
+                  className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-xl"
                 />
               </div>
             </div>
@@ -1936,9 +1936,9 @@ export function StudentEnrollmentModal({
           </div>
 
           {/* 9. Caste Dropdown Selection */}
-          <div className="border border-slate-200 dark:border-slate-700 rounded-2xl p-4 bg-white dark:bg-slate-800/40 space-y-2">
+          <div className="border border-slate-200 rounded-2xl p-4 bg-white space-y-2">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <label className="font-bold text-slate-800 dark:text-slate-200">
+              <label className="font-bold text-slate-800">
                 9. Caste Category: <span className="text-rose-500">*</span>
               </label>
               <div className="flex items-center gap-2">
@@ -1948,7 +1948,7 @@ export function StudentEnrollmentModal({
                   value={subCaste}
                   onChange={(e) => setSubCaste(e.target.value)}
                   placeholder="Sub Caste Name"
-                  className="px-2.5 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-xs"
+                  className="px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs"
                 />
               </div>
             </div>
@@ -1956,7 +1956,7 @@ export function StudentEnrollmentModal({
               <select
                 value={caste}
                 onChange={(e) => setCaste(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 cursor-pointer shadow-xs focus:ring-2 focus:ring-blue-500 appearance-none pr-8"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-800 cursor-pointer shadow-xs focus:ring-2 focus:ring-blue-500 appearance-none pr-8"
               >
                 <option value="">-- Select Caste Category --</option>
                 {dynamicCastes.map((opt) => (
@@ -1971,8 +1971,8 @@ export function StudentEnrollmentModal({
 
           {/* 11 & 12: Marital Status, Blood Group, Place of Birth */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="border border-slate-200 dark:border-slate-700 rounded-2xl p-3.5 bg-white dark:bg-slate-800/40 space-y-3">
-              <label className="block font-bold text-slate-800 dark:text-slate-200 text-xs">
+            <div className="border border-slate-200 rounded-2xl p-3.5 bg-white space-y-3">
+              <label className="block font-bold text-slate-800 text-xs">
                 11. Marital Status & Blood Group:
               </label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1982,7 +1982,7 @@ export function StudentEnrollmentModal({
                     <select
                       value={maritalStatus}
                       onChange={(e) => setMaritalStatus(e.target.value)}
-                      className="w-full px-2.5 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 cursor-pointer shadow-xs focus:ring-2 focus:ring-blue-500 appearance-none pr-8"
+                      className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-800 cursor-pointer shadow-xs focus:ring-2 focus:ring-blue-500 appearance-none pr-8"
                     >
                       <option value="">-- Select Status --</option>
                       {MARITAL_STATUS_OPTIONS.map((ms) => (
@@ -2001,7 +2001,7 @@ export function StudentEnrollmentModal({
                     <select
                       value={bloodGroup}
                       onChange={(e) => setBloodGroup(e.target.value)}
-                      className="w-full px-2.5 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl text-xs font-bold text-rose-600 dark:text-rose-400 cursor-pointer shadow-xs focus:ring-2 focus:ring-blue-500 appearance-none pr-8"
+                      className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-rose-600 cursor-pointer shadow-xs focus:ring-2 focus:ring-blue-500 appearance-none pr-8"
                     >
                       <option value="">-- Select Blood Group --</option>
                       {dynamicBloodGroups.map((bg) => (
@@ -2023,14 +2023,14 @@ export function StudentEnrollmentModal({
                   value={placeOfBirth}
                   onChange={(e) => setPlaceOfBirth(e.target.value)}
                   placeholder="Town / City of Birth"
-                  className="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl text-xs"
+                  className="w-full px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-xs"
                 />
               </div>
             </div>
 
             {/* 12. Identification Marks */}
-            <div className="border border-slate-200 dark:border-slate-700 rounded-2xl p-3.5 bg-white dark:bg-slate-800/40 space-y-2">
-              <label className="block font-bold text-slate-800 dark:text-slate-200">
+            <div className="border border-slate-200 rounded-2xl p-3.5 bg-white space-y-2">
+              <label className="block font-bold text-slate-800">
                 12. Identification Marks (Moles):
               </label>
               <div className="space-y-2 pt-1">
@@ -2041,7 +2041,7 @@ export function StudentEnrollmentModal({
                     value={identificationMark1}
                     onChange={(e) => setIdentificationMark1(e.target.value)}
                     placeholder="A mole on the right side of neck..."
-                    className="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl text-xs"
+                    className="w-full px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-xs"
                   />
                 </div>
                 <div className="flex items-center gap-2">
@@ -2051,7 +2051,7 @@ export function StudentEnrollmentModal({
                     value={identificationMark2}
                     onChange={(e) => setIdentificationMark2(e.target.value)}
                     placeholder="A mole on the left forearm..."
-                    className="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl text-xs"
+                    className="w-full px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-xs"
                   />
                 </div>
               </div>
@@ -2061,8 +2061,8 @@ export function StudentEnrollmentModal({
           {/* 13 & 14: Parent Occupation & Aadhar Card 12 Boxes */}
           <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
             {/* 13. Parent Occupation & Income */}
-            <div className="md:col-span-6 border border-slate-200 dark:border-slate-700 rounded-2xl p-3.5 bg-white dark:bg-slate-800/40 space-y-2">
-              <label className="block font-bold text-slate-800 dark:text-slate-200">
+            <div className="md:col-span-6 border border-slate-200 rounded-2xl p-3.5 bg-white space-y-2">
+              <label className="block font-bold text-slate-800">
                 13. Parent's Occupation & Annual Income:
               </label>
               <div className="grid grid-cols-2 gap-2 pt-1">
@@ -2073,7 +2073,7 @@ export function StudentEnrollmentModal({
                     value={parentOccupation}
                     onChange={(e) => setParentOccupation(e.target.value)}
                     placeholder="Agriculture / Business"
-                    className="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl text-xs"
+                    className="w-full px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-xs"
                   />
                 </div>
                 <div>
@@ -2083,15 +2083,15 @@ export function StudentEnrollmentModal({
                     value={annualIncome}
                     onChange={(e) => setAnnualIncome(e.target.value)}
                     placeholder="₹ 1,50,000"
-                    className="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl text-xs font-bold"
+                    className="w-full px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold"
                   />
                 </div>
               </div>
             </div>
 
             {/* 14. Aadhar Card Number - 12 Segments */}
-            <div className="md:col-span-6 border border-slate-200 dark:border-slate-700 rounded-2xl p-3.5 bg-white dark:bg-slate-800/40 space-y-2">
-              <label className="block font-bold text-slate-800 dark:text-slate-200">
+            <div className="md:col-span-6 border border-slate-200 rounded-2xl p-3.5 bg-white space-y-2">
+              <label className="block font-bold text-slate-800">
                 14. Aadhar Card Number:
               </label>
               <div className="pt-1" onPaste={handleAadharPaste}>
@@ -2104,7 +2104,7 @@ export function StudentEnrollmentModal({
                       maxLength={1}
                       value={digit}
                       onChange={(e) => handleAadharBoxChange(i, e.target.value)}
-                      className="w-full h-9 bg-slate-50 dark:bg-slate-900 border-2 border-slate-300 dark:border-slate-600 rounded-lg text-center font-black text-sm text-slate-900 dark:text-white focus:border-blue-600 focus:bg-blue-50/40 dark:focus:bg-blue-950/40 outline-none transition"
+                      className="w-full h-9 bg-slate-50 border-2 border-slate-300 rounded-lg text-center font-black text-sm text-slate-900 focus focus outline-none transition"
                     />
                   ))}
                 </div>
@@ -2114,7 +2114,7 @@ export function StudentEnrollmentModal({
           </div>
 
           {/* Bottom Action Buttons */}
-          <div className="pt-4 border-t border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
+          <div className="pt-4 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
             <div className="flex items-center gap-2 text-slate-500 text-[11px] font-semibold">
               <Icon name="shield-check" size={16} className="text-blue-600" />
               <span>Verified Collegiate Admission Form • Biometric Sync Ready</span>
@@ -2123,7 +2123,7 @@ export function StudentEnrollmentModal({
               <button
                 type="button"
                 onClick={() => { stopCamera(); onClose(); }}
-                className="flex-1 sm:flex-none px-5 py-2.5 rounded-2xl border border-slate-300 hover:bg-slate-100 dark:border-slate-600 dark:hover:bg-slate-800 font-bold text-xs transition"
+                className="flex-1 sm:flex-none px-5 py-2.5 rounded-2xl border border-slate-300 hover font-bold text-xs transition"
               >
                 Cancel
               </button>

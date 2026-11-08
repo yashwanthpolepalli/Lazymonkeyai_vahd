@@ -226,7 +226,7 @@ export function WhatsAppAttendanceReportsModal({ isOpen, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-900/80 backdrop-blur-sm animate-fade-in">
-      <div className="relative w-full max-w-7xl max-h-[94vh] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl flex flex-col border border-slate-200 dark:border-slate-800 overflow-hidden">
+      <div className="relative w-full max-w-7xl max-h-[94vh] bg-white rounded-2xl shadow-2xl flex flex-col border border-slate-200 overflow-hidden">
 
         {/* Toast Notification */}
         {toastMessage && (
@@ -237,21 +237,21 @@ export function WhatsAppAttendanceReportsModal({ isOpen, onClose }: Props) {
         )}
 
         {/* Modal Header */}
-        <div className="p-5 border-b border-slate-200 dark:border-slate-800 bg-gradient-to-r from-emerald-50 via-teal-50/50 to-white dark:from-slate-800 dark:via-slate-800/90 dark:to-slate-900 flex flex-wrap items-center justify-between gap-4">
+        <div className="p-5 border-b border-slate-200 bg-gradient-to-r from-emerald-50 via-teal-50/50 to-white flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-lg shadow-emerald-500/25">
               <Icon name="message-square" size={24} />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">
+                <h2 className="text-xl font-black text-slate-900 tracking-tight">
                   WhatsApp Monthly Attendance Reports
                 </h2>
-                <span className="px-2 py-0.5 text-xs font-bold bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 rounded-full border border-blue-300 dark:border-blue-700">
+                <span className="px-2 py-0.5 text-xs font-bold bg-blue-100 text-blue-800 rounded-full border border-blue-300">
                   Student Attendance
                 </span>
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-500 mt-0.5">
                 Automated month-end biometric attendance reports dispatched directly to registered mobile numbers.
               </p>
             </div>
@@ -259,11 +259,11 @@ export function WhatsAppAttendanceReportsModal({ isOpen, onClose }: Props) {
 
           <div className="flex items-center gap-3">
             {/* Month & Year Selectors */}
-            <div className="flex items-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-1 shadow-sm">
+            <div className="flex items-center bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
               <select
                 value={targetMonth}
                 onChange={(e) => setTargetMonth(Number(e.target.value))}
-                className="bg-transparent text-sm font-semibold text-slate-800 dark:text-slate-200 px-2 py-1 outline-none cursor-pointer"
+                className="bg-transparent text-sm font-semibold text-slate-800 px-2 py-1 outline-none cursor-pointer"
               >
                 {[
                   'January', 'February', 'March', 'April', 'May', 'June',
@@ -276,7 +276,7 @@ export function WhatsAppAttendanceReportsModal({ isOpen, onClose }: Props) {
               <select
                 value={targetYear}
                 onChange={(e) => setTargetYear(Number(e.target.value))}
-                className="bg-transparent text-sm font-semibold text-slate-800 dark:text-slate-200 px-2 py-1 outline-none cursor-pointer border-l border-slate-200 dark:border-slate-700"
+                className="bg-transparent text-sm font-semibold text-slate-800 px-2 py-1 outline-none cursor-pointer border-l border-slate-200"
               >
                 {[2024, 2025, 2026, 2027].map((yr) => (
                   <option key={yr} value={yr}>{yr}</option>
@@ -289,8 +289,8 @@ export function WhatsAppAttendanceReportsModal({ isOpen, onClose }: Props) {
               type="button"
               onClick={() => setIsGatewayModalOpen(true)}
               className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm border cursor-pointer active:scale-95 ${isGatewayConnected
-                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-700'
-                  : 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-700 hover:bg-amber-100 animate-pulse'
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                  : 'bg-amber-50 text-amber-800 border-amber-300 hover animate-pulse'
                 }`}
               title="Click to view WhatsApp Gateway connection or scan QR code"
             >
@@ -305,7 +305,7 @@ export function WhatsAppAttendanceReportsModal({ isOpen, onClose }: Props) {
                 loadLogs(targetYear, targetMonth);
                 checkGatewayStatus();
               }}
-              className="p-2 text-slate-500 hover:text-slate-800 dark:hover:text-white rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              className="p-2 text-slate-500 hover rounded-xl hover transition-colors"
               title="Refresh attendance records"
             >
               <Icon name="refresh-cw" size={18} className={loading ? 'animate-spin' : ''} />
@@ -313,7 +313,7 @@ export function WhatsAppAttendanceReportsModal({ isOpen, onClose }: Props) {
 
             <button
               onClick={onClose}
-              className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              className="p-2 text-slate-400 hover rounded-xl hover transition-colors"
             >
               <Icon name="x" size={20} />
             </button>
@@ -339,7 +339,7 @@ export function WhatsAppAttendanceReportsModal({ isOpen, onClose }: Props) {
             <button
               type="button"
               onClick={() => setIsGatewayModalOpen(true)}
-              className="px-4 py-2 bg-white text-amber-900 hover:bg-amber-50 font-black rounded-xl shadow-md transition-all text-xs flex items-center gap-1.5 active:scale-95 cursor-pointer shrink-0"
+              className="px-4 py-2 bg-white text-amber-900 hover font-black rounded-xl shadow-md transition-all text-xs flex items-center gap-1.5 active:scale-95 cursor-pointer shrink-0"
             >
               <Icon name="smartphone" size={14} />
               <span>Scan QR Code</span>
@@ -348,40 +348,40 @@ export function WhatsAppAttendanceReportsModal({ isOpen, onClose }: Props) {
         )}
 
         {/* Top KPI Summary Strip */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 p-4 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
-          <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 p-4 bg-slate-50 border-b border-slate-200">
+          <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Total Students</span>
-            <div className="text-xl font-black text-slate-900 dark:text-white mt-0.5">
+            <div className="text-xl font-black text-slate-900 mt-0.5">
               {overview?.total_students ?? 0}
             </div>
             <span className="text-[10px] text-slate-500">Active enrollments</span>
           </div>
 
-          <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-            <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block flex items-center gap-1">
+          <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+            <span className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider block flex items-center gap-1">
               <Icon name="check-circle" size={12} /> Registered Mobiles
             </span>
-            <div className="text-xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5">
+            <div className="text-xl font-black text-emerald-600 mt-0.5">
               {overview?.parents_mapped_count ?? 0}
             </div>
             <span className="text-[10px] text-slate-500">{overview?.missing_parents_count ?? 0} missing numbers</span>
           </div>
 
-          <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-            <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider block flex items-center gap-1">
+          <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+            <span className="text-[11px] font-bold text-blue-600 uppercase tracking-wider block flex items-center gap-1">
               <Icon name="send" size={12} /> Dispatched This Month
             </span>
-            <div className="text-xl font-black text-blue-600 dark:text-blue-400 mt-0.5">
+            <div className="text-xl font-black text-blue-600 mt-0.5">
               {overview?.dispatched_count ?? 0}
             </div>
             <span className="text-[10px] text-slate-500">{overview?.pending_dispatch_count ?? 0} pending dispatch</span>
           </div>
 
-          <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-            <span className="text-[11px] font-bold text-violet-600 dark:text-violet-400 uppercase tracking-wider block flex items-center gap-1">
+          <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+            <span className="text-[11px] font-bold text-violet-600 uppercase tracking-wider block flex items-center gap-1">
               <Icon name="bar-chart-2" size={12} /> Average Attendance
             </span>
-            <div className="text-xl font-black text-violet-600 dark:text-violet-400 mt-0.5">
+            <div className="text-xl font-black text-violet-600 mt-0.5">
               {overview?.average_attendance ?? 0}%
             </div>
             <span className="text-[10px] text-slate-500">Month overall</span>
@@ -398,7 +398,7 @@ export function WhatsAppAttendanceReportsModal({ isOpen, onClose }: Props) {
         </div>
 
         {/* Toolbar Tabs & Actions */}
-        <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-slate-900">
+        <div className="p-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 bg-white">
           <div className="flex items-center gap-2">
             <button
               onClick={() => setActiveTab('mapping')}
@@ -406,7 +406,7 @@ export function WhatsAppAttendanceReportsModal({ isOpen, onClose }: Props) {
                 'px-4 py-2 text-xs font-bold rounded-xl transition-all flex items-center gap-2',
                 activeTab === 'mapping'
                   ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  : 'text-slate-600 hover:text-slate-900'
               )}
             >
               <Icon name="users" size={14} />
@@ -419,7 +419,7 @@ export function WhatsAppAttendanceReportsModal({ isOpen, onClose }: Props) {
                 'px-4 py-2 text-xs font-bold rounded-xl transition-all flex items-center gap-2',
                 activeTab === 'logs'
                   ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  : 'text-slate-600 hover:text-slate-900'
               )}
             >
               <Icon name="file-text" size={14} />
@@ -431,7 +431,7 @@ export function WhatsAppAttendanceReportsModal({ isOpen, onClose }: Props) {
             <button
               disabled={dispatchingAll || (overview?.parents_mapped_count ?? 0) === 0}
               onClick={handleDispatchAll}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-md shadow-emerald-600/20 flex items-center gap-2 transition-all active:scale-95"
+              className="px-4 py-2 bg-emerald-600 hover disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-md shadow-emerald-600/20 flex items-center gap-2 transition-all active:scale-95"
             >
               <Icon name="send" size={14} className={dispatchingAll ? 'animate-bounce' : ''} />
               <span>{dispatchingAll ? 'Dispatching to All Parents...' : '🚀 Dispatch All Month-End WhatsApp Reports'}</span>
@@ -443,7 +443,7 @@ export function WhatsAppAttendanceReportsModal({ isOpen, onClose }: Props) {
         {activeTab === 'mapping' ? (
           <div className="flex-1 flex flex-col min-h-0">
             {/* Filter / Search Bar */}
-            <div className="p-3 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 bg-slate-50/50 dark:bg-slate-850">
+            <div className="p-3 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 bg-slate-50/50">
               <div className="flex items-center gap-2 flex-1 max-w-md">
                 <div className="relative w-full">
                   <Icon name="search" size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -452,7 +452,7 @@ export function WhatsAppAttendanceReportsModal({ isOpen, onClose }: Props) {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search student by name, ID, parent mobile..."
-                    className="w-full pl-9 pr-3 py-1.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 focus:ring-1 focus:ring-emerald-500"
+                    className="w-full pl-9 pr-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg text-slate-900 placeholder-slate-400 focus:ring-1 focus:ring-emerald-500"
                   />
                 </div>
               </div>
@@ -466,8 +466,8 @@ export function WhatsAppAttendanceReportsModal({ isOpen, onClose }: Props) {
                     className={cn(
                       'px-2.5 py-1 text-[11px] font-bold rounded-lg uppercase tracking-wider transition-colors',
                       statusFilter === mode
-                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700'
-                        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                        : 'text-slate-600 hover:text-slate-900'
                     )}
                   >
                     {mode === 'all' && 'All'}
@@ -483,7 +483,7 @@ export function WhatsAppAttendanceReportsModal({ isOpen, onClose }: Props) {
             {/* Table */}
             <div className="flex-1 overflow-auto">
               <table className="w-full text-left text-xs border-collapse">
-                <thead className="sticky top-0 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-[11px] border-b border-slate-200 dark:border-slate-700 z-10">
+                <thead className="sticky top-0 bg-slate-100 text-slate-700 font-bold uppercase tracking-wider text-[11px] border-b border-slate-200 z-10">
                   <tr>
                     <th className="p-3">Student Profile</th>
                     <th className="p-3">Course / Degree</th>
@@ -493,7 +493,7 @@ export function WhatsAppAttendanceReportsModal({ isOpen, onClose }: Props) {
                     <th className="p-3 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                <tbody className="divide-y divide-slate-200">
                   {filteredStudents.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="p-10 text-center text-slate-400">
@@ -504,9 +504,9 @@ export function WhatsAppAttendanceReportsModal({ isOpen, onClose }: Props) {
                     </tr>
                   ) : (
                     filteredStudents.map((s) => (
-                      <tr key={s.student_id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
+                      <tr key={s.student_id} className="hover transition-colors">
                         <td className="p-3">
-                          <div className="font-bold text-slate-900 dark:text-white uppercase">
+                          <div className="font-bold text-slate-900 uppercase">
                             {s.student_name}
                           </div>
                           <div className="text-[11px] text-slate-400 font-mono">
@@ -514,7 +514,7 @@ export function WhatsAppAttendanceReportsModal({ isOpen, onClose }: Props) {
                           </div>
                         </td>
 
-                        <td className="p-3 font-medium text-slate-700 dark:text-slate-300">
+                        <td className="p-3 font-medium text-slate-700">
                           {s.course || 'Degree Program'}
                         </td>
 
@@ -522,10 +522,10 @@ export function WhatsAppAttendanceReportsModal({ isOpen, onClose }: Props) {
                           {s.has_parent_phone ? (
                             <div className="flex items-center gap-1.5">
                               <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                              <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
+                              <span className="font-mono font-bold text-slate-800">
                                 {s.parent_phone}
                               </span>
-                              <span className="px-1.5 py-0.5 text-[9px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 rounded border border-emerald-200 dark:border-emerald-800">
+                              <span className="px-1.5 py-0.5 text-[9px] font-bold bg-emerald-50 text-emerald-700 rounded border border-emerald-200">
                                 MAPPED
                               </span>
                             </div>
@@ -543,10 +543,10 @@ export function WhatsAppAttendanceReportsModal({ isOpen, onClose }: Props) {
                               className={cn(
                                 'px-2 py-0.5 rounded-full text-[11px] font-black',
                                 s.attendance_percentage >= 75
-                                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                                  ? 'bg-emerald-100 text-emerald-800'
                                   : s.attendance_percentage >= 65
-                                    ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                                    : 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
+                                    ? 'bg-amber-100 text-amber-800'
+                                    : 'bg-rose-100 text-rose-800'
                               )}
                             >
                               {s.attendance_percentage}%
@@ -561,7 +561,7 @@ export function WhatsAppAttendanceReportsModal({ isOpen, onClose }: Props) {
                         <td className="p-3">
                           {s.dispatch_status === 'SENT' ? (
                             <div>
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800">
                                 <Icon name="check-circle" size={11} /> SENT VIA WHATSAPP
                               </span>
                               {s.last_dispatched_at && (
@@ -571,7 +571,7 @@ export function WhatsAppAttendanceReportsModal({ isOpen, onClose }: Props) {
                               )}
                             </div>
                           ) : (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">
                               PENDING DISPATCH
                             </span>
                           )}
@@ -582,7 +582,7 @@ export function WhatsAppAttendanceReportsModal({ isOpen, onClose }: Props) {
                             {/* Day-Wise View Button */}
                             <button
                               onClick={() => setSelectedDayWiseStudent(s)}
-                              className="px-2 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-colors"
+                              className="px-2 py-1 bg-slate-100 hover text-slate-800 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-colors"
                               title="View dynamic day-wise attendance"
                             >
                               <Icon name="calendar" size={12} />
@@ -592,7 +592,7 @@ export function WhatsAppAttendanceReportsModal({ isOpen, onClose }: Props) {
                             {/* CSV Download Button */}
                             <button
                               onClick={() => handleDownloadCsv(s.student_id)}
-                              className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950 dark:hover:bg-emerald-900 text-emerald-700 dark:text-emerald-300 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-colors"
+                              className="px-2 py-1 bg-emerald-50 hover text-emerald-700 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-colors"
                               title="Download Day-Wise CSV"
                             >
                               <Icon name="download" size={12} />
@@ -602,7 +602,7 @@ export function WhatsAppAttendanceReportsModal({ isOpen, onClose }: Props) {
                             {/* Printable PDF Button */}
                             <button
                               onClick={() => handlePrintPdf(s.student_id)}
-                              className="px-2 py-1 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950 dark:hover:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-colors"
+                              className="px-2 py-1 bg-blue-50 hover text-blue-700 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-colors"
                               title="Print Official Report PDF"
                             >
                               <Icon name="printer" size={12} />
@@ -613,7 +613,7 @@ export function WhatsAppAttendanceReportsModal({ isOpen, onClose }: Props) {
                             <button
                               disabled={dispatchingStudentId === s.student_id || !s.has_parent_phone}
                               onClick={() => handleSendSingleReport(s)}
-                              className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 transition-all shadow-sm"
+                              className="px-2.5 py-1 bg-emerald-600 hover disabled:opacity-40 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 transition-all shadow-sm"
                               title={`Send to parent ${s.parent_phone}`}
                             >
                               <Icon name="send" size={11} className={dispatchingStudentId === s.student_id ? 'animate-spin' : ''} />
@@ -632,7 +632,7 @@ export function WhatsAppAttendanceReportsModal({ isOpen, onClose }: Props) {
           /* Logs Tab */
           <div className="flex-1 overflow-auto">
             <table className="w-full text-left text-xs border-collapse">
-              <thead className="sticky top-0 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-[11px] border-b border-slate-200 dark:border-slate-700 z-10 shadow-sm">
+              <thead className="sticky top-0 bg-slate-100 text-slate-700 font-bold uppercase tracking-wider text-[11px] border-b border-slate-200 z-10 shadow-sm">
                 <tr>
                   <th className="p-3">Dispatched Time (IST)</th>
                   <th className="p-3">Student Name</th>
@@ -644,7 +644,7 @@ export function WhatsAppAttendanceReportsModal({ isOpen, onClose }: Props) {
                   <th className="p-3 text-right">Message</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+              <tbody className="divide-y divide-slate-200">
                 {logs.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="p-10 text-center text-slate-400">
@@ -655,14 +655,14 @@ export function WhatsAppAttendanceReportsModal({ isOpen, onClose }: Props) {
                   </tr>
                 ) : (
                   logs.map((log) => (
-                    <tr key={log.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
+                    <tr key={log.id} className="hover">
                       <td className="p-3 font-mono text-slate-500">{log.created_at}</td>
-                      <td className="p-3 font-bold text-slate-900 dark:text-white uppercase">{log.student_name}</td>
-                      <td className="p-3 font-mono font-bold text-emerald-600 dark:text-emerald-400">{log.parent_phone}</td>
+                      <td className="p-3 font-bold text-slate-900 uppercase">{log.student_name}</td>
+                      <td className="p-3 font-mono font-bold text-emerald-600">{log.parent_phone}</td>
                       <td className="p-3">{log.month_name} {log.year}</td>
                       <td className="p-3 font-bold">{log.attendance_percentage}%</td>
                       <td className="p-3">
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
                           {log.delivery_status}
                         </span>
                       </td>
@@ -673,7 +673,7 @@ export function WhatsAppAttendanceReportsModal({ isOpen, onClose }: Props) {
                             title: `WhatsApp Message for ${log.student_name}`,
                             body: log.message_body,
                           })}
-                          className="px-2 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded text-[11px] font-semibold"
+                          className="px-2 py-1 bg-slate-100 hover text-slate-700 rounded text-[11px] font-semibold"
                         >
                           View Message
                         </button>
@@ -687,7 +687,7 @@ export function WhatsAppAttendanceReportsModal({ isOpen, onClose }: Props) {
         )}
 
         {/* Modal Footer */}
-        <div className="p-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-850 flex items-center justify-between text-xs text-slate-500">
+        <div className="p-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between text-xs text-slate-500">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
             <span>Biometric Live Sync Active • Attendance records pulled directly from biometric terminals.</span>
@@ -695,7 +695,7 @@ export function WhatsAppAttendanceReportsModal({ isOpen, onClose }: Props) {
           <div>
             <button
               onClick={onClose}
-              className="px-4 py-1.5 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 rounded-lg font-bold text-xs"
+              className="px-4 py-1.5 bg-slate-200 hover text-slate-800 rounded-lg font-bold text-xs"
             >
               Close
             </button>
@@ -706,10 +706,10 @@ export function WhatsAppAttendanceReportsModal({ isOpen, onClose }: Props) {
       {/* Dynamic Day-Wise Attendance Modal */}
       {selectedDayWiseStudent && (
         <div className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
-          <div className="w-full max-w-3xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col max-h-[88vh] overflow-hidden">
-            <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/60">
+          <div className="w-full max-w-3xl bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col max-h-[88vh] overflow-hidden">
+            <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
               <div>
-                <h3 className="font-bold text-base text-slate-900 dark:text-white uppercase">
+                <h3 className="font-bold text-base text-slate-900 uppercase">
                   {selectedDayWiseStudent.student_name} — Day-Wise Attendance
                 </h3>
                 <div className="text-xs text-slate-500 flex items-center gap-3 mt-0.5">
@@ -720,7 +720,7 @@ export function WhatsAppAttendanceReportsModal({ isOpen, onClose }: Props) {
               </div>
               <button
                 onClick={() => setSelectedDayWiseStudent(null)}
-                className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+                className="p-1.5 text-slate-400 hover rounded-lg hover"
               >
                 <Icon name="x" size={18} />
               </button>
@@ -728,7 +728,7 @@ export function WhatsAppAttendanceReportsModal({ isOpen, onClose }: Props) {
 
             <div className="flex-1 overflow-auto p-4">
               <table className="w-full text-left text-xs border-collapse">
-                <thead className="sticky top-0 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold uppercase text-[10px]">
+                <thead className="sticky top-0 bg-slate-100 text-slate-700 font-bold uppercase text-[10px]">
                   <tr>
                     <th className="p-2">Day</th>
                     <th className="p-2">Date</th>
@@ -739,25 +739,25 @@ export function WhatsAppAttendanceReportsModal({ isOpen, onClose }: Props) {
                     <th className="p-2">Device</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                <tbody className="divide-y divide-slate-100">
                   {selectedDayWiseStudent.day_wise_records?.map((r) => (
-                    <tr key={r.day} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                    <tr key={r.day} className="hover">
                       <td className="p-2 font-mono font-bold">{r.day}</td>
                       <td className="p-2">{r.date}</td>
                       <td className="p-2 font-medium">{r.weekday}</td>
                       <td className="p-2">
                         {r.status === 'PRESENT' && (
-                          <span className="px-2 py-0.5 rounded text-[10px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-black bg-emerald-100 text-emerald-800">
                             PRESENT
                           </span>
                         )}
                         {r.status === 'ABSENT' && (
-                          <span className="px-2 py-0.5 rounded text-[10px] font-black bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-black bg-rose-100 text-rose-800">
                             ABSENT
                           </span>
                         )}
                         {r.status === 'SUNDAY' && (
-                          <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600">
                             SUNDAY
                           </span>
                         )}
@@ -765,8 +765,8 @@ export function WhatsAppAttendanceReportsModal({ isOpen, onClose }: Props) {
                           <span className="text-slate-400 text-[10px]">--</span>
                         )}
                       </td>
-                      <td className="p-2 font-mono text-slate-700 dark:text-slate-300">{r.punch_time || '--'}</td>
-                      <td className="p-2 font-mono text-slate-700 dark:text-slate-300">{r.check_out_time || '--'}</td>
+                      <td className="p-2 font-mono text-slate-700">{r.punch_time || '--'}</td>
+                      <td className="p-2 font-mono text-slate-700">{r.check_out_time || '--'}</td>
                       <td className="p-2 text-slate-500 text-[10px]">{r.device || '--'}</td>
                     </tr>
                   ))}
@@ -774,18 +774,18 @@ export function WhatsAppAttendanceReportsModal({ isOpen, onClose }: Props) {
               </table>
             </div>
 
-            <div className="p-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 flex items-center justify-between">
+            <div className="p-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => handleDownloadCsv(selectedDayWiseStudent.student_id)}
-                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm"
+                  className="px-3 py-1.5 bg-emerald-600 hover text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm"
                 >
                   <Icon name="download" size={13} />
                   <span>Download Day-wise CSV</span>
                 </button>
                 <button
                   onClick={() => handlePrintPdf(selectedDayWiseStudent.student_id)}
-                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm"
+                  className="px-3 py-1.5 bg-blue-600 hover text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm"
                 >
                   <Icon name="printer" size={13} />
                   <span>Print Official PDF</span>
@@ -793,7 +793,7 @@ export function WhatsAppAttendanceReportsModal({ isOpen, onClose }: Props) {
               </div>
               <button
                 onClick={() => setSelectedDayWiseStudent(null)}
-                className="px-3 py-1.5 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-lg text-xs font-bold"
+                className="px-3 py-1.5 bg-slate-200 text-slate-800 rounded-lg text-xs font-bold"
               >
                 Close
               </button>
@@ -805,20 +805,20 @@ export function WhatsAppAttendanceReportsModal({ isOpen, onClose }: Props) {
       {/* Message Body Preview Modal */}
       {previewMessage && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
-          <div className="w-full max-w-xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-5 flex flex-col max-h-[85vh]">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
-              <h4 className="font-bold text-sm text-slate-900 dark:text-white">{previewMessage.title}</h4>
-              <button onClick={() => setPreviewMessage(null)} className="text-slate-400 hover:text-slate-700">
+          <div className="w-full max-w-xl bg-white rounded-2xl shadow-2xl border border-slate-200 p-5 flex flex-col max-h-[85vh]">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+              <h4 className="font-bold text-sm text-slate-900">{previewMessage.title}</h4>
+              <button onClick={() => setPreviewMessage(null)} className="text-slate-400 hover">
                 <Icon name="x" size={18} />
               </button>
             </div>
-            <div className="flex-1 overflow-auto my-3 p-4 bg-emerald-50/50 dark:bg-slate-950 rounded-xl font-mono text-xs whitespace-pre-wrap leading-relaxed text-slate-800 dark:text-slate-200 border border-emerald-100 dark:border-slate-800">
+            <div className="flex-1 overflow-auto my-3 p-4 bg-emerald-50/50 rounded-xl font-mono text-xs whitespace-pre-wrap leading-relaxed text-slate-800 border border-emerald-100">
               {previewMessage.body}
             </div>
-            <div className="text-right pt-2 border-t border-slate-200 dark:border-slate-800">
+            <div className="text-right pt-2 border-t border-slate-200">
               <button
                 onClick={() => setPreviewMessage(null)}
-                className="px-4 py-1.5 bg-slate-900 text-white dark:bg-white dark:text-slate-900 rounded-lg text-xs font-bold"
+                className="px-4 py-1.5 bg-slate-900 text-white rounded-lg text-xs font-bold"
               >
                 Close Preview
               </button>

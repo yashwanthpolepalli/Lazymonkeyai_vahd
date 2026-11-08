@@ -375,7 +375,7 @@ export function StudentManagementTab() {
     const name = studentName || 'this student';
     if (!window.confirm(`Are you sure you want to delete ${name}? This action cannot be undone.`)) return;
     try {
-      const res = await apiClient.delete(`/students/${studentId}`);
+      const res: any = await apiClient.delete(`/students/${studentId}`);
       // Check explicit success field if present
       if (res && res.success === false) {
         showToast(res.message || 'Failed to delete student.');

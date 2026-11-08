@@ -362,75 +362,132 @@ export function EmployeeHrmsPage() {
           <EmployeeGeofencePunchWidget onPunchSuccess={fetchemployeeData} />
 
 
-          {/* KPI Row */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white rounded-2xl p-5 border border-navy-100 shadow-sm">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-navy-500 uppercase tracking-wider">Days Present</span>
-                <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                  <Icon name="check-circle" size={16} />
+          {/* KPI Row matching modern dashboard theme */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="p-5 bg-white border border-slate-200/90 rounded-2xl shadow-2xs hover:shadow-md transition-all duration-200 relative overflow-hidden flex flex-col justify-between group">
+              <div className="flex items-start gap-4 relative z-10">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100/90 flex items-center justify-center shrink-0 shadow-2xs">
+                  <Icon name="user-check" size={22} className="text-emerald-600" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span className="text-xs font-bold text-slate-600 block">Days Present</span>
+                  <div className="text-3xl font-black text-slate-900 tracking-tight leading-none mt-1">
+                    {attendanceLogs.length > 0 ? new Set(attendanceLogs.map((a: any) => a.timestamp?.slice(0, 10))).size : 24} Days
+                  </div>
+                  <div className="text-xs font-bold mt-2 flex items-center gap-1 text-emerald-600">
+                    This current month
+                  </div>
                 </div>
               </div>
-              <div className="text-2xl font-black text-navy-900">
-                {attendanceLogs.length > 0 ? new Set(attendanceLogs.map((a: any) => a.timestamp?.slice(0, 10))).size : 24} Days
-              </div>
-              <div className="text-[11px] text-emerald-600 font-bold mt-1">This current month</div>
+              <svg className="absolute -bottom-1 right-0 w-3/4 h-12 pointer-events-none opacity-40 group-hover:opacity-60 transition-opacity text-emerald-200/60" viewBox="0 0 160 50" fill="none" preserveAspectRatio="none">
+                <path d="M0,50 Q45,28 95,38 T160,12 L160,50 Z" fill="currentColor" />
+              </svg>
             </div>
 
-            <div className="bg-white rounded-2xl p-5 border border-navy-100 shadow-sm">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-navy-500 uppercase tracking-wider">Approved Leaves</span>
-                <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
-                  <Icon name="calendar" size={16} />
+            <div className="p-5 bg-white border border-slate-200/90 rounded-2xl shadow-2xs hover:shadow-md transition-all duration-200 relative overflow-hidden flex flex-col justify-between group">
+              <div className="flex items-start gap-4 relative z-10">
+                <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 border border-purple-100/90 flex items-center justify-center shrink-0 shadow-2xs">
+                  <Icon name="calendar" size={22} className="text-purple-600" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span className="text-xs font-bold text-slate-600 block">Approved Leaves</span>
+                  <div className="text-3xl font-black text-slate-900 tracking-tight leading-none mt-1">
+                    {leaves.filter((l) => (l.status || '').toLowerCase() === 'approved').reduce((acc, l) => acc + (l.days || 0), 0)} Days
+                  </div>
+                  <div className="text-xs font-bold mt-2 flex items-center gap-1 text-purple-600">
+                    Excused &amp; paid leaves
+                  </div>
                 </div>
               </div>
-              <div className="text-2xl font-black text-purple-700">
-                {leaves.filter((l) => l.status === 'Approved').reduce((acc, l) => acc + (l.days || 0), 0)} Days
-              </div>
-              <div className="text-[11px] text-purple-700 font-bold mt-1">Excused &amp; paid leaves</div>
+              <svg className="absolute -bottom-1 right-0 w-3/4 h-12 pointer-events-none opacity-40 group-hover:opacity-60 transition-opacity text-purple-200/60" viewBox="0 0 160 50" fill="none" preserveAspectRatio="none">
+                <path d="M0,50 Q45,28 95,38 T160,12 L160,50 Z" fill="currentColor" />
+              </svg>
             </div>
 
-            <div className="bg-white rounded-2xl p-5 border border-navy-100 shadow-sm">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-navy-500 uppercase tracking-wider">Active PT Clients</span>
-                <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-                  <Icon name="users" size={16} />
+            <div className="p-5 bg-white border border-slate-200/90 rounded-2xl shadow-2xs hover:shadow-md transition-all duration-200 relative overflow-hidden flex flex-col justify-between group">
+              <div className="flex items-start gap-4 relative z-10">
+                <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 border border-blue-100/90 flex items-center justify-center shrink-0 shadow-2xs">
+                  <Icon name="users" size={22} className="text-blue-600" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span className="text-xs font-bold text-slate-600 block">Active PT Clients</span>
+                  <div className="text-3xl font-black text-slate-900 tracking-tight leading-none mt-1">
+                    {employeeProfile?.assigned_students_count || 4} Members
+                  </div>
+                  <div className="text-xs font-bold mt-2 flex items-center gap-1 text-blue-600">
+                    Assigned for training
+                  </div>
                 </div>
               </div>
-              <div className="text-2xl font-black text-navy-900">
-                {employeeProfile?.assigned_students_count || 4} Members
-              </div>
-              <div className="text-[11px] text-blue-600 font-bold mt-1">Assigned for training</div>
+              <svg className="absolute -bottom-1 right-0 w-3/4 h-12 pointer-events-none opacity-40 group-hover:opacity-60 transition-opacity text-sky-200/60" viewBox="0 0 160 50" fill="none" preserveAspectRatio="none">
+                <path d="M0,50 Q45,28 95,38 T160,12 L160,50 Z" fill="currentColor" />
+              </svg>
             </div>
 
-            <div className="bg-white rounded-2xl p-5 border border-navy-100 shadow-sm">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-navy-500 uppercase tracking-wider">Punctuality Score</span>
-                <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
-                  <Icon name="award" size={16} />
+            <div className="p-5 bg-white border border-slate-200/90 rounded-2xl shadow-2xs hover:shadow-md transition-all duration-200 relative overflow-hidden flex flex-col justify-between group">
+              <div className="flex items-start gap-4 relative z-10">
+                <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 border border-amber-100/90 flex items-center justify-center shrink-0 shadow-2xs">
+                  <Icon name="award" size={22} className="text-amber-600" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span className="text-xs font-bold text-slate-600 block">Punctuality Score</span>
+                  <div className="text-3xl font-black text-slate-900 tracking-tight leading-none mt-1">
+                    98.5%
+                  </div>
+                  <div className="text-xs font-bold mt-2 flex items-center gap-1 text-amber-600">
+                    On-time attendance rate
+                  </div>
                 </div>
               </div>
-              <div className="text-2xl font-black text-navy-900">98.5%</div>
-              <div className="text-[11px] text-amber-600 font-bold mt-1">On-time attendance rate</div>
+              <svg className="absolute -bottom-1 right-0 w-3/4 h-12 pointer-events-none opacity-40 group-hover:opacity-60 transition-opacity text-amber-200/60" viewBox="0 0 160 50" fill="none" preserveAspectRatio="none">
+                <path d="M0,50 Q45,28 95,38 T160,12 L160,50 Z" fill="currentColor" />
+              </svg>
             </div>
           </div>
 
           {/* Personal Punch History */}
-          <div className="bg-white border border-navy-100 rounded-2xl shadow-sm p-5 space-y-4">
-            <div className="flex items-center justify-between border-b border-navy-100 pb-3">
-              <div>
-                <h3 className="text-sm font-black text-navy-900 flex items-center gap-2">
-                  <Icon name="history" size={16} className="text-purple-600" />
-                  <span>Personal Attendance &amp; Shift History</span>
-                </h3>
-                <p className="text-xs text-navy-500">Live biometric &amp; mobile punches recorded in database.</p>
+          <div className="bg-white border border-slate-200/90 rounded-2xl shadow-2xs p-5 space-y-4 relative overflow-hidden">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 border border-purple-100 shadow-2xs">
+                  <Icon name="history" size={18} className="text-purple-600" />
+                </div>
+                <div>
+                  <h3 className="text-sm sm:text-base font-black text-slate-900 tracking-tight">
+                    Personal Attendance &amp; Shift History
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium">Live biometric &amp; mobile punches recorded in database.</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <div className="border border-slate-200 bg-white hover:bg-slate-50 rounded-xl px-3.5 py-1.5 text-xs font-bold text-slate-700 flex items-center gap-1.5 shadow-2xs cursor-pointer">
+                  <Icon name="calendar" size={14} className="text-purple-600" />
+                  <span>This Month</span>
+                  <Icon name="chevron-down" size={13} className="text-slate-400" />
+                </div>
+                <div className="border border-slate-200 bg-white hover:bg-slate-50 rounded-xl px-3.5 py-1.5 text-xs font-bold text-slate-700 flex items-center gap-1.5 shadow-2xs cursor-pointer">
+                  <Icon name="download" size={14} className="text-slate-600" />
+                  <span>Export</span>
+                  <Icon name="chevron-down" size={13} className="text-slate-400" />
+                </div>
               </div>
             </div>
 
             {attendanceLogs.length === 0 ? (
-              <div className="py-12 text-center text-navy-400 text-xs font-bold">
-                <Icon name="calendar-check" size={28} className="mx-auto text-navy-300 mb-2" />
-                <div>No personal punch records logged yet. Clock in using the widget above.</div>
+              <div className="py-14 text-center space-y-2 relative z-10">
+                <div className="w-14 h-14 rounded-2xl bg-purple-50 text-purple-600 border border-purple-100 flex items-center justify-center mx-auto mb-3 shadow-2xs">
+                  <Icon name="calendar" size={28} className="text-purple-600" />
+                </div>
+                <h4 className="text-base font-black text-slate-900">
+                  No attendance records yet
+                </h4>
+                <p className="text-xs text-slate-500 font-medium max-w-sm mx-auto">
+                  Your check-in and check-out history will appear here.
+                </p>
+                <svg className="absolute -bottom-1 left-0 right-0 w-full h-16 pointer-events-none opacity-30 text-purple-200" viewBox="0 0 160 50" fill="none" preserveAspectRatio="none">
+                  <path d="M0,50 Q45,28 95,38 T160,12 L160,50 Z" fill="currentColor" />
+                </svg>
               </div>
             ) : (
               <div className="overflow-x-auto">

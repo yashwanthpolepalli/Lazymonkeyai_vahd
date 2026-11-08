@@ -590,86 +590,86 @@ export const HoDashboard: React.FC = () => {
       {hoTab === 'overview' && (
         <>
           {/* ── KPI HIGHLIGHTS CARDS ──────────────────────────────────────────── */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             {/* KPI 1: Organizations Scope */}
             <div
               onClick={() => navigate('/ho/organisations')}
-              className="rounded-2xl border border-slate-200/90 bg-gradient-to-br from-white via-white to-purple-50/40 p-5 shadow-2xs relative overflow-hidden flex items-start gap-4 group hover:border-purple-300 transition-all cursor-pointer"
+              className="rounded-2xl border border-slate-200/90 bg-gradient-to-br from-white via-white to-purple-50/40 p-3.5 sm:p-4 shadow-2xs relative overflow-hidden flex items-start gap-3 group hover:border-purple-300 transition-all cursor-pointer"
               title="Click to view full Organisations Attendance Matrix"
             >
-              <div className="w-12 h-12 rounded-2xl bg-purple-50/80 border border-purple-100 flex items-center justify-center shrink-0">
-                <Icon name="building-2" size={20} className="text-purple-600" />
+              <div className="w-9 h-9 rounded-xl bg-purple-50/90 border border-purple-100 flex items-center justify-center shrink-0">
+                <Icon name="building-2" size={17} className="text-purple-600" />
               </div>
               <div className="space-y-0.5 min-w-0">
-                <span className="text-[10px] font-black uppercase tracking-wider text-slate-800">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-800 block">
                   ORGANIZATIONS
                 </span>
-                <div className="text-3xl font-black text-slate-900 leading-tight mt-1">
+                <div className="text-xl sm:text-2xl font-black text-slate-900 leading-tight">
                   {data?.is_filtered ? '1' : data?.total_organizations ?? 0}
                 </div>
-                <p className="text-xs text-slate-400 font-medium mt-1 truncate">
+                <p className="text-[11px] text-slate-400 font-medium truncate pt-0.5">
                   Active branches under Head Office
                 </p>
               </div>
-              <div className="absolute -bottom-8 -right-8 w-28 h-28 bg-purple-100/50 rounded-full blur-2xl pointer-events-none" />
+              <div className="absolute -bottom-6 -right-6 w-20 h-20 bg-purple-100/40 rounded-full blur-xl pointer-events-none" />
             </div>
 
             {/* KPI 2: Total Employees */}
-            <div className="rounded-2xl border-2 border-sky-400/90 bg-gradient-to-br from-white via-sky-50/30 to-sky-100/60 p-5 shadow-2xs relative overflow-hidden flex items-start gap-4 group hover:border-sky-500 transition-all">
-              <div className="w-12 h-12 rounded-2xl bg-sky-50 border border-sky-100 flex items-center justify-center shrink-0">
-                <Icon name="users" size={20} className="text-sky-500" />
+            <div className="rounded-2xl border-2 border-sky-400/90 bg-gradient-to-br from-white via-sky-50/30 to-sky-100/50 p-3.5 sm:p-4 shadow-2xs relative overflow-hidden flex items-start gap-3 group hover:border-sky-500 transition-all">
+              <div className="w-9 h-9 rounded-xl bg-sky-50 border border-sky-100 flex items-center justify-center shrink-0">
+                <Icon name="users" size={17} className="text-sky-500" />
               </div>
               <div className="space-y-0.5 min-w-0">
-                <span className="text-[10px] font-black uppercase tracking-wider text-slate-800">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-800 block">
                   TOTAL STAFF
                 </span>
-                <div className="text-3xl font-black text-slate-900 leading-tight mt-1">
+                <div className="text-xl sm:text-2xl font-black text-slate-900 leading-tight">
                   {data?.total_employees ?? 0}
                 </div>
-                <p className="text-xs text-emerald-600 font-bold flex items-center gap-1.5 mt-1 truncate">
+                <p className="text-[11px] text-emerald-600 font-bold flex items-center gap-1.5 pt-0.5 truncate">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block shrink-0" />
                   <span>Active HRMS employees</span>
                 </p>
               </div>
-              <div className="absolute -bottom-8 -right-8 w-32 h-32 bg-sky-200/50 rounded-full blur-2xl pointer-events-none" />
+              <div className="absolute -bottom-6 -right-6 w-24 h-24 bg-sky-200/40 rounded-full blur-xl pointer-events-none" />
             </div>
 
             {/* KPI 3: Total Students */}
-            <div className="rounded-2xl border border-amber-300/80 bg-gradient-to-br from-white via-amber-50/20 to-amber-100/50 p-5 shadow-2xs relative overflow-hidden flex items-start gap-4 group hover:border-amber-400 transition-all">
-              <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-100 flex items-center justify-center shrink-0">
-                <Icon name="graduation-cap" size={20} className="text-amber-600" />
+            <div className="rounded-2xl border border-amber-300/90 bg-gradient-to-br from-white via-amber-50/20 to-amber-100/40 p-3.5 sm:p-4 shadow-2xs relative overflow-hidden flex items-start gap-3 group hover:border-amber-400 transition-all">
+              <div className="w-9 h-9 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center shrink-0">
+                <Icon name="graduation-cap" size={17} className="text-amber-600" />
               </div>
               <div className="space-y-0.5 min-w-0">
-                <span className="text-[10px] font-black uppercase tracking-wider text-slate-800">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-800 block">
                   TOTAL STUDENTS
                 </span>
-                <div className="text-3xl font-black text-slate-900 leading-tight mt-1">
+                <div className="text-xl sm:text-2xl font-black text-slate-900 leading-tight">
                   {data?.total_students ?? 0}
                 </div>
-                <p className="text-xs text-blue-600 font-medium mt-1 truncate">
+                <p className="text-[11px] text-blue-600 font-medium truncate pt-0.5">
                   Enrolled students
                 </p>
               </div>
-              <div className="absolute -bottom-8 -right-8 w-32 h-32 bg-amber-200/50 rounded-full blur-2xl pointer-events-none" />
+              <div className="absolute -bottom-6 -right-6 w-24 h-24 bg-amber-200/40 rounded-full blur-xl pointer-events-none" />
             </div>
 
             {/* KPI 4: Today's Attendance */}
-            <div className="rounded-2xl border border-slate-200/90 bg-gradient-to-br from-white via-rose-50/20 to-rose-100/50 p-5 shadow-2xs relative overflow-hidden flex items-start gap-4 group hover:border-rose-300 transition-all">
-              <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-center shrink-0">
-                <Icon name="activity" size={20} className="text-rose-500" />
+            <div className="rounded-2xl border border-slate-200/90 bg-gradient-to-br from-white via-rose-50/20 to-rose-100/40 p-3.5 sm:p-4 shadow-2xs relative overflow-hidden flex items-start gap-3 group hover:border-rose-300 transition-all">
+              <div className="w-9 h-9 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center shrink-0">
+                <Icon name="activity" size={17} className="text-rose-500" />
               </div>
               <div className="space-y-0.5 min-w-0">
-                <span className="text-[10px] font-black uppercase tracking-wider text-slate-800">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-800 block">
                   TODAY'S ATTENDANCE
                 </span>
-                <div className="text-3xl font-black text-slate-900 leading-tight mt-1">
+                <div className="text-xl sm:text-2xl font-black text-slate-900 leading-tight">
                   {data?.today_punches ?? 0}
                 </div>
-                <p className="text-xs text-amber-600 font-medium mt-1 truncate">
+                <p className="text-[11px] text-amber-600 font-medium truncate pt-0.5">
                   {data?.attendance_rate ?? 0}% overall check-in rate
                 </p>
               </div>
-              <div className="absolute -bottom-8 -right-8 w-32 h-32 bg-rose-200/50 rounded-full blur-2xl pointer-events-none" />
+              <div className="absolute -bottom-6 -right-6 w-24 h-24 bg-rose-200/40 rounded-full blur-xl pointer-events-none" />
             </div>
           </div>
 

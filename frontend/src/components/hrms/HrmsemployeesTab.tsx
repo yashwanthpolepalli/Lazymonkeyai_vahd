@@ -1004,14 +1004,14 @@ export function HrmsemployeesTab() {
         /* Grid Cards View */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {loading ? (
-            <div className="col-span-full py-12 text-center text-xs font-semibold text-navy-400">Loading employees...</div>
+            <div className="col-span-full py-12 text-center text-xs font-semibold text-slate-400">Loading employees...</div>
           ) : displayemployees.length === 0 ? (
-            <div className="col-span-full py-12 text-center bg-white rounded-2xl border border-navy-100 p-8 space-y-3">
-              <div className="w-12 h-12 rounded-full bg-navy-50 text-navy-400 flex items-center justify-center mx-auto">
+            <div className="col-span-full py-12 text-center bg-white rounded-2xl border border-slate-100 p-8 space-y-3">
+              <div className="w-12 h-12 rounded-full bg-slate-50 text-slate-400 flex items-center justify-center mx-auto">
                 <Icon name="users" size={24} />
               </div>
-              <div className="text-sm font-bold text-navy-900">No employees Found</div>
-              <p className="text-xs text-navy-400 max-w-sm mx-auto">Click 'Add employee' to register personal fitness employees into the directory.</p>
+              <div className="text-sm font-bold text-slate-900">No employees Found</div>
+              <p className="text-xs text-slate-400 max-w-sm mx-auto">Click 'Add employee' to register personal fitness employees into the directory.</p>
             </div>
           ) : (
             displayemployees.map((t) => {
@@ -1021,7 +1021,7 @@ export function HrmsemployeesTab() {
                   key={t.id}
                   className={cn(
                     'bg-white rounded-2xl p-5 border shadow-sm transition-all relative space-y-4 hover:shadow-md',
-                    isSelected ? 'border-purple-500 ring-2 ring-purple-500/20' : 'border-navy-100'
+                    isSelected ? 'border-purple-500 ring-2 ring-purple-500/20' : 'border-slate-100'
                   )}
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -1030,8 +1030,8 @@ export function HrmsemployeesTab() {
                         {t.initials}
                       </div>
                       <div>
-                        <h4 className="font-extrabold text-navy-900 text-sm">{t.name}</h4>
-                        <div className="text-[11px] text-navy-400 truncate max-w-[150px]">{t.email}</div>
+                        <h4 className="font-extrabold text-slate-900 text-sm">{t.name}</h4>
+                        <div className="text-[11px] text-slate-400 truncate max-w-[150px]">{t.email}</div>
                         <span className={cn('px-2 py-0.5 rounded-md text-[10px] font-bold mt-1 inline-block', t.specialtyBg, t.specialtyText)}>
                           {t.specialization}
                         </span>
@@ -1041,24 +1041,24 @@ export function HrmsemployeesTab() {
                       type="checkbox"
                       checked={isSelected}
                       onChange={() => toggleSelectemployee(t.id)}
-                      className="w-4 h-4 rounded border-navy-300 text-purple-600 focus:ring-purple-500 cursor-pointer mt-1"
+                      className="w-4 h-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500 cursor-pointer mt-1"
                     />
                   </div>
 
-                  <div className="grid grid-cols-3 gap-2 bg-navy-50/60 p-2.5 rounded-xl text-center border border-navy-50">
+                  <div className="grid grid-cols-3 gap-2 bg-slate-50/60 p-2.5 rounded-xl text-center border border-slate-50">
                     <div>
-                      <div className="text-[10px] text-navy-400 font-bold uppercase">Clients</div>
-                      <div className="text-xs font-black text-navy-900">{t.clients}</div>
+                      <div className="text-[10px] text-slate-400 font-bold uppercase">Clients</div>
+                      <div className="text-xs font-black text-slate-900">{t.clients}</div>
                     </div>
                     <div>
-                      <div className="text-[10px] text-navy-400 font-bold uppercase">Rating</div>
+                      <div className="text-[10px] text-slate-400 font-bold uppercase">Rating</div>
                       <div className="text-xs font-black text-amber-600 flex items-center justify-center gap-0.5">
                         <Icon name="star" size={12} className="fill-amber-400 text-amber-400" />
                         <span>{t.rating}</span>
                       </div>
                     </div>
                     <div>
-                      <div className="text-[10px] text-navy-400 font-bold uppercase">Status</div>
+                      <div className="text-[10px] text-slate-400 font-bold uppercase">Status</div>
                       <select
                         value={t.status}
                         onChange={(e) => handleUpdateEmployeeStatus(t.id, e.target.value)}
@@ -1077,16 +1077,16 @@ export function HrmsemployeesTab() {
 
                   <div className="space-y-1">
                     <div className="flex justify-between text-[11px]">
-                      <span className="text-navy-400 font-medium">Performance Score</span>
-                      <span className="text-navy-900 font-bold">{t.performancePct}%</span>
+                      <span className="text-slate-400 font-medium">Performance Score</span>
+                      <span className="text-slate-900 font-bold">{t.performancePct}%</span>
                     </div>
-                    <div className="h-1.5 w-full rounded-full bg-navy-100 overflow-hidden">
+                    <div className="h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
                       <div className={cn('h-full rounded-full', t.performanceColor)} style={{ width: `${t.performancePct}%` }} />
                     </div>
                   </div>
 
-                  <div className="pt-2 border-t border-navy-50 flex items-center justify-between text-xs">
-                    <span className="font-extrabold text-navy-800 font-mono">{t.phone || '—'}</span>
+                  <div className="pt-2 border-t border-slate-50 flex items-center justify-between text-xs">
+                    <span className="font-extrabold text-slate-800 font-mono">{t.phone || '—'}</span>
                     <div className="flex items-center gap-1.5">
                       <button
                         onClick={() => {
@@ -1186,7 +1186,7 @@ export function HrmsemployeesTab() {
                     <th className="py-3.5 px-4 font-bold tracking-wider text-center">ACTIONS</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 font-medium text-navy-800">
+                <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
                   {paginatedemployees.map((t) => {
                     const isSelected = selectedemployeeIds.includes(t.id);
                     return (
@@ -1217,12 +1217,12 @@ export function HrmsemployeesTab() {
                                 {t.initials}
                               </div>
                               <div className="min-w-0">
-                                <div className="font-bold text-navy-900 text-xs truncate">{t.name || '—'}</div>
-                                {t.email && <div className="text-[11px] text-navy-400 font-normal truncate">{t.email}</div>}
-                                <div className="text-[11px] text-navy-500 font-semibold flex items-center gap-1.5 mt-0.5">
-                                  <span className="text-navy-800 font-mono font-bold">{t.phone || '—'}</span>
-                                  {t.upi_id && <span className="text-navy-400 text-[10px]">· UPI: {t.upi_id}</span>}
-                                  {!t.upi_id && t.bank_account_no && <span className="text-navy-400 text-[10px]">· A/C: {t.bank_account_no}</span>}
+                                <div className="font-bold text-slate-900 text-xs truncate">{t.name || '—'}</div>
+                                {t.email && <div className="text-[11px] text-slate-400 font-normal truncate">{t.email}</div>}
+                                <div className="text-[11px] text-slate-500 font-semibold flex items-center gap-1.5 mt-0.5">
+                                  <span className="text-slate-800 font-mono font-bold">{t.phone || '—'}</span>
+                                  {t.upi_id && <span className="text-slate-400 text-[10px]">· UPI: {t.upi_id}</span>}
+                                  {!t.upi_id && t.bank_account_no && <span className="text-slate-400 text-[10px]">· A/C: {t.bank_account_no}</span>}
                                 </div>
                               </div>
                             </div>
@@ -1231,28 +1231,28 @@ export function HrmsemployeesTab() {
 
                         {/* MOBILE */}
                         {visibleColumns.mobile && (
-                          <td className="py-3.5 px-4 text-xs font-mono text-navy-700 whitespace-nowrap">
+                          <td className="py-3.5 px-4 text-xs font-mono text-slate-700 whitespace-nowrap">
                             {t.phone || '—'}
                           </td>
                         )}
 
                         {/* EMAIL */}
                         {visibleColumns.email && (
-                          <td className="py-3.5 px-4 text-xs text-navy-600 whitespace-nowrap">
+                          <td className="py-3.5 px-4 text-xs text-slate-600 whitespace-nowrap">
                             {t.email || '—'}
                           </td>
                         )}
 
                         {/* GENDER */}
                         {visibleColumns.gender && (
-                          <td className="py-3.5 px-4 text-xs font-semibold text-navy-700 whitespace-nowrap">
+                          <td className="py-3.5 px-4 text-xs font-semibold text-slate-700 whitespace-nowrap">
                             {t.gender || '—'}
                           </td>
                         )}
 
                         {/* DOB */}
                         {visibleColumns.dob && (
-                          <td className="py-3.5 px-4 text-xs font-mono text-navy-600 whitespace-nowrap">
+                          <td className="py-3.5 px-4 text-xs font-mono text-slate-600 whitespace-nowrap">
                             {t.dob || '—'}
                           </td>
                         )}
@@ -1260,7 +1260,7 @@ export function HrmsemployeesTab() {
                         {/* DEPARTMENT */}
                         {visibleColumns.department && (
                           <td className="py-3.5 px-4 whitespace-nowrap">
-                            <span className="font-semibold text-navy-800 text-xs">
+                            <span className="font-semibold text-slate-800 text-xs">
                               {t.department || '—'}
                             </span>
                           </td>
@@ -1269,7 +1269,7 @@ export function HrmsemployeesTab() {
                         {/* DESIGNATION */}
                         {visibleColumns.designation && (
                           <td className="py-3.5 px-4">
-                            <span className="font-semibold text-navy-900 text-xs whitespace-nowrap">
+                            <span className="font-semibold text-slate-900 text-xs whitespace-nowrap">
                               {t.designation || '—'}
                             </span>
                           </td>
@@ -1283,28 +1283,28 @@ export function HrmsemployeesTab() {
                                 {t.role}
                               </span>
                             ) : (
-                              <span className="text-navy-400">—</span>
+                              <span className="text-slate-400">—</span>
                             )}
                           </td>
                         )}
 
                         {/* ZONE */}
                         {visibleColumns.zone && (
-                          <td className="py-3.5 px-4 text-xs text-navy-700 whitespace-nowrap">
+                          <td className="py-3.5 px-4 text-xs text-slate-700 whitespace-nowrap">
                             {t.zone || '—'}
                           </td>
                         )}
 
                         {/* MULTI ZONE */}
                         {visibleColumns.multiZone && (
-                          <td className="py-3.5 px-4 text-xs text-navy-700 whitespace-nowrap">
+                          <td className="py-3.5 px-4 text-xs text-slate-700 whitespace-nowrap">
                             {t.multiZone || '—'}
                           </td>
                         )}
 
                         {/* DISTRICT */}
                         {visibleColumns.district && (
-                          <td className="py-3.5 px-4 text-xs font-medium text-navy-700 whitespace-nowrap">
+                          <td className="py-3.5 px-4 text-xs font-medium text-slate-700 whitespace-nowrap">
                             {t.district ? (
                               <div className="flex items-center gap-1.5">
                                 <Icon name="map-pin" size={13} className="text-slate-400 shrink-0" />
@@ -1318,7 +1318,7 @@ export function HrmsemployeesTab() {
 
                         {/* PLACE OF WORK */}
                         {visibleColumns.placeOfWork && (
-                          <td className="py-3.5 px-4 text-xs font-semibold text-navy-900 whitespace-nowrap">
+                          <td className="py-3.5 px-4 text-xs font-semibold text-slate-900 whitespace-nowrap">
                             {t.placeOfWork && t.placeOfWork !== '—' ? (
                               <div className="flex items-center gap-1.5">
                                 <Icon name="building-2" size={13} className="text-brand-500 shrink-0" />
@@ -1332,42 +1332,42 @@ export function HrmsemployeesTab() {
 
                         {/* SOURCE MANDAL */}
                         {visibleColumns.sourceMandal && (
-                          <td className="py-3.5 px-4 text-xs text-navy-700 whitespace-nowrap">
+                          <td className="py-3.5 px-4 text-xs text-slate-700 whitespace-nowrap">
                             {t.sourceMandal || '—'}
                           </td>
                         )}
 
                         {/* SOURCE VILLAGE */}
                         {visibleColumns.sourceVillage && (
-                          <td className="py-3.5 px-4 text-xs text-navy-700 whitespace-nowrap">
+                          <td className="py-3.5 px-4 text-xs text-slate-700 whitespace-nowrap">
                             {t.sourceVillage || '—'}
                           </td>
                         )}
 
                         {/* JOINED */}
                         {visibleColumns.joined && (
-                          <td className="py-3.5 px-4 text-xs text-navy-600 whitespace-nowrap">
+                          <td className="py-3.5 px-4 text-xs text-slate-600 whitespace-nowrap">
                             {t.joined || '—'}
                           </td>
                         )}
 
                         {/* RETIREMENT DATE */}
                         {visibleColumns.retirementDate && (
-                          <td className="py-3.5 px-4 text-xs font-mono text-navy-600 whitespace-nowrap">
+                          <td className="py-3.5 px-4 text-xs font-mono text-slate-600 whitespace-nowrap">
                             {t.retirementDate || '—'}
                           </td>
                         )}
 
                         {/* PRESENT STATION DATE */}
                         {visibleColumns.presentStationDate && (
-                          <td className="py-3.5 px-4 text-xs font-mono text-navy-600 whitespace-nowrap">
+                          <td className="py-3.5 px-4 text-xs font-mono text-slate-600 whitespace-nowrap">
                             {t.presentStationDate || '—'}
                           </td>
                         )}
 
                         {/* LENGTH OF SERVICE */}
                         {visibleColumns.lengthOfService && (
-                          <td className="py-3.5 px-4 text-xs font-semibold text-navy-700 whitespace-nowrap">
+                          <td className="py-3.5 px-4 text-xs font-semibold text-slate-700 whitespace-nowrap">
                             {t.lengthOfService || '—'}
                           </td>
                         )}
@@ -1435,28 +1435,28 @@ export function HrmsemployeesTab() {
 
                         {/* AADHAR */}
                         {visibleColumns.aadhar && (
-                          <td className="py-3.5 px-4 text-xs font-mono text-navy-600 whitespace-nowrap">
+                          <td className="py-3.5 px-4 text-xs font-mono text-slate-600 whitespace-nowrap">
                             {t.aadhar || '—'}
                           </td>
                         )}
 
                         {/* PAN */}
                         {visibleColumns.pan && (
-                          <td className="py-3.5 px-4 text-xs font-mono text-navy-600 whitespace-nowrap">
+                          <td className="py-3.5 px-4 text-xs font-mono text-slate-600 whitespace-nowrap">
                             {t.pan || '—'}
                           </td>
                         )}
 
                         {/* CASTE */}
                         {visibleColumns.caste && (
-                          <td className="py-3.5 px-4 text-xs text-navy-700 whitespace-nowrap">
+                          <td className="py-3.5 px-4 text-xs text-slate-700 whitespace-nowrap">
                             {t.caste || '—'}
                           </td>
                         )}
 
                         {/* SUB CASTE */}
                         {visibleColumns.subCaste && (
-                          <td className="py-3.5 px-4 text-xs text-navy-700 whitespace-nowrap">
+                          <td className="py-3.5 px-4 text-xs text-slate-700 whitespace-nowrap">
                             {t.subCaste || '—'}
                           </td>
                         )}
@@ -1470,42 +1470,42 @@ export function HrmsemployeesTab() {
 
                         {/* FATHER'S NAME */}
                         {visibleColumns.fatherName && (
-                          <td className="py-3.5 px-4 text-xs text-navy-700 whitespace-nowrap">
+                          <td className="py-3.5 px-4 text-xs text-slate-700 whitespace-nowrap">
                             {t.fatherName || '—'}
                           </td>
                         )}
 
                         {/* MOTHER'S NAME */}
                         {visibleColumns.motherName && (
-                          <td className="py-3.5 px-4 text-xs text-navy-700 whitespace-nowrap">
+                          <td className="py-3.5 px-4 text-xs text-slate-700 whitespace-nowrap">
                             {t.motherName || '—'}
                           </td>
                         )}
 
                         {/* MARITAL STATUS */}
                         {visibleColumns.maritalStatus && (
-                          <td className="py-3.5 px-4 text-xs text-navy-700 whitespace-nowrap">
+                          <td className="py-3.5 px-4 text-xs text-slate-700 whitespace-nowrap">
                             {t.maritalStatus || '—'}
                           </td>
                         )}
 
                         {/* NATIVE DISTRICT */}
                         {visibleColumns.nativeDistrict && (
-                          <td className="py-3.5 px-4 text-xs text-navy-700 whitespace-nowrap">
+                          <td className="py-3.5 px-4 text-xs text-slate-700 whitespace-nowrap">
                             {t.nativeDistrict || '—'}
                           </td>
                         )}
 
                         {/* PERMANENT ADDRESS */}
                         {visibleColumns.permanentAddress && (
-                          <td className="py-3.5 px-4 text-xs text-navy-600 max-w-xs truncate">
+                          <td className="py-3.5 px-4 text-xs text-slate-600 max-w-xs truncate">
                             {t.permanentAddress || '—'}
                           </td>
                         )}
 
                         {/* TEMPORARY ADDRESS */}
                         {visibleColumns.temporaryAddress && (
-                          <td className="py-3.5 px-4 text-xs text-navy-600 max-w-xs truncate">
+                          <td className="py-3.5 px-4 text-xs text-slate-600 max-w-xs truncate">
                             {t.temporaryAddress || '—'}
                           </td>
                         )}
@@ -1553,7 +1553,7 @@ export function HrmsemployeesTab() {
           </div>
 
           {/* Table Footer Pagination */}
-          <div className="p-4 bg-navy-50/50 border-t border-navy-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-semibold text-navy-500">
+          <div className="p-4 bg-slate-50/50 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-semibold text-slate-500">
             <div>
               Showing {displayemployees.length > 0 ? startIndex + 1 : 0} to {Math.min(startIndex + ITEMS_PER_PAGE, displayemployees.length)} of {displayemployees.length} employees
             </div>
@@ -1561,7 +1561,7 @@ export function HrmsemployeesTab() {
               <button
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
-                className="w-8 h-8 rounded-lg border border-navy-200 bg-white flex items-center justify-center text-navy-600 hover:bg-navy-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
+                className="w-8 h-8 rounded-lg border border-slate-200 bg-white flex items-center justify-center text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
               >
                 <Icon name="chevron-left" size={16} />
               </button>
@@ -1573,7 +1573,7 @@ export function HrmsemployeesTab() {
                     'w-8 h-8 rounded-lg font-bold flex items-center justify-center transition-all cursor-pointer text-xs',
                     currentPage === pg
                       ? 'bg-purple-600 text-white shadow-xs'
-                      : 'border border-navy-200 bg-white text-navy-700 hover:bg-navy-50'
+                      : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
                   )}
                 >
                   {pg}
@@ -1582,7 +1582,7 @@ export function HrmsemployeesTab() {
               <button
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                 disabled={currentPage === totalPages}
-                className="w-8 h-8 rounded-lg border border-navy-200 bg-white flex items-center justify-center text-navy-600 hover:bg-navy-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
+                className="w-8 h-8 rounded-lg border border-slate-200 bg-white flex items-center justify-center text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
               >
                 <Icon name="chevron-right" size={16} />
               </button>
@@ -1616,29 +1616,29 @@ export function HrmsemployeesTab() {
 
       {/* 6. Renewal Modal */}
       {renewalOpen && (
-        <div className="fixed inset-0 bg-navy-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-lg space-y-4 shadow-2xl animate-scale-in border border-navy-100">
-            <div className="flex items-center justify-between border-b border-navy-100 pb-3">
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-lg space-y-4 shadow-2xl animate-scale-in border border-slate-100">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
                 <div className="w-9 h-9 rounded-xl bg-purple-50 flex items-center justify-center">
                   <Icon name="refresh-cw" size={18} className="text-purple-600" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-navy-900">Renew employee Contract</h3>
-                  <p className="text-xs text-navy-400">Selected {selectedemployees.length} employee(s) for renewal</p>
+                  <h3 className="text-base font-bold text-slate-900">Renew employee Contract</h3>
+                  <p className="text-xs text-slate-400">Selected {selectedemployees.length} employee(s) for renewal</p>
                 </div>
               </div>
-              <button onClick={() => setRenewalOpen(false)} className="text-navy-400 hover:text-navy-600">
+              <button onClick={() => setRenewalOpen(false)} className="text-slate-400 hover:text-slate-600">
                 <Icon name="x" size={18} />
               </button>
             </div>
 
             {/* Selected employees Summary */}
-            <div className="bg-navy-50/60 p-3 rounded-2xl max-h-32 overflow-y-auto space-y-1.5 border border-navy-100">
-              <div className="text-[11px] font-bold text-navy-500 uppercase tracking-wider mb-1">Target employees</div>
+            <div className="bg-slate-50/60 p-3 rounded-2xl max-h-32 overflow-y-auto space-y-1.5 border border-slate-100">
+              <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Target employees</div>
               {selectedemployees.map((st) => (
-                <div key={st.id} className="flex items-center justify-between text-xs bg-white p-2 rounded-xl border border-navy-100 shadow-xs">
-                  <div className="font-semibold text-navy-900">{st.name} ({st.email})</div>
+                <div key={st.id} className="flex items-center justify-between text-xs bg-white p-2 rounded-xl border border-slate-100 shadow-xs">
+                  <div className="font-semibold text-slate-900">{st.name} ({st.email})</div>
                   <Badge variant="brand">{st.specialization}</Badge>
                 </div>
               ))}
@@ -1647,9 +1647,9 @@ export function HrmsemployeesTab() {
             <form onSubmit={handleExecuteRenewal} className="space-y-4">
               {/* Select Plan */}
               <div>
-                <label className="text-xs font-semibold text-navy-700 mb-2 block">Select Renewal Contract Plan</label>
+                <label className="text-xs font-semibold text-slate-700 mb-2 block">Select Renewal Contract Plan</label>
                 {employeePlans.length === 0 ? (
-                  <div className="p-3 text-center text-xs text-navy-400 font-medium bg-navy-50 rounded-xl border border-navy-200">
+                  <div className="p-3 text-center text-xs text-slate-400 font-medium bg-slate-50 rounded-xl border border-slate-200">
                     No active membership plans created by owner yet. Please create plans on the Memberships page.
                   </div>
                 ) : (
@@ -1663,12 +1663,12 @@ export function HrmsemployeesTab() {
                           'p-3 rounded-xl border text-left transition-all',
                           selectedPlanIdx === idx
                             ? 'border-purple-500 bg-purple-50/50 ring-2 ring-purple-500/20'
-                            : 'border-navy-200 hover:border-navy-300 bg-white'
+                            : 'border-slate-200 hover:border-slate-300 bg-white'
                         )}
                       >
-                        <div className="text-xs font-bold text-navy-900">{p.name}</div>
+                        <div className="text-xs font-bold text-slate-900">{p.name}</div>
                         <div className="text-sm font-bold text-purple-600 mt-0.5">₹{p.price.toLocaleString()}</div>
-                        <div className="text-[10px] text-navy-400">{p.duration_days} Days Validity</div>
+                        <div className="text-[10px] text-slate-400">{p.duration_days} Days Validity</div>
                       </button>
                     ))}
                   </div>
@@ -1678,28 +1678,28 @@ export function HrmsemployeesTab() {
               {/* Renewal Date Range */}
               <div className="p-3 bg-purple-50/40 rounded-2xl border border-purple-200/60 space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-navy-800">Contract Validity</span>
+                  <span className="text-xs font-bold text-slate-800">Contract Validity</span>
                   <Badge variant="success">
                     Expiry: {formatDateDDMMYY(renewalExpiryDate)}
                   </Badge>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-[11px] font-semibold text-navy-600 block mb-1">Start Date</label>
+                    <label className="text-[11px] font-semibold text-slate-600 block mb-1">Start Date</label>
                     <input
                       type="date"
                       value={renewalStartDate}
                       onChange={(e) => setRenewalStartDate(e.target.value)}
-                      className="w-full text-xs py-1.5 px-3 rounded-xl border border-navy-200 bg-white text-navy-800 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      className="w-full text-xs py-1.5 px-3 rounded-xl border border-slate-200 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500"
                     />
                   </div>
                   <div>
-                    <label className="text-[11px] font-semibold text-navy-600 block mb-1">Expiry Date</label>
+                    <label className="text-[11px] font-semibold text-slate-600 block mb-1">Expiry Date</label>
                     <input
                       type="date"
                       value={renewalExpiryDate}
                       onChange={(e) => setRenewalExpiryDate(e.target.value)}
-                      className="w-full text-xs py-1.5 px-3 rounded-xl border border-navy-200 bg-white text-navy-800 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      className="w-full text-xs py-1.5 px-3 rounded-xl border border-slate-200 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500"
                     />
                   </div>
                 </div>
@@ -1707,7 +1707,7 @@ export function HrmsemployeesTab() {
 
               {/* Payment Method */}
               <div>
-                <label className="text-xs font-semibold text-navy-700 mb-1.5 block">Payment Method</label>
+                <label className="text-xs font-semibold text-slate-700 mb-1.5 block">Payment Method</label>
                 <div className="grid grid-cols-4 gap-2">
                   {['UPI', 'Bank Transfer', 'Cheque', 'Cash'].map((pm) => (
                     <button
@@ -1718,7 +1718,7 @@ export function HrmsemployeesTab() {
                         'py-2 rounded-xl text-xs font-semibold transition-all',
                         renewalPaymentMethod === pm
                           ? 'bg-purple-600 text-white shadow-sm'
-                          : 'bg-navy-50 text-navy-600 hover:bg-navy-100'
+                          : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
                       )}
                     >
                       {pm}
@@ -1728,7 +1728,7 @@ export function HrmsemployeesTab() {
               </div>
 
               <div className="flex gap-2 pt-2">
-                <button type="button" onClick={() => setRenewalOpen(false)} className="btn-secondary flex-1 py-2.5 text-xs font-bold rounded-xl border border-navy-200 bg-white text-navy-700 hover:bg-navy-50">
+                <button type="button" onClick={() => setRenewalOpen(false)} className="btn-secondary flex-1 py-2.5 text-xs font-bold rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50">
                   Cancel
                 </button>
                 <button
@@ -1747,32 +1747,32 @@ export function HrmsemployeesTab() {
 
       {/* 7. employee Payroll & Salary Generation Modal */}
       {payrollModalOpen && (
-        <div className="fixed inset-0 bg-navy-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto space-y-5 shadow-2xl animate-scale-in border border-navy-100">
-            <div className="flex items-center justify-between border-b border-navy-100 pb-4">
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto space-y-5 shadow-2xl animate-scale-in border border-slate-100">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
                   <Icon name="credit-card" size={20} />
                 </div>
                 <div>
-                  <h2 className="text-lg font-black text-navy-900">employee Payroll &amp; Salary Generation</h2>
-                  <p className="text-xs text-navy-400 font-medium">Calculate base salary, eSSL biometrics attendance &amp; PT commission payouts</p>
+                  <h2 className="text-lg font-black text-slate-900">employee Payroll &amp; Salary Generation</h2>
+                  <p className="text-xs text-slate-400 font-medium">Calculate base salary, eSSL biometrics attendance &amp; PT commission payouts</p>
                 </div>
               </div>
-              <button onClick={() => setPayrollModalOpen(false)} className="text-navy-400 hover:text-navy-600 p-1.5 rounded-xl hover:bg-navy-50">
+              <button onClick={() => setPayrollModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-50">
                 <Icon name="x" size={20} />
               </button>
             </div>
 
             {/* Top Toolbar */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-navy-50 p-4 rounded-2xl border border-navy-100">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-100">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-navy-700">Payroll Month:</span>
+                <span className="text-xs font-bold text-slate-700">Payroll Month:</span>
                 <input
                   type="month"
                   value={selectedMonthYear}
                   onChange={(e) => setSelectedMonthYear(e.target.value)}
-                  className="bg-white border border-navy-200 text-navy-800 text-xs font-bold px-3 py-1.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="bg-white border border-slate-200 text-slate-800 text-xs font-bold px-3 py-1.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
               <div className="flex items-center gap-2">
@@ -1789,12 +1789,12 @@ export function HrmsemployeesTab() {
 
             {/* Invoices List / Table */}
             <div className="space-y-3">
-              <h3 className="text-xs font-black uppercase tracking-wider text-navy-400">employee Monthly Payout Statements</h3>
+              <h3 className="text-xs font-black uppercase tracking-wider text-slate-400">employee Monthly Payout Statements</h3>
 
               {loadingPayroll ? (
-                <div className="py-12 text-center text-xs font-bold text-navy-400">Loading payroll invoices from PostgreSQL database...</div>
+                <div className="py-12 text-center text-xs font-bold text-slate-400">Loading payroll invoices from PostgreSQL database...</div>
               ) : displayemployees.length === 0 ? (
-                <div className="py-8 text-center text-xs text-navy-400 font-medium">No employees registered yet.</div>
+                <div className="py-8 text-center text-xs text-slate-400 font-medium">No employees registered yet.</div>
               ) : (
                 <div className="space-y-3">
                   {displayemployees.map((tr) => {
@@ -1819,15 +1819,15 @@ export function HrmsemployeesTab() {
                     return (
                       <div
                         key={tr.id}
-                        className="bg-white p-4 rounded-2xl border border-navy-100 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4 hover:border-navy-200 transition-all"
+                        className="bg-white p-4 rounded-2xl border border-slate-100 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4 hover:border-slate-200 transition-all"
                       >
                         <div className="flex items-center gap-3">
                           <div className={cn('w-10 h-10 rounded-full bg-gradient-to-br flex items-center justify-center text-white font-bold text-xs shadow-xs', tr.avatarBg)}>
                             {tr.initials}
                           </div>
                           <div>
-                            <div className="font-bold text-navy-900 text-sm">{tr.name}</div>
-                            <div className="text-xs text-navy-400 flex items-center gap-2">
+                            <div className="font-bold text-slate-900 text-sm">{tr.name}</div>
+                            <div className="text-xs text-slate-400 flex items-center gap-2">
                               <span>{tr.specialization}</span>
                               <span>•</span>
                               <span>Base: ₹{baseSal.toLocaleString('en-IN')}/mo</span>
@@ -1836,26 +1836,26 @@ export function HrmsemployeesTab() {
                         </div>
 
                         {/* Breakdown Pills */}
-                        <div className="grid grid-cols-3 gap-3 text-center bg-navy-50/70 p-2.5 rounded-xl border border-navy-100">
+                        <div className="grid grid-cols-3 gap-3 text-center bg-slate-50/70 p-2.5 rounded-xl border border-slate-100">
                           <div>
-                            <div className="text-[10px] text-navy-400 font-semibold">Attendance</div>
-                            <div className="text-xs font-bold text-navy-700">{daysPresent}/{totalDays} Days</div>
+                            <div className="text-[10px] text-slate-400 font-semibold">Attendance</div>
+                            <div className="text-xs font-bold text-slate-700">{daysPresent}/{totalDays} Days</div>
                           </div>
                           <div>
-                            <div className="text-[10px] text-navy-400 font-semibold">Base Earned</div>
-                            <div className="text-xs font-bold text-navy-700">₹{earnedBase.toLocaleString('en-IN')}</div>
+                            <div className="text-[10px] text-slate-400 font-semibold">Base Earned</div>
+                            <div className="text-xs font-bold text-slate-700">₹{earnedBase.toLocaleString('en-IN')}</div>
                           </div>
                           <div>
-                            <div className="text-[10px] text-navy-400 font-semibold">PT Commission</div>
+                            <div className="text-[10px] text-slate-400 font-semibold">PT Commission</div>
                             <div className="text-xs font-bold text-emerald-600">+₹{commission.toLocaleString('en-IN')}</div>
                           </div>
                         </div>
 
                         {/* Net Salary & Action */}
-                        <div className="flex items-center justify-between md:justify-end gap-4 border-t md:border-t-0 border-navy-100 pt-3 md:pt-0">
+                        <div className="flex items-center justify-between md:justify-end gap-4 border-t md:border-t-0 border-slate-100 pt-3 md:pt-0">
                           <div className="text-left md:text-right">
-                            <div className="text-[10px] text-navy-400 font-bold uppercase">Net Payable</div>
-                            <div className="text-base font-black text-navy-900">₹{netSalary.toLocaleString('en-IN')}</div>
+                            <div className="text-[10px] text-slate-400 font-bold uppercase">Net Payable</div>
+                            <div className="text-base font-black text-slate-900">₹{netSalary.toLocaleString('en-IN')}</div>
                           </div>
 
                           <div className="flex items-center gap-2">
@@ -1868,7 +1868,7 @@ export function HrmsemployeesTab() {
                                 <button
                                   onClick={() => handleGenerateSalary(tr.id)}
                                   disabled={isGenerating}
-                                  className="px-3 py-1.5 rounded-xl text-xs font-bold border border-navy-200 bg-white hover:bg-navy-50 text-navy-700 disabled:opacity-50"
+                                  className="px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 disabled:opacity-50"
                                 >
                                   {isGenerating ? 'Calculating...' : inv ? 'Recalculate' : 'Generate'}
                                 </button>
@@ -1911,8 +1911,8 @@ export function HrmsemployeesTab() {
               )}
             </div>
 
-            <div className="flex justify-end pt-2 border-t border-navy-100">
-              <button onClick={() => setPayrollModalOpen(false)} className="px-5 py-2 text-xs font-bold rounded-xl border border-navy-200 bg-white text-navy-700 hover:bg-navy-50">
+            <div className="flex justify-end pt-2 border-t border-slate-100">
+              <button onClick={() => setPayrollModalOpen(false)} className="px-5 py-2 text-xs font-bold rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50">
                 Close Statement
               </button>
             </div>
@@ -1922,41 +1922,41 @@ export function HrmsemployeesTab() {
 
       {/* 8. Salary Payout Execution Modal */}
       {payingInvoice && (
-        <div className="fixed inset-0 bg-navy-950/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-md space-y-4 shadow-2xl animate-scale-in border border-navy-100">
-            <div className="flex items-center justify-between border-b border-navy-100 pb-3">
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-md space-y-4 shadow-2xl animate-scale-in border border-slate-100">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
                 <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
                   <Icon name="dollar-sign" size={18} />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-navy-900">Process Salary Payout</h3>
-                  <p className="text-xs text-navy-400">Issue payslip &amp; execute transaction</p>
+                  <h3 className="text-base font-bold text-slate-900">Process Salary Payout</h3>
+                  <p className="text-xs text-slate-400">Issue payslip &amp; execute transaction</p>
                 </div>
               </div>
-              <button onClick={() => setPayingInvoice(null)} className="text-navy-400 hover:text-navy-600">
+              <button onClick={() => setPayingInvoice(null)} className="text-slate-400 hover:text-slate-600">
                 <Icon name="x" size={18} />
               </button>
             </div>
 
-            <div className="bg-navy-50 p-4 rounded-2xl border border-navy-100 space-y-2">
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-2">
               <div className="flex justify-between items-center text-xs">
-                <span className="text-navy-500 font-semibold">employee:</span>
-                <span className="font-extrabold text-navy-900">{payingInvoice.employee_name || 'Personal employee'}</span>
+                <span className="text-slate-500 font-semibold">employee:</span>
+                <span className="font-extrabold text-slate-900">{payingInvoice.employee_name || 'Personal employee'}</span>
               </div>
               <div className="flex justify-between items-center text-xs">
-                <span className="text-navy-500 font-semibold">Period:</span>
-                <span className="font-bold text-navy-700">{payingInvoice.month_year}</span>
+                <span className="text-slate-500 font-semibold">Period:</span>
+                <span className="font-bold text-slate-700">{payingInvoice.month_year}</span>
               </div>
-              <div className="flex justify-between items-center text-sm pt-2 border-t border-navy-200">
-                <span className="font-extrabold text-navy-900">Net Amount to Pay:</span>
+              <div className="flex justify-between items-center text-sm pt-2 border-t border-slate-200">
+                <span className="font-extrabold text-slate-900">Net Amount to Pay:</span>
                 <span className="text-lg font-black text-emerald-600">₹{payingInvoice.net_salary.toLocaleString('en-IN')}</span>
               </div>
             </div>
 
             <form onSubmit={handleProcessSalaryPayment} className="space-y-4">
               <div>
-                <label className="text-xs font-semibold text-navy-700 mb-1.5 block">Payout Method</label>
+                <label className="text-xs font-semibold text-slate-700 mb-1.5 block">Payout Method</label>
                 <div className="grid grid-cols-4 gap-2">
                   {(['UPI', 'Bank Transfer', 'Cash', 'Cheque'] as const).map((pm) => (
                     <button
@@ -1967,7 +1967,7 @@ export function HrmsemployeesTab() {
                         'py-2 rounded-xl text-xs font-semibold transition-all',
                         payMethod === pm
                           ? 'bg-emerald-600 text-white shadow-sm'
-                          : 'bg-navy-50 text-navy-600 hover:bg-navy-100'
+                          : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
                       )}
                     >
                       {pm}
@@ -1977,18 +1977,18 @@ export function HrmsemployeesTab() {
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-navy-700 mb-1 block">Transaction Reference / UTR (Optional)</label>
+                <label className="text-xs font-semibold text-slate-700 mb-1 block">Transaction Reference / UTR (Optional)</label>
                 <input
                   type="text"
                   placeholder="e.g. UPI/12948102948 or NEFT94021"
                   value={txRefInput}
                   onChange={(e) => setTxRefInput(e.target.value)}
-                  className="w-full text-xs py-2 px-3 rounded-xl border border-navy-200 bg-white text-navy-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full text-xs py-2 px-3 rounded-xl border border-slate-200 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
 
               <div className="flex gap-2 pt-2">
-                <button type="button" onClick={() => setPayingInvoice(null)} className="btn-secondary flex-1 py-2.5 text-xs font-bold rounded-xl border border-navy-200 bg-white text-navy-700 hover:bg-navy-50">
+                <button type="button" onClick={() => setPayingInvoice(null)} className="btn-secondary flex-1 py-2.5 text-xs font-bold rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50">
                   Cancel
                 </button>
                 <button

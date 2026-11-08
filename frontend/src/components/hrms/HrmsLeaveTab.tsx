@@ -519,20 +519,20 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
       {/* ───────────────────────────────────────────────────────────── */}
       {/* 1. TOP HEADER & NAVIGATION                                    */}
       {/* ───────────────────────────────────────────────────────────── */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-navy-100 shadow-sm">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
         <div>
           <div className="flex items-center gap-2">
             <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
               <Icon name="calendar" size={22} />
             </div>
             <div>
-              <h2 className="text-xl sm:text-2xl font-black text-navy-900 tracking-tight flex items-center gap-2">
+              <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
                 <span>Leave &amp; Absence Hub</span>
                 <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-purple-100 text-purple-800 uppercase tracking-wider">
                   Configurable LMS
                 </span>
               </h2>
-              <p className="text-xs text-navy-500 font-medium">
+              <p className="text-xs text-slate-500 font-medium">
                 Enterprise leave policies, dynamic gender-based eligibility (Maternity/Paternity/Casual), and live balance ledgers.
               </p>
             </div>
@@ -550,7 +550,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
 
           <button
             onClick={openNewPolicyModal}
-            className="px-3.5 py-2.5 rounded-xl bg-navy-50 hover:bg-navy-100 text-navy-800 border border-navy-200 font-bold text-xs flex items-center gap-2 transition-all shrink-0 cursor-pointer"
+            className="px-3.5 py-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-800 border border-slate-200 font-bold text-xs flex items-center gap-2 transition-all shrink-0 cursor-pointer"
           >
             <Icon name="settings" size={15} className="text-purple-600" />
             <span>Add Leave Policy</span>
@@ -569,20 +569,20 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
         </div>
       ) : (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white rounded-2xl p-5 border border-navy-100 shadow-sm">
+          <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold text-navy-500 uppercase tracking-wider">Total Applications</span>
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Applications</span>
               <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
                 <Icon name="file-text" size={16} />
               </div>
             </div>
-            <div className="text-2xl sm:text-3xl font-black text-navy-900">{totalCount}</div>
+            <div className="text-2xl sm:text-3xl font-black text-slate-900">{totalCount}</div>
             <div className="text-[11px] text-purple-700 font-bold mt-1">Across all staff &amp; coaches</div>
           </div>
 
-          <div className="bg-white rounded-2xl p-5 border border-navy-100 shadow-sm">
+          <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold text-navy-500 uppercase tracking-wider">Pending Approvals</span>
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Pending Approvals</span>
               <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
                 <Icon name="clock" size={16} />
               </div>
@@ -591,9 +591,9 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
             <div className="text-[11px] text-amber-700 font-bold mt-1">Awaiting owner action</div>
           </div>
 
-          <div className="bg-white rounded-2xl p-5 border border-navy-100 shadow-sm">
+          <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold text-navy-500 uppercase tracking-wider">Configured Policies</span>
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Configured Policies</span>
               <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
                 <Icon name="sliders" size={16} />
               </div>
@@ -604,14 +604,14 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl p-5 border border-navy-100 shadow-sm">
+          <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold text-navy-500 uppercase tracking-wider">On Leave Today</span>
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">On Leave Today</span>
               <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
                 <Icon name="user-x" size={16} />
               </div>
             </div>
-            <div className="text-2xl sm:text-3xl font-black text-navy-900">{onLeaveTodayCount}</div>
+            <div className="text-2xl sm:text-3xl font-black text-slate-900">{onLeaveTodayCount}</div>
             <div className="text-[11px] text-blue-600 font-bold mt-1">Excused attendance today</div>
           </div>
         </div>
@@ -620,7 +620,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
       {/* ───────────────────────────────────────────────────────────── */}
       {/* 3. SUB-TAB SWITCHER & SEARCH                                  */}
       {/* ───────────────────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-navy-100 shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-slate-100 shadow-sm">
         {/* Navigation Tabs */}
         <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 sm:pb-0">
           <button
@@ -629,7 +629,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
               'px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer',
               subTab === 'applications'
                 ? 'bg-purple-600 text-white shadow-sm'
-                : 'bg-navy-50 text-navy-600 hover:text-navy-900 hover:bg-navy-100/80'
+                : 'bg-slate-50 text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
             )}
           >
             <Icon name="inbox" size={14} />
@@ -637,7 +637,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
             <span
               className={cn(
                 'px-1.5 py-0.2 rounded-full text-[10px] font-black',
-                subTab === 'applications' ? 'bg-white/20 text-white' : 'bg-navy-200/60 text-navy-700'
+                subTab === 'applications' ? 'bg-white/20 text-white' : 'bg-slate-200/60 text-slate-700'
               )}
             >
               {totalCount}
@@ -650,7 +650,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
               'px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer',
               subTab === 'policies'
                 ? 'bg-purple-600 text-white shadow-sm'
-                : 'bg-navy-50 text-navy-600 hover:text-navy-900 hover:bg-navy-100/80'
+                : 'bg-slate-50 text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
             )}
           >
             <Icon name="sliders" size={14} />
@@ -658,7 +658,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
             <span
               className={cn(
                 'px-1.5 py-0.2 rounded-full text-[10px] font-black',
-                subTab === 'policies' ? 'bg-white/20 text-white' : 'bg-navy-200/60 text-navy-700'
+                subTab === 'policies' ? 'bg-white/20 text-white' : 'bg-slate-200/60 text-slate-700'
               )}
             >
               {leaveTypes.length}
@@ -671,7 +671,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
               'px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer',
               subTab === 'balances'
                 ? 'bg-purple-600 text-white shadow-sm'
-                : 'bg-navy-50 text-navy-600 hover:text-navy-900 hover:bg-navy-100/80'
+                : 'bg-slate-50 text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
             )}
           >
             <Icon name="pie-chart" size={14} />
@@ -681,13 +681,13 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
 
         {/* Search */}
         <div className="relative min-w-[220px]">
-          <Icon name="search" size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-navy-400" />
+          <Icon name="search" size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
             placeholder="Search coach, policy, code..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-navy-50 border border-navy-200 text-xs font-semibold text-navy-900 placeholder-navy-400 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none"
+            className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-900 placeholder-slate-400 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none"
           />
         </div>
       </div>
@@ -711,7 +711,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                   'px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer',
                   statusFilter === status
                     ? 'bg-blue-600 text-white shadow-sm ring-1 ring-blue-700/20'
-                    : 'bg-white text-navy-600 border border-navy-200 hover:bg-navy-50'
+                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
                 )}
               >
                 {status} ({status === 'ALL' ? totalCount : leaves.filter((l) => l.status === status).length})
@@ -719,7 +719,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
             ))}
           </div>
 
-          <div className="bg-white border border-navy-100 rounded-2xl shadow-sm overflow-hidden">
+          <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
             {loading ? (
               <div className="p-8 space-y-4">
                 <Skeleton className="h-10 w-full" />
@@ -728,9 +728,9 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
               </div>
             ) : filteredLeaves.length === 0 ? (
               <div className="py-16 text-center space-y-2">
-                <Icon name="calendar-x" size={32} className="mx-auto text-navy-300" />
-                <div className="text-sm font-bold text-navy-700">No leave applications found</div>
-                <div className="text-xs text-navy-400 max-w-sm mx-auto">
+                <Icon name="calendar-x" size={32} className="mx-auto text-slate-300" />
+                <div className="text-sm font-bold text-slate-700">No leave applications found</div>
+                <div className="text-xs text-slate-400 max-w-sm mx-auto">
                   {searchQuery || statusFilter !== 'ALL'
                     ? 'Try adjusting your search query or status filter.'
                     : 'No leave applications have been submitted yet. Click "Apply Leave / Request" to record one.'}
@@ -739,7 +739,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-navy-50/70 text-[11px] font-black uppercase text-navy-500 tracking-wider border-b border-navy-100">
+                  <thead className="bg-slate-50/70 text-[11px] font-black uppercase text-slate-500 tracking-wider border-b border-slate-100">
                     <tr>
                       <th className="py-3.5 px-4">employee / STAFF</th>
                       <th className="py-3.5 px-4">LEAVE TYPE &amp; PAY</th>
@@ -751,7 +751,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                       <th className="py-3.5 px-4 text-right">ACTION</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-navy-50 font-medium text-navy-800">
+                  <tbody className="divide-y divide-slate-50 font-medium text-slate-800">
                     {filteredLeaves.map((l) => {
                       const initials =
                         l.employee_name
@@ -782,7 +782,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                                 {initials}
                               </div>
                               <div>
-                                <div className="font-bold text-navy-900 flex items-center gap-1.5">
+                                <div className="font-bold text-slate-900 flex items-center gap-1.5">
                                   <span>{l.employee_name}</span>
                                   <span
                                     className={cn(
@@ -795,7 +795,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                                     {gender === 'FEMALE' ? '♀ Female' : '♂ Male'}
                                   </span>
                                 </div>
-                                <div className="text-[10px] text-navy-400 font-mono flex items-center gap-1.5">
+                                <div className="text-[10px] text-slate-400 font-mono flex items-center gap-1.5">
                                   <span>{l.employee_code}</span>
                                   <span>•</span>
                                   <span>{l.department || 'Fitness'}</span>
@@ -844,20 +844,20 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
 
                           {/* Period */}
                           <td className="py-3.5 px-4">
-                            <div className="font-mono text-navy-900 font-semibold">
-                              {l.start_date} <span className="text-navy-400">→</span> {l.end_date}
+                            <div className="font-mono text-slate-900 font-semibold">
+                              {l.start_date} <span className="text-slate-400">→</span> {l.end_date}
                             </div>
-                            <div className="text-[10px] text-navy-400">Applied {l.applied_on}</div>
+                            <div className="text-[10px] text-slate-400">Applied {l.applied_on}</div>
                           </td>
 
                           {/* Days */}
-                          <td className="py-3.5 px-4 font-black text-navy-900">
+                          <td className="py-3.5 px-4 font-black text-slate-900">
                             {l.days} {l.days === 1 ? 'Day' : 'Days'}
                           </td>
 
                           {/* Reason & Attachment */}
                           <td className="py-3.5 px-4 max-w-xs">
-                            <div className="text-navy-700 truncate font-medium" title={l.reason}>
+                            <div className="text-slate-700 truncate font-medium" title={l.reason}>
                               {l.reason || '—'}
                             </div>
                             {l.attachment_url && (
@@ -896,7 +896,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                           </td>
 
                           {/* Review Details */}
-                          <td className="py-3.5 px-4 text-xs text-navy-500 font-medium">
+                          <td className="py-3.5 px-4 text-xs text-slate-500 font-medium">
                             <div>{l.approved_by || 'Pending Review'}</div>
                             {l.rejection_reason && (
                               <div className="text-[10px] text-rose-600 font-medium italic mt-0.5">
@@ -986,8 +986,8 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                   <Icon name="shield" size={20} />
                 </div>
                 <div>
-                  <div className="text-sm font-black text-navy-900">Customizable Leave Policies</div>
-                  <div className="text-xs text-navy-600 font-medium">
+                  <div className="text-sm font-black text-slate-900">Customizable Leave Policies</div>
+                  <div className="text-xs text-slate-600 font-medium">
                     Configure pay classifications (Paid/Unpaid/Half Pay), gender rules, annual quotas, and carry forward in real-time.
                   </div>
                 </div>
@@ -1003,22 +1003,22 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
             </div>
 
             {/* Filter & View Switcher Bar */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-navy-100 shadow-xs">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-slate-100 shadow-xs">
               <div className="flex flex-1 flex-wrap items-center gap-2.5">
                 {/* Search */}
                 <div className="relative flex-1 min-w-[200px] max-w-xs">
-                  <Icon name="search" size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-navy-400" />
+                  <Icon name="search" size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type="text"
                     value={policySearchQuery}
                     onChange={(e) => setPolicySearchQuery(e.target.value)}
                     placeholder="Search policies, codes..."
-                    className="w-full pl-8 pr-7 py-1.5 rounded-xl bg-navy-50 border border-navy-200 text-xs font-bold text-navy-900 placeholder-navy-400 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none"
+                    className="w-full pl-8 pr-7 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900 placeholder-slate-400 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none"
                   />
                   {policySearchQuery && (
                     <button
                       onClick={() => setPolicySearchQuery('')}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-navy-400 hover:text-navy-700"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
                     >
                       <Icon name="x" size={12} />
                     </button>
@@ -1029,7 +1029,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                 <select
                   value={policyCategoryFilter}
                   onChange={(e) => setPolicyCategoryFilter(e.target.value)}
-                  className="px-3 py-1.5 rounded-xl bg-navy-50 border border-navy-200 text-xs font-bold text-navy-800 focus:bg-white outline-none cursor-pointer"
+                  className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-800 focus:bg-white outline-none cursor-pointer"
                 >
                   <option value="ALL">All Categories</option>
                   {categories
@@ -1041,13 +1041,13 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                     ))}
                 </select>
 
-                <span className="text-[11px] font-bold text-navy-500 bg-navy-50 px-2.5 py-1 rounded-lg border border-navy-100">
+                <span className="text-[11px] font-bold text-slate-500 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100">
                   {filteredPolicies.length} {filteredPolicies.length === 1 ? 'Policy' : 'Policies'}
                 </span>
               </div>
 
               {/* View Mode Toggle (Grid vs Row View) */}
-              <div className="flex items-center gap-1 bg-navy-100/70 p-1 rounded-xl border border-navy-200 self-end md:self-auto">
+              <div className="flex items-center gap-1 bg-slate-100/70 p-1 rounded-xl border border-slate-200 self-end md:self-auto">
                 <button
                   type="button"
                   onClick={() => setPolicyViewMode('grid')}
@@ -1055,7 +1055,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                     'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer',
                     policyViewMode === 'grid'
                       ? 'bg-white text-purple-700 shadow-xs border border-purple-100'
-                      : 'text-navy-600 hover:text-navy-900 hover:bg-white/40'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'
                   )}
                   title="Grid View (Cards)"
                 >
@@ -1069,7 +1069,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                     'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer',
                     policyViewMode === 'row'
                       ? 'bg-white text-purple-700 shadow-xs border border-purple-100'
-                      : 'text-navy-600 hover:text-navy-900 hover:bg-white/40'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'
                   )}
                   title="Row View (Table)"
                 >
@@ -1081,12 +1081,12 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
 
             {/* Empty State */}
             {filteredPolicies.length === 0 ? (
-              <div className="bg-white rounded-2xl p-12 text-center border border-navy-100 space-y-3">
+              <div className="bg-white rounded-2xl p-12 text-center border border-slate-100 space-y-3">
                 <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center mx-auto">
                   <Icon name="sliders" size={24} />
                 </div>
-                <h4 className="text-sm font-bold text-navy-900">No matching leave policies found</h4>
-                <p className="text-xs text-navy-500 max-w-sm mx-auto">
+                <h4 className="text-sm font-bold text-slate-900">No matching leave policies found</h4>
+                <p className="text-xs text-slate-500 max-w-sm mx-auto">
                   Try adjusting your search query or category filter, or create a brand new custom leave policy.
                 </p>
                 <button
@@ -1115,7 +1115,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                       key={policy.id}
                       className={cn(
                         'bg-white rounded-2xl p-5 border transition-all hover:shadow-md space-y-4 relative flex flex-col justify-between',
-                        policy.is_active ? 'border-navy-100' : 'border-navy-200/60 opacity-70 bg-navy-50/30'
+                        policy.is_active ? 'border-slate-100' : 'border-slate-200/60 opacity-70 bg-slate-50/30'
                       )}
                     >
                       {/* Header */}
@@ -1126,12 +1126,12 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                               {policy.code}
                             </div>
                             <div>
-                              <div className="font-black text-sm text-navy-900">{policy.name}</div>
+                              <div className="font-black text-sm text-slate-900">{policy.name}</div>
                               <div className="flex items-center gap-1.5 mt-0.5">
-                                <span className="text-[10px] text-navy-400 font-mono font-bold">Code: {policy.code}</span>
+                                <span className="text-[10px] text-slate-400 font-mono font-bold">Code: {policy.code}</span>
                                 {policy.category && (
                                   <>
-                                    <span className="text-navy-300 text-[10px]">•</span>
+                                    <span className="text-slate-300 text-[10px]">•</span>
                                     <span className="text-[10px] font-bold text-purple-700 bg-purple-50 px-1.5 py-0.2 rounded border border-purple-100">
                                       {policy.category}
                                     </span>
@@ -1162,17 +1162,17 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
 
                         {/* Description */}
                         {policy.description && (
-                          <p className="text-xs text-navy-600 mt-2.5 line-clamp-2 leading-relaxed font-medium">
+                          <p className="text-xs text-slate-600 mt-2.5 line-clamp-2 leading-relaxed font-medium">
                             {policy.description}
                           </p>
                         )}
                       </div>
 
                       {/* Rules Grid */}
-                      <div className="space-y-2.5 pt-2 border-t border-navy-50 text-xs">
+                      <div className="space-y-2.5 pt-2 border-t border-slate-50 text-xs">
                         {/* Gender Eligibility */}
                         <div className="flex items-center justify-between">
-                          <span className="text-navy-500 font-medium">Gender Eligibility:</span>
+                          <span className="text-slate-500 font-medium">Gender Eligibility:</span>
                           <div className="flex items-center gap-1">
                             {isAllGenders ? (
                               <span className="px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 font-bold text-[10px] border border-purple-200">
@@ -1190,7 +1190,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                               genders.map((g) => (
                                 <span
                                   key={g}
-                                  className="px-1.5 py-0.2 rounded bg-navy-100 text-navy-700 font-bold text-[9px]"
+                                  className="px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 font-bold text-[9px]"
                                 >
                                   {g}
                                 </span>
@@ -1201,24 +1201,24 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
 
                         {/* Annual Quota */}
                         <div className="flex items-center justify-between">
-                          <span className="text-navy-500 font-medium">Annual Quota:</span>
-                          <span className="font-black text-navy-900">
+                          <span className="text-slate-500 font-medium">Annual Quota:</span>
+                          <span className="font-black text-slate-900">
                             {policy.annual_quota > 0 ? `${policy.annual_quota} Days / Year` : 'Unlimited / Case basis'}
                           </span>
                         </div>
 
                         {/* Min Service Requirement */}
                         <div className="flex items-center justify-between">
-                          <span className="text-navy-500 font-medium">Min Service Days:</span>
-                          <span className="font-semibold text-navy-800">
+                          <span className="text-slate-500 font-medium">Min Service Days:</span>
+                          <span className="font-semibold text-slate-800">
                             {policy.min_service_days > 0 ? `${policy.min_service_days} Days Required` : 'None (Day 1)'}
                           </span>
                         </div>
 
                         {/* Carry Forward */}
                         <div className="flex items-center justify-between">
-                          <span className="text-navy-500 font-medium">Carry Forward:</span>
-                          <span className="font-semibold text-navy-800">
+                          <span className="text-slate-500 font-medium">Carry Forward:</span>
+                          <span className="font-semibold text-slate-800">
                             {policy.carry_forward_allowed
                               ? `Allowed (Up to ${policy.max_carry_forward_days}d)`
                               : 'No (Lapses yearly)'}
@@ -1227,8 +1227,8 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
 
                         {/* Encashment */}
                         <div className="flex items-center justify-between">
-                          <span className="text-navy-500 font-medium">Encashment:</span>
-                          <span className="font-semibold text-navy-800">
+                          <span className="text-slate-500 font-medium">Encashment:</span>
+                          <span className="font-semibold text-slate-800">
                             {policy.encashment_allowed
                               ? `Allowed (Up to ${policy.max_encashment_days || 0}d)`
                               : 'No Encashment'}
@@ -1237,13 +1237,13 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
 
                         {/* Attachment Requirement */}
                         <div className="flex items-center justify-between">
-                          <span className="text-navy-500 font-medium">Certificate / Proof:</span>
+                          <span className="text-slate-500 font-medium">Certificate / Proof:</span>
                           <span
                             className={cn(
                               'font-bold text-[10px] px-1.5 py-0.2 rounded',
                               policy.attachment_required
                                 ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                                : 'text-navy-400'
+                                : 'text-slate-400'
                             )}
                           >
                             {policy.attachment_required ? 'Required 📎' : 'Optional'}
@@ -1252,7 +1252,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                       </div>
 
                       {/* Actions Footer */}
-                      <div className="flex items-center justify-between pt-3 border-t border-navy-100">
+                      <div className="flex items-center justify-between pt-3 border-t border-slate-100">
                         <div className="flex items-center gap-1.5">
                           <span
                             className={cn(
@@ -1260,7 +1260,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                               policy.is_active ? 'bg-emerald-500' : 'bg-slate-400'
                             )}
                           />
-                          <span className="text-[11px] font-bold text-navy-600">
+                          <span className="text-[11px] font-bold text-slate-600">
                             {policy.is_active ? 'Active Policy' : 'Inactive'}
                           </span>
                         </div>
@@ -1268,14 +1268,14 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                         <div className="flex items-center gap-1.5">
                           <button
                             onClick={() => openEditPolicyModal(policy)}
-                            className="px-2.5 py-1 rounded-lg text-xs font-bold bg-navy-50 hover:bg-navy-100 text-navy-700 border border-navy-200 transition cursor-pointer flex items-center gap-1"
+                            className="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 transition cursor-pointer flex items-center gap-1"
                           >
                             <Icon name="edit" size={12} />
                             <span>Edit</span>
                           </button>
                           <button
                             onClick={() => handleDeletePolicy(policy)}
-                            className="p-1 rounded-lg text-navy-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                            className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
                             title="Delete or Deactivate"
                           >
                             <Icon name="trash-2" size={14} />
@@ -1290,11 +1290,11 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
               /* ────────────────────────────────────────── */
               /* 2. ROW VIEW (HIGH-DENSITY DATA TABLE)      */
               /* ────────────────────────────────────────── */
-              <div className="bg-white border border-navy-100 rounded-2xl shadow-xs overflow-hidden animate-fade-in">
+              <div className="bg-white border border-slate-100 rounded-2xl shadow-xs overflow-hidden animate-fade-in">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse">
                     <thead>
-                      <tr className="border-b border-navy-100 bg-navy-50/70 text-[11px] font-bold text-navy-500 uppercase tracking-wider">
+                      <tr className="border-b border-slate-100 bg-slate-50/70 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                         <th className="py-3 px-4">Policy / Leave</th>
                         <th className="py-3 px-4">Pay Type</th>
                         <th className="py-3 px-4">Allocation &amp; Quota</th>
@@ -1305,7 +1305,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                         <th className="py-3 px-4 text-right">Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-navy-50 text-xs">
+                    <tbody className="divide-y divide-slate-50 text-xs">
                       {filteredPolicies.map((policy) => {
                         const genders = policy.gender_eligibility || [];
                         const isAllGenders =
@@ -1319,7 +1319,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                             key={policy.id}
                             className={cn(
                               'hover:bg-purple-50/30 transition-colors',
-                              !policy.is_active && 'opacity-60 bg-navy-50/30'
+                              !policy.is_active && 'opacity-60 bg-slate-50/30'
                             )}
                           >
                             {/* Policy & Code */}
@@ -1329,7 +1329,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                                   {policy.code}
                                 </div>
                                 <div className="min-w-0">
-                                  <div className="font-black text-navy-900 flex items-center gap-1.5">
+                                  <div className="font-black text-slate-900 flex items-center gap-1.5">
                                     <span>{policy.name}</span>
                                     {policy.category && (
                                       <span className="text-[10px] font-bold text-purple-700 bg-purple-50 px-1.5 py-0.2 rounded border border-purple-100">
@@ -1337,7 +1337,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                                       </span>
                                     )}
                                   </div>
-                                  <div className="text-[11px] text-navy-500 truncate max-w-xs" title={policy.description}>
+                                  <div className="text-[11px] text-slate-500 truncate max-w-xs" title={policy.description}>
                                     {policy.description || `Code: ${policy.code}`}
                                   </div>
                                 </div>
@@ -1366,10 +1366,10 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
 
                             {/* Allocation & Min Service */}
                             <td className="py-3.5 px-4">
-                              <div className="font-bold text-navy-900">
+                              <div className="font-bold text-slate-900">
                                 {policy.annual_quota > 0 ? `${policy.annual_quota} Days / Year` : 'Unlimited'}
                               </div>
-                              <div className="text-[10px] text-navy-400 font-medium">
+                              <div className="text-[10px] text-slate-400 font-medium">
                                 {policy.min_service_days > 0 ? `Min ${policy.min_service_days}d service` : 'Available Day 1'}
                               </div>
                             </td>
@@ -1393,7 +1393,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                                   {genders.map((g) => (
                                     <span
                                       key={g}
-                                      className="px-1.5 py-0.2 rounded bg-navy-100 text-navy-700 font-bold text-[9px]"
+                                      className="px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 font-bold text-[9px]"
                                     >
                                       {g}
                                     </span>
@@ -1404,10 +1404,10 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
 
                             {/* Carry Forward & Encashment */}
                             <td className="py-3.5 px-4 text-[11px]">
-                              <div className="font-bold text-navy-800">
+                              <div className="font-bold text-slate-800">
                                 CF: {policy.carry_forward_allowed ? `Up to ${policy.max_carry_forward_days}d` : 'No'}
                               </div>
-                              <div className="text-[10px] text-navy-500 font-medium">
+                              <div className="text-[10px] text-slate-500 font-medium">
                                 Encash: {policy.encashment_allowed ? `Up to ${policy.max_encashment_days || 0}d` : 'No'}
                               </div>
                             </td>
@@ -1419,7 +1419,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                                   'font-bold text-[10px] px-2 py-0.5 rounded-md border',
                                   policy.attachment_required
                                     ? 'bg-amber-50 text-amber-700 border-amber-200'
-                                    : 'bg-navy-50 text-navy-500 border-navy-100'
+                                    : 'bg-slate-50 text-slate-500 border-slate-100'
                                 )}
                               >
                                 {policy.attachment_required ? 'Required 📎' : 'Optional'}
@@ -1435,7 +1435,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                                     policy.is_active ? 'bg-emerald-500' : 'bg-slate-400'
                                   )}
                                 />
-                                <span className="text-[11px] font-bold text-navy-700">
+                                <span className="text-[11px] font-bold text-slate-700">
                                   {policy.is_active ? 'Active' : 'Inactive'}
                                 </span>
                               </div>
@@ -1446,14 +1446,14 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                               <div className="flex items-center justify-end gap-1.5">
                                 <button
                                   onClick={() => openEditPolicyModal(policy)}
-                                  className="px-2.5 py-1 rounded-lg text-xs font-bold bg-navy-50 hover:bg-purple-50 text-navy-700 hover:text-purple-700 border border-navy-200 transition cursor-pointer flex items-center gap-1"
+                                  className="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-50 hover:bg-purple-50 text-slate-700 hover:text-purple-700 border border-slate-200 transition cursor-pointer flex items-center gap-1"
                                 >
                                   <Icon name="edit" size={12} />
                                   <span>Edit</span>
                                 </button>
                                 <button
                                   onClick={() => handleDeletePolicy(policy)}
-                                  className="p-1.5 rounded-lg text-navy-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                                  className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
                                   title="Delete or Deactivate"
                                 >
                                   <Icon name="trash-2" size={14} />
@@ -1476,24 +1476,24 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
       {/* TAB 3: STAFF BALANCES & LEDGERS            */}
       {/* ────────────────────────────────────────── */}
       {subTab === 'balances' && (
-        <div className="bg-white border border-navy-100 rounded-2xl shadow-sm overflow-hidden space-y-4 p-5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-navy-100">
+        <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden space-y-4 p-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
             <div>
-              <h3 className="text-base font-black text-navy-900">Staff Leave Balances &amp; Ledgers (Year {new Date().getFullYear()})</h3>
-              <p className="text-xs text-navy-500">
+              <h3 className="text-base font-black text-slate-900">Staff Leave Balances &amp; Ledgers (Year {new Date().getFullYear()})</h3>
+              <p className="text-xs text-slate-500">
                 Track allocated, utilized, pending, and remaining leave quotas across each policy for all staff members.
               </p>
             </div>
           </div>
 
           {filteredBalances.length === 0 ? (
-            <div className="py-12 text-center text-navy-400 text-xs">
+            <div className="py-12 text-center text-slate-400 text-xs">
               No leave balances found for the selected criteria.
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="bg-navy-50/70 text-[11px] font-black uppercase text-navy-500 tracking-wider border-b border-navy-100">
+                <thead className="bg-slate-50/70 text-[11px] font-black uppercase text-slate-500 tracking-wider border-b border-slate-100">
                   <tr>
                     <th className="py-3 px-4">EMPLOYEE / employee</th>
                     <th className="py-3 px-4">GENDER</th>
@@ -1505,12 +1505,12 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                     <th className="py-3 px-4 text-right">ACTION</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-navy-50 font-medium text-navy-800">
+                <tbody className="divide-y divide-slate-50 font-medium text-slate-800">
                   {filteredBalances.map((b) => (
                     <tr key={`${b.employee_id}_${b.leave_type_id}`} className="hover:bg-purple-50/30 transition-colors">
                       <td className="py-3 px-4">
-                        <div className="font-bold text-navy-900">{b.employee_name}</div>
-                        <div className="text-[10px] text-navy-400 font-mono">
+                        <div className="font-bold text-slate-900">{b.employee_name}</div>
+                        <div className="text-[10px] text-slate-400 font-mono">
                           {b.employee_code} • {b.designation || 'Coach'}
                         </div>
                       </td>
@@ -1527,10 +1527,10 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                         </span>
                       </td>
                       <td className="py-3 px-4">
-                        <div className="font-bold text-navy-900">{b.leave_type_name}</div>
-                        <div className="text-[10px] text-navy-400 font-mono">{b.leave_type_code}</div>
+                        <div className="font-bold text-slate-900">{b.leave_type_name}</div>
+                        <div className="text-[10px] text-slate-400 font-mono">{b.leave_type_code}</div>
                       </td>
-                      <td className="py-3 px-4 font-bold text-navy-700">{b.allocated_days}d</td>
+                      <td className="py-3 px-4 font-bold text-slate-700">{b.allocated_days}d</td>
                       <td className="py-3 px-4 font-bold text-rose-600">{b.used_days}d</td>
                       <td className="py-3 px-4 font-bold text-amber-600">{b.pending_days}d</td>
                       <td className="py-3 px-4">
@@ -1568,21 +1568,21 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
       {/* 5. MODAL: APPLY LEAVE (DYNAMIC ELIGIBILITY ENGINE)            */}
       {/* ───────────────────────────────────────────────────────────── */}
       {showApplyModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-950/60 backdrop-blur-xs p-4 animate-fade-in">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-navy-100 space-y-5 animate-scale-up">
-            <div className="flex items-center justify-between border-b border-navy-100 pb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-slate-100 space-y-5 animate-scale-up">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
               <div className="flex items-center gap-2.5">
                 <div className="w-10 h-10 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center">
                   <Icon name="calendar" size={20} />
                 </div>
                 <div>
-                  <h3 className="text-lg font-black text-navy-900">Record Leave Application</h3>
-                  <p className="text-xs text-navy-500">Apply leave on behalf of a coach or staff member.</p>
+                  <h3 className="text-lg font-black text-slate-900">Record Leave Application</h3>
+                  <p className="text-xs text-slate-500">Apply leave on behalf of a coach or staff member.</p>
                 </div>
               </div>
               <button
                 onClick={() => setShowApplyModal(false)}
-                className="w-8 h-8 rounded-xl bg-navy-50 text-navy-500 hover:text-navy-900 flex items-center justify-center transition cursor-pointer"
+                className="w-8 h-8 rounded-xl bg-slate-50 text-slate-500 hover:text-slate-900 flex items-center justify-center transition cursor-pointer"
               >
                 <Icon name="x" size={16} />
               </button>
@@ -1598,13 +1598,13 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
             <form onSubmit={handleApplyLeave} className="space-y-4">
               {/* Employee Selection */}
               <div>
-                <label className="block text-xs font-bold text-navy-700 mb-1.5">
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
                   Select employee / Employee <span className="text-rose-500">*</span>
                 </label>
                 <select
                   value={formEmployeeId}
                   onChange={(e) => setFormEmployeeId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-navy-50 border border-navy-200 text-xs font-bold text-navy-900 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none cursor-pointer"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none cursor-pointer"
                 >
                   {employees.map((emp) => (
                     <option key={emp.id} value={emp.id}>
@@ -1615,7 +1615,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
 
                 {/* Selected employee info badge */}
                 {selectedEmployeeObj && (
-                  <div className="mt-1.5 flex items-center gap-2 text-[11px] text-navy-500">
+                  <div className="mt-1.5 flex items-center gap-2 text-[11px] text-slate-500">
                     <span>Department: <strong>{selectedEmployeeObj.department}</strong></span>
                     <span>•</span>
                     <span>Joined: <strong>{selectedEmployeeObj.joined_date || 'N/A'}</strong></span>
@@ -1626,7 +1626,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
               {/* Leave Type (All created & active policies) */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-bold text-navy-700">
+                  <label className="block text-xs font-bold text-slate-700">
                     Leave Policy <span className="text-rose-500">*</span>
                   </label>
                   {loadingEligible && (
@@ -1640,7 +1640,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                 <select
                   value={formLeaveTypeId}
                   onChange={(e) => setFormLeaveTypeId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-navy-50 border border-navy-200 text-xs font-bold text-navy-900 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none cursor-pointer"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none cursor-pointer"
                 >
                   {availablePoliciesForForm.length === 0 ? (
                     <option value="">No leave policies found</option>
@@ -1688,32 +1688,32 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
               {/* Dates */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-navy-700 mb-1.5">
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
                     Start Date <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="date"
                     value={formStartDate}
                     onChange={(e) => setFormStartDate(e.target.value)}
-                    className="w-full px-3.5 py-2 rounded-xl bg-navy-50 border border-navy-200 text-xs font-bold text-navy-900 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none"
+                    className="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-navy-700 mb-1.5">
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
                     End Date <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="date"
                     value={formEndDate}
                     onChange={(e) => setFormEndDate(e.target.value)}
-                    className="w-full px-3.5 py-2 rounded-xl bg-navy-50 border border-navy-200 text-xs font-bold text-navy-900 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none"
+                    className="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none"
                   />
                 </div>
               </div>
 
               {/* Reason for Leave Dropdown & Description */}
               <div className="space-y-2">
-                <label className="block text-xs font-bold text-navy-700">
+                <label className="block text-xs font-bold text-slate-700">
                   Reason for Leave <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
@@ -1731,7 +1731,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                         });
                       }
                     }}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-navy-50 border border-navy-200 text-xs font-bold text-navy-900 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none cursor-pointer appearance-none pr-8"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none cursor-pointer appearance-none pr-8"
                   >
                     <option value="">-- Select Reason for Leave --</option>
                     {leaveReasonsList.map((r) => (
@@ -1741,7 +1741,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                     ))}
                     <option value="__custom__">+ Other / Custom Reason</option>
                   </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-navy-500">
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-500">
                     <Icon name="chevron-down" size={14} />
                   </div>
                 </div>
@@ -1751,17 +1751,17 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                   value={formReason}
                   onChange={(e) => setFormReason(e.target.value)}
                   placeholder="Additional remarks or specific justification..."
-                  className="w-full px-3.5 py-2 rounded-xl bg-navy-50 border border-navy-200 text-xs font-medium text-navy-900 placeholder-navy-400 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none resize-none"
+                  className="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-900 placeholder-slate-400 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none resize-none"
                 />
               </div>
 
               {/* Supporting Document Upload */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-bold text-navy-700">
+                  <label className="block text-xs font-bold text-slate-700">
                     Supporting Document / Certificate
                   </label>
-                  <span className="text-[10px] text-navy-400 font-medium">PDF, DOC, DOCX, JPG, PNG (Max 2MB)</span>
+                  <span className="text-[10px] text-slate-400 font-medium">PDF, DOC, DOCX, JPG, PNG (Max 2MB)</span>
                 </div>
 
                 {formAttachmentUrl ? (
@@ -1777,10 +1777,10 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                         )}
                       </div>
                       <div className="min-w-0">
-                        <div className="text-xs font-bold text-navy-900 truncate" title={formAttachmentName}>
+                        <div className="text-xs font-bold text-slate-900 truncate" title={formAttachmentName}>
                           {formAttachmentName || 'Uploaded Document'}
                         </div>
-                        <div className="text-[10px] text-navy-400 font-semibold">{formAttachmentSize || 'Attached'}</div>
+                        <div className="text-[10px] text-slate-400 font-semibold">{formAttachmentSize || 'Attached'}</div>
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
@@ -1804,14 +1804,14 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                     </div>
                   </div>
                 ) : (
-                  <label className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-navy-200 hover:border-purple-500 rounded-2xl bg-navy-50/60 hover:bg-purple-50/30 transition cursor-pointer group">
-                    <div className="w-10 h-10 rounded-2xl bg-white group-hover:bg-purple-100 text-navy-500 group-hover:text-purple-600 flex items-center justify-center shadow-xs transition mb-2">
+                  <label className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-slate-200 hover:border-purple-500 rounded-2xl bg-slate-50/60 hover:bg-purple-50/30 transition cursor-pointer group">
+                    <div className="w-10 h-10 rounded-2xl bg-white group-hover:bg-purple-100 text-slate-500 group-hover:text-purple-600 flex items-center justify-center shadow-xs transition mb-2">
                       <Icon name="upload-cloud" size={20} />
                     </div>
-                    <div className="text-xs font-bold text-navy-800 group-hover:text-purple-700">
+                    <div className="text-xs font-bold text-slate-800 group-hover:text-purple-700">
                       Click to upload document or certificate
                     </div>
-                    <div className="text-[10px] text-navy-400 mt-0.5">Supports PDF, DOC, DOCX, JPG, PNG</div>
+                    <div className="text-[10px] text-slate-400 mt-0.5">Supports PDF, DOC, DOCX, JPG, PNG</div>
                     <input
                       type="file"
                       accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp"
@@ -1822,11 +1822,11 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                 )}
               </div>
 
-              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-navy-100">
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setShowApplyModal(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-navy-600 hover:bg-navy-50 transition cursor-pointer"
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -1848,25 +1848,25 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
       {/* 6. MODAL: CREATE / EDIT LEAVE POLICY (vahd OWNER)              */}
       {/* ───────────────────────────────────────────────────────────── */}
       {showPolicyModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-950/60 backdrop-blur-xs p-4 animate-fade-in overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-7 shadow-2xl border border-navy-100 space-y-5 animate-scale-up my-8">
-            <div className="flex items-center justify-between border-b border-navy-100 pb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 animate-fade-in overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-7 shadow-2xl border border-slate-100 space-y-5 animate-scale-up my-8">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
               <div className="flex items-center gap-2.5">
                 <div className="w-10 h-10 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center">
                   <Icon name="sliders" size={20} />
                 </div>
                 <div>
-                  <h3 className="text-lg font-black text-navy-900">
+                  <h3 className="text-lg font-black text-slate-900">
                     {editingPolicy ? `Edit Policy: ${editingPolicy.name}` : 'Configure New Leave Policy'}
                   </h3>
-                  <p className="text-xs text-navy-500">
+                  <p className="text-xs text-slate-500">
                     Customize gender eligibility, pay rules, annual quotas, and conditions.
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setShowPolicyModal(false)}
-                className="w-8 h-8 rounded-xl bg-navy-50 text-navy-500 hover:text-navy-900 flex items-center justify-center transition cursor-pointer"
+                className="w-8 h-8 rounded-xl bg-slate-50 text-slate-500 hover:text-slate-900 flex items-center justify-center transition cursor-pointer"
               >
                 <Icon name="x" size={16} />
               </button>
@@ -1883,7 +1883,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
               {/* Name, Code & Category */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="sm:col-span-2">
-                  <label className="block text-xs font-bold text-navy-700 mb-1.5">
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
                     Policy / Leave Name <span className="text-rose-500">*</span>
                   </label>
                   <input
@@ -1891,11 +1891,11 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                     value={policyForm.name}
                     onChange={(e) => setPolicyForm({ ...policyForm, name: e.target.value })}
                     placeholder="e.g. Wedding Leave, Maternity Leave, Casual Leave"
-                    className="w-full px-3.5 py-2 rounded-xl bg-navy-50 border border-navy-200 text-xs font-bold text-navy-900 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none"
+                    className="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-navy-700 mb-1.5">
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
                     Code <span className="text-rose-500">*</span>
                   </label>
                   <input
@@ -1904,14 +1904,14 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                     onChange={(e) => setPolicyForm({ ...policyForm, code: e.target.value.toUpperCase() })}
                     placeholder="e.g. WL, ML, CL"
                     maxLength={6}
-                    className="w-full px-3.5 py-2 rounded-xl bg-navy-50 border border-navy-200 text-xs font-bold text-navy-900 uppercase font-mono focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none"
+                    className="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900 uppercase font-mono focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none"
                   />
                 </div>
               </div>
 
               {/* Leave Category */}
               <div>
-                <label className="block text-xs font-bold text-navy-700 mb-1.5">
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
                   Leave Category <span className="text-rose-500">*</span>
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -1928,7 +1928,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                         setPolicyForm({ ...policyForm, category: '' });
                       }
                     }}
-                    className="w-full px-3.5 py-2 rounded-xl bg-navy-50 border border-navy-200 text-xs font-bold text-navy-900 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none"
+                    className="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none"
                   >
                     <option value="General Leave">General Leave (CL / EL / Annual)</option>
                     <option value="Medical Leave">Medical Leave (Sick / Recovery)</option>
@@ -1945,7 +1945,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                       value={policyForm.category}
                       onChange={(e) => setPolicyForm({ ...policyForm, category: e.target.value })}
                       placeholder="Type custom category name..."
-                      className="w-full px-3.5 py-2 rounded-xl bg-navy-50 border border-navy-200 text-xs font-bold text-navy-900 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none"
+                      className="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none"
                       autoFocus
                     />
                   )}
@@ -1954,19 +1954,19 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
 
               {/* Description */}
               <div>
-                <label className="block text-xs font-bold text-navy-700 mb-1.5">Description &amp; Guidelines</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">Description &amp; Guidelines</label>
                 <textarea
                   rows={2}
                   value={policyForm.description}
                   onChange={(e) => setPolicyForm({ ...policyForm, description: e.target.value })}
                   placeholder="Explain who is eligible and any special terms..."
-                  className="w-full px-3.5 py-2 rounded-xl bg-navy-50 border border-navy-200 text-xs font-medium text-navy-900 placeholder-navy-400 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none resize-none"
+                  className="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-900 placeholder-slate-400 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none resize-none"
                 />
               </div>
 
               {/* Paid Classification */}
               <div>
-                <label className="block text-xs font-bold text-navy-700 mb-1.5">
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
                   Paid Classification <span className="text-rose-500">*</span>
                 </label>
                 <div className="grid grid-cols-3 gap-2.5">
@@ -1983,11 +1983,11 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                         'p-2.5 rounded-xl border text-left transition cursor-pointer',
                         policyForm.paid_type === pt.id
                           ? 'border-purple-600 bg-purple-50/60 ring-2 ring-purple-500/20'
-                          : 'border-navy-200 bg-navy-50/50 hover:bg-navy-50'
+                          : 'border-slate-200 bg-slate-50/50 hover:bg-slate-50'
                       )}
                     >
-                      <div className="font-black text-xs text-navy-900">{pt.label}</div>
-                      <div className="text-[10px] text-navy-500 mt-0.5">{pt.desc}</div>
+                      <div className="font-black text-xs text-slate-900">{pt.label}</div>
+                      <div className="text-[10px] text-slate-500 mt-0.5">{pt.desc}</div>
                     </button>
                   ))}
                 </div>
@@ -2031,7 +2031,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                           className="rounded text-purple-600 focus:ring-purple-500"
                         />
                         <div>
-                          <div className="text-xs font-bold text-navy-900">{g.label}</div>
+                          <div className="text-xs font-bold text-slate-900">{g.label}</div>
                         </div>
                       </label>
                     );
@@ -2042,7 +2042,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
               {/* Quotas & Limits */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-navy-700 mb-1.5">
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
                     Annual Quota (Days)
                   </label>
                   <input
@@ -2050,13 +2050,13 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                     min="0"
                     value={policyForm.annual_quota}
                     onChange={(e) => setPolicyForm({ ...policyForm, annual_quota: parseInt(e.target.value) || 0 })}
-                    className="w-full px-3.5 py-2 rounded-xl bg-navy-50 border border-navy-200 text-xs font-bold text-navy-900 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none"
+                    className="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none"
                   />
-                  <span className="text-[10px] text-navy-400">0 for unlimited</span>
+                  <span className="text-[10px] text-slate-400">0 for unlimited</span>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-navy-700 mb-1.5">
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
                     Min Service (Days)
                   </label>
                   <input
@@ -2064,13 +2064,13 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                     min="0"
                     value={policyForm.min_service_days}
                     onChange={(e) => setPolicyForm({ ...policyForm, min_service_days: parseInt(e.target.value) || 0 })}
-                    className="w-full px-3.5 py-2 rounded-xl bg-navy-50 border border-navy-200 text-xs font-bold text-navy-900 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none"
+                    className="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none"
                   />
-                  <span className="text-[10px] text-navy-400">e.g. 80 for Maternity</span>
+                  <span className="text-[10px] text-slate-400">e.g. 80 for Maternity</span>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-navy-700 mb-1.5">
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
                     Max Consecutive Days
                   </label>
                   <input
@@ -2078,19 +2078,19 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                     min="1"
                     value={policyForm.max_consecutive_days}
                     onChange={(e) => setPolicyForm({ ...policyForm, max_consecutive_days: parseInt(e.target.value) || 15 })}
-                    className="w-full px-3.5 py-2 rounded-xl bg-navy-50 border border-navy-200 text-xs font-bold text-navy-900 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none"
+                    className="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none"
                   />
-                  <span className="text-[10px] text-navy-400">Single stretch limit</span>
+                  <span className="text-[10px] text-slate-400">Single stretch limit</span>
                 </div>
               </div>
 
               {/* Toggles */}
-              <div className="space-y-2 pt-2 border-t border-navy-100">
+              <div className="space-y-2 pt-2 border-t border-slate-100">
                 {/* Carry forward */}
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="text-xs font-bold text-navy-800">Carry Forward to Next Year</div>
-                    <div className="text-[10px] text-navy-400">Unused balance rolls over on Dec 31</div>
+                    <div className="text-xs font-bold text-slate-800">Carry Forward to Next Year</div>
+                    <div className="text-[10px] text-slate-400">Unused balance rolls over on Dec 31</div>
                   </div>
                   <input
                     type="checkbox"
@@ -2102,7 +2102,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
 
                 {policyForm.carry_forward_allowed && (
                   <div className="pl-4">
-                    <label className="block text-[11px] font-bold text-navy-600 mb-1">
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">
                       Max Carry Forward Limit (Days)
                     </label>
                     <input
@@ -2110,7 +2110,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                       min="1"
                       value={policyForm.max_carry_forward_days}
                       onChange={(e) => setPolicyForm({ ...policyForm, max_carry_forward_days: parseInt(e.target.value) || 0 })}
-                      className="w-32 px-2.5 py-1.5 rounded-lg bg-navy-50 border border-navy-200 text-xs font-bold text-navy-900"
+                      className="w-32 px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900"
                     />
                   </div>
                 )}
@@ -2118,8 +2118,8 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                 {/* Encashment */}
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="text-xs font-bold text-navy-800">Encashment Allowed</div>
-                    <div className="text-[10px] text-navy-400">Can staff encash unused leave balance for salary payout?</div>
+                    <div className="text-xs font-bold text-slate-800">Encashment Allowed</div>
+                    <div className="text-[10px] text-slate-400">Can staff encash unused leave balance for salary payout?</div>
                   </div>
                   <input
                     type="checkbox"
@@ -2131,7 +2131,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
 
                 {policyForm.encashment_allowed && (
                   <div className="pl-4">
-                    <label className="block text-[11px] font-bold text-navy-600 mb-1">
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">
                       Max Encashable Days (Per Year)
                     </label>
                     <input
@@ -2139,7 +2139,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                       min="1"
                       value={policyForm.max_encashment_days}
                       onChange={(e) => setPolicyForm({ ...policyForm, max_encashment_days: parseInt(e.target.value) || 0 })}
-                      className="w-32 px-2.5 py-1.5 rounded-lg bg-navy-50 border border-navy-200 text-xs font-bold text-navy-900"
+                      className="w-32 px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900"
                     />
                   </div>
                 )}
@@ -2147,8 +2147,8 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                 {/* Attachment mandatory */}
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="text-xs font-bold text-navy-800">Mandatory Certificate / Proof Upload</div>
-                    <div className="text-[10px] text-navy-400">Require medical notes or official certificates</div>
+                    <div className="text-xs font-bold text-slate-800">Mandatory Certificate / Proof Upload</div>
+                    <div className="text-[10px] text-slate-400">Require medical notes or official certificates</div>
                   </div>
                   <input
                     type="checkbox"
@@ -2161,8 +2161,8 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                 {/* Active */}
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="text-xs font-bold text-navy-800">Policy Active Status</div>
-                    <div className="text-[10px] text-navy-400">Staff can see and apply for this leave when active</div>
+                    <div className="text-xs font-bold text-slate-800">Policy Active Status</div>
+                    <div className="text-[10px] text-slate-400">Staff can see and apply for this leave when active</div>
                   </div>
                   <input
                     type="checkbox"
@@ -2173,11 +2173,11 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-navy-100">
+              <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setShowPolicyModal(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-navy-600 hover:bg-navy-50 transition cursor-pointer"
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -2199,21 +2199,21 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
       {/* 7. MODAL: ADJUST LEAVE BALANCE                                */}
       {/* ───────────────────────────────────────────────────────────── */}
       {showBalanceModal && adjustTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-950/60 backdrop-blur-xs p-4 animate-fade-in">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-navy-100 space-y-5 animate-scale-up">
-            <div className="flex items-center justify-between border-b border-navy-100 pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-5 animate-scale-up">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
                   <Icon name="edit" size={16} />
                 </div>
                 <div>
-                  <h3 className="text-base font-black text-navy-900">Adjust Leave Balance</h3>
-                  <p className="text-xs text-navy-500">{adjustTarget.employee_name} • {adjustTarget.leave_type_name}</p>
+                  <h3 className="text-base font-black text-slate-900">Adjust Leave Balance</h3>
+                  <p className="text-xs text-slate-500">{adjustTarget.employee_name} • {adjustTarget.leave_type_name}</p>
                 </div>
               </div>
               <button
                 onClick={() => setShowBalanceModal(false)}
-                className="w-7 h-7 rounded-lg bg-navy-50 text-navy-500 hover:text-navy-900 flex items-center justify-center transition cursor-pointer"
+                className="w-7 h-7 rounded-lg bg-slate-50 text-slate-500 hover:text-slate-900 flex items-center justify-center transition cursor-pointer"
               >
                 <Icon name="x" size={14} />
               </button>
@@ -2222,24 +2222,24 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
             <form onSubmit={handleSaveBalanceAdjustment} className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-navy-700 mb-1">Allocated Days</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Allocated Days</label>
                   <input
                     type="number"
                     min="0"
                     value={adjustAllocated}
                     onChange={(e) => setAdjustAllocated(parseFloat(e.target.value) || 0)}
-                    className="w-full px-3 py-2 rounded-xl bg-navy-50 border border-navy-200 text-xs font-bold text-navy-900"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-navy-700 mb-1">Used Days</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Used Days</label>
                   <input
                     type="number"
                     min="0"
                     value={adjustUsed}
                     onChange={(e) => setAdjustUsed(parseFloat(e.target.value) || 0)}
-                    className="w-full px-3 py-2 rounded-xl bg-navy-50 border border-navy-200 text-xs font-bold text-navy-900"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900"
                   />
                 </div>
               </div>
@@ -2249,11 +2249,11 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                 <span className="font-black text-sm">{Math.max(0, adjustAllocated - adjustUsed)} Days Remaining</span>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-navy-100">
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setShowBalanceModal(false)}
-                  className="px-3 py-1.5 rounded-lg text-xs font-bold text-navy-600 hover:bg-navy-50 transition cursor-pointer"
+                  className="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -2274,15 +2274,15 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
       {/* 8. MODAL: REJECT LEAVE WITH REASON                            */}
       {/* ───────────────────────────────────────────────────────────── */}
       {rejectingLeaveId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-950/60 backdrop-blur-xs p-4 animate-fade-in">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-5 shadow-2xl border border-navy-100 space-y-4 animate-scale-up">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-5 shadow-2xl border border-slate-100 space-y-4 animate-scale-up">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
                 <Icon name="x-circle" size={18} />
               </div>
               <div>
-                <h3 className="text-sm font-black text-navy-900">Reject Leave Application</h3>
-                <p className="text-[11px] text-navy-500">Provide feedback or reason for staff member.</p>
+                <h3 className="text-sm font-black text-slate-900">Reject Leave Application</h3>
+                <p className="text-[11px] text-slate-500">Provide feedback or reason for staff member.</p>
               </div>
             </div>
 
@@ -2291,14 +2291,14 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
               value={rejectionReason}
               onChange={(e) => setRejectionReason(e.target.value)}
               placeholder="e.g. Critical training schedules conflict, please discuss with vahd manager..."
-              className="w-full px-3 py-2 rounded-xl bg-navy-50 border border-navy-200 text-xs font-medium text-navy-900 placeholder-navy-400 focus:bg-white focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 outline-none resize-none"
+              className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-900 placeholder-slate-400 focus:bg-white focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 outline-none resize-none"
             />
 
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-navy-100">
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
               <button
                 type="button"
                 onClick={() => setRejectingLeaveId(null)}
-                className="px-3 py-1.5 rounded-lg text-xs font-bold text-navy-600 hover:bg-navy-50 transition cursor-pointer"
+                className="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
               >
                 Cancel
               </button>

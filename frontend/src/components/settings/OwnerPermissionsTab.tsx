@@ -572,33 +572,39 @@ export function OwnerPermissionsTab({ onBack }: Props) {
         </div>
       )}
 
-      {/* Top Breadcrumb & Action Bar - Exactly as Image 1 */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-3">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-1">
-            <span className="hover:text-blue-600 cursor-pointer" onClick={() => (onBack ? onBack() : null)}>
-              Home
-            </span>
-            <Icon name="chevron-right" size={12} />
-            <span className="hover:text-blue-600 cursor-pointer" onClick={() => (onBack ? onBack() : null)}>
-              Settings
-            </span>
-            <Icon name="chevron-right" size={12} />
-            <span className="text-slate-800 dark:text-slate-200 font-bold">Permissions</span>
+      {/* Top Breadcrumb & Action Bar */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-2xs">
+        <div className="flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-2xl bg-sky-50 text-sky-600 border border-sky-100 flex items-center justify-center shrink-0">
+            <Icon name="key" size={22} className="text-sky-600" />
           </div>
-          <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Permissions</h2>
-          <p className="text-xs text-slate-500 font-medium">Settings · {owners.length} records</p>
+          <div>
+            <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-0.5">
+              <span className="hover:text-blue-600 cursor-pointer flex items-center gap-1" onClick={() => (onBack ? onBack() : null)}>
+                <Icon name="home" size={12} />
+                <span>Home</span>
+              </span>
+              <Icon name="chevron-right" size={12} />
+              <span className="hover:text-blue-600 cursor-pointer" onClick={() => (onBack ? onBack() : null)}>
+                Settings
+              </span>
+              <Icon name="chevron-right" size={12} />
+              <span className="text-slate-800 font-bold">Permissions</span>
+            </div>
+            <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Permissions Matrix</h2>
+            <p className="text-xs text-slate-500 font-medium">Settings · <span className="font-bold text-slate-700">{owners.length}</span> role access records</p>
+          </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 self-start md:self-center">
           {/* Back button */}
           <button
             type="button"
             onClick={() => (onBack ? onBack() : null)}
-            className="px-3.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+            className="px-3.5 py-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
           >
-            <Icon name="chevron-left" size={14} />
-            <span>Back</span>
+            <Icon name="arrow-left" size={13} />
+            <span>Back to Settings</span>
           </button>
 
           {/* Delete All button */}
@@ -615,7 +621,7 @@ export function OwnerPermissionsTab({ onBack }: Props) {
           <button
             type="button"
             onClick={handleOpenAdd}
-            className="px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+            className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-orange-500 hover:opacity-95 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
           >
             <Icon name="plus" size={14} />
             <span>+ Add Permission</span>
@@ -1201,14 +1207,14 @@ export function OwnerPermissionsTab({ onBack }: Props) {
                   <button
                     type="submit"
                     disabled={saving}
-                    className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-blue-500/20 disabled:opacity-50 transition-all cursor-pointer"
+                    className="px-5 py-2 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-orange-500 hover:opacity-95 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-orange-500/20 disabled:opacity-50 transition-all cursor-pointer"
                   >
                     {saving ? (
                       <Icon name="loader" size={14} className="animate-spin" />
                     ) : (
                       <Icon name="check" size={14} />
                     )}
-                    <span>Save</span>
+                    <span>Save Permissions</span>
                   </button>
                 )}
               </div>

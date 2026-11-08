@@ -426,7 +426,7 @@ export function MembersPage() {
       <div className="card p-4">
         <div className="flex flex-col sm:flex-row gap-3 mb-4 items-stretch sm:items-center">
           <div className="relative flex-1">
-            <Icon name="search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-navy-400" />
+            <Icon name="search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
               placeholder="Search students by name, phone, email or course..."
@@ -441,7 +441,7 @@ export function MembersPage() {
             <select
               value={attendanceFilter}
               onChange={(e) => setAttendanceFilter(e.target.value as any)}
-              className="input-field py-2.5 pr-9 pl-3 text-xs font-semibold text-navy-700 bg-white border border-navy-200 rounded-xl appearance-none cursor-pointer w-full focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+              className="input-field py-2.5 pr-9 pl-3 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl appearance-none cursor-pointer w-full focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
             >
               <option value="All">All Attendance</option>
               <option value=">=75">≥ 75% (Eligible)</option>
@@ -452,7 +452,7 @@ export function MembersPage() {
             <Icon
               name="chevron-down"
               size={14}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-navy-400 pointer-events-none"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
             />
           </div>
 
@@ -461,7 +461,7 @@ export function MembersPage() {
             <select
               value={filter}
               onChange={(e) => setFilter(e.target.value as FilterType)}
-              className="input-field py-2.5 pr-9 pl-3 text-xs font-semibold text-navy-700 bg-white border border-navy-200 rounded-xl appearance-none cursor-pointer w-full focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+              className="input-field py-2.5 pr-9 pl-3 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl appearance-none cursor-pointer w-full focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
             >
               <option value="All">All Status</option>
               <option value="Active">Active</option>
@@ -470,7 +470,7 @@ export function MembersPage() {
             <Icon
               name="chevron-down"
               size={14}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-navy-400 pointer-events-none"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
             />
           </div>
         </div>
@@ -483,20 +483,20 @@ export function MembersPage() {
           <div className="overflow-x-auto -mx-4 px-4">
             <table className={cn('w-full', isEmployeeView ? 'min-w-[800px]' : 'min-w-[950px]')}>
               <thead>
-                <tr className="border-b border-navy-100">
+                <tr className="border-b border-slate-100">
                   <th className="px-3 py-3 w-10 text-center">
                     <input
                       type="checkbox"
                       checked={filtered.length > 0 && selectedMemberIds.length === filtered.length}
                       onChange={handleSelectAll}
-                      className="w-4 h-4 rounded border-navy-300 text-brand-600 focus:ring-brand-500 cursor-pointer"
+                      className="w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500 cursor-pointer"
                     />
                   </th>
                   {(isEmployeeView
                     ? ['Student', 'Email', 'Course', 'Parent No', 'Status', 'Attendance', '']
                     : ['Student', 'Course', 'Status', 'Attendance', 'Last Visit', 'Expiry', 'Revenue', 'Risk', '']
                   ).map((h, i) => (
-                    <th key={h || i} className="text-left text-xs font-semibold text-navy-400 uppercase tracking-wider px-3 py-3">{h}</th>
+                    <th key={h || i} className="text-left text-xs font-semibold text-slate-400 uppercase tracking-wider px-3 py-3">{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -519,7 +519,7 @@ export function MembersPage() {
                         }
                       }}
                       className={cn(
-                        'border-b border-navy-50 hover:bg-navy-50 transition-colors',
+                        'border-b border-slate-50 hover:bg-slate-50 transition-colors',
                         !isEmployeeView && 'cursor-pointer',
                         isSelected && 'bg-brand-50/50'
                       )}
@@ -529,7 +529,7 @@ export function MembersPage() {
                           type="checkbox"
                           checked={isSelected}
                           onChange={(e) => handleToggleSelect(m.id, e)}
-                          className="w-4 h-4 rounded border-navy-300 text-brand-600 focus:ring-brand-500 cursor-pointer"
+                          className="w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500 cursor-pointer"
                         />
                       </td>
                       <td className="px-3 py-3">
@@ -538,25 +538,25 @@ export function MembersPage() {
                             {initials}
                           </div>
                           <div className="min-w-0">
-                            <div className="text-sm font-semibold text-navy-900 truncate">{name}</div>
-                            <div className="text-xs text-navy-600 font-mono font-medium truncate">{m.phone || '—'}</div>
+                            <div className="text-sm font-semibold text-slate-900 truncate">{name}</div>
+                            <div className="text-xs text-slate-600 font-mono font-medium truncate">{m.phone || '—'}</div>
                           </div>
                         </div>
                       </td>
 
                       {/* Email Column (Employee View) */}
                       {isEmployeeView && (
-                        <td className="px-3 py-3 text-sm text-navy-600 font-medium truncate max-w-[200px]">
+                        <td className="px-3 py-3 text-sm text-slate-600 font-medium truncate max-w-[200px]">
                           {m.email ? (
-                            <span className="text-navy-700">{m.email}</span>
+                            <span className="text-slate-700">{m.email}</span>
                           ) : (
-                            <span className="text-navy-400">—</span>
+                            <span className="text-slate-400">—</span>
                           )}
                         </td>
                       )}
 
                       {/* Course Column (both Employee & Owner) */}
-                      <td className="px-3 py-3 text-sm text-navy-700 font-medium">
+                      <td className="px-3 py-3 text-sm text-slate-700 font-medium">
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-brand-50 text-brand-700 border border-brand-200">
                           {courseName}
                         </span>
@@ -564,11 +564,11 @@ export function MembersPage() {
 
                       {/* Parent No Column (Employee View) */}
                       {isEmployeeView && (
-                        <td className="px-3 py-3 text-sm text-navy-600 font-mono font-medium">
+                        <td className="px-3 py-3 text-sm text-slate-600 font-mono font-medium">
                           {parentPhone ? (
                             <span>{parentPhone}</span>
                           ) : (
-                            <span className="text-navy-400">—</span>
+                            <span className="text-slate-400">—</span>
                           )}
                         </td>
                       )}
@@ -579,24 +579,24 @@ export function MembersPage() {
                       {/* Attendance Column */}
                       <td className="px-3 py-3">
                         <div className="flex items-center gap-2">
-                          <div className="w-16 h-1.5 rounded-full bg-navy-100 overflow-hidden">
+                          <div className="w-16 h-1.5 rounded-full bg-slate-100 overflow-hidden">
                             <div className="h-full rounded-full bg-brand-500" style={{ width: `${m.attendance || 0}%` }} />
                           </div>
-                          <span className="text-xs text-navy-500 font-medium">{m.attendance || 0}%</span>
+                          <span className="text-xs text-slate-500 font-medium">{m.attendance || 0}%</span>
                         </div>
                       </td>
 
                       {/* Owner-only Columns: Last Visit, Expiry, Revenue, Risk */}
                       {!isEmployeeView && (
                         <>
-                          <td className="px-3 py-3 text-sm text-navy-500">{m.lastVisit || '—'}</td>
-                          <td className="px-3 py-3 text-sm font-medium text-navy-700">{formatDateDDMMYY(m.expiry)}</td>
-                          <td className="px-3 py-3 text-sm font-semibold text-navy-900">{m.revenue}</td>
+                          <td className="px-3 py-3 text-sm text-slate-500">{m.lastVisit || '—'}</td>
+                          <td className="px-3 py-3 text-sm font-medium text-slate-700">{formatDateDDMMYY(m.expiry)}</td>
+                          <td className="px-3 py-3 text-sm font-semibold text-slate-900">{m.revenue}</td>
                           <td className="px-3 py-3"><Badge variant={riskConf.variant}>{riskConf.label}</Badge></td>
                         </>
                       )}
 
-                      <td className="px-3 py-3"><Icon name="chevron-right" size={16} className="text-navy-300" /></td>
+                      <td className="px-3 py-3"><Icon name="chevron-right" size={16} className="text-slate-300" /></td>
                     </tr>
                   );
                 })}
@@ -617,29 +617,29 @@ export function MembersPage() {
 
       {/* Renewal Modal */}
       {renewalOpen && (
-        <div className="fixed inset-0 bg-navy-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 animate-fade-in overflow-y-auto">
-          <div className="bg-white rounded-3xl p-5 sm:p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto space-y-4 shadow-2xl animate-scale-in border border-navy-100 my-auto">
-            <div className="flex items-center justify-between border-b border-navy-100 pb-3 sticky -top-5 sm:-top-6 bg-white/95 backdrop-blur-md z-10 pt-1">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 animate-fade-in overflow-y-auto">
+          <div className="bg-white rounded-3xl p-5 sm:p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto space-y-4 shadow-2xl animate-scale-in border border-slate-100 my-auto">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 sticky -top-5 sm:-top-6 bg-white/95 backdrop-blur-md z-10 pt-1">
               <div className="flex items-center gap-2">
                 <div className="w-9 h-9 rounded-xl bg-brand-50 flex items-center justify-center">
                   <Icon name="refresh-cw" size={18} className="text-brand-600" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-navy-900">Renew Membership</h3>
-                  <p className="text-xs text-navy-400">Selected {selectedMembers.length} member(s) for renewal</p>
+                  <h3 className="text-base font-bold text-slate-900">Renew Membership</h3>
+                  <p className="text-xs text-slate-400">Selected {selectedMembers.length} member(s) for renewal</p>
                 </div>
               </div>
-              <button onClick={() => setRenewalOpen(false)} className="text-navy-400 hover:text-navy-600 p-1.5 rounded-xl hover:bg-navy-50 transition">
+              <button onClick={() => setRenewalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-50 transition">
                 <Icon name="x" size={18} />
               </button>
             </div>
 
             {/* Selected Members Summary */}
-            <div className="card p-3 bg-navy-50 max-h-32 overflow-y-auto space-y-1.5 border border-navy-200">
-              <div className="text-[11px] font-bold text-navy-500 uppercase tracking-wider mb-1">Target Members</div>
+            <div className="card p-3 bg-slate-50 max-h-32 overflow-y-auto space-y-1.5 border border-slate-200">
+              <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Target Members</div>
               {selectedMembers.map((sm) => (
-                <div key={sm.id} className="flex items-center justify-between text-xs bg-white p-2 rounded-lg border border-navy-100">
-                  <div className="font-semibold text-navy-900">{sm.name} ({sm.phone || sm.email})</div>
+                <div key={sm.id} className="flex items-center justify-between text-xs bg-white p-2 rounded-lg border border-slate-100">
+                  <div className="font-semibold text-slate-900">{sm.name} ({sm.phone || sm.email})</div>
                   <Badge variant="brand">{sm.membership || 'Standard'}</Badge>
                 </div>
               ))}
@@ -650,8 +650,8 @@ export function MembersPage() {
               <div className="space-y-3">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
-                    <label className="text-xs font-bold text-navy-900 block">Select Membership Plan</label>
-                    <p className="text-[11px] text-navy-400">Choose membership plan and duration tier. Price and billing auto-accommodate.</p>
+                    <label className="text-xs font-bold text-slate-900 block">Select Membership Plan</label>
+                    <p className="text-[11px] text-slate-400">Choose membership plan and duration tier. Price and billing auto-accommodate.</p>
                   </div>
                   <div className="relative min-w-[180px]">
                     <input
@@ -659,9 +659,9 @@ export function MembersPage() {
                       placeholder="Search programs..."
                       value={renewalPlanSearch}
                       onChange={(e) => setRenewalPlanSearch(e.target.value)}
-                      className="input-field text-xs py-1.5 pl-8 pr-3 w-full bg-navy-50"
+                      className="input-field text-xs py-1.5 pl-8 pr-3 w-full bg-slate-50"
                     />
-                    <div className="absolute left-2.5 top-1/2 -translate-y-1/2 text-navy-400 pointer-events-none">
+                    <div className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
                       <Icon name="search" size={12} />
                     </div>
                   </div>
@@ -690,10 +690,10 @@ export function MembersPage() {
                               'px-2.5 py-1 rounded-xl text-[11px] font-semibold whitespace-nowrap transition-all flex items-center gap-1 border cursor-pointer shrink-0',
                               isActive
                                 ? 'bg-brand-600 text-white border-brand-600 shadow-sm font-bold'
-                                : 'bg-white text-navy-600 border-navy-200 hover:border-navy-300 hover:bg-navy-50'
+                                : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
                             )}
                           >
-                            <Icon name={opt.icon} size={12} className={isActive ? 'text-white' : 'text-navy-500'} />
+                            <Icon name={opt.icon} size={12} className={isActive ? 'text-white' : 'text-slate-500'} />
                             <span>{opt.label}</span>
                           </button>
                         );
@@ -703,9 +703,9 @@ export function MembersPage() {
                 })()}
 
                 {/* Duration Tiers Selector */}
-                <div className="space-y-1.5 pt-1 border-t border-navy-100">
+                <div className="space-y-1.5 pt-1 border-t border-slate-100">
                   <div className="flex items-center justify-between gap-2">
-                    <div className="text-[10px] font-bold text-navy-500 uppercase tracking-wider flex items-center gap-1">
+                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
                       <Icon name="clock" size={11} className="text-brand-500" /> Duration Tiers
                     </div>
                     <div className="text-[10px] text-brand-600 font-bold bg-brand-50 border border-brand-100 px-2 py-0.5 rounded-full">
@@ -729,7 +729,7 @@ export function MembersPage() {
                             'px-2 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer flex flex-col items-center justify-center',
                             isActive
                               ? 'bg-brand-50 border-brand-500 text-brand-700 ring-2 ring-brand-500/20 shadow-sm'
-                              : 'bg-white border-navy-200 text-navy-600 hover:border-navy-300 hover:bg-navy-50/60'
+                              : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50/60'
                           )}
                         >
                           <span>{tier.label}</span>
@@ -760,8 +760,8 @@ export function MembersPage() {
 
                   if (filteredPrograms.length === 0) {
                     return (
-                      <div className="card p-4 text-center bg-navy-50/60 border border-navy-200">
-                        <p className="text-xs font-bold text-navy-700">No matching programs found</p>
+                      <div className="card p-4 text-center bg-slate-50/60 border border-slate-200">
+                        <p className="text-xs font-bold text-slate-700">No matching programs found</p>
                         <button
                           type="button"
                           onClick={() => {
@@ -806,7 +806,7 @@ export function MembersPage() {
 
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-1.5 flex-wrap">
-                                  <span className="text-xs font-bold text-navy-900 line-clamp-1">
+                                  <span className="text-xs font-bold text-slate-900 line-clamp-1">
                                     {prog.name}
                                   </span>
                                   {prog.isCombo && (
@@ -823,10 +823,10 @@ export function MembersPage() {
 
                             {/* Price for current duration */}
                             <div className="text-right shrink-0">
-                              <div className="text-sm font-extrabold text-navy-900">
+                              <div className="text-sm font-extrabold text-slate-900">
                                 ₹{pricing.price.toLocaleString('en-IN')}
                               </div>
-                              <div className="text-[10px] text-navy-400">
+                              <div className="text-[10px] text-slate-400">
                                 {renewalDurationDays} Days
                               </div>
                             </div>
@@ -841,14 +841,14 @@ export function MembersPage() {
               {/* Renewal Date Range */}
               <div className="card p-3 bg-brand-50/40 border border-brand-200 space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-navy-800">Renewal Validity</span>
+                  <span className="text-xs font-bold text-slate-800">Renewal Validity</span>
                   <Badge variant="success">
                     Expiry: {formatDateDDMMYY(renewalExpiryDate)}
                   </Badge>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-[11px] font-semibold text-navy-600 block mb-1">Start Date</label>
+                    <label className="text-[11px] font-semibold text-slate-600 block mb-1">Start Date</label>
                     <input
                       type="date"
                       value={renewalStartDate}
@@ -860,7 +860,7 @@ export function MembersPage() {
                     />
                   </div>
                   <div>
-                    <label className="text-[11px] font-semibold text-navy-600 block mb-1">Expiry Date (DD-MM-YY)</label>
+                    <label className="text-[11px] font-semibold text-slate-600 block mb-1">Expiry Date (DD-MM-YY)</label>
                     <input
                       type="date"
                       value={renewalExpiryDate}
@@ -881,28 +881,28 @@ export function MembersPage() {
 
                 return (
                   <>
-                    <div className="card p-3 bg-navy-50/80 rounded-2xl border border-navy-200/80 space-y-2">
-                      <div className="flex items-center justify-between text-xs text-navy-600">
+                    <div className="card p-3 bg-slate-50/80 rounded-2xl border border-slate-200/80 space-y-2">
+                      <div className="flex items-center justify-between text-xs text-slate-600">
                         <span>Base Subtotal ({currentRenewalProgram.name})</span>
-                        <span className="font-semibold text-navy-900">₹{subtotal.toLocaleString()}</span>
+                        <span className="font-semibold text-slate-900">₹{subtotal.toLocaleString()}</span>
                       </div>
-                      <div className="flex items-center justify-between text-xs text-navy-600">
+                      <div className="flex items-center justify-between text-xs text-slate-600">
                         <label className="flex items-center gap-1.5 cursor-pointer select-none">
                           <input
                             type="checkbox"
                             checked={renewalIncludeGst && isGstActive}
                             disabled={!isGstActive}
                             onChange={(e) => setRenewalIncludeGst(e.target.checked)}
-                            className="w-3.5 h-3.5 rounded border-navy-300 text-brand-600 focus:ring-brand-500 disabled:opacity-50"
+                            className="w-3.5 h-3.5 rounded border-slate-300 text-brand-600 focus:ring-brand-500 disabled:opacity-50"
                           />
                           <span>{isGstActive ? `Include GST (${effectiveGstRate}%)` : 'GST Engine Disabled (0% Nil)'}</span>
                         </label>
-                        <span className="font-semibold text-navy-900">
+                        <span className="font-semibold text-slate-900">
                           ₹{gst.toLocaleString()}
                         </span>
                       </div>
-                      <div className="border-t border-navy-200 pt-2 flex items-center justify-between">
-                        <span className="text-xs font-bold text-navy-900">Total Renewal Amount</span>
+                      <div className="border-t border-slate-200 pt-2 flex items-center justify-between">
+                        <span className="text-xs font-bold text-slate-900">Total Renewal Amount</span>
                         <span className="text-base font-bold text-brand-600">
                           ₹{totalAmount.toLocaleString()}
                         </span>
@@ -924,7 +924,7 @@ export function MembersPage() {
                 );
               })()}
 
-              <div className="flex gap-2 pt-3 pb-1 border-t border-navy-100 sticky -bottom-5 sm:-bottom-6 bg-white/95 backdrop-blur-md z-10">
+              <div className="flex gap-2 pt-3 pb-1 border-t border-slate-100 sticky -bottom-5 sm:-bottom-6 bg-white/95 backdrop-blur-md z-10">
                 <button type="button" onClick={() => setRenewalOpen(false)} className="btn-secondary flex-1">
                   Cancel
                 </button>

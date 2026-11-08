@@ -698,31 +698,39 @@ export function SettingsPage() {
       {/* ───────────────────────────────────────────────────────────────── */}
       {selectedSection === 'general' && (
         <div className="space-y-6 animate-fade-in">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-3">
-            <div>
-              <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-1">
-                <span className="hover:text-blue-600 cursor-pointer" onClick={() => handleSelectSection(null)}>Home</span>
-                <Icon name="chevron-right" size={12} />
-                <span className="hover:text-blue-600 cursor-pointer" onClick={() => handleSelectSection(null)}>Settings</span>
-                <Icon name="chevron-right" size={12} />
-                <span className="text-slate-800 dark:text-slate-200 font-bold">General Profile</span>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-2xs">
+            <div className="flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-2xl bg-purple-50 text-purple-600 border border-purple-100 flex items-center justify-center shrink-0">
+                <Icon name="user" size={22} className="text-purple-600" />
               </div>
-              <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">General Profile</h2>
-              <p className="text-xs text-slate-500 font-medium">Settings · Organization Details, Profile & Security</p>
+              <div>
+                <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-0.5">
+                  <span className="hover:text-blue-600 cursor-pointer flex items-center gap-1" onClick={() => handleSelectSection(null)}>
+                    <Icon name="home" size={12} />
+                    <span>Home</span>
+                  </span>
+                  <Icon name="chevron-right" size={12} />
+                  <span className="hover:text-blue-600 cursor-pointer" onClick={() => handleSelectSection(null)}>Settings</span>
+                  <Icon name="chevron-right" size={12} />
+                  <span className="text-slate-800 font-bold">Profile &amp; Account</span>
+                </div>
+                <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Profile &amp; Account</h2>
+                <p className="text-xs text-slate-500 font-medium">Settings · Organization Details, Profile &amp; Security</p>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 self-start sm:self-center">
               <button
                 type="button"
                 onClick={() => handleSelectSection(null)}
-                className="px-3.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                className="px-3.5 py-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
               >
-                <Icon name="chevron-left" size={14} />
-                <span>Back</span>
+                <Icon name="arrow-left" size={13} />
+                <span>Back to Settings</span>
               </button>
               <button
                 type="button"
                 onClick={handleSaveSettings}
-                className="px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+                className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-orange-500 hover:opacity-95 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
               >
                 <Icon name="check" size={14} />
                 <span>Save Profile</span>
@@ -896,7 +904,7 @@ export function SettingsPage() {
                     <span>{getInitials(ownerName || user?.name || '')}</span>
                   )}
 
-                  <div className="absolute inset-0 bg-navy-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[10px] font-bold gap-1">
+                  <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[10px] font-bold gap-1">
                     <Icon name="camera" size={18} />
                     <span>Upload</span>
                   </div>
@@ -911,7 +919,7 @@ export function SettingsPage() {
                     <button
                       type="button"
                       onClick={() => avatarInputRef.current?.click()}
-                      className="btn-secondary text-xs py-1.5 px-3 font-bold flex items-center gap-1.5 shadow-2xs hover:bg-navy-100"
+                      className="btn-secondary text-xs py-1.5 px-3 font-bold flex items-center gap-1.5 shadow-2xs hover:bg-slate-100"
                     >
                       <Icon name="upload" size={13} />
                       <span>{ownerAvatar ? 'Change Photo' : 'Upload Photo'}</span>
@@ -1126,25 +1134,33 @@ export function SettingsPage() {
       {/* ───────────────────────────────────────────────────────────────── */}
       {selectedSection === 'courses' && (
         <div className="space-y-4 animate-fade-in">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-3">
-            <div>
-              <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-1">
-                <span className="hover:text-blue-600 cursor-pointer" onClick={() => handleSelectSection(null)}>Home</span>
-                <Icon name="chevron-right" size={12} />
-                <span className="hover:text-blue-600 cursor-pointer" onClick={() => handleSelectSection(null)}>Settings</span>
-                <Icon name="chevron-right" size={12} />
-                <span className="text-slate-800 dark:text-slate-200 font-bold">Courses</span>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-2xs">
+            <div className="flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shrink-0">
+                <Icon name="graduation-cap" size={22} className="text-emerald-600" />
               </div>
-              <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Courses</h2>
-              <p className="text-xs text-slate-500 font-medium">Settings · Branch Courses & Stream Structures</p>
+              <div>
+                <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-0.5">
+                  <span className="hover:text-blue-600 cursor-pointer flex items-center gap-1" onClick={() => handleSelectSection(null)}>
+                    <Icon name="home" size={12} />
+                    <span>Home</span>
+                  </span>
+                  <Icon name="chevron-right" size={12} />
+                  <span className="hover:text-blue-600 cursor-pointer" onClick={() => handleSelectSection(null)}>Settings</span>
+                  <Icon name="chevron-right" size={12} />
+                  <span className="text-slate-800 font-bold">Courses</span>
+                </div>
+                <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Courses</h2>
+                <p className="text-xs text-slate-500 font-medium">Settings · Branch Courses &amp; Stream Structures</p>
+              </div>
             </div>
             <button
               type="button"
               onClick={() => handleSelectSection(null)}
-              className="px-3.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+              className="px-3.5 py-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer self-start sm:self-center"
             >
-              <Icon name="chevron-left" size={14} />
-              <span>Back</span>
+              <Icon name="arrow-left" size={13} />
+              <span>Back to Settings</span>
             </button>
           </div>
           <CoursesPage embedded={true} />
@@ -1156,25 +1172,33 @@ export function SettingsPage() {
       {/* ───────────────────────────────────────────────────────────────── */}
       {selectedSection === 'erp' && (
         <div className="space-y-4 animate-fade-in">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-3">
-            <div>
-              <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-1">
-                <span className="hover:text-blue-600 cursor-pointer" onClick={() => handleSelectSection(null)}>Home</span>
-                <Icon name="chevron-right" size={12} />
-                <span className="hover:text-blue-600 cursor-pointer" onClick={() => handleSelectSection(null)}>Settings</span>
-                <Icon name="chevron-right" size={12} />
-                <span className="text-slate-800 dark:text-slate-200 font-bold">ERP & Google Reviews</span>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-2xs">
+            <div className="flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-2xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center shrink-0">
+                <Icon name="star" size={22} className="text-amber-600" />
               </div>
-              <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">ERP & Google Reviews</h2>
-              <p className="text-xs text-slate-500 font-medium">Settings · Organization Details & Online Reputation Sync</p>
+              <div>
+                <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-0.5">
+                  <span className="hover:text-blue-600 cursor-pointer flex items-center gap-1" onClick={() => handleSelectSection(null)}>
+                    <Icon name="home" size={12} />
+                    <span>Home</span>
+                  </span>
+                  <Icon name="chevron-right" size={12} />
+                  <span className="hover:text-blue-600 cursor-pointer" onClick={() => handleSelectSection(null)}>Settings</span>
+                  <Icon name="chevron-right" size={12} />
+                  <span className="text-slate-800 font-bold">ERP &amp; Google Reviews</span>
+                </div>
+                <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">ERP &amp; Google Reviews</h2>
+                <p className="text-xs text-slate-500 font-medium">Settings · Organization Details &amp; Online Reputation Sync</p>
+              </div>
             </div>
             <button
               type="button"
               onClick={() => handleSelectSection(null)}
-              className="px-3.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+              className="px-3.5 py-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer self-start sm:self-center"
             >
-              <Icon name="chevron-left" size={14} />
-              <span>Back</span>
+              <Icon name="arrow-left" size={13} />
+              <span>Back to Settings</span>
             </button>
           </div>
           <CompanyManagement />

@@ -1109,25 +1109,33 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
           className="hidden"
         />
 
-        {/* Top Breadcrumb & Actions Bar */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-3">
-          <div>
-            <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-1">
-              <span className="hover:text-blue-600 cursor-pointer" onClick={() => (onBack ? onBack() : setSelectedCatId(null))}>Home</span>
-              <Icon name="chevron-right" size={12} />
-              <span className="hover:text-blue-600 cursor-pointer" onClick={() => (onBack ? onBack() : setSelectedCatId(null))}>Settings</span>
-              <Icon name="chevron-right" size={12} />
-              <span className="text-slate-800 dark:text-slate-200 font-bold">{selectedCategory.title}</span>
+        {/* Top Header Card */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-2xs">
+          <div className="flex items-center gap-3.5">
+            <div className={cn("w-11 h-11 rounded-2xl flex items-center justify-center border shrink-0", selectedCategory.bgLight, selectedCategory.textColor, "border-slate-200/60")}>
+              <Icon name={selectedCategory.icon || "layers"} size={22} className={selectedCategory.textColor} />
             </div>
-            <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-              {selectedCategory.title}
-            </h2>
-            <p className="text-xs text-slate-500 font-medium">
-              Settings · {categoryItems.length} records
-            </p>
+            <div>
+              <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-0.5">
+                <span className="hover:text-blue-600 cursor-pointer flex items-center gap-1" onClick={() => (onBack ? onBack() : setSelectedCatId(null))}>
+                  <Icon name="home" size={12} />
+                  <span>Home</span>
+                </span>
+                <Icon name="chevron-right" size={12} />
+                <span className="hover:text-blue-600 cursor-pointer" onClick={() => (onBack ? onBack() : setSelectedCatId(null))}>Settings</span>
+                <Icon name="chevron-right" size={12} />
+                <span className="text-slate-800 font-bold">{selectedCategory.title}</span>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                {selectedCategory.title}
+              </h2>
+              <p className="text-xs text-slate-500 font-medium">
+                Master Data · <span className="font-bold text-slate-700">{categoryItems.length}</span> records
+              </p>
+            </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 self-start md:self-center">
             {/* Back Button */}
             <button
               type="button"
@@ -1141,10 +1149,10 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                 setStatusFilter('all');
                 setSelectedItemIds([]);
               }}
-              className="px-3.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+              className="px-3.5 py-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
             >
-              <Icon name="chevron-left" size={14} />
-              <span>Back</span>
+              <Icon name="arrow-left" size={13} />
+              <span>Back to Settings</span>
             </button>
 
             {/* Import & Export Buttons */}
@@ -1153,7 +1161,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="px-3.5 py-1.5 rounded-xl border border-blue-200 bg-blue-50/70 hover:bg-blue-100/80 text-blue-700 dark:text-blue-400 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                  className="px-3.5 py-1.5 rounded-xl border border-blue-200 bg-blue-50/70 hover:bg-blue-100/80 text-blue-700 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
                 >
                   <Icon name="upload" size={13} />
                   <span>Import Excel / CSV</span>
@@ -1163,7 +1171,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                 <button
                   type="button"
                   onClick={() => handleExportData('csv')}
-                  className="px-3 py-1.5 rounded-xl border border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100 text-emerald-700 dark:text-emerald-400 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                  className="px-3 py-1.5 rounded-xl border border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100 text-emerald-700 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
                   title="Export records to CSV"
                 >
                   <Icon name="download" size={13} />
@@ -1172,7 +1180,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                 <button
                   type="button"
                   onClick={() => handleExportData('xlsx')}
-                  className="px-3 py-1.5 rounded-xl border border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100 text-emerald-700 dark:text-emerald-400 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                  className="px-3 py-1.5 rounded-xl border border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100 text-emerald-700 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
                   title="Export records to Excel"
                 >
                   <Icon name="download" size={13} />
@@ -1253,7 +1261,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
               <button
                 type="button"
                 onClick={handleOpenAdd}
-                className="px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+                className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-orange-500 hover:opacity-95 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
               >
                 <Icon name="plus" size={14} />
                 <span>
@@ -2448,9 +2456,9 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                   {modalMode !== 'view' && (
                     <button
                       type="submit"
-                      className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-xs transition-colors cursor-pointer"
+                      className="px-5 py-2 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-orange-500 hover:opacity-95 text-white font-bold shadow-xs transition-colors cursor-pointer"
                     >
-                      ✓ Save
+                      ✓ Save Record
                     </button>
                   )}
                 </div>

@@ -938,22 +938,22 @@ export function HrmsAttendanceCorrectionsTab({ onSuccessToast }: HrmsAttendanceC
       {/* 5. MODAL: ADD MANUAL CORRECTION REQUEST                       */}
       {/* ───────────────────────────────────────────────────────────── */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-950/60 backdrop-blur-xs animate-fade-in">
-          <div className="bg-white w-full max-w-lg rounded-3xl border border-navy-100 shadow-2xl overflow-hidden animate-scale-in">
-            <div className="px-6 py-4 bg-navy-900 text-white flex items-center justify-between">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs animate-fade-in">
+          <div className="bg-white w-full max-w-lg rounded-3xl border border-slate-100 shadow-2xl overflow-hidden animate-scale-in">
+            <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-xl bg-purple-600/30 border border-purple-400/40 flex items-center justify-center text-purple-300">
                   <Icon name="clock" size={16} />
                 </div>
                 <div>
                   <h3 className="text-sm font-black tracking-tight">Manual Attendance Correction</h3>
-                  <p className="text-[11px] text-navy-200">Submit an override or missed punch request</p>
+                  <p className="text-[11px] text-slate-200">Submit an override or missed punch request</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setShowAddModal(false)}
-                className="p-1.5 rounded-lg text-navy-400 hover:text-white hover:bg-white/10 transition cursor-pointer"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition cursor-pointer"
               >
                 <Icon name="x" size={16} />
               </button>
@@ -1010,7 +1010,7 @@ export function HrmsAttendanceCorrectionsTab({ onSuccessToast }: HrmsAttendanceC
 
               {/* Dynamic Quick Selector from Database */}
               <div>
-                <label className="block text-[11px] font-bold text-navy-700 mb-1">
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">
                   Select {newForm.person_type === 'EMPLOYEE' ? 'Employee' : 'Student'} from Directory (Optional)
                 </label>
                 <select
@@ -1036,7 +1036,7 @@ export function HrmsAttendanceCorrectionsTab({ onSuccessToast }: HrmsAttendanceC
               {/* Full Name & ID */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold text-navy-700 mb-1">Full Name *</label>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">Full Name *</label>
                   <input
                     type="text"
                     required
@@ -1047,7 +1047,7 @@ export function HrmsAttendanceCorrectionsTab({ onSuccessToast }: HrmsAttendanceC
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold text-navy-700 mb-1">Code / Roll No</label>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">Code / Roll No</label>
                   <input
                     type="text"
                     placeholder="e.g. EMP code or Roll No"
@@ -1061,7 +1061,7 @@ export function HrmsAttendanceCorrectionsTab({ onSuccessToast }: HrmsAttendanceC
               {/* Designation & Department */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold text-navy-700 mb-1">Designation / Role</label>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">Designation / Role</label>
                   <input
                     type="text"
                     placeholder="Enter designation"
@@ -1071,7 +1071,7 @@ export function HrmsAttendanceCorrectionsTab({ onSuccessToast }: HrmsAttendanceC
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold text-navy-700 mb-1">Department / Branch</label>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">Department / Branch</label>
                   <input
                     type="text"
                     placeholder="Enter department"
@@ -1085,7 +1085,7 @@ export function HrmsAttendanceCorrectionsTab({ onSuccessToast }: HrmsAttendanceC
               {/* District & Place */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold text-navy-700 mb-1">District / Region</label>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">District / Region</label>
                   <input
                     type="text"
                     placeholder="Enter district"
@@ -1095,7 +1095,7 @@ export function HrmsAttendanceCorrectionsTab({ onSuccessToast }: HrmsAttendanceC
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold text-navy-700 mb-1">Place / Campus / Center</label>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">Place / Campus / Center</label>
                   <input
                     type="text"
                     placeholder="Enter place or center name"
@@ -1109,7 +1109,7 @@ export function HrmsAttendanceCorrectionsTab({ onSuccessToast }: HrmsAttendanceC
               {/* Date & In/Out Times */}
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold text-navy-700 mb-1">Date *</label>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">Date *</label>
                   <input
                     type="date"
                     required
@@ -1119,7 +1119,7 @@ export function HrmsAttendanceCorrectionsTab({ onSuccessToast }: HrmsAttendanceC
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold text-navy-700 mb-1">In Time</label>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">In Time</label>
                   <input
                     type="text"
                     placeholder="e.g. 08:30:00"
@@ -1129,7 +1129,7 @@ export function HrmsAttendanceCorrectionsTab({ onSuccessToast }: HrmsAttendanceC
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold text-navy-700 mb-1">Out Time</label>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">Out Time</label>
                   <input
                     type="text"
                     placeholder="e.g. 17:00:00"
@@ -1142,7 +1142,7 @@ export function HrmsAttendanceCorrectionsTab({ onSuccessToast }: HrmsAttendanceC
 
               {/* Reason Input */}
               <div>
-                <label className="block text-[11px] font-bold text-navy-700 mb-1">Reason for Correction *</label>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">Reason for Correction *</label>
                 <input
                   type="text"
                   required
@@ -1155,7 +1155,7 @@ export function HrmsAttendanceCorrectionsTab({ onSuccessToast }: HrmsAttendanceC
 
               {/* Reason Details */}
               <div>
-                <label className="block text-[11px] font-bold text-navy-700 mb-1">Notes / Description (Optional)</label>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">Notes / Description (Optional)</label>
                 <textarea
                   rows={2}
                   placeholder="Enter any additional justification notes..."
@@ -1190,8 +1190,8 @@ export function HrmsAttendanceCorrectionsTab({ onSuccessToast }: HrmsAttendanceC
       {/* 6. MODAL: REJECTION CONFIRMATION                              */}
       {/* ───────────────────────────────────────────────────────────── */}
       {rejectModalRecord && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-950/60 backdrop-blur-xs animate-fade-in">
-          <div className="bg-white w-full max-w-md rounded-3xl border border-navy-100 shadow-2xl p-6 space-y-4 animate-scale-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs animate-fade-in">
+          <div className="bg-white w-full max-w-md rounded-3xl border border-slate-100 shadow-2xl p-6 space-y-4 animate-scale-in">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
                 <Icon name="x-circle" size={20} />
@@ -1239,8 +1239,8 @@ export function HrmsAttendanceCorrectionsTab({ onSuccessToast }: HrmsAttendanceC
       {/* 7. MODAL: INSPECT RECORD DETAILS                              */}
       {/* ───────────────────────────────────────────────────────────── */}
       {selectedRecordForDetail && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-950/60 backdrop-blur-xs animate-fade-in">
-          <div className="bg-white w-full max-w-lg rounded-3xl border border-navy-100 shadow-2xl overflow-hidden animate-scale-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs animate-fade-in">
+          <div className="bg-white w-full max-w-lg rounded-3xl border border-slate-100 shadow-2xl overflow-hidden animate-scale-in">
             <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <Icon name="file-text" size={18} className="text-purple-400" />

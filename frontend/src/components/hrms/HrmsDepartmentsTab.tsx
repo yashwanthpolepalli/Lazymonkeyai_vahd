@@ -150,10 +150,10 @@ export function HrmsDepartmentsTab() {
       {/* 1. Header & Add Department Action */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-black text-navy-900 tracking-tight flex items-center gap-2">
+          <h2 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
             <span>Departments</span>
           </h2>
-          <p className="text-xs text-navy-500 font-medium">
+          <p className="text-xs text-slate-500 font-medium">
             Manage organizational departments, leadership heads, and mapped staff assignments.
           </p>
         </div>
@@ -180,58 +180,58 @@ export function HrmsDepartmentsTab() {
 
       {/* 2. KPI Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
-        <div className="bg-white rounded-2xl p-4 border border-navy-100 shadow-sm relative overflow-hidden flex flex-col justify-between">
+        <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm relative overflow-hidden flex flex-col justify-between">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-navy-500">Total Departments</span>
+            <span className="text-xs font-bold text-slate-500">Total Departments</span>
             <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
               <Icon name="building-2" size={16} />
             </div>
           </div>
           <div className="space-y-0.5">
-            <div className="text-2xl font-black text-navy-900">{totalDepts}</div>
-            <div className="text-[11px] font-medium text-navy-400">Configured business units</div>
+            <div className="text-2xl font-black text-slate-900">{totalDepts}</div>
+            <div className="text-[11px] font-medium text-slate-400">Configured business units</div>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-4 border border-navy-100 shadow-sm relative overflow-hidden flex flex-col justify-between">
+        <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm relative overflow-hidden flex flex-col justify-between">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-navy-500">Mapped Staff</span>
+            <span className="text-xs font-bold text-slate-500">Mapped Staff</span>
             <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
               <Icon name="users" size={16} />
             </div>
           </div>
           <div className="space-y-0.5">
-            <div className="text-2xl font-black text-navy-900">{totalEmployeesMapped}</div>
+            <div className="text-2xl font-black text-slate-900">{totalEmployeesMapped}</div>
             <div className="text-[11px] font-bold text-blue-600 flex items-center gap-1">
               <span>Assigned across units</span>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-4 border border-navy-100 shadow-sm relative overflow-hidden flex flex-col justify-between">
+        <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm relative overflow-hidden flex flex-col justify-between">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-navy-500">Active Units</span>
+            <span className="text-xs font-bold text-slate-500">Active Units</span>
             <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
               <Icon name="check-circle" size={16} />
             </div>
           </div>
           <div className="space-y-0.5">
-            <div className="text-2xl font-black text-navy-900">{activeDepts}</div>
+            <div className="text-2xl font-black text-slate-900">{activeDepts}</div>
             <div className="text-[11px] font-bold text-emerald-600 flex items-center gap-1">
               <span>{activeDepts} of {totalDepts} operational</span>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-4 border border-navy-100 shadow-sm relative overflow-hidden flex flex-col justify-between">
+        <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm relative overflow-hidden flex flex-col justify-between">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-navy-500">Largest Department</span>
+            <span className="text-xs font-bold text-slate-500">Largest Department</span>
             <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
               <Icon name="award" size={16} />
             </div>
           </div>
           <div className="space-y-0.5">
-            <div className="text-base font-black text-navy-900 truncate">
+            <div className="text-base font-black text-slate-900 truncate">
               {largestDept ? largestDept.name : 'N/A'}
             </div>
             <div className="text-[11px] font-bold text-amber-600 flex items-center gap-1">
@@ -242,20 +242,20 @@ export function HrmsDepartmentsTab() {
       </div>
 
       {/* 3. Search Bar and Status Filters */}
-      <div className="bg-white p-3 rounded-2xl border border-navy-100 shadow-sm flex flex-col sm:flex-row gap-3 items-center justify-between">
+      <div className="bg-white p-3 rounded-2xl border border-slate-100 shadow-sm flex flex-col sm:flex-row gap-3 items-center justify-between">
         <div className="relative w-full sm:w-80">
-          <Icon name="search" size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-navy-400" />
+          <Icon name="search" size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
             placeholder="Search departments by name, code, head..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3.5 py-2 text-xs rounded-xl bg-navy-50/50 border border-navy-100 text-navy-900 placeholder:text-navy-400 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium"
+            className="w-full pl-9 pr-3.5 py-2 text-xs rounded-xl bg-slate-50/50 border border-slate-100 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium"
           />
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-          <div className="bg-navy-50 p-1 rounded-xl flex items-center gap-1 border border-navy-100 text-xs">
+          <div className="bg-slate-50 p-1 rounded-xl flex items-center gap-1 border border-slate-100 text-xs">
             {(['ALL', 'ACTIVE', 'INACTIVE'] as const).map((st) => (
               <button
                 key={st}
@@ -264,8 +264,8 @@ export function HrmsDepartmentsTab() {
                 className={cn(
                   'px-3 py-1.5 rounded-lg font-bold text-[11px] transition-all cursor-pointer',
                   statusFilter === st
-                    ? 'bg-white text-purple-700 shadow-xs border border-navy-100'
-                    : 'text-navy-500 hover:text-navy-900'
+                    ? 'bg-white text-purple-700 shadow-xs border border-slate-100'
+                    : 'text-slate-500 hover:text-slate-900'
                 )}
               >
                 {st === 'ALL' ? 'All' : st === 'ACTIVE' ? 'Active' : 'Inactive'}
@@ -274,15 +274,15 @@ export function HrmsDepartmentsTab() {
           </div>
 
           {/* Row / Grid View Toggle */}
-          <div className="bg-navy-50 p-1 rounded-xl flex items-center border border-navy-100">
+          <div className="bg-slate-50 p-1 rounded-xl flex items-center border border-slate-100">
             <button
               type="button"
               onClick={() => handleSetViewMode('grid')}
               className={cn(
                 'p-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1',
                 viewMode === 'grid'
-                  ? 'bg-white text-purple-700 shadow-xs border border-navy-100 font-bold'
-                  : 'text-navy-400 hover:text-navy-700'
+                  ? 'bg-white text-purple-700 shadow-xs border border-slate-100 font-bold'
+                  : 'text-slate-400 hover:text-slate-700'
               )}
               title="Grid View"
             >
@@ -294,8 +294,8 @@ export function HrmsDepartmentsTab() {
               className={cn(
                 'p-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1',
                 viewMode === 'row'
-                  ? 'bg-white text-purple-700 shadow-xs border border-navy-100 font-bold'
-                  : 'text-navy-400 hover:text-navy-700'
+                  ? 'bg-white text-purple-700 shadow-xs border border-slate-100 font-bold'
+                  : 'text-slate-400 hover:text-slate-700'
               )}
               title="Row / Table View"
             >
@@ -306,7 +306,7 @@ export function HrmsDepartmentsTab() {
           <button
             type="button"
             onClick={fetchDepartments}
-            className="p-2 rounded-xl border border-navy-100 hover:bg-navy-50 text-navy-600 transition shadow-2xs cursor-pointer"
+            className="p-2 rounded-xl border border-slate-100 hover:bg-slate-50 text-slate-600 transition shadow-2xs cursor-pointer"
             title="Refresh Departments"
           >
             <Icon name="refresh-cw" size={15} />
@@ -316,16 +316,16 @@ export function HrmsDepartmentsTab() {
 
       {/* 4. Departments Grid or Row View */}
       {loading ? (
-        <div className="card p-12 text-center text-xs font-semibold text-navy-400 bg-white rounded-2xl border border-navy-100">
+        <div className="card p-12 text-center text-xs font-semibold text-slate-400 bg-white rounded-2xl border border-slate-100">
           Loading departments...
         </div>
       ) : filteredDepartments.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-navy-100 p-12 text-center space-y-3 shadow-sm">
-          <div className="w-12 h-12 rounded-full bg-navy-50 text-navy-400 flex items-center justify-center mx-auto">
+        <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center space-y-3 shadow-sm">
+          <div className="w-12 h-12 rounded-full bg-slate-50 text-slate-400 flex items-center justify-center mx-auto">
             <Icon name="building-2" size={24} />
           </div>
-          <div className="text-sm font-bold text-navy-900">No Departments Found</div>
-          <p className="text-xs text-navy-400 max-w-sm mx-auto">
+          <div className="text-sm font-bold text-slate-900">No Departments Found</div>
+          <p className="text-xs text-slate-400 max-w-sm mx-auto">
             {searchQuery ? 'No departments match your search filter.' : 'Click "Add Department" to configure your first organizational department.'}
           </p>
           {!searchQuery && (
@@ -338,10 +338,10 @@ export function HrmsDepartmentsTab() {
           )}
         </div>
       ) : viewMode === 'row' ? (
-        <div className="bg-white rounded-2xl border border-navy-100 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-navy-50/70 border-b border-navy-100 text-navy-500 font-extrabold uppercase text-[10px] tracking-wider">
+              <thead className="bg-slate-50/70 border-b border-slate-100 text-slate-500 font-extrabold uppercase text-[10px] tracking-wider">
                 <tr>
                   <th className="py-3 px-4">Code</th>
                   <th className="py-3 px-4">Department Name</th>
@@ -351,7 +351,7 @@ export function HrmsDepartmentsTab() {
                   <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-navy-100">
+              <tbody className="divide-y divide-slate-100">
                 {filteredDepartments.map((dept, idx) => {
                   const palette = colorPalettes[idx % colorPalettes.length];
                   const employeesList = dept.employees || [];
@@ -365,7 +365,7 @@ export function HrmsDepartmentsTab() {
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2">
-                          <span className="font-extrabold text-navy-900 text-sm group-hover:text-purple-700 transition">
+                          <span className="font-extrabold text-slate-900 text-sm group-hover:text-purple-700 transition">
                             {dept.name}
                           </span>
                           {(dept.department_type === 'student' || dept.extra_info === 'student') && (
@@ -385,13 +385,13 @@ export function HrmsDepartmentsTab() {
                           )}
                         </div>
                         {dept.description && (
-                          <div className="text-[11px] text-navy-400 line-clamp-1 max-w-xs">{dept.description}</div>
+                          <div className="text-[11px] text-slate-400 line-clamp-1 max-w-xs">{dept.description}</div>
                         )}
                       </td>
                       <td className="py-3 px-4 whitespace-nowrap">
-                        <div className="flex items-center gap-1.5 text-navy-800 font-bold">
-                          <Icon name="user-check" size={13} className="text-navy-400" />
-                          <span>{dept.head_name || <span className="text-navy-400 font-normal italic">Unassigned</span>}</span>
+                        <div className="flex items-center gap-1.5 text-slate-800 font-bold">
+                          <Icon name="user-check" size={13} className="text-slate-400" />
+                          <span>{dept.head_name || <span className="text-slate-400 font-normal italic">Unassigned</span>}</span>
                         </div>
                       </td>
                       <td className="py-3 px-4">
@@ -436,7 +436,7 @@ export function HrmsDepartmentsTab() {
                             'px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border',
                             dept.is_active !== false
                               ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
-                              : 'bg-navy-50 text-navy-500 border-navy-200'
+                              : 'bg-slate-50 text-slate-500 border-slate-200'
                           )}
                         >
                           {dept.is_active !== false ? 'Active' : 'Inactive'}
@@ -463,7 +463,7 @@ export function HrmsDepartmentsTab() {
                           <button
                             type="button"
                             onClick={() => handleDelete(dept.id, dept.name)}
-                            className="p-1.5 rounded-lg text-navy-400 hover:text-rose-600 hover:bg-rose-50 border border-navy-100 transition cursor-pointer"
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-slate-100 transition cursor-pointer"
                             title="Delete Department"
                           >
                             <Icon name="trash-2" size={13} />
@@ -486,7 +486,7 @@ export function HrmsDepartmentsTab() {
             return (
               <div
                 key={dept.id}
-                className="bg-white rounded-2xl p-5 border border-navy-100 shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-4 relative group"
+                className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-4 relative group"
               >
                 {/* Header */}
                 <div className="space-y-2">
@@ -500,7 +500,7 @@ export function HrmsDepartmentsTab() {
                           'px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border',
                           dept.is_active !== false
                             ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
-                            : 'bg-navy-50 text-navy-500 border-navy-200'
+                            : 'bg-slate-50 text-slate-500 border-slate-200'
                         )}
                       >
                         {dept.is_active !== false ? 'Active' : 'Inactive'}
@@ -509,35 +509,35 @@ export function HrmsDepartmentsTab() {
                   </div>
 
                   <div>
-                    <h3 className="text-base font-extrabold text-navy-900 group-hover:text-purple-700 transition-colors">
+                    <h3 className="text-base font-extrabold text-slate-900 group-hover:text-purple-700 transition-colors">
                       {dept.name}
                     </h3>
-                    <p className="text-xs text-navy-500 mt-1 line-clamp-2 leading-relaxed">
+                    <p className="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">
                       {dept.description || 'Organizational operational division.'}
                     </p>
                   </div>
                 </div>
 
                 {/* Head of Department */}
-                <div className="p-3 bg-navy-50/60 rounded-xl border border-navy-50 flex items-center justify-between text-xs">
+                <div className="p-3 bg-slate-50/60 rounded-xl border border-slate-50 flex items-center justify-between text-xs">
                   <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-lg bg-white border border-navy-200 flex items-center justify-center text-navy-600 shadow-2xs">
+                    <div className="w-7 h-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-600 shadow-2xs">
                       <Icon name="user-check" size={13} />
                     </div>
                     <div>
-                      <div className="text-[10px] uppercase font-bold text-navy-400">Head of Dept</div>
-                      <div className="font-bold text-navy-900 text-xs">{dept.head_name || 'Unassigned'}</div>
+                      <div className="text-[10px] uppercase font-bold text-slate-400">Head of Dept</div>
+                      <div className="font-bold text-slate-900 text-xs">{dept.head_name || 'Unassigned'}</div>
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-[10px] uppercase font-bold text-navy-400">Total Staff</div>
+                    <div className="text-[10px] uppercase font-bold text-slate-400">Total Staff</div>
                     <div className="font-black text-purple-700 text-xs">{dept.employee_count} Members</div>
                   </div>
                 </div>
 
                 {/* Mapped Employees Avatars Preview */}
-                <div className="space-y-2 pt-1 border-t border-navy-50">
-                  <div className="flex items-center justify-between text-[11px] font-semibold text-navy-500">
+                <div className="space-y-2 pt-1 border-t border-slate-50">
+                  <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500">
                     <span>Mapped Employees</span>
                     <button
                       type="button"
@@ -560,7 +560,7 @@ export function HrmsDepartmentsTab() {
                         return (
                           <div
                             key={emp.id || eIdx}
-                            className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-navy-50 border border-navy-100 text-[11px] font-medium text-navy-800"
+                            className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-slate-50 border border-slate-100 text-[11px] font-medium text-slate-800"
                             title={`${emp.name} (${emp.designation || 'Staff'})`}
                           >
                             <span className="w-4 h-4 rounded-full bg-purple-600 text-white font-bold text-[9px] flex items-center justify-center shrink-0">
@@ -577,12 +577,12 @@ export function HrmsDepartmentsTab() {
                       )}
                     </div>
                   ) : (
-                    <div className="text-[11px] text-navy-400 italic">No employees assigned yet.</div>
+                    <div className="text-[11px] text-slate-400 italic">No employees assigned yet.</div>
                   )}
                 </div>
 
                 {/* Actions Footer */}
-                <div className="pt-3 border-t border-navy-100 flex items-center justify-between gap-2">
+                <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
                   <button
                     type="button"
                     onClick={() => setViewEmployeesDept(dept)}
@@ -605,7 +605,7 @@ export function HrmsDepartmentsTab() {
                     <button
                       type="button"
                       onClick={() => handleDelete(dept.id, dept.name)}
-                      className="p-1.5 rounded-xl text-navy-400 hover:text-rose-600 hover:bg-rose-50 border border-navy-100 transition cursor-pointer"
+                      className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-slate-100 transition cursor-pointer"
                       title="Delete Department"
                     >
                       <Icon name="trash-2" size={14} />
@@ -620,24 +620,24 @@ export function HrmsDepartmentsTab() {
 
       {/* 5. Create / Edit Department Modal */}
       {modalOpen && (
-        <div className="fixed inset-0 bg-navy-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-lg space-y-4 shadow-2xl animate-scale-in border border-navy-100">
-            <div className="flex items-center justify-between border-b border-navy-100 pb-3">
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-lg space-y-4 shadow-2xl animate-scale-in border border-slate-100">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
                 <div className="w-9 h-9 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600">
                   <Icon name="building-2" size={18} />
                 </div>
                 <div>
-                  <h3 className="text-base font-extrabold text-navy-900">
+                  <h3 className="text-base font-extrabold text-slate-900">
                     {editingDept ? 'Edit Department' : 'Create New Department'}
                   </h3>
-                  <p className="text-xs text-navy-500">Configure department details and leadership</p>
+                  <p className="text-xs text-slate-500">Configure department details and leadership</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setModalOpen(false)}
-                className="w-8 h-8 rounded-full hover:bg-navy-50 flex items-center justify-center text-navy-400 hover:text-navy-600 transition"
+                className="w-8 h-8 rounded-full hover:bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-600 transition"
               >
                 <Icon name="x" size={16} />
               </button>
@@ -646,49 +646,49 @@ export function HrmsDepartmentsTab() {
             <form onSubmit={handleSave} className="space-y-3.5 text-xs">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1 col-span-2 sm:col-span-1">
-                  <label className="font-bold text-navy-700">Department Name *</label>
+                  <label className="font-bold text-slate-700">Department Name *</label>
                   <input
                     type="text"
                     required
                     placeholder="e.g. Fitness & Training"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-navy-200 bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 font-medium"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 font-medium"
                   />
                 </div>
 
                 <div className="space-y-1 col-span-2 sm:col-span-1">
-                  <label className="font-bold text-navy-700">Department Code *</label>
+                  <label className="font-bold text-slate-700">Department Code *</label>
                   <input
                     type="text"
                     required
                     placeholder="e.g. FITN, OPS, MGMT"
                     value={formData.code}
                     onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-navy-200 bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 font-mono font-bold"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 font-mono font-bold"
                   />
                 </div>
               </div>
 
               <div className="space-y-1">
-                <label className="font-bold text-navy-700">Department Head / Manager</label>
+                <label className="font-bold text-slate-700">Department Head / Manager</label>
                 <input
                   type="text"
                   placeholder="e.g. Yashwanth Kumar"
                   value={formData.head_name}
                   onChange={(e) => setFormData({ ...formData, head_name: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-navy-200 bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 font-medium"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 font-medium"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="font-bold text-navy-700">Description & Role Scope</label>
+                <label className="font-bold text-slate-700">Description & Role Scope</label>
                 <textarea
                   rows={3}
                   placeholder="Describe the department responsibilities, operations, and team focus..."
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-3.5 py-2 rounded-xl border border-navy-200 bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 font-medium"
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 font-medium"
                 />
               </div>
 
@@ -698,18 +698,18 @@ export function HrmsDepartmentsTab() {
                   id="deptActive"
                   checked={formData.is_active}
                   onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                  className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 border-navy-300 cursor-pointer"
+                  className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 border-slate-300 cursor-pointer"
                 />
-                <label htmlFor="deptActive" className="text-xs font-bold text-navy-800 cursor-pointer">
+                <label htmlFor="deptActive" className="text-xs font-bold text-slate-800 cursor-pointer">
                   Department is currently Active &amp; Operational
                 </label>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-navy-100">
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="px-4 py-2 rounded-xl border border-navy-200 hover:bg-navy-50 text-navy-600 font-bold transition"
+                  className="px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold transition"
                 >
                   Cancel
                 </button>
@@ -728,18 +728,18 @@ export function HrmsDepartmentsTab() {
 
       {/* 6. Mapped Employees Drawer / Modal */}
       {viewEmployeesDept && (
-        <div className="fixed inset-0 bg-navy-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl animate-scale-in border border-navy-100">
-            <div className="flex items-center justify-between border-b border-navy-100 pb-3 shrink-0">
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl animate-scale-in border border-slate-100">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 shrink-0">
               <div className="flex items-center gap-2">
                 <div className="w-10 h-10 rounded-2xl bg-purple-50 flex items-center justify-center text-purple-600">
                   <Icon name="users" size={20} />
                 </div>
                 <div>
-                  <h3 className="text-base font-extrabold text-navy-900">
+                  <h3 className="text-base font-extrabold text-slate-900">
                     {viewEmployeesDept.name} — Staff Roster
                   </h3>
-                  <p className="text-xs text-navy-500">
+                  <p className="text-xs text-slate-500">
                     {viewEmployeesDept.employee_count} employee(s) mapped to this department
                   </p>
                 </div>
@@ -747,7 +747,7 @@ export function HrmsDepartmentsTab() {
               <button
                 type="button"
                 onClick={() => setViewEmployeesDept(null)}
-                className="w-8 h-8 rounded-full hover:bg-navy-50 flex items-center justify-center text-navy-400 hover:text-navy-600 transition"
+                className="w-8 h-8 rounded-full hover:bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-600 transition"
               >
                 <Icon name="x" size={16} />
               </button>
@@ -755,11 +755,11 @@ export function HrmsDepartmentsTab() {
 
             <div className="overflow-y-auto py-4 space-y-2.5 flex-1 pr-1">
               {(!viewEmployeesDept.employees || viewEmployeesDept.employees.length === 0) ? (
-                <div className="p-8 text-center text-xs text-navy-400 border border-dashed border-navy-200 rounded-2xl">
+                <div className="p-8 text-center text-xs text-slate-400 border border-dashed border-slate-200 rounded-2xl">
                   No employees currently mapped to {viewEmployeesDept.name}.
                 </div>
               ) : (
-                <div className="divide-y divide-navy-50 border border-navy-100 rounded-2xl overflow-hidden">
+                <div className="divide-y divide-slate-50 border border-slate-100 rounded-2xl overflow-hidden">
                   {viewEmployeesDept.employees.map((emp) => {
                     const initials = emp.name
                       .split(' ')
@@ -769,13 +769,13 @@ export function HrmsDepartmentsTab() {
                       .toUpperCase();
 
                     return (
-                      <div key={emp.id} className="p-3.5 bg-white hover:bg-navy-50/50 flex items-center justify-between gap-3 text-xs transition">
+                      <div key={emp.id} className="p-3.5 bg-white hover:bg-slate-50/50 flex items-center justify-between gap-3 text-xs transition">
                         <div className="flex items-center gap-3">
                           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 text-white font-extrabold text-xs flex items-center justify-center shadow-xs">
                             {initials}
                           </div>
                           <div>
-                            <div className="font-bold text-navy-900 flex items-center gap-1.5">
+                            <div className="font-bold text-slate-900 flex items-center gap-1.5">
                               <span>{emp.name}</span>
                               {emp.code && (
                                 <span className="font-mono text-[10px] font-bold text-purple-700 bg-purple-50 px-1.5 py-0.2 rounded border border-purple-200/60">
@@ -783,13 +783,13 @@ export function HrmsDepartmentsTab() {
                                 </span>
                               )}
                             </div>
-                            <div className="text-[11px] text-navy-400">{emp.email}</div>
+                            <div className="text-[11px] text-slate-400">{emp.email}</div>
                           </div>
                         </div>
 
                         <div className="flex items-center gap-3">
                           <div className="text-right">
-                            <div className="font-semibold text-navy-800 text-xs">{emp.designation || 'Staff'}</div>
+                            <div className="font-semibold text-slate-800 text-xs">{emp.designation || 'Staff'}</div>
                             <div className="text-[10px] font-bold text-emerald-600">{emp.status || 'Active'}</div>
                           </div>
                         </div>
@@ -800,8 +800,8 @@ export function HrmsDepartmentsTab() {
               )}
             </div>
 
-            <div className="pt-3 border-t border-navy-100 flex items-center justify-between text-xs shrink-0">
-              <span className="text-navy-500 font-medium">Department Code: <strong className="font-mono text-purple-700">{viewEmployeesDept.code}</strong></span>
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs shrink-0">
+              <span className="text-slate-500 font-medium">Department Code: <strong className="font-mono text-purple-700">{viewEmployeesDept.code}</strong></span>
               <button
                 type="button"
                 onClick={() => setViewEmployeesDept(null)}

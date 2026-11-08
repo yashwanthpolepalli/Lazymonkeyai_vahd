@@ -200,11 +200,11 @@ export function HrmsPage() {
   }, []);
 
   return (
-    <div className="space-y-4 w-full pb-16">
+    <div className="space-y-3.5 w-full px-4 sm:px-6 py-4 pb-16">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-navy-900 text-white text-xs font-semibold px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2 border border-brand-500/30 animate-fade-in">
-          <Icon name="check-circle" size={16} className="text-brand-400" />
+        <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white text-xs font-semibold px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2 border border-slate-700 animate-fade-in">
+          <Icon name="check-circle" size={16} className="text-emerald-400" />
           <span>{toastMessage}</span>
         </div>
       )}
@@ -212,8 +212,8 @@ export function HrmsPage() {
       {/* ───────────────────────────────────────────────────────────── */}
       {/* 0. PRIMARY SWITCH OPTION: STUDENTS VIEW vs EMPLOYEES VIEW      */}
       {/* ───────────────────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-3xl p-2.5 shadow-xs">
-        <div className="inline-flex p-1 rounded-2xl bg-slate-100/90 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+        <div className="flex items-center gap-2.5">
           {canViewStudents && (
             <button
               type="button"
@@ -222,13 +222,13 @@ export function HrmsPage() {
                 setSearchParams({ view: 'students' });
               }}
               className={cn(
-                'flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-extrabold transition-all duration-200',
+                'flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all duration-150 cursor-pointer shadow-2xs',
                 viewMode === 'students'
-                  ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm border border-slate-200/60 dark:border-slate-700 scale-[1.01]'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white shadow-md shadow-blue-500/20'
+                  : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200/90'
               )}
             >
-              <Icon name="users" size={16} className={viewMode === 'students' ? 'text-blue-600' : 'text-slate-500'} />
+              <Icon name="users" size={15} className={viewMode === 'students' ? 'text-white' : 'text-slate-500'} />
               <span>Students View</span>
             </button>
           )}
@@ -240,20 +240,20 @@ export function HrmsPage() {
                 setSearchParams({ view: 'employees' });
               }}
               className={cn(
-                'flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-extrabold transition-all duration-200',
+                'flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all duration-150 cursor-pointer shadow-2xs',
                 viewMode === 'employees'
-                  ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm border border-slate-200/60 dark:border-slate-700 scale-[1.01]'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white shadow-md shadow-blue-500/20'
+                  : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200/90'
               )}
             >
-              <Icon name="user-check" size={16} className={viewMode === 'employees' ? 'text-blue-600' : 'text-slate-500'} />
+              <Icon name="user-check" size={15} className={viewMode === 'employees' ? 'text-white' : 'text-slate-500'} />
               <span>Employees View</span>
             </button>
           )}
         </div>
 
-        <div className="flex items-center gap-2 text-xs font-bold text-slate-500 pr-2">
-          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+        <div className="flex items-center gap-2 text-xs font-bold text-slate-600 pr-1">
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block shrink-0 shadow-2xs" />
           <span>{viewMode === 'students' ? (localStorage.getItem('ssdc_college_name') ? `${localStorage.getItem('ssdc_college_name')} • Student Management` : 'Student Management Portal') : 'VAHD Enterprise • Staff HRMS'}</span>
         </div>
       </div>
@@ -269,10 +269,10 @@ export function HrmsPage() {
       {/* 2. EMPLOYEES VIEW MODE                                         */}
       {/* ───────────────────────────────────────────────────────────── */}
       {viewMode === 'employees' && (
-        <div className="space-y-4">
+        <div className="space-y-3.5">
           {/* Top HRMS Category Navigation Bar */}
-          <div className="bg-white border border-navy-100 rounded-2xl p-1.5 shadow-xs overflow-x-auto">
-            <div className="flex items-center gap-1 min-w-max">
+          <div className="bg-white border border-slate-200/90 rounded-2xl p-1.5 shadow-2xs overflow-x-auto no-scrollbar">
+            <div className="flex items-center gap-1.5 min-w-max">
               {[
                 { id: 'Employee Management', label: 'Employee Management', icon: 'users', permKey: 'hrms_employees' },
                 { id: 'Attendance', label: 'Attendance', icon: 'clock', permKey: 'hrms_attendance' },
@@ -296,12 +296,13 @@ export function HrmsPage() {
                 <button
                   key={cat.id}
                   onClick={() => switchTab(cat.id as HrmsCategory)}
-                  className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${activeCategory === cat.id
-                    ? 'bg-purple-50 text-purple-700 border border-purple-200/80 shadow-sm'
-                    : 'text-navy-600 hover:text-navy-900 hover:bg-navy-50'
-                    }`}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                    activeCategory === cat.id
+                      ? 'bg-purple-50 text-purple-700 border border-purple-200/80 shadow-2xs'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                  }`}
                 >
-                  <Icon name={cat.icon} size={15} className={activeCategory === cat.id ? 'text-purple-600' : 'text-navy-400'} />
+                  <Icon name={cat.icon} size={15} className={activeCategory === cat.id ? 'text-purple-600' : 'text-slate-400'} />
                   <span>{cat.label}</span>
                 </button>
               ))}
@@ -310,9 +311,9 @@ export function HrmsPage() {
 
           {/* Sub-Pills Under Employee Management */}
           {activeCategory === 'Employee Management' && (
-            <div className="flex items-center gap-2 overflow-x-auto pb-1">
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-0.5">
               {[
-                { id: 'employees', label: 'Employee Directory', icon: 'user-cog', permKey: 'employee_details' },
+                { id: 'employees', label: 'Employee Directory', icon: 'users', permKey: 'employee_details' },
                 { id: 'departments', label: 'Departments', icon: 'building-2', permKey: 'hrms_departments' },
                 { id: 'designations', label: 'Designations', icon: 'award', permKey: 'hrms_designations' },
                 { id: 'teams', label: 'Teams', icon: 'users-2', permKey: 'hrms_teams' },
@@ -329,12 +330,13 @@ export function HrmsPage() {
                     setActiveSubTab(sub.id);
                     setSearchParams({ view: 'employees', tab: sub.id });
                   }}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${activeSubTab === sub.id
-                    ? 'bg-purple-600 text-white shadow-md shadow-purple-600/20'
-                    : 'bg-white hover:bg-navy-50 text-navy-600 border border-navy-200/60'
-                    }`}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                    activeSubTab === sub.id
+                      ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-orange-500 text-white shadow-md shadow-blue-500/20'
+                      : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/90 shadow-2xs'
+                  }`}
                 >
-                  <Icon name={sub.icon} size={14} />
+                  <Icon name={sub.icon} size={14} className={activeSubTab === sub.id ? 'text-white' : 'text-slate-500'} />
                   <span>{sub.label}</span>
                 </button>
               ))}

@@ -788,12 +788,12 @@ export function HrmsemployeesTab() {
   return (
     <div className="space-y-3.5 animate-fade-in font-sans">
       {/* 1. Top Action & Title Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1">
         <div>
-          <h2 className="text-2xl font-black text-navy-900 tracking-tight flex items-center gap-2">
+          <h2 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
             <span>Employee Directory</span>
           </h2>
-          <p className="text-xs text-navy-500 font-medium">
+          <p className="text-xs text-slate-500 font-medium">
             Manage employees &amp; staff, monitor assignments and track workplace attendance.
           </p>
         </div>
@@ -809,19 +809,19 @@ export function HrmsemployeesTab() {
 
           <button
             onClick={() => setEmailReportsOpen(true)}
-            className="px-3.5 py-2 rounded-xl text-xs font-bold border border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+            className="px-3.5 py-2 rounded-xl text-xs font-bold border border-slate-200/90 text-slate-700 bg-white hover:bg-slate-50 flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
             title="Track and dispatch monthly employee attendance report emails with Excel attachments"
           >
-            <Icon name="mail" size={15} className="text-indigo-600" />
+            <Icon name="mail" size={14} className="text-slate-600" />
             <span>Monthly Email Reports</span>
           </button>
 
           {selectedemployeeIds.length > 0 && (
             <button
               onClick={handleBulkDeleteemployees}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold border border-rose-300 text-rose-700 bg-rose-50 hover:bg-rose-100 flex items-center gap-1.5 shadow-sm transition-all"
+              className="px-3.5 py-2 rounded-xl text-xs font-bold border border-rose-300 text-rose-700 bg-rose-50 hover:bg-rose-100 flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
             >
-              <Icon name="trash-2" size={15} className="text-rose-600" />
+              <Icon name="trash-2" size={14} className="text-rose-600" />
               <span>Delete ({selectedemployeeIds.length})</span>
             </button>
           )}
@@ -831,80 +831,99 @@ export function HrmsemployeesTab() {
               setEditingemployee(null);
               setEnrollOpen(true);
             }}
-            className="px-4 py-2 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white flex items-center gap-1.5 shadow-md shadow-purple-600/20 active:scale-[0.98] transition-all cursor-pointer"
+            className="px-5 py-2.5 rounded-full text-xs font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-orange-500 hover:opacity-95 text-white flex items-center gap-2 shadow-lg shadow-orange-500/20 active:scale-[0.98] transition-all cursor-pointer"
           >
-            <Icon name="plus" size={15} />
+            <Icon name="plus" size={14} />
             <span>Add Employee</span>
           </button>
         </div>
       </div>
 
       {/* 2. Dynamic KPI Cards Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
-        <div className="bg-white rounded-2xl p-4 border border-navy-100 shadow-sm relative overflow-hidden flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-navy-500">Total Employees</span>
-            <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
-              <Icon name="users" size={16} />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        {/* KPI 1: Total Employees */}
+        <div className="rounded-2xl border border-slate-200/90 bg-gradient-to-br from-white via-white to-sky-50/50 p-3.5 sm:p-4 shadow-2xs relative overflow-hidden flex items-start gap-3">
+          <div className="w-9 h-9 rounded-xl bg-sky-50 border border-sky-100 flex items-center justify-center shrink-0">
+            <Icon name="users" size={17} className="text-sky-500" />
+          </div>
+          <div className="space-y-0.5 min-w-0">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-800 block">
+              Total Employees
+            </span>
+            <div className="text-xl sm:text-2xl font-black text-slate-900 leading-tight">
+              {totalemployeesCount}
             </div>
+            <p className="text-[11px] text-slate-400 font-medium truncate pt-0.5">
+              Registered staff &amp; employees
+            </p>
           </div>
-          <div className="space-y-0.5">
-            <div className="text-2xl font-black text-navy-900">{totalemployeesCount}</div>
-            <div className="text-[11px] font-medium text-navy-400">Registered staff &amp; employees</div>
-          </div>
+          <div className="absolute -bottom-6 -right-6 w-20 h-20 bg-sky-100/40 rounded-full blur-xl pointer-events-none" />
         </div>
 
-        <div className="bg-white rounded-2xl p-4 border border-navy-100 shadow-sm relative overflow-hidden flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-navy-500">Active Employees</span>
-            <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-              <Icon name="user-check" size={16} />
-            </div>
+        {/* KPI 2: Active Employees */}
+        <div className="rounded-2xl border border-slate-200/90 bg-gradient-to-br from-white via-white to-emerald-50/50 p-3.5 sm:p-4 shadow-2xs relative overflow-hidden flex items-start gap-3">
+          <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0">
+            <Icon name="user-check" size={17} className="text-emerald-600" />
           </div>
-          <div className="space-y-0.5">
-            <div className="text-2xl font-black text-navy-900">{activeemployeesCount}</div>
-            <div className="text-[11px] font-bold text-emerald-600 flex items-center gap-1">
+          <div className="space-y-0.5 min-w-0">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-800 block">
+              Active Employees
+            </span>
+            <div className="text-xl sm:text-2xl font-black text-slate-900 leading-tight">
+              {activeemployeesCount}
+            </div>
+            <p className="text-[11px] text-emerald-600 font-bold flex items-center gap-1.5 pt-0.5 truncate">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block shrink-0" />
               <span>{activeemployeesCount} on duty</span>
-            </div>
+            </p>
           </div>
+          <div className="absolute -bottom-6 -right-6 w-20 h-20 bg-emerald-100/40 rounded-full blur-xl pointer-events-none" />
         </div>
 
-        <div className="bg-white rounded-2xl p-4 border border-navy-100 shadow-sm relative overflow-hidden flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-navy-500">Present Today</span>
-            <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-              <Icon name="clock" size={16} />
-            </div>
+        {/* KPI 3: Present Today */}
+        <div className="rounded-2xl border border-slate-200/90 bg-gradient-to-br from-white via-white to-amber-50/50 p-3.5 sm:p-4 shadow-2xs relative overflow-hidden flex items-start gap-3">
+          <div className="w-9 h-9 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center shrink-0">
+            <Icon name="calendar" size={17} className="text-amber-600" />
           </div>
-          <div className="space-y-0.5">
-            <div className="text-2xl font-black text-navy-900">{presentEmployeesCount}</div>
-            <div className="text-[11px] font-bold text-blue-600 flex items-center gap-1">
-              <span>{presentEmployeesCount} of {totalemployeesCount} logged in</span>
+          <div className="space-y-0.5 min-w-0">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-800 block">
+              Present Today
+            </span>
+            <div className="text-xl sm:text-2xl font-black text-slate-900 leading-tight">
+              {presentEmployeesCount}
             </div>
+            <p className="text-[11px] text-blue-600 font-medium truncate pt-0.5">
+              {presentEmployeesCount} of {totalemployeesCount} logged in
+            </p>
           </div>
+          <div className="absolute -bottom-6 -right-6 w-20 h-20 bg-amber-100/40 rounded-full blur-xl pointer-events-none" />
         </div>
 
-        <div className="bg-white rounded-2xl p-4 border border-navy-100 shadow-sm relative overflow-hidden flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-navy-500">Total Monthly Base</span>
-            <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-              <Icon name="credit-card" size={16} />
-            </div>
+        {/* KPI 4: Total Monthly Base */}
+        <div className="rounded-2xl border border-slate-200/90 bg-gradient-to-br from-white via-white to-purple-50/50 p-3.5 sm:p-4 shadow-2xs relative overflow-hidden flex items-start gap-3">
+          <div className="w-9 h-9 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center shrink-0">
+            <Icon name="credit-card" size={17} className="text-purple-600" />
           </div>
-          <div className="space-y-0.5">
-            <div className="text-2xl font-black text-navy-900">{formattedPayout}</div>
-            <div className="text-[11px] font-bold text-emerald-600 flex items-center gap-1">
-              <span>Monthly staff base</span>
+          <div className="space-y-0.5 min-w-0">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-800 block">
+              Total Monthly Base
+            </span>
+            <div className="text-xl sm:text-2xl font-black text-slate-900 leading-tight">
+              {formattedPayout}
             </div>
+            <p className="text-[11px] text-slate-400 font-medium truncate pt-0.5">
+              Monthly staff base
+            </p>
           </div>
+          <div className="absolute -bottom-6 -right-6 w-20 h-20 bg-purple-100/40 rounded-full blur-xl pointer-events-none" />
         </div>
       </div>
 
       {/* 3. Search Bar, Column Settings and View Switcher */}
-      <div className="bg-white p-3 rounded-2xl border border-navy-100 shadow-sm flex flex-col sm:flex-row gap-3 items-center justify-between">
+      <div className="flex flex-col sm:flex-row gap-3 items-center justify-between pt-1">
         <div className="flex items-center gap-2.5 w-full sm:w-auto flex-1">
-          <div className="relative w-full sm:w-80">
-            <Icon name="search" size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-navy-400" />
+          <div className="relative w-full sm:w-96">
+            <Icon name="search" size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
             <input
               type="text"
               placeholder="Search employees by name, role, email..."
@@ -913,7 +932,7 @@ export function HrmsemployeesTab() {
                 setSearchQuery(e.target.value);
                 setCurrentPage(1);
               }}
-              className="w-full pl-10 pr-4 py-2 rounded-xl bg-navy-50/60 border border-navy-100 text-xs text-navy-900 focus:outline-none focus:border-purple-500 transition"
+              className="w-full pl-11 pr-4 py-2.5 rounded-full bg-white border border-slate-200/90 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 shadow-2xs transition"
             />
           </div>
 
@@ -929,7 +948,7 @@ export function HrmsemployeesTab() {
                   setSelectedSubBranch(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="w-full pl-9 pr-8 py-2 bg-navy-50/60 border border-navy-100 rounded-xl text-xs font-bold text-navy-900 focus:outline-none focus:border-purple-500 appearance-none cursor-pointer shadow-xs truncate"
+                className="w-full pl-9 pr-8 py-2.5 bg-white border border-slate-200/90 rounded-full text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none cursor-pointer shadow-2xs truncate"
               >
                 <option value="all">All Branches ({subBranches.length})</option>
                 {subBranches.map((b) => (
@@ -938,7 +957,7 @@ export function HrmsemployeesTab() {
                   </option>
                 ))}
               </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-navy-400">
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400">
                 <Icon name="chevron-down" size={14} />
               </div>
             </div>
@@ -955,20 +974,26 @@ export function HrmsemployeesTab() {
             onReset={handleResetColumns}
           />
 
-          <div className="bg-navy-50 p-1 rounded-xl flex items-center gap-1 border border-navy-100">
+          <div className="p-1 rounded-full bg-white border border-slate-200/90 shadow-2xs flex items-center gap-1">
             <button
               onClick={() => handleSetViewMode('table')}
-              className={cn('p-1.5 rounded-lg transition-all', viewMode === 'table' ? 'bg-white text-purple-700 shadow-xs' : 'text-navy-400 hover:text-navy-600')}
+              className={cn(
+                'p-1.5 rounded-full transition-all cursor-pointer',
+                viewMode === 'table' ? 'bg-slate-100 text-slate-900 shadow-2xs' : 'text-slate-400 hover:text-slate-600'
+              )}
               title="Table View"
             >
-              <Icon name="list" size={16} />
+              <Icon name="list" size={15} />
             </button>
             <button
               onClick={() => handleSetViewMode('grid')}
-              className={cn('p-1.5 rounded-lg transition-all', viewMode === 'grid' ? 'bg-white text-purple-700 shadow-xs' : 'text-navy-400 hover:text-navy-600')}
+              className={cn(
+                'p-1.5 rounded-full transition-all cursor-pointer',
+                viewMode === 'grid' ? 'bg-slate-100 text-slate-900 shadow-2xs' : 'text-slate-400 hover:text-slate-600'
+              )}
               title="Grid View"
             >
-              <Icon name="grid" size={16} />
+              <Icon name="grid" size={15} />
             </button>
           </div>
         </div>
@@ -1091,20 +1116,28 @@ export function HrmsemployeesTab() {
         </div>
       ) : (
         /* Table View */
-        <div className="bg-white rounded-2xl border border-navy-100 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
           <div className="overflow-x-auto">
             {loading ? (
-              <div className="p-12 text-center text-xs font-semibold text-navy-400">Loading employees from database...</div>
+              <div className="p-12 text-center text-xs font-semibold text-slate-400">Loading employees from database...</div>
             ) : displayemployees.length === 0 ? (
               <div className="p-12 text-center space-y-3">
-                <div className="w-12 h-12 rounded-full bg-navy-50 text-navy-400 flex items-center justify-center mx-auto">
-                  <Icon name="users" size={24} />
+                <div className="w-12 h-12 rounded-2xl bg-purple-50 border border-purple-100 text-purple-600 flex items-center justify-center mx-auto mb-2">
+                  <Icon name="users" size={22} />
                 </div>
-                <div className="text-sm font-bold text-navy-900">No Employees Found in Directory</div>
-                <p className="text-xs text-navy-400 max-w-sm mx-auto">Click 'Add Employee' above to register new staff and employees.</p>
-                <button onClick={() => setEnrollOpen(true)} className="px-4 py-2 rounded-xl text-xs font-bold bg-purple-600 text-white inline-flex items-center gap-1.5 shadow-md shadow-purple-600/20">
-                  <Icon name="plus" size={15} /> Add First Employee
-                </button>
+                <div className="text-base font-black text-slate-900">No Employees Found in Directory</div>
+                <p className="text-xs text-slate-500 font-medium max-w-sm mx-auto">
+                  Click 'Add Employee' above to register new staff and employees.
+                </p>
+                <div className="pt-1">
+                  <button
+                    onClick={() => setEnrollOpen(true)}
+                    className="px-6 py-2.5 rounded-full text-xs font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-orange-500 hover:opacity-95 text-white inline-flex items-center gap-2 shadow-lg shadow-orange-500/20 active:scale-[0.98] transition-all cursor-pointer"
+                  >
+                    <Icon name="plus" size={14} />
+                    <span>Add Employee</span>
+                  </button>
+                </div>
               </div>
             ) : (
               <table className="w-full text-left border-collapse text-xs">

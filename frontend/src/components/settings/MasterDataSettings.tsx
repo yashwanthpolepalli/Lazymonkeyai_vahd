@@ -1167,42 +1167,26 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                   <span>Import Excel / CSV</span>
                 </button>
 
-                {/* Export Buttons */}
+                {/* Export Button (Consolidated Single Action) */}
                 <button
                   type="button"
                   onClick={() => handleExportData('csv')}
                   className="px-3 py-1.5 rounded-xl border border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100 text-emerald-700 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
-                  title="Export records to CSV"
+                  title="Export records to spreadsheet"
                 >
                   <Icon name="download" size={13} />
-                  <span>Export CSV</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleExportData('xlsx')}
-                  className="px-3 py-1.5 rounded-xl border border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100 text-emerald-700 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
-                  title="Export records to Excel"
-                >
-                  <Icon name="download" size={13} />
-                  <span>Export Excel</span>
+                  <span>Export</span>
                 </button>
 
-                {/* Sample Files */}
-                <button
-                  type="button"
-                  onClick={handleDownloadSampleXlsx}
-                  className="text-xs font-bold text-blue-600 hover:bg-slate-100:underline px-1 cursor-pointer"
-                  title="Download sample template for Excel"
-                >
-                  Sample .xlsx
-                </button>
+                {/* Sample Template (Consolidated Single Action) */}
                 <button
                   type="button"
                   onClick={handleDownloadSampleCsv}
-                  className="text-xs font-bold text-blue-600 hover:bg-slate-100:underline px-1 cursor-pointer"
-                  title="Download sample template for CSV"
+                  className="px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                  title="Download sample import template"
                 >
-                  Sample .csv
+                  <Icon name="file-text" size={13} />
+                  <span>Sample Template</span>
                 </button>
               </>
             )}
@@ -1266,10 +1250,10 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                 <Icon name="plus" size={14} />
                 <span>
                   {selectedCategory.id === 'departments'
-                    ? `+ Add ${deptTab === 'students' ? 'Student' : deptTab === 'employees' ? 'Employee' : ''} Department`
+                    ? `Add ${deptTab === 'students' ? 'Student' : deptTab === 'employees' ? 'Employee' : ''} Department`
                     : selectedCategory.id === 'technical_skills'
-                      ? `+ Add ${skillTab === 'students' ? 'Student' : skillTab === 'employees' ? 'Employee' : ''} Skill`
-                      : `+ Add ${selectedCategory.title}`}
+                      ? `Add ${skillTab === 'students' ? 'Student' : skillTab === 'employees' ? 'Employee' : ''} Skill`
+                      : `Add ${selectedCategory.title}`}
                 </span>
               </button>
             )}
@@ -1485,17 +1469,8 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
             </div>
           </div>
 
-          <div className="flex items-center gap-4 text-xs font-bold text-slate-600">
+          <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
             <span>{filteredItems.length} records</span>
-            <label className="flex items-center gap-1.5 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={filteredItems.length > 0 && selectedItemIds.length === filteredItems.length}
-                onChange={(e) => handleSelectAll(e.target.checked)}
-                className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-              />
-              <span>Select All</span>
-            </label>
           </div>
         </div>
 
@@ -1564,14 +1539,11 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                     </>
                   ) : (
                     <>
-                      <th className="py-3.5 px-4">NAME</th>
-                      <th className="py-3.5 px-4">CODE</th>
+                      <th className="py-3.5 px-4">{selectedCategory.id === 'districts' ? 'DISTRICT NAME' : 'NAME'}</th>
+                      <th className="py-3.5 px-4">{selectedCategory.id === 'districts' ? 'DISTRICT CODE' : 'CODE'}</th>
                       <th className="py-3.5 px-4">IS ACTIVE</th>
                       {selectedCategory.parentCategory && (
                         <th className="py-3.5 px-4 uppercase">{selectedCategory.parentCategory.replace('_', ' ')}</th>
-                      )}
-                      {selectedCategory.id === 'districts' && (
-                        <th className="py-3.5 px-4">DISTRICT CODE</th>
                       )}
                       {['gender_types', 'blood_groups', 'castes'].includes(selectedCategory.id) && (
                         <th className="py-3.5 px-4">DESCRIPTION / INFO</th>
@@ -1915,11 +1887,6 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                             {selectedCategory.parentCategory && (
                               <td className="py-3.5 px-4 font-semibold text-slate-700">
                                 {item.parent_name || '—'}
-                              </td>
-                            )}
-                            {selectedCategory.id === 'districts' && (
-                              <td className="py-3.5 px-4 font-mono font-bold text-slate-700">
-                                {item.extra_info || item.code}
                               </td>
                             )}
                             {['gender_types', 'blood_groups', 'castes'].includes(selectedCategory.id) && (

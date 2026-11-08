@@ -958,7 +958,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
   // ─────────────────────────────────────────────────────────────────────────────
 
   // 1. STUDENT ATTENDANCE REPORT & DOWNLOAD CENTER
-  if (selectedReport === 'student-attendance') {
+  const renderStudentAttendanceView = () => {
     const studentsList = studentsOverview?.students || [];
     const filteredStudents = studentsList.filter((s: any) => {
       const matchBranch = !selectedBranch || selectedBranch === 'all' ||
@@ -992,44 +992,43 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
     const branchDownloadParam = selectedBranch && selectedBranch !== 'all' ? `&branch_id=${encodeURIComponent(selectedBranch)}` : '';
 
     return (
-      <div className="space-y-4 animate-fade-in font-sans text-navy-900">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <div className="text-xs text-navy-400 font-bold mb-1 flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => setSelectedReport(null)}
-                className="hover:text-blue-600 hover:underline cursor-pointer"
-              >
-                Reports
-              </button>
-              <span>›</span>
-              <span className="text-navy-700">Student Attendance</span>
+      <div className="space-y-4 animate-fade-in font-sans text-slate-900">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shrink-0 shadow-2xs">
+              <Icon name="graduation-cap" size={20} />
             </div>
-            <h1 className="text-2xl font-black tracking-tight text-navy-900 uppercase">
-              STUDENT ATTENDANCE REPORT &amp; DOWNLOAD CENTER
-            </h1>
-            <p className="text-xs text-navy-500 font-medium">
-              Official monthly student biometric attendance records, course performance, and downloadable statements
-            </p>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-extrabold text-slate-900">
+                  Student Attendance Report &amp; Download Center
+                </h2>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-blue-50 text-blue-700 border border-blue-200">
+                  STUDENTS
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 font-medium">
+                Official monthly student biometric attendance records, course performance, and downloadable statements
+              </p>
+            </div>
           </div>
 
           <button
             type="button"
-            onClick={() => setSelectedReport(null)}
-            className="px-4 py-2 rounded-xl text-xs font-bold border border-navy-200 bg-white hover:bg-navy-50 text-navy-700 flex items-center gap-1.5 transition shadow-2xs self-start sm:self-auto cursor-pointer"
+            onClick={() => { setSelectedReport(null); setHubCategory('all'); }}
+            className="px-3.5 py-1.5 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 flex items-center gap-1.5 transition shadow-2xs self-start sm:self-auto cursor-pointer"
           >
-            <Icon name="chevron-left" size={14} />
-            <span>Back to Reports</span>
+            <Icon name="chevron-left" size={13} />
+            <span>All Report Modules</span>
           </button>
         </div>
 
         {/* Filter Toolbar Box */}
-        <div className="bg-white p-4 rounded-2xl border border-navy-100 shadow-sm space-y-3">
+        <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-sm space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
             <div className="flex flex-wrap items-center gap-2.5">
               <div>
-                <label className="block text-[11px] font-bold text-navy-600 mb-1">Branch / Organisation</label>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">Branch / Organisation</label>
                 <select
                   value={selectedBranch}
                   onChange={(e) => {
@@ -1038,7 +1037,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                     localStorage.setItem('vahd_selected_org_id', val);
                     window.dispatchEvent(new CustomEvent('vahd:org_changed', { detail: { id: val } }));
                   }}
-                  className="px-3 py-1.5 rounded-xl border border-navy-200 bg-white font-bold text-navy-800 text-xs focus:ring-2 focus:ring-blue-500/20 max-w-[210px]"
+                  className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20 max-w-[210px]"
                 >
                   <option value="all">🌟 All Branches (Consolidated)</option>
                   {allBranchesList.map((b) => (
@@ -1050,11 +1049,11 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-navy-600 mb-1">Month</label>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">Month</label>
                 <select
                   value={targetMonth}
                   onChange={(e) => setTargetMonth(Number(e.target.value))}
-                  className="px-3 py-1.5 rounded-xl border border-navy-200 bg-white font-bold text-navy-800 text-xs focus:ring-2 focus:ring-blue-500/20"
+                  className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20"
                 >
                   {[
                     'January', 'February', 'March', 'April', 'May', 'June',
@@ -1066,11 +1065,11 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-navy-600 mb-1">Year</label>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">Year</label>
                 <select
                   value={targetYear}
                   onChange={(e) => setTargetYear(Number(e.target.value))}
-                  className="px-3 py-1.5 rounded-xl border border-navy-200 bg-white font-bold text-navy-800 text-xs focus:ring-2 focus:ring-blue-500/20"
+                  className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20"
                 >
                   {[2024, 2025, 2026, 2027].map((y) => (
                     <option key={y} value={y}>{y}</option>
@@ -1079,11 +1078,11 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-navy-600 mb-1">Attendance Standing</label>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">Attendance Standing</label>
                 <select
                   value={studentStatusFilter}
                   onChange={(e) => setStudentStatusFilter(e.target.value)}
-                  className="px-3 py-1.5 rounded-xl border border-navy-200 bg-white font-bold text-navy-800 text-xs focus:ring-2 focus:ring-blue-500/20"
+                  className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20"
                 >
                   <option value="all">All Standings</option>
                   <option value="eligible">Eligible (≥ 75%)</option>
@@ -1093,13 +1092,13 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-navy-600 mb-1">Search Student</label>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">Search Student</label>
                 <input
                   type="text"
                   placeholder="Roll, Name, Campus..."
                   value={searchTableQuery}
                   onChange={(e) => setSearchTableQuery(e.target.value)}
-                  className="px-3 py-1.5 rounded-xl border border-navy-200 bg-white font-medium text-navy-800 text-xs focus:ring-2 focus:ring-blue-500/20 w-44"
+                  className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white font-medium text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20 w-44"
                 />
               </div>
             </div>
@@ -1146,7 +1145,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                     ])
                   )
                 }
-                className="px-3 py-1.5 rounded-xl text-xs font-bold border border-navy-200 bg-white hover:bg-navy-50 text-navy-700 flex items-center gap-1.5 shadow-2xs transition cursor-pointer"
+                className="px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 flex items-center gap-1.5 shadow-2xs transition cursor-pointer"
               >
                 <Icon name="download" size={13} />
                 <span>Export CSV</span>
@@ -1157,38 +1156,77 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
 
         {/* KPI Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-          <div className="bg-white p-3.5 rounded-2xl border border-navy-100 shadow-2xs text-center">
-            <span className="text-[10px] font-bold text-navy-400 uppercase tracking-wider block">Total Students</span>
-            <span className="text-xl font-black text-navy-900 mt-0.5 block">{displayTotalStudents}</span>
+          <div className="bg-gradient-to-br from-white via-white to-blue-50/40 p-4 rounded-2xl border border-slate-200/90 shadow-2xs flex items-center justify-between relative overflow-hidden">
+            <div>
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Total Students</span>
+              <span className="text-2xl font-black text-slate-900 mt-0.5 block">{displayTotalStudents}</span>
+              <span className="text-[11px] font-medium text-slate-400">Enrolled roster</span>
+            </div>
+            <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shrink-0">
+              <Icon name="graduation-cap" size={18} />
+            </div>
+            <div className="absolute -bottom-6 -right-6 w-16 h-16 rounded-full bg-blue-100/50 blur-xl pointer-events-none" />
           </div>
-          <div className="bg-white p-3.5 rounded-2xl border border-navy-100 shadow-2xs text-center">
-            <span className="text-[10px] font-bold text-navy-400 uppercase tracking-wider block">Working Days</span>
-            <span className="text-xl font-black text-slate-800 mt-0.5 block">{displayWorkingDays}</span>
+
+          <div className="bg-gradient-to-br from-white via-white to-slate-50/50 p-4 rounded-2xl border border-slate-200/90 shadow-2xs flex items-center justify-between relative overflow-hidden">
+            <div>
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Working Days</span>
+              <span className="text-2xl font-black text-slate-800 mt-0.5 block">{displayWorkingDays}</span>
+              <span className="text-[11px] font-medium text-slate-400">Total in month</span>
+            </div>
+            <div className="w-9 h-9 rounded-xl bg-slate-100 text-slate-600 border border-slate-200 flex items-center justify-center shrink-0">
+              <Icon name="calendar" size={18} />
+            </div>
+            <div className="absolute -bottom-6 -right-6 w-16 h-16 rounded-full bg-slate-200/50 blur-xl pointer-events-none" />
           </div>
-          <div className="bg-white p-3.5 rounded-2xl border border-navy-100 shadow-2xs text-center">
-            <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block">Avg Attendance</span>
-            <span className="text-xl font-black text-emerald-600 mt-0.5 block">{displayAvgPct}%</span>
+
+          <div className="bg-gradient-to-br from-white via-white to-emerald-50/40 p-4 rounded-2xl border border-slate-200/90 shadow-2xs flex items-center justify-between relative overflow-hidden">
+            <div>
+              <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block">Avg Attendance</span>
+              <span className="text-2xl font-black text-emerald-600 mt-0.5 block">{displayAvgPct}%</span>
+              <span className="text-[11px] font-medium text-emerald-600/80">Check-in score</span>
+            </div>
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shrink-0">
+              <Icon name="trending-up" size={18} />
+            </div>
+            <div className="absolute -bottom-6 -right-6 w-16 h-16 rounded-full bg-emerald-100/50 blur-xl pointer-events-none" />
           </div>
-          <div className="bg-white p-3.5 rounded-2xl border border-navy-100 shadow-2xs text-center">
-            <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider block">Eligible (≥ 75%)</span>
-            <span className="text-xl font-black text-blue-600 mt-0.5 block">{displayEligible}</span>
+
+          <div className="bg-gradient-to-br from-white via-white to-indigo-50/40 p-4 rounded-2xl border border-slate-200/90 shadow-2xs flex items-center justify-between relative overflow-hidden">
+            <div>
+              <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider block">Eligible (≥ 75%)</span>
+              <span className="text-2xl font-black text-indigo-600 mt-0.5 block">{displayEligible}</span>
+              <span className="text-[11px] font-medium text-indigo-600/80">Hall ticket cleared</span>
+            </div>
+            <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center shrink-0">
+              <Icon name="check-circle" size={18} />
+            </div>
+            <div className="absolute -bottom-6 -right-6 w-16 h-16 rounded-full bg-indigo-100/50 blur-xl pointer-events-none" />
           </div>
-          <div className="bg-white p-3.5 rounded-2xl border border-navy-100 shadow-2xs text-center">
-            <span className="text-[10px] font-bold text-rose-600 uppercase tracking-wider block">Shortage Alert (&lt; 60%)</span>
-            <span className="text-xl font-black text-rose-600 mt-0.5 block">{displayShortage}</span>
+
+          <div className="bg-gradient-to-br from-white via-white to-rose-50/40 p-4 rounded-2xl border border-slate-200/90 shadow-2xs flex items-center justify-between relative overflow-hidden">
+            <div>
+              <span className="text-[10px] font-bold text-rose-600 uppercase tracking-wider block">Shortage (&lt; 60%)</span>
+              <span className="text-2xl font-black text-rose-600 mt-0.5 block">{displayShortage}</span>
+              <span className="text-[11px] font-medium text-rose-600/80">Condonation list</span>
+            </div>
+            <div className="w-9 h-9 rounded-xl bg-rose-50 text-rose-600 border border-rose-100 flex items-center justify-center shrink-0">
+              <Icon name="alert-circle" size={18} />
+            </div>
+            <div className="absolute -bottom-6 -right-6 w-16 h-16 rounded-full bg-rose-100/50 blur-xl pointer-events-none" />
           </div>
         </div>
 
         {/* Table Container */}
-        <div className="bg-white rounded-2xl border border-navy-100 shadow-sm overflow-hidden">
-          <div className="p-3.5 border-b border-navy-100 flex items-center justify-between bg-navy-50/40">
+        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden">
+          <div className="p-3.5 border-b border-slate-200/90 flex items-center justify-between bg-slate-50/60">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-extrabold text-navy-900">Student Attendance Statements</span>
+              <span className="text-sm font-extrabold text-slate-900">Student Attendance Statements</span>
               <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-xs font-bold font-mono">
                 {filteredStudents.length} Students
               </span>
             </div>
-            <span className="text-xs text-navy-500 font-medium">
+            <span className="text-xs text-slate-500 font-medium">
               Period: <strong>{studentsOverview?.month_name || 'Selected Month'} {studentsOverview?.year || targetYear}</strong>
             </span>
           </div>
@@ -1298,7 +1336,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
   }
 
   // 2. EMPLOYEE ATTENDANCE REPORT & DOWNLOAD CENTER
-  if (selectedReport === 'employee-attendance') {
+  const renderEmployeeAttendanceView = () => {
     const employeesList = employeesOverview?.employees || [];
     const filteredEmployees = employeesList.filter((emp: any) => {
       const matchBranch = !selectedBranch || selectedBranch === 'all' ||
@@ -1333,44 +1371,43 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
     const branchDownloadParam = selectedBranch && selectedBranch !== 'all' ? `&branch_id=${encodeURIComponent(selectedBranch)}` : '';
 
     return (
-      <div className="space-y-4 animate-fade-in font-sans text-navy-900">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <div className="text-xs text-navy-400 font-bold mb-1 flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => setSelectedReport(null)}
-                className="hover:text-blue-600 hover:underline cursor-pointer"
-              >
-                Reports
-              </button>
-              <span>›</span>
-              <span className="text-navy-700">Employee Attendance</span>
+      <div className="space-y-4 animate-fade-in font-sans text-slate-900">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 border border-purple-100 flex items-center justify-center shrink-0 shadow-2xs">
+              <Icon name="user-check" size={20} />
             </div>
-            <h1 className="text-2xl font-black tracking-tight text-navy-900 uppercase">
-              EMPLOYEE ATTENDANCE REPORT &amp; DOWNLOAD CENTER
-            </h1>
-            <p className="text-xs text-navy-500 font-medium">
-              Official staff attendance statements, biometric hours breakdown, and executive reports
-            </p>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-extrabold text-slate-900">
+                  Employee Attendance Report &amp; Download Center
+                </h2>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-purple-50 text-purple-700 border border-purple-200">
+                  EMPLOYEES
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 font-medium">
+                Official staff attendance statements, biometric hours breakdown, and executive reports
+              </p>
+            </div>
           </div>
 
           <button
             type="button"
-            onClick={() => setSelectedReport(null)}
-            className="px-4 py-2 rounded-xl text-xs font-bold border border-navy-200 bg-white hover:bg-navy-50 text-navy-700 flex items-center gap-1.5 transition shadow-2xs self-start sm:self-auto cursor-pointer"
+            onClick={() => { setSelectedReport(null); setHubCategory('all'); }}
+            className="px-3.5 py-1.5 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 flex items-center gap-1.5 transition shadow-2xs self-start sm:self-auto cursor-pointer"
           >
-            <Icon name="chevron-left" size={14} />
-            <span>Back to Reports</span>
+            <Icon name="chevron-left" size={13} />
+            <span>All Report Modules</span>
           </button>
         </div>
 
         {/* Filter Toolbar Box */}
-        <div className="bg-white p-4 rounded-2xl border border-navy-100 shadow-sm space-y-3">
+        <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-sm space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
             <div className="flex flex-wrap items-center gap-2.5">
               <div>
-                <label className="block text-[11px] font-bold text-navy-600 mb-1">Branch / Organisation</label>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">Branch / Organisation</label>
                 <select
                   value={selectedBranch}
                   onChange={(e) => {
@@ -1379,7 +1416,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                     localStorage.setItem('vahd_selected_org_id', val);
                     window.dispatchEvent(new CustomEvent('vahd:org_changed', { detail: { id: val } }));
                   }}
-                  className="px-3 py-1.5 rounded-xl border border-navy-200 bg-white font-bold text-navy-800 text-xs focus:ring-2 focus:ring-blue-500/20 max-w-[210px]"
+                  className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20 max-w-[210px]"
                 >
                   <option value="all">🌟 All Branches (Consolidated)</option>
                   {allBranchesList.map((b) => (
@@ -1391,11 +1428,11 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-navy-600 mb-1">Month</label>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">Month</label>
                 <select
                   value={targetMonth}
                   onChange={(e) => setTargetMonth(Number(e.target.value))}
-                  className="px-3 py-1.5 rounded-xl border border-navy-200 bg-white font-bold text-navy-800 text-xs focus:ring-2 focus:ring-blue-500/20"
+                  className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20"
                 >
                   {[
                     'January', 'February', 'March', 'April', 'May', 'June',
@@ -1407,11 +1444,11 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-navy-600 mb-1">Year</label>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">Year</label>
                 <select
                   value={targetYear}
                   onChange={(e) => setTargetYear(Number(e.target.value))}
-                  className="px-3 py-1.5 rounded-xl border border-navy-200 bg-white font-bold text-navy-800 text-xs focus:ring-2 focus:ring-blue-500/20"
+                  className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20"
                 >
                   {[2024, 2025, 2026, 2027].map((y) => (
                     <option key={y} value={y}>{y}</option>
@@ -1420,11 +1457,11 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-navy-600 mb-1">Performance Bracket</label>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">Performance Bracket</label>
                 <select
                   value={employeeStatusFilter}
                   onChange={(e) => setEmployeeStatusFilter(e.target.value)}
-                  className="px-3 py-1.5 rounded-xl border border-navy-200 bg-white font-bold text-navy-800 text-xs focus:ring-2 focus:ring-blue-500/20"
+                  className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20"
                 >
                   <option value="all">All Brackets</option>
                   <option value="eligible">Optimal (≥ 75%)</option>
@@ -1434,13 +1471,13 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-navy-600 mb-1">Search Staff</label>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">Search Staff</label>
                 <input
                   type="text"
                   placeholder="Code, Name, Campus..."
                   value={searchTableQuery}
                   onChange={(e) => setSearchTableQuery(e.target.value)}
-                  className="px-3 py-1.5 rounded-xl border border-navy-200 bg-white font-medium text-navy-800 text-xs focus:ring-2 focus:ring-blue-500/20 w-44"
+                  className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white font-medium text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20 w-44"
                 />
               </div>
             </div>
@@ -1488,7 +1525,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                     ])
                   )
                 }
-                className="px-3 py-1.5 rounded-xl text-xs font-bold border border-navy-200 bg-white hover:bg-navy-50 text-navy-700 flex items-center gap-1.5 shadow-2xs transition cursor-pointer"
+                className="px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 flex items-center gap-1.5 shadow-2xs transition cursor-pointer"
               >
                 <Icon name="download" size={13} />
                 <span>Export CSV</span>
@@ -1499,38 +1536,77 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
 
         {/* KPI Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-          <div className="bg-white p-3.5 rounded-2xl border border-navy-100 shadow-2xs text-center">
-            <span className="text-[10px] font-bold text-navy-400 uppercase tracking-wider block">Total Employees</span>
-            <span className="text-xl font-black text-navy-900 mt-0.5 block">{displayTotalEmployees}</span>
+          <div className="bg-gradient-to-br from-white via-white to-blue-50/40 p-4 rounded-2xl border border-slate-200/90 shadow-2xs flex items-center justify-between relative overflow-hidden">
+            <div>
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Total Employees</span>
+              <span className="text-2xl font-black text-slate-900 mt-0.5 block">{displayTotalEmployees}</span>
+              <span className="text-[11px] font-medium text-slate-400">Registered staff</span>
+            </div>
+            <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shrink-0">
+              <Icon name="users" size={18} />
+            </div>
+            <div className="absolute -bottom-6 -right-6 w-16 h-16 rounded-full bg-blue-100/50 blur-xl pointer-events-none" />
           </div>
-          <div className="bg-white p-3.5 rounded-2xl border border-navy-100 shadow-2xs text-center">
-            <span className="text-[10px] font-bold text-navy-400 uppercase tracking-wider block">Working Days</span>
-            <span className="text-xl font-black text-slate-800 mt-0.5 block">{displayEmpWorkingDays}</span>
+
+          <div className="bg-gradient-to-br from-white via-white to-slate-50/50 p-4 rounded-2xl border border-slate-200/90 shadow-2xs flex items-center justify-between relative overflow-hidden">
+            <div>
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Working Days</span>
+              <span className="text-2xl font-black text-slate-800 mt-0.5 block">{displayEmpWorkingDays}</span>
+              <span className="text-[11px] font-medium text-slate-400">Total in month</span>
+            </div>
+            <div className="w-9 h-9 rounded-xl bg-slate-100 text-slate-600 border border-slate-200 flex items-center justify-center shrink-0">
+              <Icon name="calendar" size={18} />
+            </div>
+            <div className="absolute -bottom-6 -right-6 w-16 h-16 rounded-full bg-slate-200/50 blur-xl pointer-events-none" />
           </div>
-          <div className="bg-white p-3.5 rounded-2xl border border-navy-100 shadow-2xs text-center">
-            <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block">Avg Attendance</span>
-            <span className="text-xl font-black text-emerald-600 mt-0.5 block">{displayEmpAvgPct}%</span>
+
+          <div className="bg-gradient-to-br from-white via-white to-emerald-50/40 p-4 rounded-2xl border border-slate-200/90 shadow-2xs flex items-center justify-between relative overflow-hidden">
+            <div>
+              <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block">Avg Attendance</span>
+              <span className="text-2xl font-black text-emerald-600 mt-0.5 block">{displayEmpAvgPct}%</span>
+              <span className="text-[11px] font-medium text-emerald-600/80">Compliance rate</span>
+            </div>
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shrink-0">
+              <Icon name="trending-up" size={18} />
+            </div>
+            <div className="absolute -bottom-6 -right-6 w-16 h-16 rounded-full bg-emerald-100/50 blur-xl pointer-events-none" />
           </div>
-          <div className="bg-white p-3.5 rounded-2xl border border-navy-100 shadow-2xs text-center">
-            <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider block">Optimal (≥ 75%)</span>
-            <span className="text-xl font-black text-blue-600 mt-0.5 block">{displayEmpOptimal}</span>
+
+          <div className="bg-gradient-to-br from-white via-white to-indigo-50/40 p-4 rounded-2xl border border-slate-200/90 shadow-2xs flex items-center justify-between relative overflow-hidden">
+            <div>
+              <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider block">Optimal (≥ 75%)</span>
+              <span className="text-2xl font-black text-indigo-600 mt-0.5 block">{displayEmpOptimal}</span>
+              <span className="text-[11px] font-medium text-indigo-600/80">Full month tier</span>
+            </div>
+            <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center shrink-0">
+              <Icon name="check-circle" size={18} />
+            </div>
+            <div className="absolute -bottom-6 -right-6 w-16 h-16 rounded-full bg-indigo-100/50 blur-xl pointer-events-none" />
           </div>
-          <div className="bg-white p-3.5 rounded-2xl border border-navy-100 shadow-2xs text-center">
-            <span className="text-[10px] font-bold text-purple-600 uppercase tracking-wider block">Low Attendance (&lt; 60%)</span>
-            <span className="text-xl font-black text-purple-600 mt-0.5 block">{displayEmpShortage}</span>
+
+          <div className="bg-gradient-to-br from-white via-white to-purple-50/40 p-4 rounded-2xl border border-slate-200/90 shadow-2xs flex items-center justify-between relative overflow-hidden">
+            <div>
+              <span className="text-[10px] font-bold text-purple-600 uppercase tracking-wider block">Low Attendance (&lt; 60%)</span>
+              <span className="text-2xl font-black text-purple-600 mt-0.5 block">{displayEmpShortage}</span>
+              <span className="text-[11px] font-medium text-purple-600/80">HR review needed</span>
+            </div>
+            <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 border border-purple-100 flex items-center justify-center shrink-0">
+              <Icon name="alert-circle" size={18} />
+            </div>
+            <div className="absolute -bottom-6 -right-6 w-16 h-16 rounded-full bg-purple-100/50 blur-xl pointer-events-none" />
           </div>
         </div>
 
         {/* Table Container */}
-        <div className="bg-white rounded-2xl border border-navy-100 shadow-sm overflow-hidden">
-          <div className="p-3.5 border-b border-navy-100 flex items-center justify-between bg-navy-50/40">
+        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden">
+          <div className="p-3.5 border-b border-slate-200/90 flex items-center justify-between bg-slate-50/60">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-extrabold text-navy-900">Employee Attendance Statements</span>
+              <span className="text-sm font-extrabold text-slate-900">Employee Attendance Statements</span>
               <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold font-mono">
                 {filteredEmployees.length} Staff
               </span>
             </div>
-            <span className="text-xs text-navy-500 font-medium">
+            <span className="text-xs text-slate-500 font-medium">
               Period: <strong>{employeesOverview?.month_name || 'Selected Month'} {employeesOverview?.year || targetYear}</strong>
             </span>
           </div>
@@ -1637,51 +1713,50 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
   }
 
   // 3. MULTI-BRANCH CONSOLIDATED REPORT
-  if (selectedReport === 'branch-consolidated') {
+  const renderBranchConsolidatedView = () => {
     const branches = branchReportsData?.branches || [];
 
     return (
-      <div className="space-y-4 animate-fade-in font-sans text-navy-900">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <div className="text-xs text-navy-400 font-bold mb-1 flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => setSelectedReport(null)}
-                className="hover:text-blue-600 hover:underline cursor-pointer"
-              >
-                Reports
-              </button>
-              <span>›</span>
-              <span className="text-navy-700">Multi-Branch Consolidated</span>
+      <div className="space-y-4 animate-fade-in font-sans text-slate-900">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center shrink-0 shadow-2xs">
+              <Icon name="building-2" size={20} />
             </div>
-            <h1 className="text-2xl font-black tracking-tight text-navy-900 uppercase">
-              MULTI-BRANCH CONSOLIDATED ATTENDANCE CENTER
-            </h1>
-            <p className="text-xs text-navy-500 font-medium">
-              Consolidated Head Office attendance overview and exports across all registered campus branches
-            </p>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-extrabold text-slate-900">
+                  Multi-Branch Consolidated Attendance Center
+                </h2>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-indigo-50 text-indigo-700 border border-indigo-200">
+                  MULTI-BRANCH
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 font-medium">
+                Consolidated Head Office attendance overview and exports across all registered campus branches
+              </p>
+            </div>
           </div>
 
           <button
             type="button"
-            onClick={() => setSelectedReport(null)}
-            className="px-4 py-2 rounded-xl text-xs font-bold border border-navy-200 bg-white hover:bg-navy-50 text-navy-700 flex items-center gap-1.5 transition shadow-2xs self-start sm:self-auto cursor-pointer"
+            onClick={() => { setSelectedReport(null); setHubCategory('all'); }}
+            className="px-3.5 py-1.5 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 flex items-center gap-1.5 transition shadow-2xs self-start sm:self-auto cursor-pointer"
           >
-            <Icon name="chevron-left" size={14} />
-            <span>Back to Reports</span>
+            <Icon name="chevron-left" size={13} />
+            <span>All Report Modules</span>
           </button>
         </div>
 
         {/* Filter Toolbar Box */}
-        <div className="bg-white p-4 rounded-2xl border border-navy-100 shadow-sm flex flex-wrap items-center justify-between gap-3">
+        <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-sm flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div>
-              <label className="block text-[11px] font-bold text-navy-600 mb-1">Reporting Month</label>
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">Reporting Month</label>
               <select
                 value={targetMonth}
                 onChange={(e) => setTargetMonth(Number(e.target.value))}
-                className="px-3 py-1.5 rounded-xl border border-navy-200 bg-white font-bold text-navy-800 text-xs focus:ring-2 focus:ring-blue-500/20"
+                className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20"
               >
                 {[
                   'January', 'February', 'March', 'April', 'May', 'June',
@@ -1693,11 +1768,11 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold text-navy-600 mb-1">Reporting Year</label>
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">Reporting Year</label>
               <select
                 value={targetYear}
                 onChange={(e) => setTargetYear(Number(e.target.value))}
-                className="px-3 py-1.5 rounded-xl border border-navy-200 bg-white font-bold text-navy-800 text-xs focus:ring-2 focus:ring-blue-500/20"
+                className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20"
               >
                 {[2024, 2025, 2026, 2027].map((y) => (
                   <option key={y} value={y}>{y}</option>
@@ -1730,37 +1805,68 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
 
         {/* Quick KPI Overview */}
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-          <div className="bg-white p-4 rounded-2xl border border-navy-100 shadow-2xs text-center">
-            <span className="text-[11px] font-bold text-navy-400 uppercase tracking-wider">Branches in Scope</span>
-            <div className="text-2xl font-black text-navy-900 mt-1">{branchReportsData?.total_branches ?? 0}</div>
+          <div className="bg-gradient-to-br from-white via-white to-purple-50/40 p-4 rounded-2xl border border-slate-200/90 shadow-2xs flex items-center justify-between relative overflow-hidden">
+            <div>
+              <span className="text-[10px] font-bold text-purple-600 uppercase tracking-wider block">Branches in Scope</span>
+              <span className="text-2xl font-black text-slate-900 mt-0.5 block">{branchReportsData?.total_branches ?? 0}</span>
+              <span className="text-[11px] font-medium text-slate-400">Operational campuses</span>
+            </div>
+            <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 border border-purple-100 flex items-center justify-center shrink-0">
+              <Icon name="building-2" size={18} />
+            </div>
+            <div className="absolute -bottom-6 -right-6 w-16 h-16 rounded-full bg-purple-100/50 blur-xl pointer-events-none" />
           </div>
-          <div className="bg-white p-4 rounded-2xl border border-navy-100 shadow-2xs text-center">
-            <span className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider">Total Organization Staff</span>
-            <div className="text-2xl font-black text-emerald-600 mt-1">{branchReportsData?.total_employees ?? 0}</div>
+
+          <div className="bg-gradient-to-br from-white via-white to-emerald-50/40 p-4 rounded-2xl border border-slate-200/90 shadow-2xs flex items-center justify-between relative overflow-hidden">
+            <div>
+              <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block">Total Staff</span>
+              <span className="text-2xl font-black text-emerald-600 mt-0.5 block">{branchReportsData?.total_employees ?? 0}</span>
+              <span className="text-[11px] font-medium text-emerald-600/80">Across all institutions</span>
+            </div>
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shrink-0">
+              <Icon name="users" size={18} />
+            </div>
+            <div className="absolute -bottom-6 -right-6 w-16 h-16 rounded-full bg-emerald-100/50 blur-xl pointer-events-none" />
           </div>
-          <div className="bg-white p-4 rounded-2xl border border-navy-100 shadow-2xs text-center">
-            <span className="text-[11px] font-bold text-blue-600 uppercase tracking-wider">Total Campus Students</span>
-            <div className="text-2xl font-black text-blue-600 mt-1">{branchReportsData?.total_students ?? 0}</div>
+
+          <div className="bg-gradient-to-br from-white via-white to-blue-50/40 p-4 rounded-2xl border border-slate-200/90 shadow-2xs flex items-center justify-between relative overflow-hidden">
+            <div>
+              <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider block">Total Students</span>
+              <span className="text-2xl font-black text-blue-600 mt-0.5 block">{branchReportsData?.total_students ?? 0}</span>
+              <span className="text-[11px] font-medium text-blue-600/80">Active enrollment</span>
+            </div>
+            <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shrink-0">
+              <Icon name="graduation-cap" size={18} />
+            </div>
+            <div className="absolute -bottom-6 -right-6 w-16 h-16 rounded-full bg-blue-100/50 blur-xl pointer-events-none" />
           </div>
-          <div className="bg-white p-4 rounded-2xl border border-navy-100 shadow-2xs text-center">
-            <span className="text-[11px] font-bold text-purple-600 uppercase tracking-wider">Active Period</span>
-            <div className="text-xl font-black text-purple-600 mt-1">{branchReportsData?.period || 'Selected Month'}</div>
+
+          <div className="bg-gradient-to-br from-white via-white to-indigo-50/40 p-4 rounded-2xl border border-slate-200/90 shadow-2xs flex items-center justify-between relative overflow-hidden">
+            <div>
+              <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider block">Reporting Period</span>
+              <span className="text-xl font-black text-indigo-700 mt-0.5 block">{branchReportsData?.period || 'Selected Month'}</span>
+              <span className="text-[11px] font-medium text-indigo-600/80">Active fiscal cycle</span>
+            </div>
+            <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center shrink-0">
+              <Icon name="calendar" size={18} />
+            </div>
+            <div className="absolute -bottom-6 -right-6 w-16 h-16 rounded-full bg-indigo-100/50 blur-xl pointer-events-none" />
           </div>
         </div>
 
         {/* Branch Cards */}
         <div className="space-y-4">
           {branches.length === 0 ? (
-            <div className="bg-white p-12 rounded-2xl border border-navy-100 text-center text-slate-400 font-semibold">
+            <div className="bg-white p-12 rounded-2xl border border-slate-200/90 text-center text-slate-400 font-semibold">
               No branch records available for this reporting period.
             </div>
           ) : (
             branches.map((b: any) => (
-              <div key={b.branch_id} className="bg-white p-5 rounded-2xl border border-navy-100 shadow-2xs space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-navy-50">
+              <div key={b.branch_id} className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
                   <div>
-                    <h3 className="text-base font-extrabold text-navy-900">{b.vahd_name || b.branch_name}</h3>
-                    <p className="text-xs text-navy-500">
+                    <h3 className="text-base font-extrabold text-slate-900">{b.vahd_name || b.branch_name}</h3>
+                    <p className="text-xs text-slate-500">
                       City: <strong>{b.city || 'Primary Campus'}</strong> &bull; Owner: <strong>{b.owner_name || 'Assigned'}</strong>
                     </p>
                   </div>
@@ -1819,13 +1925,13 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
     );
   }
 
-  if (selectedReport === 'daily-attendance') {
+  const renderDailyAttendanceView = () => {
     return (
-      <div className="space-y-4 animate-fade-in font-sans text-navy-900">
+      <div className="space-y-4 animate-fade-in font-sans text-slate-900">
         {/* Breadcrumb & Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <div className="text-xs text-navy-400 font-bold mb-1 flex items-center gap-1.5">
+            <div className="text-xs text-slate-400 font-bold mb-1 flex items-center gap-1.5">
               <button
                 type="button"
                 onClick={() => setSelectedReport(null)}
@@ -1834,18 +1940,18 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                 Reports
               </button>
               <span>›</span>
-              <span className="text-navy-700">Daily Attendance</span>
+              <span className="text-slate-700">Daily Attendance</span>
             </div>
-            <h1 className="text-2xl font-black tracking-tight text-navy-900 uppercase">
+            <h1 className="text-2xl font-black tracking-tight text-slate-900 uppercase">
               DAILY ATTENDANCE REPORT
             </h1>
-            <p className="text-xs text-navy-500 font-medium">Employee &amp; Student daily attendance records with organisation mapping</p>
+            <p className="text-xs text-slate-500 font-medium">Employee &amp; Student daily attendance records with organisation mapping</p>
           </div>
 
           <button
             type="button"
             onClick={() => setSelectedReport(null)}
-            className="px-4 py-2 rounded-xl text-xs font-bold border border-navy-200 bg-white hover:bg-navy-50 text-navy-700 flex items-center gap-1.5 transition shadow-2xs self-start sm:self-auto cursor-pointer"
+            className="px-4 py-2 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 flex items-center gap-1.5 transition shadow-2xs self-start sm:self-auto cursor-pointer"
           >
             <Icon name="chevron-left" size={14} />
             <span>Back to Reports</span>
@@ -1853,14 +1959,14 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
         </div>
 
         {/* Filter Toolbar Box */}
-        <div className="bg-white p-4 rounded-2xl border border-navy-100 shadow-sm space-y-3">
+        <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-sm space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2.5 text-xs">
             <div>
-              <label className="block text-[11px] font-bold text-navy-600 mb-1">Attendee Type</label>
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">Attendee Type</label>
               <select
                 value={dailyAttendeeType}
                 onChange={(e) => setDailyAttendeeType(e.target.value as 'all' | 'employees' | 'students')}
-                className="w-full px-2.5 py-1.5 rounded-xl border border-navy-200 bg-white font-bold text-navy-800 text-xs focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
+                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
               >
                 <option value="all">All Attendees</option>
                 <option value="employees">Employees Only</option>
@@ -1869,11 +1975,11 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold text-navy-600 mb-1">District</label>
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">District</label>
               <select
                 value={filterDistrict}
                 onChange={(e) => setFilterDistrict(e.target.value)}
-                className="w-full px-2.5 py-1.5 rounded-xl border border-navy-200 bg-white font-bold text-navy-800 text-xs focus:ring-2 focus:ring-blue-500/20"
+                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20"
               >
                 {dynamicDistrictsList.map((d) => (
                   <option key={d} value={d}>
@@ -1884,11 +1990,11 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold text-navy-600 mb-1">Place of Working</label>
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">Place of Working</label>
               <select
                 value={filterPlace}
                 onChange={(e) => setFilterPlace(e.target.value)}
-                className="w-full px-2.5 py-1.5 rounded-xl border border-navy-200 bg-white font-bold text-navy-800 text-xs focus:ring-2 focus:ring-blue-500/20"
+                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20"
               >
                 {dynamicPlacesList.map((p) => (
                   <option key={p} value={p}>
@@ -1899,41 +2005,41 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold text-navy-600 mb-1">Date</label>
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">Date</label>
               <input
                 type="date"
                 value={filterDate}
                 onChange={(e) => setFilterDate(e.target.value)}
-                className="w-full px-2.5 py-1.5 rounded-xl border border-navy-200 bg-white font-bold text-navy-800 text-xs focus:ring-2 focus:ring-blue-500/20"
+                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20"
               />
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold text-navy-600 mb-1">Check-in Time</label>
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">Check-in Time</label>
               <input
                 type="time"
                 value={filterCheckinTime}
                 onChange={(e) => setFilterCheckinTime(e.target.value)}
-                className="w-full px-2.5 py-1.5 rounded-xl border border-navy-200 bg-white font-bold text-navy-800 text-xs focus:ring-2 focus:ring-blue-500/20"
+                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20"
               />
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold text-navy-600 mb-1">Check-out Time</label>
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">Check-out Time</label>
               <input
                 type="time"
                 value={filterCheckoutTime}
                 onChange={(e) => setFilterCheckoutTime(e.target.value)}
-                className="w-full px-2.5 py-1.5 rounded-xl border border-navy-200 bg-white font-bold text-navy-800 text-xs focus:ring-2 focus:ring-blue-500/20"
+                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20"
               />
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold text-navy-600 mb-1">Status</label>
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">Status</label>
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="w-full px-2.5 py-1.5 rounded-xl border border-navy-200 bg-white font-bold text-navy-800 text-xs focus:ring-2 focus:ring-blue-500/20"
+                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20"
               >
                 <option value="All">All Status</option>
                 <option value="Present">Present</option>
@@ -1944,18 +2050,18 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold text-navy-600 mb-1">Search</label>
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">Search</label>
               <input
                 type="text"
                 placeholder="Search..."
                 value={searchTableQuery}
                 onChange={(e) => setSearchTableQuery(e.target.value)}
-                className="w-full px-2.5 py-1.5 rounded-xl border border-navy-200 bg-white font-medium text-navy-800 text-xs focus:ring-2 focus:ring-blue-500/20"
+                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white font-medium text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20"
               />
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-2 pt-1 border-t border-navy-50">
+          <div className="flex items-center justify-end gap-2 pt-1 border-t border-slate-100">
             <button
               type="button"
               onClick={() => fetchData(filterDate)}
@@ -1977,7 +2083,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                 setFilterDate(todayStr);
                 fetchData(todayStr);
               }}
-              className="px-4 py-1.5 rounded-xl text-xs font-bold border border-navy-200 text-navy-700 hover:bg-navy-50 transition cursor-pointer"
+              className="px-4 py-1.5 rounded-xl text-xs font-bold border border-slate-200 text-slate-700 hover:bg-slate-50 transition cursor-pointer"
             >
               Reset
             </button>
@@ -1985,11 +2091,11 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
         </div>
 
         {/* Table Container */}
-        <div className="bg-white rounded-2xl border border-navy-100 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden">
           {/* Table Header Controls */}
-          <div className="p-3.5 border-b border-navy-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-navy-50/40">
+          <div className="p-3.5 border-b border-slate-200/90 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/60">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-extrabold text-navy-900">Daily Attendance Report</span>
+              <span className="text-sm font-extrabold text-slate-900">Daily Attendance Report</span>
               <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-xs font-bold font-mono">
                 {filteredDailyAttendance.length} records
               </span>
@@ -2005,7 +2111,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                     filteredDailyAttendance.map((r, i) => [i + 1, r.dist, r.id, r.name, r.attendee_type === 'student' ? 'Student' : 'Employee', r.desg, r.place, filterDate, r.in, r.in_loc, r.out, r.out_loc, r.status])
                   )
                 }
-                className="px-3 py-1.5 rounded-xl text-xs font-bold border border-navy-200 bg-white hover:bg-navy-50 text-navy-700 flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
+                className="px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
               >
                 <Icon name="download" size={13} />
                 <span>Export Excel</span>
@@ -2024,7 +2130,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
           {/* Table Element */}
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-navy-50/70 text-navy-500 font-extrabold uppercase text-[10px] tracking-wider border-b border-navy-100">
+              <thead className="bg-slate-50/80 text-slate-500 font-extrabold uppercase text-[10px] tracking-wider border-b border-slate-200/90">
                 <tr>
                   <th className="py-3 px-3.5">#</th>
                   <th className="py-3 px-3.5">DISTRICT</th>
@@ -2040,28 +2146,28 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                   <th className="py-3 px-3.5 text-center">STATUS</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-navy-100 font-medium">
+              <tbody className="divide-y divide-slate-100 font-medium">
                 {filteredDailyAttendance.length === 0 ? (
                   <tr>
-                    <td colSpan={12} className="py-12 text-center text-navy-400 font-medium">
+                    <td colSpan={12} className="py-12 text-center text-slate-400 font-medium">
                       No live attendance records found for this date/criteria.
                     </td>
                   </tr>
                 ) : (
                   filteredDailyAttendance.map((row, idx) => (
                     <tr key={idx} className="hover:bg-purple-50/20 transition-colors">
-                      <td className="py-3 px-3.5 text-navy-400 font-bold">{idx + 1}</td>
-                      <td className="py-3 px-3.5 font-bold text-navy-800">{row.dist || '—'}</td>
-                      <td className="py-3 px-3.5 font-mono text-navy-600 font-bold">{row.id}</td>
-                      <td className="py-3 px-3.5 font-extrabold text-navy-900">{row.name}</td>
-                      <td className="py-3 px-3.5 text-navy-600">{row.desg}</td>
-                      <td className="py-3 px-3.5 text-navy-700">{row.place || '—'}</td>
-                      <td className="py-3 px-3.5 font-mono text-navy-600">{filterDate}</td>
-                      <td className="py-3 px-3.5 font-mono text-navy-900 font-bold">{row.in}</td>
-                      <td className="py-3 px-3.5 text-navy-600">
+                      <td className="py-3 px-3.5 text-slate-400 font-bold">{idx + 1}</td>
+                      <td className="py-3 px-3.5 font-bold text-slate-800">{row.dist || '—'}</td>
+                      <td className="py-3 px-3.5 font-mono text-slate-600 font-bold">{row.id}</td>
+                      <td className="py-3 px-3.5 font-extrabold text-slate-900">{row.name}</td>
+                      <td className="py-3 px-3.5 text-slate-600">{row.desg}</td>
+                      <td className="py-3 px-3.5 text-slate-700">{row.place || '—'}</td>
+                      <td className="py-3 px-3.5 font-mono text-slate-600">{filterDate}</td>
+                      <td className="py-3 px-3.5 font-mono text-slate-900 font-bold">{row.in}</td>
+                      <td className="py-3 px-3.5 text-slate-600">
                         {row.in_loc !== '—' ? (
                           <div>
-                            <div className="font-semibold text-navy-800">{row.in_loc}</div>
+                            <div className="font-semibold text-slate-800">{row.in_loc}</div>
                             <button
                               type="button"
                               onClick={() => {
@@ -2080,11 +2186,11 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                           '—'
                         )}
                       </td>
-                      <td className="py-3 px-3.5 font-mono text-navy-900">{row.out}</td>
-                      <td className="py-3 px-3.5 text-navy-600">
+                      <td className="py-3 px-3.5 font-mono text-slate-900">{row.out}</td>
+                      <td className="py-3 px-3.5 text-slate-600">
                         {row.out_loc !== '—' ? (
                           <div>
-                            <div className="font-semibold text-navy-800">{row.out_loc}</div>
+                            <div className="font-semibold text-slate-800">{row.out_loc}</div>
                             <button
                               type="button"
                               onClick={() => {
@@ -2134,12 +2240,12 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
   // 2. DAILY ATTENDANCE ABSTRACT SUBVIEW
   // ─────────────────────────────────────────────────────────────────────────────
 
-  if (selectedReport === 'daily-abstract') {
+  const renderDailyAbstractView = () => {
     return (
-      <div className="space-y-4 animate-fade-in font-sans text-navy-900">
+      <div className="space-y-4 animate-fade-in font-sans text-slate-900">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <div className="text-xs text-navy-400 font-bold mb-1 flex items-center gap-1.5">
+            <div className="text-xs text-slate-400 font-bold mb-1 flex items-center gap-1.5">
               <button
                 type="button"
                 onClick={() => setSelectedReport(null)}
@@ -2148,18 +2254,18 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                 Reports
               </button>
               <span>›</span>
-              <span className="text-navy-700">Daily Attendance Abstract</span>
+              <span className="text-slate-700">Daily Attendance Abstract</span>
             </div>
-            <h1 className="text-2xl font-black tracking-tight text-navy-900 uppercase">
+            <h1 className="text-2xl font-black tracking-tight text-slate-900 uppercase">
               DAILY ATTENDANCE ABSTRACT
             </h1>
-            <p className="text-xs text-navy-500 font-medium">District-level daily attendance rollup</p>
+            <p className="text-xs text-slate-500 font-medium">District-level daily attendance rollup</p>
           </div>
 
           <button
             type="button"
             onClick={() => setSelectedReport(null)}
-            className="px-4 py-2 rounded-xl text-xs font-bold border border-navy-200 bg-white hover:bg-navy-50 text-navy-700 flex items-center gap-1.5 transition shadow-2xs self-start sm:self-auto cursor-pointer"
+            className="px-4 py-2 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 flex items-center gap-1.5 transition shadow-2xs self-start sm:self-auto cursor-pointer"
           >
             <Icon name="chevron-left" size={14} />
             <span>Back to Reports</span>
@@ -2172,14 +2278,14 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
         </div>
 
         {/* Filters */}
-        <div className="bg-white p-4 rounded-2xl border border-navy-100 shadow-sm space-y-3">
+        <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-sm space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2.5 text-xs">
             <div>
-              <label className="block text-[11px] font-bold text-navy-600 mb-1">Institution Type</label>
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">Institution Type</label>
               <select
                 value={filterInstType}
                 onChange={(e) => setFilterInstType(e.target.value)}
-                className="w-full px-2.5 py-1.5 rounded-xl border border-navy-200 bg-white font-bold text-navy-800 text-xs focus:ring-2 focus:ring-blue-500/20"
+                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20"
               >
                 <option value="All Types">All Types</option>
                 <option value="ADDL">ADDL</option>
@@ -2192,11 +2298,11 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold text-navy-600 mb-1">District</label>
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">District</label>
               <select
                 value={filterDistrict}
                 onChange={(e) => setFilterDistrict(e.target.value)}
-                className="w-full px-2.5 py-1.5 rounded-xl border border-navy-200 bg-white font-bold text-navy-800 text-xs focus:ring-2 focus:ring-blue-500/20"
+                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20"
               >
                 {dynamicDistrictsList.map((d) => (
                   <option key={d} value={d}>
@@ -2207,11 +2313,11 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold text-navy-600 mb-1">Place of Working</label>
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">Place of Working</label>
               <select
                 value={filterPlace}
                 onChange={(e) => setFilterPlace(e.target.value)}
-                className="w-full px-2.5 py-1.5 rounded-xl border border-navy-200 bg-white font-bold text-navy-800 text-xs focus:ring-2 focus:ring-blue-500/20"
+                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20"
               >
                 {dynamicPlacesList.map((p) => (
                   <option key={p} value={p}>
@@ -2222,28 +2328,28 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold text-navy-600 mb-1">Date</label>
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">Date</label>
               <input
                 type="date"
                 value={filterDate}
                 onChange={(e) => setFilterDate(e.target.value)}
-                className="w-full px-2.5 py-1.5 rounded-xl border border-navy-200 bg-white font-bold text-navy-800 text-xs focus:ring-2 focus:ring-blue-500/20"
+                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20"
               />
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold text-navy-600 mb-1">Search</label>
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">Search</label>
               <input
                 type="text"
                 placeholder="Search..."
                 value={searchTableQuery}
                 onChange={(e) => setSearchTableQuery(e.target.value)}
-                className="w-full px-2.5 py-1.5 rounded-xl border border-navy-200 bg-white font-medium text-navy-800 text-xs focus:ring-2 focus:ring-blue-500/20"
+                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white font-medium text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20"
               />
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-2 pt-1 border-t border-navy-50">
+          <div className="flex items-center justify-end gap-2 pt-1 border-t border-slate-100">
             <button
               type="button"
               onClick={() => fetchData(filterDate)}
@@ -2259,7 +2365,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                 setFilterInstType('All Types');
                 setSearchTableQuery('');
               }}
-              className="px-4 py-1.5 rounded-xl text-xs font-bold border border-navy-200 text-navy-700 hover:bg-navy-50 transition cursor-pointer"
+              className="px-4 py-1.5 rounded-xl text-xs font-bold border border-slate-200 text-slate-700 hover:bg-slate-50 transition cursor-pointer"
             >
               Reset
             </button>
@@ -2267,10 +2373,10 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
         </div>
 
         {/* Table */}
-        <div className="bg-white rounded-2xl border border-navy-100 shadow-sm overflow-hidden">
-          <div className="p-3.5 border-b border-navy-100 flex items-center justify-between gap-3 bg-navy-50/40">
+        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden">
+          <div className="p-3.5 border-b border-slate-200/90 flex items-center justify-between gap-3 bg-slate-50/60">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-extrabold text-navy-900">Daily Attendance Abstract</span>
+              <span className="text-sm font-extrabold text-slate-900">Daily Attendance Abstract</span>
               <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-xs font-bold font-mono">
                 {dynamicDistricts.length} districts
               </span>
@@ -2285,7 +2391,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                     dynamicDistricts.map((d, i) => [i + 1, d.name, d.total, d.registered, d.attended, d.late, d.early, d.notOut, d.absent, d.leave, d.od])
                   )
                 }
-                className="px-3 py-1.5 rounded-xl text-xs font-bold border border-navy-200 bg-white hover:bg-navy-50 text-navy-700 flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
+                className="px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
               >
                 <Icon name="download" size={13} />
                 <span>Export Excel</span>
@@ -2303,7 +2409,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-navy-50/70 text-navy-500 font-extrabold uppercase text-[10px] tracking-wider border-b border-navy-100">
+              <thead className="bg-slate-50/80 text-slate-500 font-extrabold uppercase text-[10px] tracking-wider border-b border-slate-200/90">
                 <tr>
                   <th className="py-3 px-3.5">#</th>
                   <th className="py-3 px-3.5">DISTRICT</th>
@@ -2318,20 +2424,20 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                   <th className="py-3 px-3.5 text-center text-sky-700">OD</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-navy-100 font-bold">
+              <tbody className="divide-y divide-slate-100 font-bold">
                 {dynamicDistricts.length === 0 ? (
                   <tr>
-                    <td colSpan={11} className="py-12 text-center text-navy-400 font-medium">
+                    <td colSpan={11} className="py-12 text-center text-slate-400 font-medium">
                       No district rollup records found.
                     </td>
                   </tr>
                 ) : (
                   dynamicDistricts.map((row, idx) => (
                     <tr key={idx} className="hover:bg-purple-50/20 transition-colors">
-                      <td className="py-3 px-3.5 text-navy-400 font-medium">{idx + 1}</td>
-                      <td className="py-3 px-3.5 font-extrabold text-navy-900">{row.name}</td>
+                      <td className="py-3 px-3.5 text-slate-400 font-medium">{idx + 1}</td>
+                      <td className="py-3 px-3.5 font-extrabold text-slate-900">{row.name}</td>
                       <td className="py-3 px-3.5 text-center font-mono">{row.total}</td>
-                      <td className="py-3 px-3.5 text-center font-mono text-navy-700">{row.registered}</td>
+                      <td className="py-3 px-3.5 text-center font-mono text-slate-700">{row.registered}</td>
                       <td className="py-3 px-3.5 text-center font-mono text-emerald-700 bg-emerald-50/40">{row.attended}</td>
                       <td className="py-3 px-3.5 text-center font-mono text-amber-700 bg-amber-50/40">{row.late}</td>
                       <td className="py-3 px-3.5 text-center font-mono text-indigo-700">{row.early}</td>
@@ -2354,12 +2460,12 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
   // 3. ATTENDANCE ABSTRACT SUBVIEW
   // ─────────────────────────────────────────────────────────────────────────────
 
-  if (selectedReport === 'attendance-abstract') {
+  const renderAttendanceAbstractView = () => {
     return (
-      <div className="space-y-4 animate-fade-in font-sans text-navy-900">
+      <div className="space-y-4 animate-fade-in font-sans text-slate-900">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <div className="text-xs text-navy-400 font-bold mb-1 flex items-center gap-1.5">
+            <div className="text-xs text-slate-400 font-bold mb-1 flex items-center gap-1.5">
               <button
                 type="button"
                 onClick={() => setSelectedReport(null)}
@@ -2368,28 +2474,28 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                 Reports
               </button>
               <span>›</span>
-              <span className="text-navy-700">Attendance Abstract</span>
+              <span className="text-slate-700">Attendance Abstract</span>
             </div>
-            <h1 className="text-2xl font-black tracking-tight text-navy-900 uppercase">
+            <h1 className="text-2xl font-black tracking-tight text-slate-900 uppercase">
               ATTENDANCE ABSTRACT
             </h1>
-            <p className="text-xs text-navy-500 font-medium">Aggregate attendance stats per district</p>
+            <p className="text-xs text-slate-500 font-medium">Aggregate attendance stats per district</p>
           </div>
 
           <button
             type="button"
             onClick={() => setSelectedReport(null)}
-            className="px-4 py-2 rounded-xl text-xs font-bold border border-navy-200 bg-white hover:bg-navy-50 text-navy-700 flex items-center gap-1.5 transition shadow-2xs self-start sm:self-auto cursor-pointer"
+            className="px-4 py-2 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 flex items-center gap-1.5 transition shadow-2xs self-start sm:self-auto cursor-pointer"
           >
             <Icon name="chevron-left" size={14} />
             <span>Back to Reports</span>
           </button>
         </div>
 
-        <div className="bg-white rounded-2xl border border-navy-100 shadow-sm overflow-hidden">
-          <div className="p-3.5 border-b border-navy-100 flex items-center justify-between gap-3 bg-navy-50/40">
+        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden">
+          <div className="p-3.5 border-b border-slate-200/90 flex items-center justify-between gap-3 bg-slate-50/60">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-extrabold text-navy-900">Attendance Abstract</span>
+              <span className="text-sm font-extrabold text-slate-900">Attendance Abstract</span>
               <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-xs font-bold font-mono">
                 {dynamicDistricts.length} records
               </span>
@@ -2405,7 +2511,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                     dynamicDistricts.map((d, i) => [i + 1, d.name, d.total, d.registered, d.attended])
                   )
                 }
-                className="px-3 py-1.5 rounded-xl text-xs font-bold border border-navy-200 bg-white hover:bg-navy-50 text-navy-700 flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
+                className="px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
               >
                 <Icon name="download" size={13} />
                 <span>Export Excel</span>
@@ -2423,7 +2529,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-navy-50/70 text-navy-500 font-extrabold uppercase text-[10px] tracking-wider border-b border-navy-100">
+              <thead className="bg-slate-50/80 text-slate-500 font-extrabold uppercase text-[10px] tracking-wider border-b border-slate-200/90">
                 <tr>
                   <th className="py-3 px-4">NO.</th>
                   <th className="py-3 px-4">DISTRICT</th>
@@ -2432,20 +2538,20 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                   <th className="py-3 px-4 text-center text-emerald-700">MARKED ATTENDANCE</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-navy-100 font-bold">
+              <tbody className="divide-y divide-slate-100 font-bold">
                 {dynamicDistricts.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-12 text-center text-navy-400 font-medium">
+                    <td colSpan={5} className="py-12 text-center text-slate-400 font-medium">
                       No district attendance data recorded.
                     </td>
                   </tr>
                 ) : (
                   dynamicDistricts.map((row, idx) => (
                     <tr key={idx} className="hover:bg-purple-50/20 transition-colors">
-                      <td className="py-3.5 px-4 text-navy-400 font-medium">{idx + 1}</td>
-                      <td className="py-3.5 px-4 font-extrabold text-navy-900">{row.name}</td>
-                      <td className="py-3.5 px-4 text-center font-mono text-navy-700">{row.total}</td>
-                      <td className="py-3.5 px-4 text-center font-mono text-navy-700">{row.registered}</td>
+                      <td className="py-3.5 px-4 text-slate-400 font-medium">{idx + 1}</td>
+                      <td className="py-3.5 px-4 font-extrabold text-slate-900">{row.name}</td>
+                      <td className="py-3.5 px-4 text-center font-mono text-slate-700">{row.total}</td>
+                      <td className="py-3.5 px-4 text-center font-mono text-slate-700">{row.registered}</td>
                       <td className="py-3.5 px-4 text-center font-mono text-emerald-700 font-black">{row.attended}</td>
                     </tr>
                   ))
@@ -2462,12 +2568,12 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
   // 4. RANGE ATTENDANCE SUBVIEW
   // ─────────────────────────────────────────────────────────────────────────────
 
-  if (selectedReport === 'range-attendance') {
+  const renderRangeAttendanceView = () => {
     return (
-      <div className="space-y-4 animate-fade-in font-sans text-navy-900">
+      <div className="space-y-4 animate-fade-in font-sans text-slate-900">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <div className="text-xs text-navy-400 font-bold mb-1 flex items-center gap-1.5">
+            <div className="text-xs text-slate-400 font-bold mb-1 flex items-center gap-1.5">
               <button
                 type="button"
                 onClick={() => setSelectedReport(null)}
@@ -2476,18 +2582,18 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                 Reports
               </button>
               <span>›</span>
-              <span className="text-navy-700">Range Attendance</span>
+              <span className="text-slate-700">Range Attendance</span>
             </div>
-            <h1 className="text-2xl font-black tracking-tight text-navy-900 uppercase">
+            <h1 className="text-2xl font-black tracking-tight text-slate-900 uppercase">
               RANGE ATTENDANCE
             </h1>
-            <p className="text-xs text-navy-500 font-medium">Report, Detail, and Abstract views across a date range</p>
+            <p className="text-xs text-slate-500 font-medium">Report, Detail, and Abstract views across a date range</p>
           </div>
 
           <button
             type="button"
             onClick={() => setSelectedReport(null)}
-            className="px-4 py-2 rounded-xl text-xs font-bold border border-navy-200 bg-white hover:bg-navy-50 text-navy-700 flex items-center gap-1.5 transition shadow-2xs self-start sm:self-auto cursor-pointer"
+            className="px-4 py-2 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 flex items-center gap-1.5 transition shadow-2xs self-start sm:self-auto cursor-pointer"
           >
             <Icon name="chevron-left" size={14} />
             <span>Back to Reports</span>
@@ -2499,32 +2605,32 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
         </div>
 
         {/* Filter Toolbar with Range Tabs */}
-        <div className="bg-white p-4 rounded-2xl border border-navy-100 shadow-sm space-y-3">
+        <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-sm space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5 text-xs">
             <div>
-              <label className="block text-[11px] font-bold text-navy-600 mb-1">From Date</label>
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">From Date</label>
               <input
                 type="date"
                 value={filterFromDate}
                 onChange={(e) => setFilterFromDate(e.target.value)}
-                className="w-full px-2.5 py-1.5 rounded-xl border border-navy-200 bg-white font-bold text-navy-800 text-xs"
+                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs"
               />
             </div>
             <div>
-              <label className="block text-[11px] font-bold text-navy-600 mb-1">To Date</label>
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">To Date</label>
               <input
                 type="date"
                 value={filterToDate}
                 onChange={(e) => setFilterToDate(e.target.value)}
-                className="w-full px-2.5 py-1.5 rounded-xl border border-navy-200 bg-white font-bold text-navy-800 text-xs"
+                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs"
               />
             </div>
             <div>
-              <label className="block text-[11px] font-bold text-navy-600 mb-1">District</label>
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">District</label>
               <select
                 value={filterDistrict}
                 onChange={(e) => setFilterDistrict(e.target.value)}
-                className="w-full px-2.5 py-1.5 rounded-xl border border-navy-200 bg-white font-bold text-navy-800 text-xs focus:ring-2 focus:ring-blue-500/20"
+                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20"
               >
                 {dynamicDistrictsList.map((d) => (
                   <option key={d} value={d}>
@@ -2534,20 +2640,20 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
               </select>
             </div>
             <div>
-              <label className="block text-[11px] font-bold text-navy-600 mb-1">Search</label>
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">Search</label>
               <input
                 type="text"
                 placeholder="Search..."
                 value={searchTableQuery}
                 onChange={(e) => setSearchTableQuery(e.target.value)}
-                className="w-full px-2.5 py-1.5 rounded-xl border border-navy-200 bg-white font-medium text-navy-800 text-xs focus:ring-2 focus:ring-blue-500/20"
+                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white font-medium text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20"
               />
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 border-t border-navy-50">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 border-t border-slate-100">
             {/* Range Tab Switcher */}
-            <div className="bg-navy-50 p-1 rounded-xl flex items-center border border-navy-100 text-xs">
+            <div className="bg-slate-50 p-1 rounded-xl flex items-center border border-slate-200/90 text-xs">
               {(['Report', 'Detail', 'Abstract'] as const).map((tab) => (
                 <button
                   key={tab}
@@ -2557,7 +2663,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                     'px-4 py-1.5 rounded-lg font-bold text-xs transition cursor-pointer',
                     rangeTabMode === tab
                       ? 'bg-blue-600 text-white shadow-xs'
-                      : 'text-navy-600 hover:text-navy-900'
+                      : 'text-slate-600 hover:text-slate-900'
                   )}
                 >
                   {tab}
@@ -2579,7 +2685,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                   setFilterDistrict('All Districts');
                   setSearchTableQuery('');
                 }}
-                className="px-4 py-1.5 rounded-xl text-xs font-bold border border-navy-200 text-navy-700 hover:bg-navy-50 transition cursor-pointer"
+                className="px-4 py-1.5 rounded-xl text-xs font-bold border border-slate-200 text-slate-700 hover:bg-slate-50 transition cursor-pointer"
               >
                 Reset
               </button>
@@ -2592,7 +2698,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                     filteredDailyAttendance.map((r, i) => [i + 1, r.id, r.name, r.dist, r.place, r.status === 'Present' ? 1 : 0, r.status === 'Late' ? 1 : 0, r.status === 'Absent' ? 1 : 0, r.status === 'Leave' ? 1 : 0, 1, r.status === 'Absent' ? '0%' : '100%'])
                   )
                 }
-                className="px-3 py-1.5 rounded-xl text-xs font-bold border border-navy-200 bg-white hover:bg-navy-50 text-navy-700 flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
+                className="px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
               >
                 <Icon name="download" size={13} />
                 <span>Export Excel</span>
@@ -2610,9 +2716,9 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
         </div>
 
         {/* Range Table */}
-        <div className="bg-white rounded-2xl border border-navy-100 shadow-sm overflow-hidden">
-          <div className="p-3.5 border-b border-navy-100 bg-navy-50/40 flex items-center justify-between">
-            <div className="text-xs font-extrabold text-navy-900">
+        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden">
+          <div className="p-3.5 border-b border-slate-200/90 bg-slate-50/60 flex items-center justify-between">
+            <div className="text-xs font-extrabold text-slate-900">
               Report — Employee Totals, {filterFromDate} to {filterToDate}{' '}
               <span className="ml-2 px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-[11px] font-mono">
                 {filteredDailyAttendance.length} records
@@ -2622,7 +2728,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-navy-50/70 text-navy-500 font-extrabold uppercase text-[10px] tracking-wider border-b border-navy-100">
+              <thead className="bg-slate-50/80 text-slate-500 font-extrabold uppercase text-[10px] tracking-wider border-b border-slate-200/90">
                 <tr>
                   <th className="py-3 px-3.5">#</th>
                   <th className="py-3 px-3.5">EMPLOYEE NO</th>
@@ -2637,21 +2743,21 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                   <th className="py-3 px-3.5 text-center">ATTENDANCE %</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-navy-100 font-medium">
+              <tbody className="divide-y divide-slate-100 font-medium">
                 {filteredDailyAttendance.length === 0 ? (
                   <tr>
-                    <td colSpan={11} className="py-12 text-center text-navy-400 font-medium">
+                    <td colSpan={11} className="py-12 text-center text-slate-400 font-medium">
                       No range attendance records found.
                     </td>
                   </tr>
                 ) : (
                   filteredDailyAttendance.map((row, idx) => (
                     <tr key={idx} className="hover:bg-purple-50/20 transition-colors">
-                      <td className="py-3 px-3.5 text-navy-400 font-bold">{idx + 1}</td>
-                      <td className="py-3 px-3.5 font-mono text-navy-700 font-bold">{row.id}</td>
-                      <td className="py-3 px-3.5 font-extrabold text-navy-900">{row.name}</td>
-                      <td className="py-3 px-3.5 text-navy-700 font-bold">{row.dist}</td>
-                      <td className="py-3 px-3.5 text-navy-600">{row.place}</td>
+                      <td className="py-3 px-3.5 text-slate-400 font-bold">{idx + 1}</td>
+                      <td className="py-3 px-3.5 font-mono text-slate-700 font-bold">{row.id}</td>
+                      <td className="py-3 px-3.5 font-extrabold text-slate-900">{row.name}</td>
+                      <td className="py-3 px-3.5 text-slate-700 font-bold">{row.dist}</td>
+                      <td className="py-3 px-3.5 text-slate-600">{row.place}</td>
                       <td className="py-3 px-3.5 text-center font-mono font-bold text-emerald-700 bg-emerald-50/30">
                         {row.status === 'Present' ? 1 : 0}
                       </td>
@@ -2664,7 +2770,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                       <td className="py-3 px-3.5 text-center font-mono font-bold text-purple-700">
                         {row.status === 'Leave' ? 1 : 0}
                       </td>
-                      <td className="py-3 px-3.5 text-center font-mono font-bold text-navy-900">1</td>
+                      <td className="py-3 px-3.5 text-center font-mono font-bold text-slate-900">1</td>
                       <td className="py-3 px-3.5 text-center">
                         <span
                           className={cn(
@@ -2690,18 +2796,16 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
 
   // ─────────────────────────────────────────────────────────────────────────────
   // 5. GENERIC DRILLDOWN SUBVIEW (For remaining cards)
-  // ─────────────────────────────────────────────────────────────────────────────
-
-  if (selectedReport) {
+  const renderGenericReportView = () => {
     const activeConfig =
       [...combinedAttendanceCards, ...dailyAbstractCards, ...hrmsAnalyticsCards].find((c) => c.id === selectedReport) ||
       combinedAttendanceCards[0];
 
     return (
-      <div className="space-y-4 animate-fade-in font-sans text-navy-900">
+      <div className="space-y-4 animate-fade-in font-sans text-slate-900">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <div className="text-xs text-navy-400 font-bold mb-1 flex items-center gap-1.5">
+            <div className="text-xs text-slate-400 font-bold mb-1 flex items-center gap-1.5">
               <button
                 type="button"
                 onClick={() => setSelectedReport(null)}
@@ -2710,33 +2814,33 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                 Reports
               </button>
               <span>›</span>
-              <span className="text-navy-700">{activeConfig.title}</span>
+              <span className="text-slate-700">{activeConfig.title}</span>
             </div>
-            <h1 className="text-2xl font-black tracking-tight text-navy-900 uppercase">
+            <h1 className="text-2xl font-black tracking-tight text-slate-900 uppercase">
               {activeConfig.title}
             </h1>
-            <p className="text-xs text-navy-500 font-medium">{activeConfig.description}</p>
+            <p className="text-xs text-slate-500 font-medium">{activeConfig.description}</p>
           </div>
 
           <button
             type="button"
             onClick={() => setSelectedReport(null)}
-            className="px-4 py-2 rounded-xl text-xs font-bold border border-navy-200 bg-white hover:bg-navy-50 text-navy-700 flex items-center gap-1.5 transition shadow-2xs self-start sm:self-auto cursor-pointer"
+            className="px-4 py-2 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 flex items-center gap-1.5 transition shadow-2xs self-start sm:self-auto cursor-pointer"
           >
             <Icon name="chevron-left" size={14} />
             <span>Back to Reports</span>
           </button>
         </div>
 
-        <div className="bg-white rounded-2xl border border-navy-100 shadow-sm p-5 space-y-4">
-          <div className="flex items-center justify-between border-b border-navy-100 pb-3">
+        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-5 space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-200/90 pb-3">
             <div className="flex items-center gap-3">
               <div className={cn('w-10 h-10 rounded-2xl flex items-center justify-center font-bold', activeConfig.iconBg)}>
                 <Icon name={activeConfig.icon} size={20} />
               </div>
               <div>
-                <h3 className="text-sm font-extrabold text-navy-900">{activeConfig.title} Overview</h3>
-                <p className="text-xs text-navy-500">{activeConfig.description}</p>
+                <h3 className="text-sm font-extrabold text-slate-900">{activeConfig.title} Overview</h3>
+                <p className="text-xs text-slate-500">{activeConfig.description}</p>
               </div>
             </div>
 
@@ -2750,7 +2854,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                     dynamicDistricts.map((d) => [d.name, activeConfig.title, d.total, filterDate])
                   )
                 }
-                className="px-3 py-1.5 rounded-xl text-xs font-bold border border-navy-200 hover:bg-navy-50 text-navy-700 flex items-center gap-1 cursor-pointer"
+                className="px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-200 hover:bg-slate-50 text-slate-700 flex items-center gap-1 cursor-pointer"
               >
                 <Icon name="download" size={13} />
                 <span>Export CSV</span>
@@ -2768,7 +2872,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-navy-50/70 text-navy-500 font-extrabold uppercase text-[10px] tracking-wider border-b border-navy-100">
+              <thead className="bg-slate-50/80 text-slate-500 font-extrabold uppercase text-[10px] tracking-wider border-b border-slate-200/90">
                 <tr>
                   <th className="py-3 px-4">#</th>
                   <th className="py-3 px-4">District / Unit</th>
@@ -2779,18 +2883,18 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                   <th className="py-3 px-4 text-center">Audit Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-navy-100 font-bold">
+              <tbody className="divide-y divide-slate-100 font-bold">
                 {dynamicDistricts.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-12 text-center text-navy-400 font-medium">
+                    <td colSpan={7} className="py-12 text-center text-slate-400 font-medium">
                       No operational unit records found.
                     </td>
                   </tr>
                 ) : (
                   dynamicDistricts.map((d, i) => (
                     <tr key={i} className="hover:bg-purple-50/20 transition-colors">
-                      <td className="py-3 px-4 text-navy-400 font-medium">{i + 1}</td>
-                      <td className="py-3 px-4 font-extrabold text-navy-900">{d.name}</td>
+                      <td className="py-3 px-4 text-slate-400 font-medium">{i + 1}</td>
+                      <td className="py-3 px-4 font-extrabold text-slate-900">{d.name}</td>
                       <td className="py-3 px-4 text-center font-mono">{d.total}</td>
                       <td className="py-3 px-4 text-center font-mono text-emerald-700 bg-emerald-50/30">{d.attended}</td>
                       <td className="py-3 px-4 text-center font-mono text-amber-700 bg-amber-50/30">{d.late}</td>
@@ -2812,6 +2916,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────────────
   // MAIN REPORTS HUB / DIRECTORY (Matching User Screenshot 1)
   // ─────────────────────────────────────────────────────────────────────────────
 
@@ -2820,7 +2925,12 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
     return (
       <div
         key={card.id}
-        onClick={() => setSelectedReport(card.id)}
+        onClick={() => {
+          setSelectedReport(card.id);
+          if (card.category === 'students') setHubCategory('students');
+          else if (card.category === 'employees') setHubCategory('employees');
+          else if (card.category === 'branches') setHubCategory('branches');
+        }}
         className={cn(
           'rounded-2xl p-4 sm:p-5 shadow-2xs hover:shadow-md transition-all duration-200 flex flex-col justify-between text-left cursor-pointer group relative overflow-hidden min-h-[175px]',
           isSpecial
@@ -2890,6 +3000,89 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
     );
   };
 
+  const renderDirectoryCards = () => {
+    return (
+      <div className="space-y-4">
+        {/* SECTION 1: Combined Attendance Reports */}
+        {(hubCategory === 'all' || hubCategory === 'students' || hubCategory === 'employees' || hubCategory === 'branches') && (
+          <div className="space-y-3 pt-1">
+            <div className="flex items-center gap-2 text-sm font-black text-slate-900">
+              <Icon name="layers" size={16} className="text-purple-600" />
+              <span>
+                {hubCategory === 'students'
+                  ? 'Student Attendance Statements & Exports'
+                  : hubCategory === 'employees'
+                    ? 'Employee Attendance Statements & Exports'
+                    : hubCategory === 'branches'
+                      ? 'Multi-Branch Headquarters Reports'
+                      : 'Combined Attendance Reports'}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-3.5">
+              {combinedAttendanceCards
+                .filter((c) => {
+                  if (hubCategory === 'students') return c.category === 'students';
+                  if (hubCategory === 'employees') return c.category === 'employees';
+                  if (hubCategory === 'branches') return c.category === 'branches';
+                  return true;
+                })
+                .filter(
+                  (c) =>
+                    !searchReportDirectory.trim() ||
+                    c.title.toLowerCase().includes(searchReportDirectory.toLowerCase()) ||
+                    c.description.toLowerCase().includes(searchReportDirectory.toLowerCase())
+                )
+                .map(renderCard)}
+            </div>
+          </div>
+        )}
+
+        {/* SECTION 2: Daily Abstracts */}
+        {(hubCategory === 'all' || hubCategory === 'employees') && (
+          <div className="space-y-3.5 pt-2">
+            <div className="flex items-center gap-2 text-sm font-extrabold text-emerald-700">
+              <span className="text-base">📊</span>
+              <span>Daily Biometric Abstracts</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5">
+              {dailyAbstractCards
+                .filter(
+                  (c) =>
+                    !searchReportDirectory.trim() ||
+                    c.title.toLowerCase().includes(searchReportDirectory.toLowerCase()) ||
+                    c.description.toLowerCase().includes(searchReportDirectory.toLowerCase())
+                )
+                .map(renderCard)}
+            </div>
+          </div>
+        )}
+
+        {/* SECTION 3: HRMS & Performance Analytics */}
+        {(hubCategory === 'all' || hubCategory === 'employees') && (
+          <div className="space-y-3.5 pt-2">
+            <div className="flex items-center gap-2 text-sm font-extrabold text-purple-700">
+              <span className="text-base">📈</span>
+              <span>HRMS &amp; Performance Analytics</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5">
+              {hrmsAnalyticsCards
+                .filter(
+                  (c) =>
+                    !searchReportDirectory.trim() ||
+                    c.title.toLowerCase().includes(searchReportDirectory.toLowerCase()) ||
+                    c.description.toLowerCase().includes(searchReportDirectory.toLowerCase())
+                )
+                .map(renderCard)}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-full bg-transparent w-full px-4 sm:px-6 py-4 space-y-4 font-sans text-slate-900">
       {/* Breadcrumb & Title */}
@@ -2897,9 +3090,43 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
         <div>
           <div className="text-xs font-bold text-slate-600 mb-1 flex items-center gap-1.5">
             <Icon name="home" size={13} className="text-blue-600" />
-            <span className="text-blue-600 hover:underline cursor-pointer">Home</span>
+            <button
+              type="button"
+              onClick={() => { setSelectedReport(null); setHubCategory('all'); }}
+              className="text-blue-600 hover:underline cursor-pointer"
+            >
+              Home
+            </button>
             <span className="text-slate-400">›</span>
-            <span className="text-slate-900 font-black">Reports</span>
+            <button
+              type="button"
+              onClick={() => { setSelectedReport(null); setHubCategory('all'); }}
+              className={selectedReport ? "text-blue-600 hover:underline cursor-pointer" : "text-slate-900 font-black"}
+            >
+              Reports
+            </button>
+            {selectedReport && (
+              <>
+                <span className="text-slate-400">›</span>
+                <span className="text-slate-900 font-black">
+                  {selectedReport === 'student-attendance'
+                    ? 'Students Attendance'
+                    : selectedReport === 'employee-attendance'
+                    ? 'Employees Attendance'
+                    : selectedReport === 'branch-consolidated'
+                    ? 'Multi-Branch Consolidated'
+                    : selectedReport === 'daily-attendance'
+                    ? 'Daily Attendance'
+                    : selectedReport === 'daily-abstract'
+                    ? 'Daily Abstract'
+                    : selectedReport === 'attendance-abstract'
+                    ? 'Attendance Abstract'
+                    : selectedReport === 'range-attendance'
+                    ? 'Range Attendance'
+                    : selectedReport.replace(/-/g, ' ')}
+                </span>
+              </>
+            )}
           </div>
           <div className="flex items-center gap-2.5 mt-1">
             <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 border border-purple-100 flex items-center justify-center shrink-0 shadow-2xs">
@@ -2936,100 +3163,64 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
           { id: 'students', label: 'Students Attendance', icon: 'graduation-cap' },
           { id: 'employees', label: 'Employees Attendance', icon: 'users' },
           { id: 'branches', label: 'Multi-Branch Consolidated', icon: 'building-2' },
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => setHubCategory(tab.id as any)}
-            className={cn(
-              'flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap',
-              hubCategory === tab.id
-                ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-orange-500 text-white shadow-md shadow-blue-500/20'
-                : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/90 shadow-2xs'
-            )}
-          >
-            <Icon name={tab.icon} size={14} className={hubCategory === tab.id ? 'text-white' : 'text-slate-500'} />
-            <span>{tab.label}</span>
-          </button>
-        ))}
+        ].map((tab) => {
+          const isTabActive =
+            (tab.id === 'all' && !selectedReport) ||
+            (tab.id === 'students' && selectedReport === 'student-attendance') ||
+            (tab.id === 'employees' && selectedReport === 'employee-attendance') ||
+            (tab.id === 'branches' && selectedReport === 'branch-consolidated');
+
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => {
+                if (tab.id === 'all') {
+                  setSelectedReport(null);
+                  setHubCategory('all');
+                } else if (tab.id === 'students') {
+                  setSelectedReport('student-attendance');
+                  setHubCategory('students');
+                } else if (tab.id === 'employees') {
+                  setSelectedReport('employee-attendance');
+                  setHubCategory('employees');
+                } else if (tab.id === 'branches') {
+                  setSelectedReport('branch-consolidated');
+                  setHubCategory('branches');
+                }
+              }}
+              className={cn(
+                'flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap',
+                isTabActive
+                  ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-orange-500 text-white shadow-md shadow-blue-500/20'
+                  : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/90 shadow-2xs'
+              )}
+            >
+              <Icon name={tab.icon} size={14} className={isTabActive ? 'text-white' : 'text-slate-500'} />
+              <span>{tab.label}</span>
+            </button>
+          );
+        })}
       </div>
 
-      {/* SECTION 1: Combined Attendance Reports */}
-      {(hubCategory === 'all' || hubCategory === 'students' || hubCategory === 'employees' || hubCategory === 'branches') && (
-        <div className="space-y-3 pt-1">
-          <div className="flex items-center gap-2 text-sm font-black text-slate-900">
-            <Icon name="layers" size={16} className="text-purple-600" />
-            <span>
-              {hubCategory === 'students'
-                ? 'Student Attendance Statements & Exports'
-                : hubCategory === 'employees'
-                  ? 'Employee Attendance Statements & Exports'
-                  : hubCategory === 'branches'
-                    ? 'Multi-Branch Headquarters Reports'
-                    : 'Combined Attendance Reports'}
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-3.5">
-            {combinedAttendanceCards
-              .filter((c) => {
-                if (hubCategory === 'students') return c.category === 'students';
-                if (hubCategory === 'employees') return c.category === 'employees';
-                if (hubCategory === 'branches') return c.category === 'branches';
-                return true;
-              })
-              .filter(
-                (c) =>
-                  !searchReportDirectory.trim() ||
-                  c.title.toLowerCase().includes(searchReportDirectory.toLowerCase()) ||
-                  c.description.toLowerCase().includes(searchReportDirectory.toLowerCase())
-              )
-              .map(renderCard)}
-          </div>
-        </div>
-      )}
-
-      {/* SECTION 2: Daily Abstracts */}
-      {(hubCategory === 'all' || hubCategory === 'employees') && (
-        <div className="space-y-3.5 pt-2">
-          <div className="flex items-center gap-2 text-sm font-extrabold text-emerald-700">
-            <span className="text-base">📊</span>
-            <span>Daily Biometric Abstracts</span>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5">
-            {dailyAbstractCards
-              .filter(
-                (c) =>
-                  !searchReportDirectory.trim() ||
-                  c.title.toLowerCase().includes(searchReportDirectory.toLowerCase()) ||
-                  c.description.toLowerCase().includes(searchReportDirectory.toLowerCase())
-              )
-              .map(renderCard)}
-          </div>
-        </div>
-      )}
-
-      {/* SECTION 3: HRMS & Performance Analytics */}
-      {(hubCategory === 'all' || hubCategory === 'employees') && (
-        <div className="space-y-3.5 pt-2">
-          <div className="flex items-center gap-2 text-sm font-extrabold text-purple-700">
-            <span className="text-base">📈</span>
-            <span>HRMS &amp; Performance Analytics</span>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5">
-            {hrmsAnalyticsCards
-              .filter(
-                (c) =>
-                  !searchReportDirectory.trim() ||
-                  c.title.toLowerCase().includes(searchReportDirectory.toLowerCase()) ||
-                  c.description.toLowerCase().includes(searchReportDirectory.toLowerCase())
-              )
-              .map(renderCard)}
-          </div>
-        </div>
-      )}
+      {/* Dynamic Content View */}
+      {selectedReport === 'student-attendance'
+        ? renderStudentAttendanceView()
+        : selectedReport === 'employee-attendance'
+        ? renderEmployeeAttendanceView()
+        : selectedReport === 'branch-consolidated'
+        ? renderBranchConsolidatedView()
+        : selectedReport === 'daily-attendance'
+        ? renderDailyAttendanceView()
+        : selectedReport === 'daily-abstract'
+        ? renderDailyAbstractView()
+        : selectedReport === 'attendance-abstract'
+        ? renderAttendanceAbstractView()
+        : selectedReport === 'range-attendance'
+        ? renderRangeAttendanceView()
+        : selectedReport
+        ? renderGenericReportView()
+        : renderDirectoryCards()}
     </div>
   );
 }

@@ -1,25 +1,17 @@
 import { useState, useEffect } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import { Icon } from '@/components/ui/Icon';
-import { Logo } from './Logo';
 import { useAuth } from '@/context/AuthContext';
 import { getNavItems } from '@/config/navigation';
 import { cn } from '@/utils/cn';
 
-interface SidebarProps {
-  collapsed: boolean;
-  mobileOpen: boolean;
-  onClose: () => void;
-}
-
-export function Sidebar({ collapsed, mobileOpen, onClose }: SidebarProps) {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
-  const [items, setItems] = useState(() => (user ? getNavItems(user.role) : []));
+export function Sidebar() {
+  const { user } = useAuth();
+  const [items, setItems] = useState(() => (user ? getNavItems(user.role, user.permissions) : []));
 
   useEffect(() => {
     const updateItems = () => {
-      if (user) setItems(getNavItems(user.role));
+      if (user) setItems(getNavItems(user.role, user.permissions));
     };
     updateItems();
     window.addEventListener('vahd_modules_changed', updateItems);
@@ -30,62 +22,42 @@ export function Sidebar({ collapsed, mobileOpen, onClose }: SidebarProps) {
     };
   }, [user]);
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
-
   return (
-    <>
-      {mobileOpen && (
-        <div className="fixed inset-0 bg-navy-900/30 backdrop-blur-sm z-40 lg:hidden" onClick={onClose} />
-      )}
-      <aside
-        className={cn(
-          'fixed lg:sticky top-0 left-0 h-screen z-50 lg:z-30',
-          'bg-white border-r border-navy-200/60 flex flex-col',
-          'transition-all duration-300',
-          collapsed ? 'lg:w-[72px]' : 'lg:w-[240px]',
-          'w-[240px]',
-          mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-        )}
-      >
-        <div className="h-16 flex items-center justify-between px-3 border-b border-navy-200/60 shrink-0">
-          {collapsed ? <Logo collapsed size="sm" /> : <Logo size="sm" />}
-          <button onClick={onClose} className="lg:hidden p-1.5 rounded-lg hover:bg-navy-100">
-            <Icon name="x" size={20} className="text-navy-500" />
-          </button>
-        </div>
-
-        <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
-          {items.map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              end={item.path === '/owner' || item.path === '/employee' || item.path === '/app' || item.path === '/super-admin'}
-              onClick={onClose}
-              className={({ isActive }) =>
-                cn('nav-item', isActive && 'nav-item-active', collapsed && 'lg:justify-center lg:px-0')
-              }
-              title={collapsed ? item.label : undefined}
-            >
-              <Icon name={item.icon} size={18} className="shrink-0" />
-              {!collapsed && <span>{item.label}</span>}
-            </NavLink>
-          ))}
-        </nav>
-
-        <div className="p-3 border-t border-navy-200/60 shrink-0">
-          <button
-            onClick={handleLogout}
-            className={cn('nav-item text-danger-600 hover:bg-danger-50 hover:text-danger-700 w-full', collapsed && 'lg:justify-center lg:px-0')}
-            title={collapsed ? 'Logout' : undefined}
+    <aside className="w-56 lg:w-60 shrink-0 hidden md:flex flex-col bg-white border-r border-slate-200/80 sticky top-16 h-[calc(100vh-64px)] z-30 select-none">
+      <nav className="flex-1 overflow-y-auto p-3 space-y-1.5 no-scrollbar">
+        {items.map((item) => (
+          <NavLink
+            key={item.path}
+            to={item.path}
+            end={
+              item.path === '/owner' ||
+              item.path === '/ho' ||
+              item.path === '/employee' ||
+              item.path === '/app' ||
+              item.path === '/super-admin'
+            }
+            className={({ isActive }) =>
+              cn(
+                'w-full px-3.5 py-2.5 rounded-xl text-xs flex items-center gap-2.5 transition-all duration-150 font-bold',
+                isActive
+                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20 border-transparent'
+                  : 'bg-white text-slate-700 border border-slate-200/90 hover:bg-slate-50 hover:text-slate-900 shadow-2xs'
+              )
+            }
           >
-            <Icon name="log-out" size={18} className="shrink-0" />
-            {!collapsed && <span>Logout</span>}
-          </button>
-        </div>
-      </aside>
-    </>
+            {({ isActive }) => (
+              <>
+                <Icon
+                  name={item.icon}
+                  size={16}
+                  className={cn('shrink-0', isActive ? 'text-white' : 'text-slate-600')}
+                />
+                <span className="truncate">{item.label}</span>
+              </>
+            )}
+          </NavLink>
+        ))}
+      </nav>
+    </aside>
   );
 }

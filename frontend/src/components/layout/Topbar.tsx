@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Icon } from '@/components/ui/Icon';
 import { Badge } from '@/components/ui/Badge';
 import { Logo } from './Logo';
 import { useAuth } from '@/context/AuthContext';
-import { getNavItems } from '@/config/navigation';
 import { cn } from '@/utils/cn';
 import { playNotificationBeep, getStoredLeads, LiveLeadNotification } from '@/utils/audioAlert';
 import { apiClient } from '@/services/apiClient';
@@ -26,23 +25,9 @@ export function Topbar() {
   const [showOrgDropdown, setShowOrgDropdown] = useState(false);
   const [topbarOrgs, setTopbarOrgs] = useState<Array<{ id: string; name: string; branch: string; city: string }>>([]);
   const [selectedTopbarOrg, setSelectedTopbarOrg] = useState<string>(() => localStorage.getItem('vahd_selected_org_id') || 'all');
-  const [items, setItems] = useState(() => (user ? getNavItems(user.role, user.permissions) : []));
   const [liveLeads, setLiveLeads] = useState<LiveLeadNotification[]>(() => getStoredLeads());
   const [systemNotifs, setSystemNotifs] = useState<SystemNotificationItem[]>([]);
   const [toastAlert, setToastAlert] = useState<LiveLeadNotification | null>(null);
-
-  useEffect(() => {
-    const updateItems = () => {
-      if (user) setItems(getNavItems(user.role, user.permissions));
-    };
-    updateItems();
-    window.addEventListener('vahd_modules_changed', updateItems);
-    window.addEventListener('storage', updateItems);
-    return () => {
-      window.removeEventListener('vahd_modules_changed', updateItems);
-      window.removeEventListener('storage', updateItems);
-    };
-  }, [user]);
 
   // Real-time Lead Notification & Audio Beep Listener for Super Admin / vahd Owners
   useEffect(() => {
@@ -557,44 +542,6 @@ export function Topbar() {
               </div>
             )}
           </div>
-        </div>
-      </div>
-
-      {/* Horizontal Pill Navigation Bar */}
-      <div className="w-full overflow-x-auto py-2 px-4 sm:px-6 no-scrollbar bg-white/70 border-t border-slate-100/80">
-        <div className="flex items-center gap-2 min-w-max">
-          {items.map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              end={
-                item.path === '/owner' ||
-                item.path === '/ho' ||
-                item.path === '/employee' ||
-                item.path === '/app' ||
-                item.path === '/super-admin'
-              }
-              className={({ isActive }) =>
-                cn(
-                  'px-4 py-2 rounded-xl text-xs flex items-center gap-2 transition-all duration-150 select-none font-bold',
-                  isActive
-                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20 border-transparent'
-                    : 'bg-white text-slate-700 border border-slate-200/90 hover:bg-slate-50 hover:text-slate-900 shadow-2xs'
-                )
-              }
-            >
-              {({ isActive }) => (
-                <>
-                  <Icon
-                    name={item.icon}
-                    size={15}
-                    className={cn('shrink-0', isActive ? 'text-white' : 'text-slate-600')}
-                  />
-                  <span>{item.label}</span>
-                </>
-              )}
-            </NavLink>
-          ))}
         </div>
       </div>
     </header>

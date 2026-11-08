@@ -16,6 +16,14 @@ def is_port_open(host: str, port: int, timeout: float = 0.8) -> bool:
         return False
 
 def construct_db_url() -> str:
+    env_db_url = os.getenv("DATABASE_URL")
+    if env_db_url:
+        if env_db_url.startswith("postgresql://"):
+            return env_db_url.replace("postgresql://", "postgresql+psycopg2://", 1)
+        elif env_db_url.startswith("postgres://"):
+            return env_db_url.replace("postgres://", "postgresql+psycopg2://", 1)
+        return env_db_url
+
     db_user = os.getenv("DB_USER")
     raw_pass = os.getenv("DB_PASSWORD")
     db_password = urllib.parse.quote_plus(raw_pass) if raw_pass else ""
@@ -27,7 +35,7 @@ def construct_db_url() -> str:
         try:
             port_num = int(db_port_str)
             if is_port_open(db_host, port_num):
-                return f"postgresql://{db_user}:{db_password}@{db_host}:{db_port_str}/{db_name}"
+                return f"postgresql+psycopg2://{db_user}:{db_password}@{db_host}:{db_port_str}/{db_name}"
         except ValueError:
             pass
     

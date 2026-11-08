@@ -82,10 +82,10 @@ UNUSED_TABLES: List[str] = [
 
 def get_connection(db_url: str):
     """Establishes database connection based on URL scheme."""
-    if db_url.startswith("postgresql://") or db_url.startswith("postgres://"):
+    if db_url.startswith("postgresql://") or db_url.startswith("postgres://") or db_url.startswith("postgresql+psycopg2://"):
         import psycopg2
         # Normalize postgres:// to postgresql://
-        parsed = urllib.parse.urlparse(db_url)
+        parsed = urllib.parse.urlparse(db_url.replace("postgresql+psycopg2://", "postgresql://"))
         username = parsed.username or "postgres"
         password = urllib.parse.unquote(parsed.password) if parsed.password else ""
         hostname = parsed.hostname or "localhost"

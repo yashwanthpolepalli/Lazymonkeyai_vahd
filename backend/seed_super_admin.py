@@ -25,8 +25,10 @@ from src.models.user import User
 from src.utils.security import hash_password
 
 def ensure_database_exists():
+    if settings.DATABASE_URL.startswith("sqlite"):
+        return
     try:
-        parsed = urllib.parse.urlparse(settings.DATABASE_URL)
+        parsed = urllib.parse.urlparse(settings.DATABASE_URL.replace("postgresql+psycopg2://", "postgresql://"))
         username = parsed.username or "postgres"
         password = urllib.parse.unquote(parsed.password) if parsed.password else ""
         hostname = parsed.hostname or "localhost"

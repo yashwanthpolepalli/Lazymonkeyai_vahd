@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Icon } from '@/components/ui/Icon';
+import { TimePickerSelect } from '@/components/ui/TimePickerSelect';
 import { cn } from '@/utils/cn';
 import {
   hrmsApi,
@@ -11,6 +12,20 @@ const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
+
+// Pre-computed 15-minute interval time options formatted with AM / PM (e.g. 09:00 AM, 06:00 PM)
+const TIME_OPTIONS: string[] = (() => {
+  const options: string[] = [];
+  for (let h = 0; h < 24; h++) {
+    const period = h < 12 ? 'AM' : 'PM';
+    const displayH = h === 0 ? 12 : h > 12 ? h - 12 : h;
+    const hStr = String(displayH).padStart(2, '0');
+    for (const m of ['00', '15', '30', '45']) {
+      options.push(`${hStr}:${m} ${period}`);
+    }
+  }
+  return options;
+})();
 
 interface HrmsAttendanceTabProps {
   onSuccessToast?: (msg: string) => void;
@@ -58,6 +73,21 @@ export function HrmsAttendanceTab({ onSuccessToast }: HrmsAttendanceTabProps) {
   const [punchMethod, setPunchMethod] = useState<string>('Manual Entry');
   const [punchNote, setPunchNote] = useState<string>('');
   const [submittingPunch, setSubmittingPunch] = useState<boolean>(false);
+
+  // Available Time Options including current selection if custom
+  const availableCheckInOptions = useMemo(() => {
+    if (punchTime && !TIME_OPTIONS.includes(punchTime)) {
+      return [punchTime, ...TIME_OPTIONS];
+    }
+    return TIME_OPTIONS;
+  }, [punchTime]);
+
+  const availableCheckOutOptions = useMemo(() => {
+    if (punchCheckOutTime && !TIME_OPTIONS.includes(punchCheckOutTime)) {
+      return [punchCheckOutTime, ...TIME_OPTIONS];
+    }
+    return TIME_OPTIONS;
+  }, [punchCheckOutTime]);
 
   const showToast = (msg: string) => {
     if (onSuccessToast) onSuccessToast(msg);
@@ -145,10 +175,11 @@ export function HrmsAttendanceTab({ onSuccessToast }: HrmsAttendanceTabProps) {
         : 'Present';
     setPunchStatus(initialStatus);
     setPunchAction(initialStatus === 'Absent' ? 'MARK_ABSENT' : initialStatus === 'Week Off' ? 'WEEK_OFF' : 'CHECK_IN');
+    // Real live dynamic times from database via backend (no hardcoded default times)
     setPunchTime(cell?.check_in || '');
     setPunchCheckOutTime(cell?.check_out || '');
     setPunchMethod(cell?.method || 'Manual Entry');
-    setPunchNote(cell?.status_label ? `Status: ${cell.status_label}` : '');
+    setPunchNote(initialStatus);
     setShowPunchModal(true);
   };
 
@@ -268,7 +299,7 @@ export function HrmsAttendanceTab({ onSuccessToast }: HrmsAttendanceTabProps) {
               setPunchTime('');
               setPunchCheckOutTime('');
               setPunchMethod('Manual Entry');
-              setPunchNote('');
+              setPunchNote('Present');
               setShowPunchModal(true);
             }}
             className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white shadow-md shadow-purple-600/25 transition cursor-pointer"
@@ -588,8 +619,8 @@ export function HrmsAttendanceTab({ onSuccessToast }: HrmsAttendanceTabProps) {
       {/* 5. MODAL: MANUAL TIMESHEET PUNCH / ADJUSTMENT (Image 2)       */}
       {/* ───────────────────────────────────────────────────────────── */}
       {showPunchModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/40 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-lg w-full shadow-2xl border border-slate-100 space-y-4">
+        <div className="fixed inset-0 z-50 bg-slate-950/40 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-fade-in overflow-y-auto">
+          <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-lg w-full shadow-2xl border border-slate-100 space-y-4 my-auto max-h-[calc(100vh-2rem)] overflow-y-auto">
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <div className="flex items-center gap-2.5">
@@ -657,17 +688,31 @@ export function HrmsAttendanceTab({ onSuccessToast }: HrmsAttendanceTabProps) {
                     onChange={(e) => {
                       const st = e.target.value;
                       setPunchStatus(st);
+                      // Auto-fill reason / administrative notes with selected attendance status by default
+                      setPunchNote(st);
                       if (st === 'Absent') {
                         setPunchAction('MARK_ABSENT');
+                        setPunchTime('');
+                        setPunchCheckOutTime('');
                       } else if (st === 'Half Day') {
                         setPunchAction('HALF_DAY');
                       } else if (st === 'Paid Leave') {
                         setPunchAction('LEAVE');
+                        setPunchTime('');
+                        setPunchCheckOutTime('');
+                      } else if (st === 'Holiday') {
+                        setPunchAction('HOLIDAY');
+                        setPunchTime('');
+                        setPunchCheckOutTime('');
+                      } else if (st === 'Week Off') {
+                        setPunchAction('WEEK_OFF');
+                        setPunchTime('');
+                        setPunchCheckOutTime('');
                       } else {
                         setPunchAction('CHECK_IN');
                       }
                     }}
-                    className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400"
+                    className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 cursor-pointer"
                   >
                     <option value="Present">Present</option>
                     <option value="Absent">Absent</option>
@@ -680,40 +725,40 @@ export function HrmsAttendanceTab({ onSuccessToast }: HrmsAttendanceTabProps) {
                 </div>
               </div>
 
-              {/* Field 4 & 5: 2-column Check In Time & Check Out Time */}
+              {/* Field 4 & 5: 2-column Check In Time & Check Out Time (Custom 3-column scrollable TimePickerSelect as per IST) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-black uppercase text-slate-500 tracking-wider block">
-                    CHECK IN TIME
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      disabled={punchStatus === 'Absent' || punchStatus === 'Week Off' || punchStatus === 'Holiday'}
-                      value={punchTime}
-                      onChange={(e) => setPunchTime(e.target.value)}
-                      placeholder="HH:MM (e.g. 09:00 AM)"
-                      className="w-full pl-3.5 pr-8 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 disabled:bg-slate-100 disabled:text-slate-400"
-                    />
-                    <Icon name="clock" size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-black uppercase text-slate-500 tracking-wider block">
+                      CHECK IN TIME
+                    </label>
+                    <span className="text-[10px] font-bold text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded">
+                      IST (AM/PM)
+                    </span>
                   </div>
+                  <TimePickerSelect
+                    value={punchTime}
+                    onChange={(val) => setPunchTime(val)}
+                    disabled={punchStatus === 'Absent' || punchStatus === 'Week Off' || punchStatus === 'Holiday'}
+                    placeholder="HH:MM (e.g. 09:00 AM)"
+                  />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-black uppercase text-slate-500 tracking-wider block">
-                    CHECK OUT TIME
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      disabled={punchStatus === 'Absent' || punchStatus === 'Week Off' || punchStatus === 'Holiday'}
-                      value={punchCheckOutTime}
-                      onChange={(e) => setPunchCheckOutTime(e.target.value)}
-                      placeholder="HH:MM (e.g. 06:00 PM)"
-                      className="w-full pl-3.5 pr-8 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 disabled:bg-slate-100 disabled:text-slate-400"
-                    />
-                    <Icon name="clock" size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-black uppercase text-slate-500 tracking-wider block">
+                      CHECK OUT TIME
+                    </label>
+                    <span className="text-[10px] font-bold text-teal-600 bg-teal-50 px-1.5 py-0.5 rounded">
+                      IST (AM/PM)
+                    </span>
                   </div>
+                  <TimePickerSelect
+                    value={punchCheckOutTime}
+                    onChange={(val) => setPunchCheckOutTime(val)}
+                    disabled={punchStatus === 'Absent' || punchStatus === 'Week Off' || punchStatus === 'Holiday'}
+                    placeholder="HH:MM (e.g. 06:00 PM)"
+                  />
                 </div>
               </div>
 

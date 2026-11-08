@@ -4238,15 +4238,48 @@ class HrmsService:
         db: Session,
         year: Optional[int] = None,
         holiday_type: Optional[str] = None,
-        search: Optional[str] = None
+        search: Optional[str] = None,
+        institution_type: Optional[str] = None,
+        branch_id: Optional[str] = None,
+        ho_id: Optional[str] = None,
+        current_user: Any = None
     ) -> List[Dict[str, Any]]:
         query = db.query(CompanyHoliday)
         if year:
+            existing_count = query.filter(CompanyHoliday.year == year).count()
+            if existing_count == 0:
+                try:
+                    HrmsService.preseed_holidays(db, int(year))
+                except Exception as seed_err:
+                    print(f"[Calendar] Preseed warning: {seed_err}")
             query = query.filter(CompanyHoliday.year == year)
         if holiday_type and holiday_type.upper() != "ALL":
-            query = query.filter(CompanyHoliday.holiday_type.ilike(f"%{holiday_type}%"))
+            query = query.filter(CompanyHoliday.holiday_type.ilike(f"%{holiday_type.strip()}%"))
         if search:
             query = query.filter(CompanyHoliday.name.ilike(f"%{search.strip()}%"))
+
+        if institution_type and institution_type.strip() and institution_type.strip().lower() not in ["all", "all holidays (any institution)"]:
+            inst_clean = institution_type.strip()
+            query = query.filter(
+                or_(
+                    CompanyHoliday.institution_type == inst_clean,
+                    CompanyHoliday.branch_id == inst_clean,
+                    CompanyHoliday.institution_type == "All",
+                    CompanyHoliday.institution_type == "All holidays (any institution)",
+                    CompanyHoliday.institution_type.is_(None)
+                )
+            )
+        elif branch_id:
+            query = query.filter(
+                or_(
+                    CompanyHoliday.branch_id == branch_id,
+                    CompanyHoliday.branch_id.is_(None),
+                    CompanyHoliday.institution_type == "All",
+                    CompanyHoliday.institution_type == "All holidays (any institution)",
+                    CompanyHoliday.institution_type.is_(None)
+                )
+            )
+
         holidays = query.order_by(CompanyHoliday.date.asc()).all()
         return [
             {
@@ -4256,7 +4289,11 @@ class HrmsService:
                 "formatted_date": h.date.strftime("%d %b, %Y"),
                 "day_name": h.date.strftime("%A"),
                 "year": h.year,
-                "holiday_type": h.holiday_type or "",
+                "holiday_type": "India holiday" if (h.holiday_type and any(k in (h.holiday_type or "").lower() for k in ["india", "national", "festival", "gazetted"])) else ("Other holiday" if (h.holiday_type and any(k in (h.holiday_type or "").lower() for k in ["other", "weekend", "sunday", "saturday"])) else (h.holiday_type or "India holiday")),
+                "raw_holiday_type": h.holiday_type or "India holiday",
+                "institution_type": h.institution_type or "All holidays (any institution)",
+                "branch_id": h.branch_id,
+                "ho_id": h.ho_id,
                 "description": h.description or "",
                 "is_optional": bool(h.is_optional)
             }
@@ -4264,7 +4301,15 @@ class HrmsService:
         ]
 
     @staticmethod
-    def save_holiday(db: Session, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def save_holiday(db: Session, payload: Dict[str, Any], current_user: Any = None) -> Dict[str, Any]:
+        # Permission check for Owner
+        if current_user and getattr(current_user, "role", "").lower() == "owner":
+            perms = getattr(current_user, "permissions", None) or {}
+            is_new = not bool(payload.get("id"))
+            perm_key = "calendar.add" if is_new else "calendar.edit"
+            if perms.get(perm_key) is False or perms.get("calendar.view") is False:
+                raise PermissionError("You do not have permission to add or modify calendar holidays. Please contact Head Office.")
+
         name = (payload.get("name") or "").strip()
         date_str = (payload.get("date") or "").strip()
         if not name or not date_str:
@@ -4274,6 +4319,18 @@ class HrmsService:
         year = int(payload.get("year") or d_obj.year)
 
         hol_id = payload.get("id")
+        institution_type = (payload.get("institution_type") or "All holidays (any institution)").strip()
+        branch_id = payload.get("branch_id")
+        if not branch_id and institution_type not in ["All", "All holidays (any institution)"]:
+            branch_match = db.query(vahdBranch).filter(
+                or_(vahdBranch.id == institution_type, vahdBranch.branch_name == institution_type, vahdBranch.vahd_name == institution_type)
+            ).first()
+            if branch_match:
+                branch_id = branch_match.id
+
+        ho_id = payload.get("ho_id") or (getattr(current_user, "ho_id", None) if current_user else None)
+        h_type = (payload.get("holiday_type") or "Other holiday").strip()
+
         hol = None
         if hol_id:
             hol = db.query(CompanyHoliday).filter(CompanyHoliday.id == hol_id).first()
@@ -4283,7 +4340,10 @@ class HrmsService:
                 name=name,
                 date=d_obj,
                 year=year,
-                holiday_type=payload.get("holiday_type") or "",
+                holiday_type=h_type,
+                institution_type=institution_type,
+                branch_id=branch_id,
+                ho_id=ho_id,
                 description=payload.get("description") or "",
                 is_optional=bool(payload.get("is_optional", False))
             )
@@ -4292,12 +4352,17 @@ class HrmsService:
             hol.name = name
             hol.date = d_obj
             hol.year = year
-            if "holiday_type" in payload:
-                hol.holiday_type = payload["holiday_type"]
+            hol.holiday_type = h_type
+            hol.institution_type = institution_type
+            if branch_id is not None:
+                hol.branch_id = branch_id
+            if ho_id is not None:
+                hol.ho_id = ho_id
             if "description" in payload:
                 hol.description = payload["description"]
             if "is_optional" in payload:
                 hol.is_optional = bool(payload["is_optional"])
+            hol.updated_at = datetime.utcnow()
         db.commit()
         db.refresh(hol)
         return {
@@ -4305,65 +4370,212 @@ class HrmsService:
             "name": hol.name,
             "date": hol.date.strftime("%Y-%m-%d"),
             "formatted_date": hol.date.strftime("%d %b, %Y"),
+            "day_name": hol.date.strftime("%A"),
             "year": hol.year,
             "holiday_type": hol.holiday_type,
+            "institution_type": hol.institution_type,
+            "branch_id": hol.branch_id,
+            "ho_id": hol.ho_id,
             "description": hol.description,
             "is_optional": hol.is_optional
         }
 
     @staticmethod
-    def delete_holiday(db: Session, holiday_id: str) -> Dict[str, Any]:
+    def delete_holiday(db: Session, holiday_id: str, current_user: Any = None) -> Dict[str, Any]:
+        # Permission check for Owner
+        if current_user and getattr(current_user, "role", "").lower() == "owner":
+            perms = getattr(current_user, "permissions", None) or {}
+            if perms.get("calendar.delete") is False or perms.get("calendar.view") is False:
+                raise PermissionError("You do not have permission to delete calendar holidays. Please contact Head Office.")
+
         hol = db.query(CompanyHoliday).filter(CompanyHoliday.id == holiday_id).first()
         if not hol:
             raise ValueError("Holiday not found")
         db.delete(hol)
         db.commit()
-        return {"message": "Holiday deleted successfully", "id": holiday_id}
+        return {"success": True, "message": f"Holiday '{hol.name}' deleted successfully", "id": holiday_id}
 
     @staticmethod
-    def preseed_holidays(db: Session, target_year: int = 2026) -> Dict[str, Any]:
-        seed_data = {
-            2026: [
-                ("New Year's Day", "2026-01-01", "National", None),
-                ("Republic Day", "2026-01-26", "National", None),
-                ("Maha Shivratri", "2026-02-15", "Festival", None),
-                ("Holi", "2026-03-04", "Festival", None),
-                ("Eid ul-Fitr", "2026-03-21", "Festival", None),
-                ("Good Friday", "2026-04-03", "Public", None),
-                ("Dr. B.R. Ambedkar Jayanti", "2026-04-14", "National", None),
-                ("May Day / Labour Day", "2026-05-01", "Public", None),
-                ("Bakrid / Eid al-Adha", "2026-05-27", "Festival", None),
-                ("Muharram", "2026-06-26", "Festival", None),
-                ("Independence Day", "2026-08-15", "National", None),
-                ("Ganesh Chaturthi", "2026-09-07", "Festival", None),
-                ("Gandhi Jayanti", "2026-10-02", "National", None),
-                ("Dussehra (Vijayadashami)", "2026-10-20", "Festival", None),
-                ("Diwali (Deepavali)", "2026-11-08", "Festival", None),
-                ("Guru Nanak Jayanti", "2026-11-24", "Festival", None),
-                ("Christmas Day", "2026-12-25", "National", None),
-            ],
-            2027: [
-                ("New Year's Day", "2027-01-01", "National", None),
-                ("Republic Day", "2027-01-26", "National", None),
-                ("Holi", "2027-03-22", "Festival", None),
-                ("Eid ul-Fitr", "2027-03-10", "Festival", None),
-                ("Good Friday", "2027-03-26", "Public", None),
-                ("Dr. B.R. Ambedkar Jayanti", "2027-04-14", "National", None),
-                ("May Day / Labour Day", "2027-05-01", "Public", None),
-                ("Independence Day", "2027-08-15", "National", None),
-                ("Gandhi Jayanti", "2027-10-02", "National", None),
-                ("Dussehra", "2027-10-10", "Festival", None),
-                ("Diwali", "2027-10-29", "Festival", None),
-                ("Christmas Day", "2027-12-25", "National", None),
-            ]
-        }
-        items = seed_data.get(target_year, seed_data[2026])
-        inserted = 0
-        for name, d_str, h_type, desc in items:
-            d_obj = datetime.strptime(d_str, "%Y-%m-%d").date()
+    def upload_holidays(db: Session, file_content: bytes, filename: str, current_user: Any = None) -> Dict[str, Any]:
+        # Permission check for Owner
+        if current_user and getattr(current_user, "role", "").lower() == "owner":
+            perms = getattr(current_user, "permissions", None) or {}
+            if perms.get("calendar.import") is False or perms.get("calendar.add") is False:
+                raise PermissionError("You do not have permission to upload calendar holidays. Please contact Head Office.")
+
+        import io
+        import csv
+
+        records = []
+        fn_lower = (filename or "").lower()
+
+        if fn_lower.endswith(".csv"):
+            text_stream = io.StringIO(file_content.decode("utf-8", errors="replace"))
+            reader = csv.DictReader(text_stream)
+            for row in reader:
+                records.append(row)
+        elif fn_lower.endswith((".xlsx", ".xls")):
+            import openpyxl
+            wb = openpyxl.load_workbook(io.BytesIO(file_content), data_only=True)
+            ws = wb.active
+            rows = list(ws.iter_rows(values_only=True))
+            if rows:
+                headers = [str(h or "").strip().lower() for h in rows[0]]
+                for r in rows[1:]:
+                    if any(r):
+                        row_dict = {}
+                        for i, h in enumerate(headers):
+                            if i < len(r):
+                                val = r[i]
+                                if isinstance(val, (datetime, date)):
+                                    val = val.strftime("%Y-%m-%d")
+                                row_dict[h] = str(val or "").strip()
+                        records.append(row_dict)
+        else:
+            raise ValueError("Unsupported file format. Please upload a .csv or .xlsx file.")
+
+        inserted_count = 0
+        updated_count = 0
+
+        for r in records:
+            name = (
+                r.get("name") or r.get("holiday name") or r.get("holiday_name") or
+                r.get("title") or r.get("holiday") or ""
+            ).strip()
+            date_raw = (
+                r.get("date") or r.get("holiday date") or r.get("holiday_date") or ""
+            ).strip()
+            if not name or not date_raw:
+                continue
+
+            # Parse date flexibly
+            d_obj = None
+            for fmt in ["%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%m/%d/%Y", "%Y/%m/%d", "%d.%m.%Y"]:
+                try:
+                    d_obj = datetime.strptime(date_raw, fmt).date()
+                    break
+                except Exception:
+                    pass
+
+            if not d_obj:
+                continue
+
+            h_type = (
+                r.get("holiday_type") or r.get("holiday type") or r.get("type") or "Holiday"
+            ).strip() or "Holiday"
+
+            inst_type = (
+                r.get("institution_type") or r.get("institution type") or r.get("institution") or
+                r.get("branch") or r.get("organization") or "All holidays (any institution)"
+            ).strip()
+            desc = (r.get("description") or "").strip()
+
             existing = db.query(CompanyHoliday).filter(
                 (CompanyHoliday.name == name) & (CompanyHoliday.date == d_obj)
             ).first()
+
+            if not existing:
+                hol = CompanyHoliday(
+                    id=f"hol_{uuid.uuid4().hex[:8]}",
+                    name=name,
+                    date=d_obj,
+                    year=d_obj.year,
+                    holiday_type=h_type,
+                    institution_type=inst_type,
+                    description=desc,
+                    is_optional=False
+                )
+                db.add(hol)
+                inserted_count += 1
+            else:
+                existing.holiday_type = h_type
+                existing.institution_type = inst_type
+                if desc:
+                    existing.description = desc
+                existing.updated_at = datetime.utcnow()
+                updated_count += 1
+
+        db.commit()
+        return {
+            "success": True,
+            "message": f"Successfully processed {len(records)} records ({inserted_count} added, {updated_count} updated).",
+            "inserted_count": inserted_count,
+            "updated_count": updated_count
+        }
+
+    @staticmethod
+    def preseed_holidays(db: Session, target_year: int = 2026) -> Dict[str, Any]:
+        import calendar as py_cal
+
+        # 1. Canonical Indian National, Festival, and Regional Public Holidays
+        india_holidays = [
+            ("New Year's Day", f"{target_year}-01-01", "India holiday", "Public Holiday"),
+            ("Bhogi", f"{target_year}-01-14", "India holiday", "Sankranti Harvest Festival"),
+            ("Sankranti / Pongal", f"{target_year}-01-15", "India holiday", "Makar Sankranti Festival"),
+            ("Kanuma", f"{target_year}-01-16", "India holiday", "Cattle Festival"),
+            ("Republic Day", f"{target_year}-01-26", "India holiday", "National Holiday"),
+            ("Maha Shivratri", f"{target_year}-02-15", "India holiday", "Religious Festival"),
+            ("Holi", f"{target_year}-03-04", "India holiday", "Festival of Colors"),
+            ("Ugadi / Gudi Padwa", f"{target_year}-03-19", "India holiday", "Telugu New Year"),
+            ("Eid ul-Fitr (Ramzan)", f"{target_year}-03-21", "India holiday", "Islamic Festival"),
+            ("Sri Rama Navami", f"{target_year}-03-28", "India holiday", "Religious Festival"),
+            ("Good Friday", f"{target_year}-04-03", "India holiday", "Christian Holiday"),
+            ("Dr. B.R. Ambedkar Jayanti", f"{target_year}-04-14", "India holiday", "National Holiday"),
+            ("May Day / Labour Day", f"{target_year}-05-01", "India holiday", "International Workers' Day"),
+            ("Bakrid / Eid al-Adha", f"{target_year}-05-27", "India holiday", "Islamic Festival"),
+            ("Muharram", f"{target_year}-06-26", "India holiday", "Islamic New Year"),
+            ("Bonalu", f"{target_year}-07-20", "India holiday", "Telangana Regional Festival"),
+            ("Independence Day", f"{target_year}-08-15", "India holiday", "National Holiday"),
+            ("Milad-un-Nabi", f"{target_year}-08-26", "India holiday", "Prophet's Birthday"),
+            ("Sri Krishna Janmashtami", f"{target_year}-09-04", "India holiday", "Religious Festival"),
+            ("Ganesh Chaturthi / Vinayaka Chavithi", f"{target_year}-09-07", "India holiday", "Vinayaka Chavithi"),
+            ("Bathukamma", f"{target_year}-09-28", "India holiday", "Floral Festival of Telangana"),
+            ("Mahatma Gandhi Jayanti", f"{target_year}-10-02", "India holiday", "National Holiday"),
+            ("Dussehra / Vijayadashami", f"{target_year}-10-20", "India holiday", "Vijayadashami Festival"),
+            ("Diwali / Deepavali", f"{target_year}-11-08", "India holiday", "Festival of Lights"),
+            ("Guru Nanak Jayanti", f"{target_year}-11-24", "India holiday", "Sikh Festival"),
+            ("Christmas Day", f"{target_year}-12-25", "India holiday", "National Public Holiday"),
+        ]
+
+        # 2. All Sundays of the Year (Categorized as 'Other holiday')
+        weekend_holidays = []
+        for month in range(1, 13):
+            month_cal = py_cal.monthcalendar(target_year, month)
+            # Find Second Saturday: 6th column (index 5)
+            sats = [w[5] for w in month_cal if w[5] != 0]
+            if len(sats) >= 2:
+                sec_sat_day = sats[1]
+                weekend_holidays.append((
+                    "Second Saturday",
+                    f"{target_year}-{month:02d}-{sec_sat_day:02d}",
+                    "Other holiday",
+                    "Second Saturday Official Holiday"
+                ))
+
+            # Find all Sundays: 7th column (index 6)
+            for w in month_cal:
+                if w[6] != 0:
+                    sun_day = w[6]
+                    weekend_holidays.append((
+                        "Sunday",
+                        f"{target_year}-{month:02d}-{sun_day:02d}",
+                        "Other holiday",
+                        "Weekly Rest Day"
+                    ))
+
+        all_items = india_holidays + weekend_holidays
+        inserted = 0
+
+        for name, d_str, h_type, desc in all_items:
+            try:
+                d_obj = datetime.strptime(d_str, "%Y-%m-%d").date()
+            except Exception:
+                continue
+
+            existing = db.query(CompanyHoliday).filter(
+                (CompanyHoliday.name == name) & (CompanyHoliday.date == d_obj)
+            ).first()
+
             if not existing:
                 db.add(CompanyHoliday(
                     id=f"hol_{uuid.uuid4().hex[:8]}",
@@ -4371,13 +4583,16 @@ class HrmsService:
                     date=d_obj,
                     year=target_year,
                     holiday_type=h_type,
+                    institution_type="All holidays (any institution)",
                     description=desc,
                     is_optional=False
                 ))
                 inserted += 1
             else:
                 existing.holiday_type = h_type
-                existing.description = None
+                if not existing.institution_type:
+                    existing.institution_type = "All holidays (any institution)"
+
         db.commit()
         return {
             "status": "success",

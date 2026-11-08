@@ -1,8 +1,9 @@
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Body, Query
+from fastapi import APIRouter, Depends, HTTPException, Body, Query, Response, UploadFile, File
 from sqlalchemy.orm import Session
 from src.database.session import get_db
 from src.services.settings_service import SettingsService
+from src.services.hrms_service import HrmsService
 from src.api.deps import get_current_user
 from src.models.user import User
 
@@ -185,4 +186,116 @@ def delete_master_data(
         return {"message": "Item deleted successfully", "id": item_id, "category": category}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to delete master data item: {e}")
+
+
+# -------------------------------------------------------------
+# CALENDAR HOLIDAYS ENDPOINTS
+# -------------------------------------------------------------
+@router.get("/settings/holidays")
+def get_settings_holidays(
+    year: Optional[int] = Query(None),
+    type: Optional[str] = Query(None),
+    search: Optional[str] = Query(None),
+    institution_type: Optional[str] = Query(None),
+    branch_id: Optional[str] = Query(None),
+    current_user: Optional[User] = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    try:
+        return HrmsService.get_holidays(
+            db,
+            year=year,
+            holiday_type=type,
+            search=search,
+            institution_type=institution_type,
+            branch_id=branch_id,
+            current_user=current_user
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch holidays: {str(e)}")
+
+
+@router.post("/settings/holidays")
+def save_settings_holiday(
+    payload: dict = Body(...),
+    current_user: Optional[User] = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    try:
+        return HrmsService.save_holiday(db, payload, current_user=current_user)
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save holiday: {str(e)}")
+
+
+@router.put("/settings/holidays/{holiday_id}")
+def update_settings_holiday(
+    holiday_id: str,
+    payload: dict = Body(...),
+    current_user: Optional[User] = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    payload["id"] = holiday_id
+    try:
+        return HrmsService.save_holiday(db, payload, current_user=current_user)
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update holiday: {str(e)}")
+
+
+@router.delete("/settings/holidays/{holiday_id}")
+def delete_settings_holiday(
+    holiday_id: str,
+    current_user: Optional[User] = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    try:
+        return HrmsService.delete_holiday(db, holiday_id, current_user=current_user)
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete holiday: {str(e)}")
+
+
+@router.get("/settings/holidays/template")
+def download_settings_holiday_template():
+    csv_content = (
+        "Name,Date,Holiday Type,Institution Type,Description\n"
+        "Bhogi,2026-01-14,India holiday,All holidays (any institution),Sankranti Harvest Festival\n"
+        "Sankranti / Pongal,2026-01-15,India holiday,All holidays (any institution),Makar Sankranti\n"
+        "Republic Day,2026-01-26,India holiday,All holidays (any institution),National Holiday\n"
+        "Sunday,2026-01-04,Other holiday,All holidays (any institution),Weekly Rest Day\n"
+        "Second Saturday,2026-01-10,Other holiday,All holidays (any institution),Second Saturday Holiday\n"
+    )
+    return Response(
+        content=csv_content,
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=holidays_template.csv"}
+    )
+
+
+@router.post("/settings/holidays/upload")
+async def upload_settings_holidays_file(
+    file: UploadFile = File(...),
+    current_user: Optional[User] = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    try:
+        content = await file.read()
+        return HrmsService.upload_holidays(db, content, file.filename, current_user=current_user)
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to upload holidays: {str(e)}")
+
 

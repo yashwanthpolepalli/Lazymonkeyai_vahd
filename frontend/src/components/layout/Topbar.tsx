@@ -228,7 +228,17 @@ export function Topbar() {
       {/* Top Header Row */}
       <div className="h-16 flex items-center justify-between px-4 sm:px-6 gap-4 border-b border-slate-100 bg-white w-full">
         {/* Left: Brand Logo & vahd Location Selector */}
-        <div className="flex items-center gap-3 min-w-0">
+        <div className="flex items-center gap-2.5 min-w-0">
+          {/* Sidebar Collapse/Expand Toggle on Desktop */}
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent('vahd:toggle_sidebar'))}
+            className="hidden md:inline-flex items-center justify-center w-8 h-8 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer shrink-0"
+            title="Toggle sidebar (Ctrl+[)"
+            aria-label="Toggle sidebar"
+          >
+            <Icon name="panel-left" size={17} />
+          </button>
           <Logo size="sm" />
           <div className="h-5 w-[1px] bg-slate-200 hidden sm:block mx-0.5" />
 

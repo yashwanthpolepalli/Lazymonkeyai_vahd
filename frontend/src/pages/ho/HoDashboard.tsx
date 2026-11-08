@@ -514,17 +514,10 @@ export const HoDashboard: React.FC = () => {
   }, [data?.organizations, dirSearchTerm]);
 
   return (
-    <div className="min-h-screen bg-[#FAFBFD] w-full px-4 sm:px-6 py-4 space-y-4">
+    <div className="min-h-full bg-transparent w-full px-4 sm:px-6 py-4 space-y-4">
       {/* ── TOP BANNER SECTION ────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl pt-3 pb-3 px-2 sm:px-3 flex flex-col md:flex-row md:items-center justify-between gap-4 min-h-[105px]">
-        {/* Exact Flowing Waves Background Graphic from Reference Screenshot */}
-        <img
-          src="/dashboard-banner-bg.png"
-          alt=""
-          className="absolute right-0 top-0 h-full w-auto max-w-[850px] object-cover object-right pointer-events-none select-none z-0"
-        />
-
-        <div className="relative z-10 space-y-1">
+      <div className="relative pt-1 pb-2 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="space-y-1">
           <div className="inline-flex items-center gap-2">
             <span className="px-3 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-100/90 text-purple-700 border border-purple-200/60 shadow-2xs">
               HEAD OFFICE COMMAND CENTER
@@ -539,7 +532,7 @@ export const HoDashboard: React.FC = () => {
         </div>
 
         {/* Header Right: Onboard Owner Button */}
-        <div className="relative z-10 flex items-center gap-3">
+        <div className="flex items-center gap-3">
           <button
             onClick={() => handleOpenOnboardModal()}
             className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-gradient-to-r from-blue-600 via-indigo-600 to-orange-500 hover:opacity-95 text-white text-xs font-bold shadow-lg shadow-orange-500/20 transition-all transform active:scale-95 cursor-pointer"

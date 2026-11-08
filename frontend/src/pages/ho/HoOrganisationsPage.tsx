@@ -85,20 +85,24 @@ export const HoOrganisationsPage: React.FC = () => {
     if (!data?.matrix) return;
     const headers = [
       'Organisation Name',
-      'Total EMP',
-      'Present',
-      'Leave',
-      'Leave Approvals',
-      'Absent',
+      'Branch',
+      'City',
+      'Total Staff',
+      'Staff Present',
+      'Staff Leave',
+      'Staff Leave Approvals',
+      'Staff Absent',
       'Total Students',
-      'Present',
-      'Leave',
-      'Leave Approvals',
-      'Absent',
+      'Students Present',
+      'Students Leave',
+      'Students Leave Approvals',
+      'Students Absent',
     ];
 
     const rows = filteredMatrix.map((r) => [
-      `"${r.org_name}"`,
+      `"${r.org_name.replace(/"/g, '""')}"`,
+      `"${(r.branch_name || '').replace(/"/g, '""')}"`,
+      `"${(r.city || '').replace(/"/g, '""')}"`,
       r.total_emp,
       r.emp_present,
       r.emp_leave,
@@ -114,7 +118,9 @@ export const HoOrganisationsPage: React.FC = () => {
     if (data.totals) {
       const t = data.totals;
       rows.push([
-        '"TOTAL"',
+        '"GRAND TOTAL"',
+        '""',
+        '""',
         t.total_emp,
         t.emp_present,
         t.emp_leave,
@@ -142,34 +148,34 @@ export const HoOrganisationsPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 pb-12 animate-in fade-in duration-200">
-      {/* ── TOP HEADER ────────────────────────────────────────────────────── */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-black uppercase tracking-wider text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-300">
-              Live Matrix Directory
+    <div className="min-h-full bg-transparent w-full px-4 sm:px-6 py-4 space-y-4">
+      {/* ── TOP BANNER SECTION ────────────────────────────────────────────── */}
+      <div className="relative pt-1 pb-2 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="inline-flex items-center gap-2">
+            <span className="px-3 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-100/90 text-purple-700 border border-purple-200/60 shadow-2xs">
+              HEAD OFFICE COMMAND CENTER • MATRIX
             </span>
-            <span className="text-[11px] font-bold text-slate-400">
+            <span className="text-xs font-bold text-slate-400">
               {data?.date_formatted || selectedDate}
             </span>
           </div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight mt-1 flex items-center gap-2">
-            <span>Organisations Attendance &amp; Leave Matrix</span>
+          <h1 className="text-2xl sm:text-[28px] font-black text-slate-900 tracking-tight leading-tight">
+            Organisations Attendance &amp; Leave Matrix
           </h1>
-          <p className="text-xs text-slate-500 font-medium mt-0.5">
+          <p className="text-xs sm:text-[13px] text-slate-500 font-medium">
             Cross-branch overview of total staff, active students, daily present count, leave requests, and absences.
           </p>
         </div>
 
-        {/* Date Selector & Action Controls */}
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-2xl border border-slate-200">
+        {/* Header Right: Date Selector & Export Actions */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex items-center gap-1.5 bg-white p-1 rounded-full border border-slate-200/90 shadow-2xs">
             <button
               onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}
-              className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
+              className={`px-3 py-1 text-xs font-bold rounded-full transition-all cursor-pointer ${
                 selectedDate === new Date().toISOString().split('T')[0]
-                  ? 'bg-white text-slate-900 shadow-xs'
+                  ? 'bg-slate-900 text-white shadow-2xs'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -179,21 +185,21 @@ export const HoOrganisationsPage: React.FC = () => {
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="px-2.5 py-1 text-xs font-bold bg-white rounded-xl border border-slate-200 text-slate-800 focus:outline-none"
+              className="px-2.5 py-1 text-xs font-bold bg-transparent text-slate-800 focus:outline-none cursor-pointer"
             />
           </div>
 
           <button
             onClick={() => fetchMatrix()}
-            className="p-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
+            className="w-9 h-9 rounded-full bg-white border border-slate-200/90 text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors flex items-center justify-center shadow-2xs cursor-pointer"
             title="Refresh Matrix"
           >
-            <Icon name="refresh-cw" size={15} className={loading ? 'animate-spin' : ''} />
+            <Icon name="refresh-cw" size={14} className={loading ? 'animate-spin' : ''} />
           </button>
 
           <button
             onClick={handleExportCsv}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs shadow-md shadow-amber-500/20 transition-all cursor-pointer"
+            className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-blue-600 via-indigo-600 to-orange-500 hover:opacity-95 text-white text-xs font-bold shadow-lg shadow-orange-500/20 transition-all transform active:scale-95 cursor-pointer"
           >
             <Icon name="download" size={14} />
             <span>Export Spreadsheet</span>
@@ -201,90 +207,144 @@ export const HoOrganisationsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* ── KPI METRICS CARDS ─────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Orgs</span>
-            <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
-              <Icon name="building-2" size={16} />
-            </div>
+      {/* ── HO PORTAL TAB SWITCHER ────────────────────────────────────────── */}
+      <div className="flex items-center gap-2.5 overflow-x-auto no-scrollbar pt-1">
+        <button
+          onClick={() => navigate('/ho')}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer bg-white text-slate-700 hover:bg-slate-50 border border-slate-200/90 shadow-2xs"
+        >
+          <Icon name="layout-grid" size={14} className="text-slate-500" />
+          <span>Dashboard &amp; Directory</span>
+        </button>
+
+        <button
+          className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer bg-gradient-to-r from-blue-600 via-indigo-600 to-orange-500 text-white shadow-md shadow-blue-500/20"
+        >
+          <Icon name="layers" size={14} className="text-white" />
+          <span>Organisations Matrix</span>
+        </button>
+
+        <button
+          onClick={() => navigate('/ho?tab=attendance_reports')}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer bg-white text-slate-700 hover:bg-slate-50 border border-slate-200/90 shadow-2xs"
+          title="View Attendance Reports &amp; Downloads"
+        >
+          <Icon name="file-text" size={14} className="text-slate-500" />
+          <span>Branch Attendance Reports &amp; Downloads (Excel &amp; PDF)</span>
+        </button>
+      </div>
+
+      {/* ── KPI HIGHLIGHTS CARDS ──────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        {/* KPI 1: Total Organizations */}
+        <div className="rounded-2xl border border-slate-200/90 bg-gradient-to-br from-white via-white to-purple-50/40 p-3.5 sm:p-4 shadow-2xs relative overflow-hidden flex items-start gap-3">
+          <div className="w-9 h-9 rounded-xl bg-purple-50/90 border border-purple-100 flex items-center justify-center shrink-0">
+            <Icon name="building-2" size={17} className="text-purple-600" />
           </div>
-          <div className="text-2xl font-black text-slate-900">{data?.total_organizations ?? 0}</div>
-          <p className="text-[11px] font-semibold text-purple-600 mt-0.5">Active Campus Locations</p>
+          <div className="space-y-0.5 min-w-0">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-800 block">
+              TOTAL ORGANIZATIONS
+            </span>
+            <div className="text-xl sm:text-2xl font-black text-slate-900 leading-tight">
+              {data?.total_organizations ?? 0}
+            </div>
+            <p className="text-[11px] text-purple-600 font-semibold truncate pt-0.5">
+              Active campuses reporting
+            </p>
+          </div>
+          <div className="absolute -bottom-6 -right-6 w-20 h-20 bg-purple-100/40 rounded-full blur-xl pointer-events-none" />
         </div>
 
-        <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Staff</span>
-            <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-              <Icon name="users" size={16} />
-            </div>
+        {/* KPI 2: Total Staff */}
+        <div className="rounded-2xl border-2 border-sky-400/90 bg-gradient-to-br from-white via-sky-50/30 to-sky-100/50 p-3.5 sm:p-4 shadow-2xs relative overflow-hidden flex items-start gap-3">
+          <div className="w-9 h-9 rounded-xl bg-sky-50 border border-sky-100 flex items-center justify-center shrink-0">
+            <Icon name="users" size={17} className="text-sky-500" />
           </div>
-          <div className="text-2xl font-black text-slate-900">{data?.totals?.total_emp ?? 0}</div>
-          <p className="text-[11px] font-semibold text-emerald-600 mt-0.5">
-            {data?.totals?.emp_present ?? 0} Present &bull; {data?.totals?.emp_leave ?? 0} On Leave
-          </p>
+          <div className="space-y-0.5 min-w-0">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-800 block">
+              TOTAL STAFF
+            </span>
+            <div className="text-xl sm:text-2xl font-black text-slate-900 leading-tight">
+              {data?.totals?.total_emp ?? 0}
+            </div>
+            <p className="text-[11px] text-emerald-600 font-bold flex items-center gap-1.5 pt-0.5 truncate">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block shrink-0" />
+              <span>{data?.totals?.emp_present ?? 0} Present Today</span>
+            </p>
+          </div>
+          <div className="absolute -bottom-6 -right-6 w-24 h-24 bg-sky-200/40 rounded-full blur-xl pointer-events-none" />
         </div>
 
-        <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Students</span>
-            <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-              <Icon name="user-check" size={16} />
-            </div>
+        {/* KPI 3: Total Students */}
+        <div className="rounded-2xl border border-amber-300/90 bg-gradient-to-br from-white via-amber-50/20 to-amber-100/40 p-3.5 sm:p-4 shadow-2xs relative overflow-hidden flex items-start gap-3">
+          <div className="w-9 h-9 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center shrink-0">
+            <Icon name="graduation-cap" size={17} className="text-amber-600" />
           </div>
-          <div className="text-2xl font-black text-slate-900">{data?.totals?.total_students ?? 0}</div>
-          <p className="text-[11px] font-semibold text-blue-600 mt-0.5">
-            {data?.totals?.student_present ?? 0} Present &bull; {data?.totals?.student_absent ?? 0} Absent
-          </p>
+          <div className="space-y-0.5 min-w-0">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-800 block">
+              TOTAL STUDENTS
+            </span>
+            <div className="text-xl sm:text-2xl font-black text-slate-900 leading-tight">
+              {data?.totals?.total_students ?? 0}
+            </div>
+            <p className="text-[11px] text-blue-600 font-medium truncate pt-0.5">
+              {data?.totals?.student_present ?? 0} Present in Sessions
+            </p>
+          </div>
+          <div className="absolute -bottom-6 -right-6 w-24 h-24 bg-amber-200/40 rounded-full blur-xl pointer-events-none" />
         </div>
 
-        <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Pending Approvals</span>
-            <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
-              <Icon name="clock" size={16} />
+        {/* KPI 4: Pending Approvals */}
+        <div className="rounded-2xl border border-slate-200/90 bg-gradient-to-br from-white via-rose-50/20 to-rose-100/40 p-3.5 sm:p-4 shadow-2xs relative overflow-hidden flex items-start gap-3">
+          <div className="w-9 h-9 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center shrink-0">
+            <Icon name="clock" size={17} className="text-rose-500" />
+          </div>
+          <div className="space-y-0.5 min-w-0">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-800 block">
+              PENDING LEAVE APPROVALS
+            </span>
+            <div className="text-xl sm:text-2xl font-black text-slate-900 leading-tight">
+              {(data?.totals?.emp_leave_approvals ?? 0) + (data?.totals?.student_leave_approvals ?? 0)}
             </div>
+            <p className="text-[11px] text-amber-600 font-semibold truncate pt-0.5">
+              Requires owner review
+            </p>
           </div>
-          <div className="text-2xl font-black text-amber-600">
-            {(data?.totals?.emp_leave_approvals ?? 0) + (data?.totals?.student_leave_approvals ?? 0)}
-          </div>
-          <p className="text-[11px] font-semibold text-slate-500 mt-0.5">Leave requests pending</p>
+          <div className="absolute -bottom-6 -right-6 w-24 h-24 bg-rose-200/40 rounded-full blur-xl pointer-events-none" />
         </div>
       </div>
 
-      {/* ── ORGANIZATIONS MATRIX SPREADSHEET TABLE ────────────────────────── */}
-      <div className="bg-white rounded-3xl border border-amber-300 shadow-md overflow-hidden">
+      {/* ── ORGANIZATIONS MATRIX TABLE ────────────────────────────────────── */}
+      <div className="rounded-2xl border border-slate-200/90 bg-white shadow-2xs overflow-hidden">
         {/* Table Toolbar */}
-        <div className="p-4 sm:p-5 bg-gradient-to-r from-amber-300 via-amber-200 to-amber-300 border-b border-amber-400 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-black text-amber-300 flex items-center justify-center font-black text-xs">
-              M
+        <div className="p-3.5 sm:p-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-purple-50 border border-purple-100 text-purple-600 flex items-center justify-center shrink-0">
+              <Icon name="layers" size={16} />
             </div>
             <div>
-              <h2 className="text-sm font-black text-slate-900 uppercase tracking-wide">
-                Head Office Cross-Organization Matrix
+              <h2 className="text-xs sm:text-sm font-black text-slate-900 uppercase tracking-wide">
+                Live Cross-Branch Matrix
               </h2>
-              <p className="text-[11px] font-bold text-slate-700">
-                Live snapshot of employee &amp; student rosters, daily presence, and leaves
+              <p className="text-[11px] text-slate-400 font-medium">
+                Live attendance breakdown for employees and students across all registered branches.
               </p>
             </div>
           </div>
 
-          {/* Quick Search */}
+          {/* Quick Search Input */}
           <div className="relative max-w-xs w-full">
             <Icon
               name="search"
               size={14}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
             />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search organisation or branch..."
-              className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-white/90 border border-amber-400 text-xs font-semibold text-slate-900 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/30"
+              placeholder="Filter by organization or city..."
+              className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200/80 text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
             />
           </div>
         </div>
@@ -292,52 +352,54 @@ export const HoOrganisationsPage: React.FC = () => {
         {/* Scrollable Table */}
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
-            {/* Group Header */}
+            {/* Top Tier: Section Group Header */}
             <thead>
-              <tr className="bg-amber-400 border-b-2 border-slate-900 text-[11px] font-black uppercase text-slate-900">
-                <th className="py-2.5 px-4 border-r border-amber-500">Organisation Details</th>
-                <th colSpan={5} className="py-2.5 px-3 text-center border-r border-amber-500 bg-amber-400/90">
+              <tr className="bg-slate-50/90 border-b border-slate-200/80 text-[10px] font-black uppercase tracking-wider text-slate-500">
+                <th className="py-2.5 px-4 border-r border-slate-200/70">Campus &amp; Branch</th>
+                <th colSpan={5} className="py-2.5 px-3 text-center border-r border-slate-200/70 bg-sky-50/50 text-sky-900">
                   👥 Employee Attendance &amp; Leaves
                 </th>
-                <th colSpan={5} className="py-2.5 px-3 text-center bg-amber-400/80">
+                <th colSpan={5} className="py-2.5 px-3 text-center bg-indigo-50/50 text-indigo-900">
                   🎓 Student Attendance &amp; Leaves
                 </th>
               </tr>
-              {/* Spreadsheet Column Headers matching user's layout */}
-              <tr className="bg-amber-300 text-slate-950 font-black text-[11px] uppercase tracking-wider border-b-2 border-slate-900 divide-x divide-amber-400">
-                <th className="py-3 px-4 min-w-[200px]">Organisation Name</th>
-                <th className="py-3 px-3 text-center min-w-[90px] bg-amber-200">Total EMP</th>
-                <th className="py-3 px-3 text-center min-w-[85px] text-emerald-950 bg-emerald-100">Present</th>
-                <th className="py-3 px-3 text-center min-w-[85px] text-indigo-950 bg-indigo-100">Leave</th>
-                <th className="py-3 px-3 text-center min-w-[110px] text-amber-950 bg-amber-100">Leave Approvals</th>
-                <th className="py-3 px-3 text-center min-w-[85px] text-rose-950 bg-rose-100">Absent</th>
-                <th className="py-3 px-3 text-center min-w-[100px] bg-amber-200">Total Students</th>
-                <th className="py-3 px-3 text-center min-w-[85px] text-emerald-950 bg-emerald-100">Present</th>
-                <th className="py-3 px-3 text-center min-w-[85px] text-indigo-950 bg-indigo-100">Leave</th>
-                <th className="py-3 px-3 text-center min-w-[110px] text-amber-950 bg-amber-100">Leave Approvals</th>
-                <th className="py-3 px-3 text-center min-w-[85px] text-rose-950 bg-rose-100">Absent</th>
+              {/* Secondary Tier: Column Headers */}
+              <tr className="bg-white border-b border-slate-200/80 text-[10px] font-black uppercase tracking-wider text-slate-400 divide-x divide-slate-100">
+                <th className="py-2.5 px-4 min-w-[220px]">Organisation Name</th>
+                <th className="py-2.5 px-3 text-center min-w-[85px] bg-slate-50/40">Total Staff</th>
+                <th className="py-2.5 px-3 text-center min-w-[80px] text-emerald-700 bg-emerald-50/30">Present</th>
+                <th className="py-2.5 px-3 text-center min-w-[80px] text-blue-700 bg-blue-50/30">Leave</th>
+                <th className="py-2.5 px-3 text-center min-w-[95px] text-amber-700 bg-amber-50/30">Approvals</th>
+                <th className="py-2.5 px-3 text-center min-w-[80px] text-rose-700 bg-rose-50/30">Absent</th>
+                <th className="py-2.5 px-3 text-center min-w-[85px] bg-slate-50/40">Total Students</th>
+                <th className="py-2.5 px-3 text-center min-w-[80px] text-emerald-700 bg-emerald-50/30">Present</th>
+                <th className="py-2.5 px-3 text-center min-w-[80px] text-blue-700 bg-blue-50/30">Leave</th>
+                <th className="py-2.5 px-3 text-center min-w-[95px] text-amber-700 bg-amber-50/30">Approvals</th>
+                <th className="py-2.5 px-3 text-center min-w-[80px] text-rose-700 bg-rose-50/30">Absent</th>
               </tr>
             </thead>
 
-            {/* Rows */}
-            <tbody className="divide-y divide-amber-200 text-slate-800 font-semibold bg-amber-50/20">
+            {/* Table Rows */}
+            <tbody className="divide-y divide-slate-100 text-slate-700 font-semibold bg-white">
               {filteredMatrix.length > 0 ? (
                 filteredMatrix.map((row, idx) => (
                   <tr
                     key={row.id}
-                    className="hover:bg-amber-100/70 transition-colors divide-x divide-amber-200/80"
+                    className="hover:bg-slate-50/70 transition-colors divide-x divide-slate-100"
                   >
                     {/* Organization Name */}
-                    <td className="py-3.5 px-4 font-black text-slate-950 bg-amber-50/60">
+                    <td className="py-3 px-4">
                       <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <span className="w-6 h-6 rounded-lg bg-amber-400 text-slate-950 flex items-center justify-center font-black text-[10px]">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span className="w-5 h-5 rounded-md bg-purple-50 text-purple-700 border border-purple-200/60 flex items-center justify-center font-black text-[9px] shrink-0">
                             {idx + 1}
                           </span>
-                          <div>
-                            <span className="text-sm font-extrabold">{row.org_name}</span>
-                            {row.branch_name && row.branch_name !== row.org_name && (
-                              <span className="block text-[10px] text-slate-500 font-medium">
+                          <div className="min-w-0">
+                            <span className="text-xs font-black text-slate-900 block truncate">
+                              {row.org_name}
+                            </span>
+                            {row.branch_name && (
+                              <span className="text-[10px] text-slate-400 font-medium block truncate">
                                 {row.branch_name} {row.city ? `• ${row.city}` : ''}
                               </span>
                             )}
@@ -351,80 +413,84 @@ export const HoOrganisationsPage: React.FC = () => {
                             );
                             navigate('/ho');
                           }}
-                          className="px-2 py-0.5 rounded-lg bg-white/80 hover:bg-white text-[10px] font-bold text-slate-700 border border-slate-200 shadow-2xs transition-all cursor-pointer"
-                          title="Open in Dashboard"
+                          className="px-2 py-0.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-[10px] font-bold text-slate-600 border border-slate-200 shadow-2xs transition-all cursor-pointer shrink-0"
+                          title="Open in Directory"
                         >
                           View
                         </button>
                       </div>
                     </td>
 
-                    {/* Total EMP */}
-                    <td className="py-3.5 px-3 text-center font-extrabold text-slate-900 bg-amber-50/30">
+                    {/* Total Staff */}
+                    <td className="py-3 px-3 text-center font-black text-slate-900 bg-slate-50/20">
                       {row.total_emp}
                     </td>
 
-                    {/* EMP Present */}
-                    <td className="py-3.5 px-3 text-center font-extrabold text-emerald-700 bg-emerald-50/50">
-                      <span className="px-2 py-0.5 rounded-md bg-emerald-100/80 text-emerald-800">
+                    {/* Staff Present */}
+                    <td className="py-3 px-3 text-center">
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/60 font-black text-[11px]">
                         {row.emp_present}
                       </span>
                     </td>
 
-                    {/* EMP Leave */}
-                    <td className="py-3.5 px-3 text-center font-bold text-indigo-700 bg-indigo-50/40">
-                      {row.emp_leave}
+                    {/* Staff Leave */}
+                    <td className="py-3 px-3 text-center">
+                      <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200/60 font-bold text-[11px]">
+                        {row.emp_leave}
+                      </span>
                     </td>
 
-                    {/* EMP Leave Approvals */}
-                    <td className="py-3.5 px-3 text-center font-bold text-amber-800 bg-amber-50/50">
+                    {/* Staff Approvals */}
+                    <td className="py-3 px-3 text-center">
                       {row.emp_leave_approvals > 0 ? (
-                        <span className="px-2 py-0.5 rounded-full bg-amber-200 text-amber-900 font-extrabold">
+                        <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200/70 font-black text-[10px]">
                           {row.emp_leave_approvals}
                         </span>
                       ) : (
-                        <span className="text-slate-400">0</span>
+                        <span className="text-slate-300">0</span>
                       )}
                     </td>
 
-                    {/* EMP Absent */}
-                    <td className="py-3.5 px-3 text-center font-bold text-rose-700 bg-rose-50/50">
-                      <span className="px-2 py-0.5 rounded-md bg-rose-100/80 text-rose-800 font-bold">
+                    {/* Staff Absent */}
+                    <td className="py-3 px-3 text-center">
+                      <span className="px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200/60 font-bold text-[11px]">
                         {row.emp_absent}
                       </span>
                     </td>
 
                     {/* Total Students */}
-                    <td className="py-3.5 px-3 text-center font-extrabold text-slate-900 bg-amber-50/30">
+                    <td className="py-3 px-3 text-center font-black text-slate-900 bg-slate-50/20">
                       {row.total_students}
                     </td>
 
                     {/* Students Present */}
-                    <td className="py-3.5 px-3 text-center font-extrabold text-emerald-700 bg-emerald-50/50">
-                      <span className="px-2 py-0.5 rounded-md bg-emerald-100/80 text-emerald-800">
+                    <td className="py-3 px-3 text-center">
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/60 font-black text-[11px]">
                         {row.student_present}
                       </span>
                     </td>
 
                     {/* Students Leave */}
-                    <td className="py-3.5 px-3 text-center font-bold text-indigo-700 bg-indigo-50/40">
-                      {row.student_leave}
+                    <td className="py-3 px-3 text-center">
+                      <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200/60 font-bold text-[11px]">
+                        {row.student_leave}
+                      </span>
                     </td>
 
-                    {/* Students Leave Approvals */}
-                    <td className="py-3.5 px-3 text-center font-bold text-amber-800 bg-amber-50/50">
+                    {/* Students Approvals */}
+                    <td className="py-3 px-3 text-center">
                       {row.student_leave_approvals > 0 ? (
-                        <span className="px-2 py-0.5 rounded-full bg-amber-200 text-amber-900 font-extrabold">
+                        <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200/70 font-black text-[10px]">
                           {row.student_leave_approvals}
                         </span>
                       ) : (
-                        <span className="text-slate-400">0</span>
+                        <span className="text-slate-300">0</span>
                       )}
                     </td>
 
                     {/* Students Absent */}
-                    <td className="py-3.5 px-3 text-center font-bold text-rose-700 bg-rose-50/50">
-                      <span className="px-2 py-0.5 rounded-md bg-rose-100/80 text-rose-800 font-bold">
+                    <td className="py-3 px-3 text-center">
+                      <span className="px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200/60 font-bold text-[11px]">
                         {row.student_absent}
                       </span>
                     </td>
@@ -433,47 +499,47 @@ export const HoOrganisationsPage: React.FC = () => {
               ) : (
                 <tr>
                   <td colSpan={11} className="py-12 text-center text-slate-400 font-bold">
-                    {loading ? 'Loading live matrix...' : 'No organizations found.'}
+                    {loading ? 'Loading live matrix...' : 'No organizations found matching search.'}
                   </td>
                 </tr>
               )}
             </tbody>
 
-            {/* Total Footer Row */}
+            {/* Total Footer Summary Row */}
             {data?.totals && (
               <tfoot>
-                <tr className="bg-amber-300 font-black text-slate-950 border-t-2 border-slate-900 divide-x divide-amber-400 text-xs">
-                  <td className="py-3.5 px-4 font-black uppercase tracking-wider bg-amber-400">
+                <tr className="bg-slate-900 text-white font-black divide-x divide-slate-800 text-xs">
+                  <td className="py-3.5 px-4 font-black uppercase tracking-wider">
                     Grand Total ({filteredMatrix.length} Orgs)
                   </td>
-                  <td className="py-3.5 px-3 text-center font-black bg-amber-200">
+                  <td className="py-3.5 px-3 text-center font-black text-white">
                     {data.totals.total_emp}
                   </td>
-                  <td className="py-3.5 px-3 text-center font-black text-emerald-950 bg-emerald-200">
+                  <td className="py-3.5 px-3 text-center font-black text-emerald-400">
                     {data.totals.emp_present}
                   </td>
-                  <td className="py-3.5 px-3 text-center font-black text-indigo-950 bg-indigo-200">
+                  <td className="py-3.5 px-3 text-center font-black text-blue-300">
                     {data.totals.emp_leave}
                   </td>
-                  <td className="py-3.5 px-3 text-center font-black text-amber-950 bg-amber-200">
+                  <td className="py-3.5 px-3 text-center font-black text-amber-300">
                     {data.totals.emp_leave_approvals}
                   </td>
-                  <td className="py-3.5 px-3 text-center font-black text-rose-950 bg-rose-200">
+                  <td className="py-3.5 px-3 text-center font-black text-rose-400">
                     {data.totals.emp_absent}
                   </td>
-                  <td className="py-3.5 px-3 text-center font-black bg-amber-200">
+                  <td className="py-3.5 px-3 text-center font-black text-white">
                     {data.totals.total_students}
                   </td>
-                  <td className="py-3.5 px-3 text-center font-black text-emerald-950 bg-emerald-200">
+                  <td className="py-3.5 px-3 text-center font-black text-emerald-400">
                     {data.totals.student_present}
                   </td>
-                  <td className="py-3.5 px-3 text-center font-black text-indigo-950 bg-indigo-200">
+                  <td className="py-3.5 px-3 text-center font-black text-blue-300">
                     {data.totals.student_leave}
                   </td>
-                  <td className="py-3.5 px-3 text-center font-black text-amber-950 bg-amber-200">
+                  <td className="py-3.5 px-3 text-center font-black text-amber-300">
                     {data.totals.student_leave_approvals}
                   </td>
-                  <td className="py-3.5 px-3 text-center font-black text-rose-950 bg-rose-200">
+                  <td className="py-3.5 px-3 text-center font-black text-rose-400">
                     {data.totals.student_absent}
                   </td>
                 </tr>

@@ -192,7 +192,7 @@ export function HrmsBulkImportModal({
         userOwnerId = parsed?.owner_id || (['OWNER'].includes(role) ? parsed?.id : undefined);
         userBranchId = parsed?.branch_id || undefined;
       }
-    } catch {}
+    } catch { }
     const defaultBranchId = (selectedOrgId && selectedOrgId !== 'all') ? selectedOrgId : userBranchId;
 
     let successCount = 0;

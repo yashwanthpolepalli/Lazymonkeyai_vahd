@@ -887,12 +887,14 @@ class EmployeeAttendanceReportService:
                     b_names.append(matched_b.vahd_name)
 
             b_conds = [
+                Employee.tenant_id.in_(b_ids),
                 Employee.branch_id.in_(b_ids),
                 cast(Employee.secondary_branches, String).ilike(f"%{branch_id}%"),
                 cast(Employee.meta_data, String).ilike(f"%{branch_id}%")
             ]
+            if b_names:
+                b_conds.append(Employee.vahd_branch.in_(b_names))
             for bn in b_names:
-                b_conds.append(Employee.vahd_branch.ilike(f"%{bn}%"))
                 b_conds.append(cast(Employee.secondary_branches, String).ilike(f"%{bn}%"))
                 b_conds.append(cast(Employee.meta_data, String).ilike(f"%{bn}%"))
             query = query.filter(or_(*b_conds))
@@ -988,12 +990,14 @@ class EmployeeAttendanceReportService:
                     b_names.append(matched_b.vahd_name)
 
             b_conds = [
+                Employee.tenant_id.in_(b_ids),
                 Employee.branch_id.in_(b_ids),
                 cast(Employee.secondary_branches, String).ilike(f"%{branch_id}%"),
                 cast(Employee.meta_data, String).ilike(f"%{branch_id}%")
             ]
+            if b_names:
+                b_conds.append(Employee.vahd_branch.in_(b_names))
             for bn in b_names:
-                b_conds.append(Employee.vahd_branch.ilike(f"%{bn}%"))
                 b_conds.append(cast(Employee.secondary_branches, String).ilike(f"%{bn}%"))
                 b_conds.append(cast(Employee.meta_data, String).ilike(f"%{bn}%"))
             query = query.filter(or_(*b_conds))

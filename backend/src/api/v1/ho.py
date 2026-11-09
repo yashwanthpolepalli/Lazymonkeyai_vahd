@@ -100,14 +100,12 @@ def get_ho_organizations(
         # Employee count
         employee_count = db.query(Employee).filter(
             or_(
+                Employee.tenant_id == b.id,
                 Employee.branch_id == b.id,
                 Employee.vahd_branch == b.branch_name,
-                Employee.vahd_branch.ilike(f"%{b.branch_name}%"),
-                Employee.vahd_branch.ilike(f"%{b.vahd_name}%") if b.vahd_name else False,
+                Employee.vahd_branch == b.vahd_name if b.vahd_name else False,
                 cast(Employee.secondary_branches, String).ilike(f"%{b.id}%"),
-                cast(Employee.secondary_branches, String).ilike(f"%{b.branch_name}%"),
                 cast(Employee.meta_data, String).ilike(f"%{b.id}%"),
-                cast(Employee.meta_data, String).ilike(f"%{b.branch_name}%"),
                 Employee.owner_id.in_(owner_ids) if owner_ids else False
             ),
             or_(func.upper(Employee.status) == "ACTIVE", Employee.status == "ACTIVE", Employee.status == "Active", Employee.status.is_(None))
@@ -116,9 +114,10 @@ def get_ho_organizations(
         # Student count
         student_count = db.query(student).filter(
             or_(
+                student.tenant_id == b.id,
                 student.branch_id == b.id,
-                student.primary_vahd_location.ilike(f"%{b.branch_name}%"),
-                student.primary_vahd_location.ilike(f"%{b.vahd_name}%") if b.vahd_name else False,
+                student.primary_vahd_location == b.branch_name,
+                student.primary_vahd_location == b.vahd_name if b.vahd_name else False,
                 student.owner_id.in_(owner_ids) if owner_ids else False
             ),
             or_(func.upper(student.status) == "ACTIVE", student.status == "ACTIVE", student.status == "Active", student.status.is_(None))
@@ -610,10 +609,10 @@ def get_ho_dashboard(
     if is_filtered and target_branch:
         emp_query = emp_query.filter(
             or_(
+                Employee.tenant_id == target_branch.id,
                 Employee.branch_id == target_branch.id,
                 Employee.vahd_branch == target_branch.branch_name,
-                Employee.vahd_branch.ilike(f"%{target_branch.branch_name}%"),
-                Employee.vahd_branch.ilike(f"%{target_branch.vahd_name}%") if target_branch.vahd_name else False,
+                Employee.vahd_branch == target_branch.vahd_name if target_branch.vahd_name else False,
                 Employee.owner_id == target_branch.owner_id if target_branch.owner_id else False
             )
         )
@@ -651,9 +650,10 @@ def get_ho_dashboard(
     if is_filtered and target_branch:
         stud_query = stud_query.filter(
             or_(
+                student.tenant_id == target_branch.id,
                 student.branch_id == target_branch.id,
-                student.primary_vahd_location.ilike(f"%{target_branch.branch_name}%"),
-                student.primary_vahd_location.ilike(f"%{target_branch.vahd_name}%") if target_branch.vahd_name else False,
+                student.primary_vahd_location == target_branch.branch_name,
+                student.primary_vahd_location == target_branch.vahd_name if target_branch.vahd_name else False,
                 student.owner_id == target_branch.owner_id if target_branch.owner_id else False
             )
         )
@@ -774,19 +774,20 @@ def get_ho_dashboard(
 
         b_emp_count = db.query(Employee).filter(
             or_(
+                Employee.tenant_id == b.id,
                 Employee.branch_id == b.id,
                 Employee.vahd_branch == b.branch_name,
-                Employee.vahd_branch.ilike(f"%{b.branch_name}%"),
-                Employee.vahd_branch.ilike(f"%{b.vahd_name}%") if b.vahd_name else False,
+                Employee.vahd_branch == b.vahd_name if b.vahd_name else False,
                 Employee.owner_id.in_(b_owner_ids) if b_owner_ids else False
             ),
             emp_status_filter
         ).count()
         b_stud_count = db.query(student).filter(
             or_(
+                student.tenant_id == b.id,
                 student.branch_id == b.id,
-                student.primary_vahd_location.ilike(f"%{b.branch_name}%"),
-                student.primary_vahd_location.ilike(f"%{b.vahd_name}%") if b.vahd_name else False,
+                student.primary_vahd_location == b.branch_name,
+                student.primary_vahd_location == b.vahd_name if b.vahd_name else False,
                 student.owner_id.in_(b_owner_ids) if b_owner_ids else False
             ),
             stud_status_filter
@@ -896,9 +897,7 @@ def _gather_ho_branch_attendance(
             or_(
                 vahdBranch.id == target_branch_id,
                 vahdBranch.branch_name == target_branch_id,
-                vahdBranch.vahd_name == target_branch_id,
-                vahdBranch.branch_name.ilike(f"%{target_branch_id}%"),
-                vahdBranch.vahd_name.ilike(f"%{target_branch_id}%")
+                vahdBranch.vahd_name == target_branch_id
             )
         )
     elif ho_id and ho_id != "ho_default":
@@ -968,26 +967,20 @@ def _gather_ho_branch_attendance(
 
         # Fetch employees dynamically linked to this branch
         b_conds = [
+            Employee.tenant_id == b.id,
             Employee.branch_id == b.id,
             Employee.vahd_branch == b.branch_name,
             cast(Employee.secondary_branches, String).ilike(f"%{b.id}%"),
-            cast(Employee.secondary_branches, String).ilike(f"%{b.branch_name}%"),
             cast(Employee.meta_data, String).ilike(f"%{b.id}%"),
-            cast(Employee.meta_data, String).ilike(f"%{b.branch_name}%"),
         ]
-        if getattr(b, 'branch_name', None):
-            b_conds.append(Employee.vahd_branch.ilike(f"%{b.branch_name}%"))
         if getattr(b, 'vahd_name', None):
             b_conds.append(Employee.vahd_branch == b.vahd_name)
-            b_conds.append(Employee.vahd_branch.ilike(f"%{b.vahd_name}%"))
-            b_conds.append(cast(Employee.secondary_branches, String).ilike(f"%{b.vahd_name}%"))
-            b_conds.append(cast(Employee.meta_data, String).ilike(f"%{b.vahd_name}%"))
 
         if target_branch_id and str(target_branch_id).lower() not in ["all", "", "none"]:
             b_conds.extend([
+                Employee.tenant_id == target_branch_id,
                 Employee.branch_id == target_branch_id,
                 Employee.vahd_branch == target_branch_id,
-                Employee.vahd_branch.ilike(f"%{target_branch_id}%"),
                 cast(Employee.secondary_branches, String).ilike(f"%{target_branch_id}%"),
                 cast(Employee.meta_data, String).ilike(f"%{target_branch_id}%"),
             ])
@@ -1033,20 +1026,18 @@ def _gather_ho_branch_attendance(
 
         # Fetch students dynamically linked to this branch
         s_conds = [
+            student.tenant_id == b.id,
             student.branch_id == b.id,
             student.primary_vahd_location == b.branch_name,
         ]
-        if getattr(b, 'branch_name', None):
-            s_conds.append(student.primary_vahd_location.ilike(f"%{b.branch_name}%"))
         if getattr(b, 'vahd_name', None):
             s_conds.append(student.primary_vahd_location == b.vahd_name)
-            s_conds.append(student.primary_vahd_location.ilike(f"%{b.vahd_name}%"))
 
         if target_branch_id and str(target_branch_id).lower() not in ["all", "", "none"]:
             s_conds.extend([
+                student.tenant_id == target_branch_id,
                 student.branch_id == target_branch_id,
-                student.primary_vahd_location == target_branch_id,
-                student.primary_vahd_location.ilike(f"%{target_branch_id}%")
+                student.primary_vahd_location == target_branch_id
             ])
 
         students = db.query(student).filter(
@@ -1553,14 +1544,12 @@ def get_ho_organisations_matrix(
         # 1. Employees in this branch
         emps = db.query(Employee).filter(
             or_(
+                Employee.tenant_id == b.id,
                 Employee.branch_id == b.id,
                 Employee.vahd_branch == b.branch_name,
-                Employee.vahd_branch.ilike(f"%{b.branch_name}%"),
-                Employee.vahd_branch.ilike(f"%{b.vahd_name}%") if b.vahd_name else False,
+                Employee.vahd_branch == b.vahd_name if b.vahd_name else False,
                 cast(Employee.secondary_branches, String).ilike(f"%{b.id}%"),
-                cast(Employee.secondary_branches, String).ilike(f"%{b.branch_name}%"),
-                cast(Employee.meta_data, String).ilike(f"%{b.id}%"),
-                cast(Employee.meta_data, String).ilike(f"%{b.branch_name}%")
+                cast(Employee.meta_data, String).ilike(f"%{b.id}%")
             ),
             or_(func.upper(Employee.status) == "ACTIVE", Employee.status == "ACTIVE", Employee.status == "Active", Employee.status.is_(None))
         ).all()
@@ -1667,9 +1656,10 @@ def get_ho_organisations_matrix(
         # 2. Students in this branch
         students = db.query(student).filter(
             or_(
+                student.tenant_id == b.id,
                 student.branch_id == b.id,
-                student.primary_vahd_location.ilike(f"%{b.branch_name}%"),
-                student.primary_vahd_location.ilike(f"%{b.vahd_name}%") if b.vahd_name else False,
+                student.primary_vahd_location == b.branch_name,
+                student.primary_vahd_location == b.vahd_name if b.vahd_name else False,
                 student.owner_id == b.owner_id if b.owner_id else False,
                 student.ho_id == b.ho_id if b.ho_id else False
             ),

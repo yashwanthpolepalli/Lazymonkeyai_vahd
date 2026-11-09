@@ -368,7 +368,13 @@ class studentService:
                 if branch_id and str(branch_id).lower() not in ["all", "", "none", "undefined", "null"]:
                     query = query.filter(student.branch_id == branch_id)
                 if branch and str(branch).lower() not in ["all", "", "none", "undefined", "null"]:
-                    query = query.filter(student.primary_vahd_location.ilike(f"%{branch}%"))
+                    query = query.filter(
+                        or_(
+                            student.tenant_id == branch,
+                            student.branch_id == branch,
+                            student.primary_vahd_location == branch
+                        )
+                    )
             elif user_role in ["HEAD_OFFICE", "HO"]:
                 # Head Office can view all students across organizations under their Head Office
                 possible_ho_ids = [x for x in [current_user.ho_id, current_user.id] if x]
@@ -416,9 +422,13 @@ class studentService:
                             if matched_b.vahd_name:
                                 b_filter_names.append(matched_b.vahd_name)
 
-                        conds = [student.branch_id.in_(b_filter_ids), student.ho_id == target_b]
-                        for nm in b_filter_names:
-                            conds.append(student.primary_vahd_location.ilike(f"%{nm}%"))
+                        conds = [
+                            student.tenant_id.in_(b_filter_ids),
+                            student.branch_id.in_(b_filter_ids),
+                            student.ho_id == target_b
+                        ]
+                        if b_filter_names:
+                            conds.append(student.primary_vahd_location.in_(b_filter_names))
                         query = query.filter(or_(*conds))
             elif user_role in ["OWNER"]:
                 # vahd Owner views students strictly belonging to their owner_id or owned branches
@@ -455,16 +465,20 @@ class studentService:
                             if matched_b.vahd_name:
                                 b_filter_names.append(matched_b.vahd_name)
 
-                        conds = [student.branch_id.in_(b_filter_ids)]
-                        for nm in b_filter_names:
-                            conds.append(student.primary_vahd_location.ilike(f"%{nm}%"))
+                        conds = [
+                            student.tenant_id.in_(b_filter_ids),
+                            student.branch_id.in_(b_filter_ids)
+                        ]
+                        if b_filter_names:
+                            conds.append(student.primary_vahd_location.in_(b_filter_names))
                         query = query.filter(or_(*conds))
             elif user_role in ["employee", "COACH", "STAFF", "MANAGER"]:
                 # Staff/employee scoped to their assigned students or branch
                 conditions = [student.employee_id == current_user.id]
                 if current_user.branch_id:
+                    conditions.append(student.tenant_id == current_user.branch_id)
                     conditions.append(student.branch_id == current_user.branch_id)
-                    conditions.append(student.primary_vahd_location.ilike(f"%{current_user.branch_id}%"))
+                    conditions.append(student.primary_vahd_location == current_user.branch_id)
                 if current_user.owner_id:
                     conditions.append(student.owner_id == current_user.owner_id)
                 query = query.filter(or_(*conditions))
@@ -495,9 +509,12 @@ class studentService:
                         if matched_b.vahd_name:
                             b_filter_names.append(matched_b.vahd_name)
 
-                    conds = [student.branch_id.in_(b_filter_ids)]
-                    for nm in b_filter_names:
-                        conds.append(student.primary_vahd_location.ilike(f"%{nm}%"))
+                    conds = [
+                        student.tenant_id.in_(b_filter_ids),
+                        student.branch_id.in_(b_filter_ids)
+                    ]
+                    if b_filter_names:
+                        conds.append(student.primary_vahd_location.in_(b_filter_names))
                     query = query.filter(or_(*conds))
 
         students = query.order_by(student.created_at.desc()).all()
@@ -548,13 +565,13 @@ class studentService:
             scheme = None
             if branch_target:
                 scheme = db.query(GeofenceScheme).filter(
-                    GeofenceScheme.branch_name.ilike(f"%{branch_target}%"),
+                    GeofenceScheme.branch_name == branch_target,
                     GeofenceScheme.is_active == True,
                     GeofenceScheme.latitude.isnot(None)
                 ).first()
                 if not scheme:
                     scheme = db.query(GeofenceScheme).filter(
-                        GeofenceScheme.branch_name.ilike(f"%{branch_target}%"),
+                        GeofenceScheme.branch_name == branch_target,
                         GeofenceScheme.is_active == True
                     ).first()
 
@@ -645,14 +662,16 @@ class studentService:
                     vahdBranch.owner_id == owner_hint,
                     or_(
                         vahdBranch.id == branch_ref,
-                        vahdBranch.branch_name.ilike(f"%{branch_ref}%")
+                        vahdBranch.branch_name == branch_ref,
+                        vahdBranch.vahd_name == branch_ref
                     )
                 ).first()
             if not matched_branch:
                 matched_branch = db.query(vahdBranch).filter(
                     or_(
                         vahdBranch.id == branch_ref,
-                        vahdBranch.branch_name.ilike(f"%{branch_ref}%")
+                        vahdBranch.branch_name == branch_ref,
+                        vahdBranch.vahd_name == branch_ref
                     )
                 ).first()
 

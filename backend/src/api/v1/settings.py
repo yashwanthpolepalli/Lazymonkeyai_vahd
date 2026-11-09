@@ -1,5 +1,6 @@
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Body, Query
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from src.database.session import get_db
 from src.services.settings_service import SettingsService
@@ -17,9 +18,9 @@ def get_branch_geofence_status(
     branch_id: str,
     db: Session = Depends(get_db)
 ):
-    branch = db.query(vahdBranch).filter(vahdBranch.id == branch_id).first()
-    if not branch:
-        branch = db.query(vahdBranch).filter(vahdBranch.branch_name.ilike(branch_id)).first()
+    branch = db.query(vahdBranch).filter(
+        or_(vahdBranch.id == branch_id, vahdBranch.branch_name == branch_id, vahdBranch.vahd_name == branch_id)
+    ).first()
     if not branch:
         return {"branch_id": branch_id, "geofence_portal_enabled": False}
     return {

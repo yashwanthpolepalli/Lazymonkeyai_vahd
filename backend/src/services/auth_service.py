@@ -51,8 +51,8 @@ def _fetch_vahd_context(db: Session, user: User = None) -> dict:
                     branch = db.query(vahdBranch).filter(
                         or_(
                             vahdBranch.id == loc,
-                            vahdBranch.branch_name.ilike(f"%{loc}%"),
-                            vahdBranch.vahd_name.ilike(f"%{loc}%")
+                            vahdBranch.branch_name == loc,
+                            vahdBranch.vahd_name == loc
                         )
                     ).first()
                 if not branch and cust.owner_id:
@@ -73,8 +73,8 @@ def _fetch_vahd_context(db: Session, user: User = None) -> dict:
                         branch = db.query(vahdBranch).filter(
                             or_(
                                 vahdBranch.id == t_b,
-                                vahdBranch.branch_name.ilike(f"%{t_b}%"),
-                                vahdBranch.vahd_name.ilike(f"%{t_b}%")
+                                vahdBranch.branch_name == t_b,
+                                vahdBranch.vahd_name == t_b
                             )
                         ).first()
                     if not branch and emp.owner_id:
@@ -92,8 +92,8 @@ def _fetch_vahd_context(db: Session, user: User = None) -> dict:
                 branch = db.query(vahdBranch).filter(
                     or_(
                         vahdBranch.id == t_loc,
-                        vahdBranch.branch_name.ilike(f"%{t_loc}%"),
-                        vahdBranch.vahd_name.ilike(f"%{t_loc}%")
+                        vahdBranch.branch_name == t_loc,
+                        vahdBranch.vahd_name == t_loc
                     )
                 ).first()
 

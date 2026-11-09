@@ -1,11 +1,16 @@
-from typing import Optional, Generator
+from typing import Optional, Generator, List
 from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from src.database.session import SessionLocal, get_db
-from src.database.tenant_session import set_tenant_scope, set_tenant_scope_deny, run_in_resolving
+from src.database.tenant_session import (
+    set_tenant_scope,
+    set_tenant_scope_deny,
+    run_in_resolving,
+    get_tenant_scope,
+)
 from src.models.user import User
 from src.utils.security import verify_token
 
@@ -216,6 +221,17 @@ async def apply_tenant_scope(
         set_tenant_scope(None)  # auth + M2M webhooks run unscoped
     else:
         set_tenant_scope_deny()  # unauthenticated → deny by default
+
+def current_tenant_scope() -> Optional[List[str]]:
+    """Return the active request's tenant scope (list of branch/tenant ids),
+    or None when unscoped (platform admin / system job / anonymous-non-scope).
+
+    For use by HO-level endpoints: when the ribbon narrows to a single
+    organization the scope is exactly [that branch id] — use it to narrow
+    branch queries that would otherwise aggregate every org under the HO.
+    """
+    return get_tenant_scope()
+
 
 def require_role(allowed_roles: list):
     def role_checker(current_user: Optional[User] = Depends(get_current_user)):

@@ -113,18 +113,23 @@ class HrmsService:
                 u = db.query(User).filter(func.lower(User.email) == t.email.strip().lower()).first()
 
             b = None
-            if t.primary_vahd_location:
+            # Priority 1: Use tenant_id directly (most precise - it's the branch UUID)
+            if t.tenant_id:
+                b = db.query(vahdBranch).filter(vahdBranch.id == t.tenant_id).first()
+            # Priority 2: Use primary_vahd_location but only match by vahd_name (unique display name)
+            # NEVER match by branch_name alone - multiple branches can share same branch_name (e.g. 'bng')
+            if not b and t.primary_vahd_location:
                 b = db.query(vahdBranch).filter(
                     or_(
                         vahdBranch.id == t.primary_vahd_location,
-                        vahdBranch.branch_name == t.primary_vahd_location,
                         vahdBranch.vahd_name == t.primary_vahd_location
                     )
                 ).first()
 
-            t_branch_id = (u.branch_id if u and u.branch_id else None) or (b.id if b else None)
-            t_owner_id = (u.owner_id if u and u.owner_id else None) or (b.owner_id if b else None)
-            t_ho_id = (u.ho_id if u and u.ho_id else None) or (b.ho_id if b else None)
+            # Priority: tenant_id from employeeProfile > user.branch_id > branch lookup
+            t_branch_id = (b.id if b else None) or (u.branch_id if u and u.branch_id else None)
+            t_owner_id = (b.owner_id if b else None) or (u.owner_id if u and u.owner_id else None)
+            t_ho_id = (b.ho_id if b else None) or (u.ho_id if u and u.ho_id else None)
 
             existing_emp = db.query(Employee).filter(
                 (Employee.email.ilike(t.email)) | (Employee.id == f"emp_{t.id}")
@@ -186,6 +191,78 @@ class HrmsService:
                     skills=[t.specialization] if t.specialization else []
                 )
                 db.add(new_emp)
+
+        # 3. Two-way synchronization: Upsert each HRMS Employee into employeeProfile
+        all_hrms_emps = db.query(Employee).all()
+        for emp in all_hrms_emps:
+            clean_email = (emp.email or "").strip().lower()
+            if not clean_email and not emp.id:
+                continue
+
+            tr_id = emp.id.replace("emp_", "")
+            existing_ep = db.query(employeeProfile).filter(
+                or_(
+                    employeeProfile.id == tr_id,
+                    employeeProfile.id == emp.id,
+                    (func.lower(employeeProfile.email) == clean_email if clean_email else False)
+                )
+            ).first()
+
+            matched_u = db.query(User).filter(func.lower(User.email) == clean_email).first() if clean_email else None
+            user_id_val = matched_u.id if matched_u else None
+
+            # Determine branch name and id
+            b_obj = None
+            if emp.branch_id:
+                b_obj = db.query(vahdBranch).filter(vahdBranch.id == emp.branch_id).first()
+            if not b_obj and emp.vahd_branch:
+                b_obj = db.query(vahdBranch).filter(
+                    or_(vahdBranch.branch_name == emp.vahd_branch, vahdBranch.vahd_name == emp.vahd_branch)
+                ).first()
+
+            loc = emp.vahd_branch or (b_obj.branch_name if b_obj else "") or (b_obj.vahd_name if b_obj else "")
+            tenant = emp.branch_id or (b_obj.id if b_obj else None) or emp.tenant_id
+
+            if not existing_ep:
+                # Extract any bank details from meta_data if present
+                meta = emp.meta_data or {}
+                bank_info = meta.get("bank_details") if isinstance(meta, dict) else {}
+                bank_acc = bank_info.get("account_number") or ""
+                bank_ifsc = bank_info.get("ifsc_code") or ""
+
+                emp_role = str(getattr(emp, "role", None) or (emp.meta_data.get("post_details", {}).get("role") if isinstance(emp.meta_data, dict) else None) or "EMPLOYEE").upper()
+                emp_spec = emp.designation or emp.department or ""
+                emp_active = (str(emp.status or "").strip().lower() == "active") if emp.status else True
+
+                new_ep = employeeProfile(
+                    id=tr_id if tr_id.startswith("tr_") else f"tr_{tr_id}",
+                    tenant_id=tenant,
+                    user_id=user_id_val,
+                    full_name=f"{emp.first_name or ''} {emp.last_name or ''}".strip(),
+                    email=clean_email,
+                    phone=emp.phone or "",
+                    gender=emp.gender or "",
+                    role=emp_role,
+                    specialization=emp_spec,
+                    primary_vahd_location=loc,
+                    base_monthly_salary=float(emp.salary or 0.0),
+                    bank_account_no=bank_acc,
+                    bank_ifsc=bank_ifsc,
+                    is_active=emp_active,
+                    created_at=emp.created_at if hasattr(emp, "created_at") and emp.created_at else datetime.now(IST).replace(tzinfo=None)
+                )
+                db.add(new_ep)
+            else:
+                if tenant and not existing_ep.tenant_id:
+                    existing_ep.tenant_id = tenant
+                if loc and not existing_ep.primary_vahd_location:
+                    existing_ep.primary_vahd_location = loc
+                if emp.phone and not existing_ep.phone:
+                    existing_ep.phone = emp.phone
+                if emp.gender and not existing_ep.gender:
+                    existing_ep.gender = emp.gender
+                if user_id_val and not existing_ep.user_id:
+                    existing_ep.user_id = user_id_val
 
         db.commit()
 
@@ -741,18 +818,40 @@ class HrmsService:
 
     @staticmethod
     def delete_employee(db: Session, emp_id: str) -> bool:
-        emp = db.query(Employee).filter(Employee.id == emp_id).first()
-        if not emp:
+        clean_id = str(emp_id).strip()
+        tr_id = clean_id.replace("emp_", "")
+        emp_id_with_prefix = f"emp_{tr_id}" if not clean_id.startswith("emp_") else clean_id
+
+        emp = db.query(Employee).filter(
+            or_(
+                Employee.id == clean_id,
+                Employee.id == emp_id_with_prefix,
+                Employee.id == tr_id
+            )
+        ).first()
+
+        ep = db.query(employeeProfile).filter(
+            or_(
+                employeeProfile.id == clean_id,
+                employeeProfile.id == tr_id,
+                (employeeProfile.id == f"tr_{tr_id}" if not tr_id.startswith("tr_") else False),
+                (func.lower(employeeProfile.email) == func.lower(emp.email) if emp and emp.email else False)
+            )
+        ).first()
+
+        if not emp and not ep:
             return False
 
-        employee_id = emp_id.replace("emp_", "")
-        employee = db.query(employeeProfile).filter(
-            (employeeProfile.id == employee_id) | (employeeProfile.email == emp.email)
-        ).first()
-        if employee:
-            db.delete(employee)
+        if ep:
+            try:
+                db.query(PayrollInvoice).filter(PayrollInvoice.employee_id == ep.id).delete(synchronize_session=False)
+            except Exception:
+                pass
+            db.delete(ep)
 
-        db.delete(emp)
+        if emp:
+            db.delete(emp)
+
         db.commit()
         return True
 

@@ -266,16 +266,12 @@ export function HrmsAttendanceTab({ onSuccessToast, scope }: HrmsAttendanceTabPr
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">
-          {/* Scope indicator or selector */}
-          <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200/80 shadow-2xs">
-            <span className="text-[10px] font-black uppercase text-slate-400 pl-2">
-              Scope:
-            </span>
-            {scope ? (
-              <span className="bg-white text-purple-700 px-3 py-1.5 rounded-lg text-xs font-black shadow-xs">
-                {scope === 'student' ? '🎓 Students Attendance' : '👨‍💼 Employees Attendance'}
+          {/* Scope indicator or selector - Hidden when already scoped in Students View or Employees View */}
+          {!scope && (
+            <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200/80 shadow-2xs">
+              <span className="text-[10px] font-black uppercase text-slate-400 pl-2">
+                Scope:
               </span>
-            ) : (
               <select
                 value={attendanceScope}
                 onChange={(e) => {
@@ -288,8 +284,8 @@ export function HrmsAttendanceTab({ onSuccessToast, scope }: HrmsAttendanceTabPr
                 <option value="employee">👨‍💼 Employees Attendance</option>
                 <option value="student">🎓 Students Attendance</option>
               </select>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Manual Punch Action Button */}
           <button
@@ -320,7 +316,7 @@ export function HrmsAttendanceTab({ onSuccessToast, scope }: HrmsAttendanceTabPr
             className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white shadow-md shadow-purple-600/25 transition cursor-pointer"
           >
             <Icon name="plus" size={13} />
-            <span>{attendanceScope === 'student' ? '+ Manual Student Punch / Mark Date' : '+ Manual Punch / Mark Date'}</span>
+            <span>{attendanceScope === 'student' ? 'Manual Student Punch / Mark Date' : 'Manual Punch / Mark Date'}</span>
           </button>
         </div>
       </div>

@@ -128,7 +128,7 @@ interface StudentItem {
 export function StudentManagementTab() {
   const [students, setStudents] = useState<StudentItem[]>([]);
   const [availableCourses, setAvailableCourses] = useState<string[]>([]);
-  const [branchesList, setBranchesList] = useState<Array<{ id: string; branch_name: string; name?: string; vahd_name?: string }>>([]);
+  const [branchesList, setBranchesList] = useState<Array<{ id: string; branch_name: string; name?: string; vahd_name?: string; city?: string }>>([]);
   const [selectedBranch, setSelectedBranch] = useState<string>(() => {
     return localStorage.getItem('vahd_selected_org_id') || 'all';
   });
@@ -964,8 +964,9 @@ export function StudentManagementTab() {
                   const sCourse = getStudentCourse(s);
                   const sMedium = getStudentMedium(s);
                   const sRole = meta.batch || meta.category || 'Student';
-                  const sDistrict = meta.district || meta.city || meta.permanent_address?.district || '—';
-                  const sPlaceOfWork = meta.organisation_name || meta.branch_name || s.branch || meta.campus || meta.place_of_work || (branchesList.find(b => b.id === s.branch_id || b.id === meta.branch_id)?.branch_name) || (branchesList.length === 1 ? branchesList[0].branch_name : '—');
+                  const matchedBranch = branchesList.find(b => b.id === s.branch_id || b.id === (s as any).tenant_id || b.id === meta.branch_id);
+                  const sDistrict = matchedBranch?.branch_name || matchedBranch?.city || meta.district || meta.city || meta.permanent_address?.district || '—';
+                  const sPlaceOfWork = matchedBranch?.vahd_name || meta.organisation_name || (branchesList.length === 1 ? (branchesList[0] as any).vahd_name || branchesList[0].branch_name : '—');
                   const isSelected = selectedIds.has(s.id);
                   const studentNo = s.member_code || s.code || `STU-${String(idx + 1).padStart(3, '0')}`;
 

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Icon } from '@/components/ui/Icon';
 import { Badge } from '@/components/ui/Badge';
 import { cn } from '@/utils/cn';
@@ -458,10 +459,10 @@ export function EnrollmentModal({
 
   const durationLabel = selectedDurationDays === 30 ? 'Monthly (30 Days)' : selectedDurationDays === 90 ? 'Quarterly (90 Days)' : selectedDurationDays === 180 ? '6-Month (180 Days)' : selectedDurationDays === 365 ? 'Yearly (365 Days)' : `${selectedDurationDays} Days`;
 
-  return (
+  const modalContent = (
     <>
-      <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 animate-fade-in" onClick={handleClose} />
-      <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl sm:max-w-3xl max-h-[92vh] overflow-y-auto bg-white rounded-3xl shadow-2xl z-50 animate-slide-up">
+      <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-[9999] animate-fade-in" onClick={handleClose} />
+      <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl sm:max-w-3xl max-h-[92vh] overflow-y-auto bg-white rounded-3xl shadow-2xl z-[9999] animate-slide-up">
         {/* Modal Header */}
         <div className="sticky top-0 bg-white/95 backdrop-blur border-b border-slate-100 p-5 flex items-center justify-between z-20">
           <div className="flex items-center gap-3">
@@ -1352,6 +1353,8 @@ export function EnrollmentModal({
       </div>
     </>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent;
 }
 
 function wait(ms: number): Promise<void> {

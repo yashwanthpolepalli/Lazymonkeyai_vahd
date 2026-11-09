@@ -1008,7 +1008,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
       {embedded ? (
         <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3">
           <div className="shrink-0">
-            <h2 className="text-xl font-black text-navy-900 tracking-tight flex items-center gap-2">
+            <h2 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
               <Icon name="book-open" size={22} className="text-brand-600" />
               <span>Courses, Degree Programs &amp; Fee Structure</span>
             </h2>
@@ -1022,7 +1022,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
                 setNewCatName('');
                 setShowAddCategoryModal(true);
               }}
-              className="px-3 py-1.5 rounded-xl text-xs font-bold border border-navy-200 bg-white hover:bg-navy-50 text-navy-700 flex items-center gap-1.5 shadow-2xs transition whitespace-nowrap shrink-0 cursor-pointer"
+              className="px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 flex items-center gap-1.5 shadow-2xs transition whitespace-nowrap shrink-0 cursor-pointer"
             >
               <Icon name="layers" size={14} className="text-indigo-600" />
               <span>Branches ({categories.length})</span>
@@ -1030,7 +1030,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
             <button
               type="button"
               onClick={() => setClassificationManagerOpen(true)}
-              className="px-3 py-1.5 rounded-xl text-xs font-bold border border-navy-200 bg-white hover:bg-navy-50 text-navy-700 flex items-center gap-1.5 shadow-2xs transition whitespace-nowrap shrink-0 cursor-pointer"
+              className="px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 flex items-center gap-1.5 shadow-2xs transition whitespace-nowrap shrink-0 cursor-pointer"
             >
               <Icon name="tag" size={14} className="text-purple-600" />
               <span>Classifications ({classifications.length})</span>
@@ -1038,7 +1038,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
             <button
               type="button"
               onClick={() => setLanguageManagerOpen(true)}
-              className="px-3 py-1.5 rounded-xl text-xs font-bold border border-navy-200 bg-white hover:bg-navy-50 text-navy-700 flex items-center gap-1.5 shadow-2xs transition whitespace-nowrap shrink-0 cursor-pointer"
+              className="px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 flex items-center gap-1.5 shadow-2xs transition whitespace-nowrap shrink-0 cursor-pointer"
             >
               <Icon name="globe" size={14} className="text-blue-600" />
               <span>Mediums / Languages ({languages.length})</span>
@@ -1046,7 +1046,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
             <button
               type="button"
               onClick={handleOpenTierManager}
-              className="px-3 py-1.5 rounded-xl text-xs font-bold border border-navy-200 bg-white hover:bg-navy-50 text-navy-700 flex items-center gap-1.5 shadow-2xs transition whitespace-nowrap shrink-0 cursor-pointer"
+              className="px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 flex items-center gap-1.5 shadow-2xs transition whitespace-nowrap shrink-0 cursor-pointer"
             >
               <Icon name="clock" size={14} className="text-brand-600" />
               <span>Manage Duration Tiers ({durationTiers.length})</span>
@@ -1084,7 +1084,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
                   setNewCatName('');
                   setShowAddCategoryModal(true);
                 }}
-                className="px-3 py-1.5 rounded-xl text-xs font-bold border border-navy-200 bg-white hover:bg-navy-50 text-navy-700 flex items-center gap-1.5 shadow-2xs transition whitespace-nowrap shrink-0 cursor-pointer"
+                className="px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 flex items-center gap-1.5 shadow-2xs transition whitespace-nowrap shrink-0 cursor-pointer"
               >
                 <Icon name="layers" size={14} className="text-indigo-600" />
                 <span>Branches ({categories.length})</span>
@@ -1092,7 +1092,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
               <button
                 type="button"
                 onClick={() => setClassificationManagerOpen(true)}
-                className="px-3 py-1.5 rounded-xl text-xs font-bold border border-navy-200 bg-white hover:bg-navy-50 text-navy-700 flex items-center gap-1.5 shadow-2xs transition whitespace-nowrap shrink-0 cursor-pointer"
+                className="px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 flex items-center gap-1.5 shadow-2xs transition whitespace-nowrap shrink-0 cursor-pointer"
               >
                 <Icon name="tag" size={14} className="text-purple-600" />
                 <span>Classifications ({classifications.length})</span>
@@ -1100,7 +1100,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
               <button
                 type="button"
                 onClick={() => setLanguageManagerOpen(true)}
-                className="px-3 py-1.5 rounded-xl text-xs font-bold border border-navy-200 bg-white hover:bg-navy-50 text-navy-700 flex items-center gap-1.5 shadow-2xs transition whitespace-nowrap shrink-0 cursor-pointer"
+                className="px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 flex items-center gap-1.5 shadow-2xs transition whitespace-nowrap shrink-0 cursor-pointer"
               >
                 <Icon name="globe" size={14} className="text-blue-600" />
                 <span>Mediums / Languages ({languages.length})</span>
@@ -1108,7 +1108,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
               <button
                 type="button"
                 onClick={handleOpenTierManager}
-                className="px-3 py-1.5 rounded-xl text-xs font-bold border border-navy-200 bg-white hover:bg-navy-50 text-navy-700 flex items-center gap-1.5 shadow-2xs transition whitespace-nowrap shrink-0 cursor-pointer"
+                className="px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 flex items-center gap-1.5 shadow-2xs transition whitespace-nowrap shrink-0 cursor-pointer"
               >
                 <Icon name="clock" size={14} className="text-brand-600" />
                 <span>Manage Duration Tiers ({durationTiers.length})</span>
@@ -1147,8 +1147,8 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
                 <Icon name="check-circle" size={16} className="text-success-600" />
               </div>
             </div>
-            <div className="text-2xl font-bold text-navy-900">{activeCount}</div>
-            <div className="text-xs text-navy-400 mt-1">Live active students</div>
+            <div className="text-2xl font-bold text-slate-900">{activeCount}</div>
+            <div className="text-xs text-slate-400 mt-1">Live active students</div>
           </div>
           <div className="card p-5">
             <div className="flex items-center justify-between mb-2">
@@ -1157,7 +1157,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
                 <Icon name="clock" size={16} className="text-warning-600" />
               </div>
             </div>
-            <div className="text-2xl font-bold text-navy-900">{expiringCount}</div>
+            <div className="text-2xl font-bold text-slate-900">{expiringCount}</div>
           </div>
           <div className="card p-5">
             <div className="flex items-center justify-between mb-2">
@@ -1166,7 +1166,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
                 <Icon name="layers" size={16} className="text-purple-600" />
               </div>
             </div>
-            <div className="text-2xl font-bold text-navy-900">{categories.length} Branches</div>
+            <div className="text-2xl font-bold text-slate-900">{categories.length} Branches</div>
           </div>
           <div className="card p-5">
             <div className="flex items-center justify-between mb-2">
@@ -1175,27 +1175,27 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
                 <Icon name="indian-rupee" size={16} className="text-brand-600" />
               </div>
             </div>
-            <div className="text-2xl font-bold text-navy-900">₹{totalRevenue.toLocaleString()}</div>
-            <div className="text-xs text-navy-400 mt-1">Aggregated course fees</div>
+            <div className="text-2xl font-bold text-slate-900">₹{totalRevenue.toLocaleString()}</div>
+            <div className="text-xs text-slate-400 mt-1">Aggregated course fees</div>
           </div>
         </div>
       )}
 
       {/* ── ACADEMIC BRANCHES & STREAMS MANAGEMENT (WITH CHECKBOXES FOR EDIT & DELETE) ── */}
-      <div className="card p-5 space-y-4 border border-navy-200/90 shadow-xs">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-navy-100">
+      <div className="card p-5 space-y-4 border border-slate-200/90 shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600 shrink-0">
               <Icon name="layers" size={17} />
             </div>
             <div>
-              <h3 className="text-base font-bold text-navy-900 flex items-center gap-2">
+              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
                 <span>Academic Branches &amp; Streams</span>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-100 text-purple-800 border border-purple-200">
                   {categories.length} Registered
                 </span>
               </h3>
-              <p className="text-xs text-navy-400">
+              <p className="text-xs text-slate-400">
                 Select branches using checkboxes to edit details or delete. Mapped across degree courses.
               </p>
             </div>
@@ -1225,7 +1225,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
                 <button
                   type="button"
                   onClick={() => setSelectedBranchCodes([])}
-                  className="px-2.5 py-1.5 rounded-xl text-xs font-bold border border-navy-200 bg-white hover:bg-navy-50 text-navy-600 cursor-pointer"
+                  className="px-2.5 py-1.5 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 cursor-pointer"
                 >
                   Clear ({selectedBranchCodes.length})
                 </button>
@@ -1249,14 +1249,14 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
 
         {/* Branches Grid with Checkboxes */}
         {categories.length === 0 ? (
-          <div className="text-center py-6 border border-dashed border-navy-200 rounded-2xl bg-navy-50/40">
-            <Icon name="layers" size={28} className="text-navy-300 mx-auto mb-2" />
-            <p className="text-xs font-bold text-navy-700">No Academic Branches Created Yet</p>
-            <p className="text-[11px] text-navy-400 mt-0.5">Click "+ Add Branch" above to create your institution's academic branches.</p>
+          <div className="text-center py-6 border border-dashed border-slate-200 rounded-2xl bg-slate-50/40">
+            <Icon name="layers" size={28} className="text-slate-300 mx-auto mb-2" />
+            <p className="text-xs font-bold text-slate-700">No Academic Branches Created Yet</p>
+            <p className="text-[11px] text-slate-400 mt-0.5">Click "+ Add Branch" above to create your institution's academic branches.</p>
           </div>
         ) : (
           <div className="space-y-2">
-            <div className="flex items-center justify-between text-[11px] text-navy-500 font-bold px-1">
+            <div className="flex items-center justify-between text-[11px] text-slate-500 font-bold px-1">
               <label className="flex items-center gap-2 cursor-pointer select-none">
                 <input
                   type="checkbox"
@@ -1268,7 +1268,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
                       setSelectedBranchCodes([]);
                     }
                   }}
-                  className="w-4 h-4 rounded text-purple-600 border-navy-300 focus:ring-purple-500 cursor-pointer"
+                  className="w-4 h-4 rounded text-purple-600 border-slate-300 focus:ring-purple-500 cursor-pointer"
                 />
                 <span>Select All Branches ({categories.length})</span>
               </label>
@@ -1286,7 +1286,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
                       'p-3 rounded-2xl border transition-all flex items-center justify-between gap-2.5',
                       isSelected
                         ? 'bg-purple-50/70 border-purple-300 shadow-xs ring-1 ring-purple-300'
-                        : 'bg-white border-navy-200/80 hover:border-purple-200 hover:shadow-xs'
+                        : 'bg-white border-slate-200/80 hover:border-purple-200 hover:shadow-xs'
                     )}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
@@ -1298,18 +1298,18 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
                             prev.includes(cat.code) ? prev.filter((c) => c !== cat.code) : [...prev, cat.code]
                           );
                         }}
-                        className="w-4 h-4 rounded text-purple-600 border-navy-300 focus:ring-purple-500 cursor-pointer shrink-0"
+                        className="w-4 h-4 rounded text-purple-600 border-slate-300 focus:ring-purple-500 cursor-pointer shrink-0"
                       />
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
                           <span className={cn('px-2 py-0.5 rounded-lg text-xs font-black tracking-tight border', getBranchBadgeStyle(cat.code))}>
                             {cat.code}
                           </span>
-                          <span className="text-[10px] text-navy-400 font-semibold shrink-0">
+                          <span className="text-[10px] text-slate-400 font-semibold shrink-0">
                             {coursesCount} course{coursesCount !== 1 ? 's' : ''}
                           </span>
                         </div>
-                        <p className="text-xs font-medium text-navy-700 truncate mt-0.5" title={cat.name}>
+                        <p className="text-xs font-medium text-slate-700 truncate mt-0.5" title={cat.name}>
                           {cat.name}
                         </p>
                       </div>
@@ -1324,7 +1324,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
                           setNewCatName(cat.name);
                           setShowAddCategoryModal(true);
                         }}
-                        className="p-1.5 rounded-lg text-navy-500 hover:text-navy-900 hover:bg-navy-100 transition cursor-pointer"
+                        className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition cursor-pointer"
                         title={`Edit ${cat.code}`}
                       >
                         <Icon name="pencil" size={13} />
@@ -1348,13 +1348,13 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
 
       {/* Courses & Degree Programs Grid */}
       <div className="card p-5 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-navy-100 pb-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
           <div>
-            <h3 className="text-base font-bold text-navy-900 flex items-center gap-2">
+            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
               <Icon name="book-open" size={18} className="text-brand-600" />
               <span>Available Courses &amp; Degree Programs</span>
             </h3>
-            <p className="text-xs text-navy-400 mt-0.5">
+            <p className="text-xs text-slate-400 mt-0.5">
               Multi-branch subjects &amp; degree courses with custom duration fee tiers.
             </p>
           </div>
@@ -1369,7 +1369,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
                   'px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-all border cursor-pointer shrink-0',
                   filterCategory === 'all'
                     ? 'bg-brand-600 text-white border-brand-600 shadow-sm'
-                    : 'bg-navy-50 text-navy-600 border-navy-200 hover:bg-navy-100'
+                    : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
                 )}
               >
                 All Courses
@@ -1385,7 +1385,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
                       'px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-all border cursor-pointer shrink-0',
                       isActive
                         ? 'bg-brand-600 text-white border-brand-600 shadow-sm'
-                        : 'bg-navy-50 text-navy-600 border-navy-200 hover:bg-navy-100'
+                        : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
                     )}
                   >
                     {code}
@@ -1395,7 +1395,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
             </div>
 
             {/* View Mode Toggle: Grid vs Row */}
-            <div className="flex items-center bg-navy-100/80 p-0.5 rounded-xl border border-navy-200 shrink-0">
+            <div className="flex items-center bg-slate-100/80 p-0.5 rounded-xl border border-slate-200 shrink-0">
               <button
                 type="button"
                 onClick={() => handleToggleViewMode('grid')}
@@ -1403,7 +1403,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
                   'px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer',
                   viewMode === 'grid'
                     ? 'bg-white text-brand-700 shadow-xs'
-                    : 'text-navy-500 hover:text-navy-800'
+                    : 'text-slate-500 hover:text-slate-800'
                 )}
                 title="Card Grid View"
               >
@@ -1417,7 +1417,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
                   'px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer',
                   viewMode === 'row'
                     ? 'bg-white text-brand-700 shadow-xs'
-                    : 'text-navy-500 hover:text-navy-800'
+                    : 'text-slate-500 hover:text-slate-800'
                 )}
                 title="Row Table View"
               >
@@ -1431,10 +1431,10 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
         {loading ? (
           <Skeleton className="h-48 w-full" />
         ) : filteredPrograms.length === 0 ? (
-          <div className="p-12 text-center bg-navy-50/40 rounded-3xl border border-dashed border-navy-200 space-y-2">
-            <Icon name="book-open" size={24} className="text-navy-400 mx-auto" />
-            <p className="text-xs font-bold text-navy-700">No courses found for selected branch</p>
-            <p className="text-[11px] text-navy-400">Click "Add Course / Program" to create a new course.</p>
+          <div className="p-12 text-center bg-slate-50/40 rounded-3xl border border-dashed border-slate-200 space-y-2">
+            <Icon name="book-open" size={24} className="text-slate-400 mx-auto" />
+            <p className="text-xs font-bold text-slate-700">No courses found for selected branch</p>
+            <p className="text-[11px] text-slate-400">Click "Add Course / Program" to create a new course.</p>
           </div>
         ) : viewMode === 'grid' ? (
           /* Grid View */
@@ -1447,7 +1447,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
               return (
                 <div
                   key={prog.id}
-                  className="card card-hover p-5 relative flex flex-col justify-between border border-navy-200/90 hover:border-brand-500/50 hover:shadow-md transition-all duration-200"
+                  className="card card-hover p-5 relative flex flex-col justify-between border border-slate-200/90 hover:border-brand-500/50 hover:shadow-md transition-all duration-200"
                 >
                   <div>
                     {/* Top Badges & Icon */}
@@ -1456,20 +1456,20 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
                         <Icon name={prog.isCombo ? 'award' : 'book-open'} size={20} />
                       </div>
                       <div className="flex items-center gap-1.5 flex-wrap justify-end">
-                        <span className="text-[10px] font-extrabold text-navy-700 bg-navy-100/80 border border-navy-200 px-2 py-0.5 rounded-md shadow-xs">
+                        <span className="text-[10px] font-extrabold text-slate-700 bg-slate-100/80 border border-slate-200 px-2 py-0.5 rounded-md shadow-xs">
                           {prog.classification || 'Course'}
                         </span>
                       </div>
                     </div>
 
                     {/* Program Title */}
-                    <div className="text-base font-bold text-navy-900 group-hover:text-brand-600 transition-colors">
+                    <div className="text-base font-bold text-slate-900 group-hover:text-brand-600 transition-colors">
                       {prog.name}
                     </div>
 
                     {/* Applicable Branches / Categories */}
                     <div className="flex items-center gap-1 flex-wrap my-2">
-                      <span className="text-[10px] font-bold text-navy-400 mr-0.5">Branches:</span>
+                      <span className="text-[10px] font-bold text-slate-400 mr-0.5">Branches:</span>
                       {prog.categories.map((branch) => (
                         <span
                           key={branch}
@@ -1484,8 +1484,8 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
                     </div>
 
                     {/* Dynamic Duration Pricing Grid */}
-                    <div className="mb-4 bg-navy-50/70 p-3 rounded-2xl border border-navy-200/70 space-y-1.5">
-                      <div className="text-[10px] font-bold text-navy-500 uppercase tracking-wider flex items-center justify-between">
+                    <div className="mb-4 bg-slate-50/70 p-3 rounded-2xl border border-slate-200/70 space-y-1.5">
+                      <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center justify-between">
                         <span>Duration Fee Structure ({durationTiers.length} Tiers)</span>
                         <Icon name="clock" size={12} className="text-brand-500" />
                       </div>
@@ -1493,9 +1493,9 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
                         {durationTiers.map((tier) => {
                           const price = prog.tierPrices[tier.days] || 0;
                           return (
-                            <div key={tier.id} className="bg-white p-2 rounded-xl border border-navy-100 flex items-center justify-between">
-                              <span className="text-navy-500 font-medium truncate">{tier.name}</span>
-                              <span className="font-extrabold text-navy-900 shrink-0 ml-1">
+                            <div key={tier.id} className="bg-white p-2 rounded-xl border border-slate-100 flex items-center justify-between">
+                              <span className="text-slate-500 font-medium truncate">{tier.name}</span>
+                              <span className="font-extrabold text-slate-900 shrink-0 ml-1">
                                 ₹{price.toLocaleString('en-IN')}
                               </span>
                             </div>
@@ -1506,9 +1506,9 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
                   </div>
 
                   {/* Card Footer: Enrolled & Actions */}
-                  <div className="flex items-center justify-between pt-3 border-t border-navy-100 mt-2">
-                    <span className="text-xs text-navy-500 font-medium">
-                      <span className="font-bold text-navy-800">{enrolledCount}</span> students enrolled
+                  <div className="flex items-center justify-between pt-3 border-t border-slate-100 mt-2">
+                    <span className="text-xs text-slate-500 font-medium">
+                      <span className="font-bold text-slate-800">{enrolledCount}</span> students enrolled
                     </span>
                     <div className="flex items-center gap-1.5">
                       <button
@@ -1531,10 +1531,10 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
           </div>
         ) : (
           /* Row / Table View */
-          <div className="overflow-x-auto rounded-2xl border border-navy-200/90 bg-white shadow-xs">
+          <div className="overflow-x-auto rounded-2xl border border-slate-200/90 bg-white shadow-xs">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="border-b border-navy-200 bg-navy-50/70 text-navy-600 font-bold uppercase tracking-wider text-[10px]">
+                <tr className="border-b border-slate-200 bg-slate-50/70 text-slate-600 font-bold uppercase tracking-wider text-[10px]">
                   <th className="py-3 px-4">Course Name</th>
                   <th className="py-3 px-4">Applicable Branches</th>
                   <th className="py-3 px-4">Course Type</th>
@@ -1547,14 +1547,14 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
                   <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-navy-100">
+              <tbody className="divide-y divide-slate-100">
                 {filteredPrograms.map((prog) => {
                   const enrolledCount = members.filter((m) =>
                     (m.membership || '').toLowerCase().includes(prog.name.toLowerCase())
                   ).length;
 
                   return (
-                    <tr key={prog.id} className="hover:bg-navy-50/50 transition group">
+                    <tr key={prog.id} className="hover:bg-slate-50/50 transition group">
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-3">
                           <div
@@ -1566,11 +1566,11 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
                             <Icon name={prog.isCombo ? 'award' : 'book-open'} size={16} />
                           </div>
                           <div>
-                            <div className="font-extrabold text-navy-900 group-hover:text-brand-600 transition">
+                            <div className="font-extrabold text-slate-900 group-hover:text-brand-600 transition">
                               {prog.name}
                             </div>
                             {prog.features && prog.features.length > 0 && (
-                              <div className="text-[10px] text-navy-400 line-clamp-1 max-w-xs">
+                              <div className="text-[10px] text-slate-400 line-clamp-1 max-w-xs">
                                 {prog.features.join(' • ')}
                               </div>
                             )}
@@ -1597,7 +1597,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
 
                       {/* Course Type / Classification */}
                       <td className="py-3 px-4">
-                        <span className="text-[10px] font-bold text-navy-700 bg-navy-100/70 border border-navy-200/80 px-2 py-0.5 rounded-md whitespace-nowrap">
+                        <span className="text-[10px] font-bold text-slate-700 bg-slate-100/70 border border-slate-200/80 px-2 py-0.5 rounded-md whitespace-nowrap">
                           {prog.classification || 'Core Subject'}
                         </span>
                       </td>
@@ -1607,19 +1607,19 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
                         return (
                           <td key={tier.id} className="py-3 px-3 text-right">
                             {price > 0 ? (
-                              <span className="font-extrabold text-navy-900 font-mono">
+                              <span className="font-extrabold text-slate-900 font-mono">
                                 ₹{price.toLocaleString('en-IN')}
                               </span>
                             ) : (
-                              <span className="text-navy-300 font-mono">—</span>
+                              <span className="text-slate-300 font-mono">—</span>
                             )}
                           </td>
                         );
                       })}
 
                       <td className="py-3 px-4 text-center">
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-navy-50 text-navy-700 font-bold text-[11px] border border-navy-200/60">
-                          <Icon name="users" size={11} className="text-navy-400" />
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-50 text-slate-700 font-bold text-[11px] border border-slate-200/60">
+                          <Icon name="users" size={11} className="text-slate-400" />
                           {enrolledCount}
                         </span>
                       </td>
@@ -1629,7 +1629,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
                           <button
                             type="button"
                             onClick={() => openEditModal(prog)}
-                            className="p-1.5 rounded-lg hover:bg-brand-50 text-navy-500 hover:text-brand-600 border border-navy-200/70 hover:border-brand-300 transition cursor-pointer shadow-xs"
+                            className="p-1.5 rounded-lg hover:bg-brand-50 text-slate-500 hover:text-brand-600 border border-slate-200/70 hover:border-brand-300 transition cursor-pointer shadow-xs"
                             title="Edit Course & Fee Structure"
                           >
                             <Icon name="edit" size={13} />
@@ -1655,17 +1655,17 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
 
       {/* Course & Multi-Branch Pricing Editor Modal */}
       {modalOpen && (
-        <div className="fixed inset-0 bg-navy-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-xl space-y-4 shadow-2xl animate-scale-in border border-navy-100 max-h-[92vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-navy-100 pb-3">
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-xl space-y-4 shadow-2xl animate-scale-in border border-slate-100 max-h-[92vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
-                <h3 className="text-base font-bold text-navy-900 flex items-center gap-2">
+                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
                   <Icon name="book-open" size={18} className="text-brand-600" />
                   <span>{editingProgramId ? 'Edit Course & Fee Structure' : 'Add New Course / Subject'}</span>
                 </h3>
-                <p className="text-xs text-navy-400">Configure subject details, branches, and fee tiers.</p>
+                <p className="text-xs text-slate-400">Configure subject details, branches, and fee tiers.</p>
               </div>
-              <button onClick={() => setModalOpen(false)} className="text-navy-400 hover:text-navy-600 p-1 cursor-pointer">
+              <button onClick={() => setModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer">
                 <Icon name="x" size={18} />
               </button>
             </div>
@@ -1674,7 +1674,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
               {/* Course Name & Classification */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-navy-700">Course / Subject Name *</label>
+                  <label className="text-xs font-semibold text-slate-700">Course / Subject Name *</label>
                   <input
                     type="text"
                     required
@@ -1687,7 +1687,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
 
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-semibold text-navy-700">Course Type / Classification</label>
+                    <label className="text-xs font-semibold text-slate-700">Course Type / Classification</label>
                     <button
                       type="button"
                       onClick={() => setClassificationManagerOpen(true)}
@@ -1711,9 +1711,9 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
               </div>
 
               {/* Multi-Branch / Category Assignment */}
-              <div className="p-3.5 bg-navy-50/60 rounded-2xl border border-navy-200/80 space-y-2.5">
+              <div className="p-3.5 bg-slate-50/60 rounded-2xl border border-slate-200/80 space-y-2.5">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-navy-900 uppercase tracking-wider flex items-center gap-1.5">
+                  <label className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
                     <Icon name="layers" size={13} className="text-purple-600" />
                     <span>Applicable Branches / Departments</span>
                   </label>
@@ -1749,7 +1749,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
                           'px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all border flex items-center gap-1.5 cursor-pointer',
                           isSelected
                             ? 'bg-purple-600 text-white border-purple-600 shadow-xs scale-[1.02]'
-                            : 'bg-white text-navy-700 border-navy-200 hover:border-purple-300'
+                            : 'bg-white text-slate-700 border-slate-200 hover:border-purple-300'
                         )}
                       >
                         <Icon name={isSelected ? 'check' : 'plus'} size={12} />
@@ -1758,7 +1758,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
                     );
                   })}
                 </div>
-                <p className="text-[11px] text-navy-400">
+                <p className="text-[11px] text-slate-400">
                   {programForm.selectedCategories.length === 0
                     ? '⚠️ Please select at least one branch for this course.'
                     : `Active in ${programForm.selectedCategories.length} branch(es): ${programForm.selectedCategories.join(', ')}`}
@@ -1766,9 +1766,9 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
               </div>
 
               {/* Dynamic Duration Tier Pricing Matrix */}
-              <div className="card p-3.5 bg-gradient-to-br from-navy-50 via-white to-brand-50/40 border border-navy-200/80 space-y-3">
+              <div className="card p-3.5 bg-gradient-to-br from-slate-50 via-white to-brand-50/40 border border-slate-200/80 space-y-3">
                 <div className="flex items-center justify-between flex-wrap gap-2">
-                  <label className="text-xs font-bold text-navy-900 uppercase tracking-wider flex items-center gap-1.5">
+                  <label className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
                     <Icon name="credit-card" size={13} className="text-brand-600" />
                     <span>Duration Tier Fee Structure (₹)</span>
                   </label>
@@ -1798,7 +1798,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
                       <button
                         type="button"
                         onClick={() => setShowQuickAddTier(false)}
-                        className="text-navy-400 hover:text-navy-600 cursor-pointer"
+                        className="text-slate-400 hover:text-slate-600 cursor-pointer"
                       >
                         <Icon name="x" size={13} />
                       </button>
@@ -1843,19 +1843,19 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
                 {/* Tier Price Inputs Grid */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
                   {durationTiers.map((tier) => (
-                    <div key={tier.id} className="relative group bg-white p-2.5 rounded-xl border border-navy-200/80 shadow-xs">
+                    <div key={tier.id} className="relative group bg-white p-2.5 rounded-xl border border-slate-200/80 shadow-xs">
                       <div className="flex items-center justify-between mb-1">
-                        <label className="text-[11px] font-bold text-navy-800 truncate" title={tier.name}>
+                        <label className="text-[11px] font-bold text-slate-800 truncate" title={tier.name}>
                           {tier.name}
                         </label>
                         <div className="flex items-center gap-1 shrink-0">
-                          <span className="text-[9px] font-mono text-navy-400 font-bold bg-navy-50 px-1 rounded">
+                          <span className="text-[9px] font-mono text-slate-400 font-bold bg-slate-50 px-1 rounded">
                             {tier.suffix || `${tier.days}D`}
                           </span>
                           <button
                             type="button"
                             onClick={() => handleRemoveTier(tier.days, tier.name)}
-                            className="text-navy-300 hover:text-rose-600 opacity-0 group-hover:opacity-100 transition p-0.5 cursor-pointer"
+                            className="text-slate-300 hover:text-rose-600 opacity-0 group-hover:opacity-100 transition p-0.5 cursor-pointer"
                             title="Delete Tier"
                           >
                             <Icon name="x" size={11} />
@@ -1876,7 +1876,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
                             },
                           });
                         }}
-                        className="input-field text-xs py-1.5 font-bold text-navy-900"
+                        className="input-field text-xs py-1.5 font-bold text-slate-900"
                       />
                     </div>
                   ))}
@@ -1885,7 +1885,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
 
               {/* Features */}
               <div>
-                <label className="text-xs font-semibold text-navy-700 mb-1 block">Course Syllabus &amp; Highlights (Comma Separated)</label>
+                <label className="text-xs font-semibold text-slate-700 mb-1 block">Course Syllabus &amp; Highlights (Comma Separated)</label>
                 <input
                   type="text"
                   placeholder="e.g. Lab Access, Practical Workshop, Semester Project"
@@ -1897,7 +1897,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
 
               {/* Color Theme */}
               <div>
-                <label className="text-xs font-semibold text-navy-700 mb-1 block">Card Color Theme</label>
+                <label className="text-xs font-semibold text-slate-700 mb-1 block">Card Color Theme</label>
                 <select
                   value={programForm.color}
                   onChange={(e) => setProgramForm({ ...programForm, color: e.target.value })}
@@ -1911,7 +1911,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
                 </select>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-navy-100">
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
@@ -1930,31 +1930,31 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
 
       {/* Standalone Duration Tiers Manager Modal (Add, Edit, Delete Tiers) */}
       {tierManagerOpen && (
-        <div className="fixed inset-0 bg-navy-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-xl space-y-4 shadow-2xl animate-scale-in border border-navy-100 max-h-[88vh] flex flex-col">
-            <div className="flex items-center justify-between border-b border-navy-100 pb-3 shrink-0">
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-xl space-y-4 shadow-2xl animate-scale-in border border-slate-100 max-h-[88vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 shrink-0">
               <div className="flex items-center gap-2">
                 <div className="w-9 h-9 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600">
                   <Icon name="clock" size={18} />
                 </div>
                 <div>
-                  <h3 className="text-base font-extrabold text-navy-900">Manage Duration Tiers</h3>
-                  <p className="text-xs text-navy-500">Configure customizable months, years, semesters, and day durations</p>
+                  <h3 className="text-base font-extrabold text-slate-900">Manage Duration Tiers</h3>
+                  <p className="text-xs text-slate-500">Configure customizable months, years, semesters, and day durations</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setTierManagerOpen(false)}
-                className="w-8 h-8 rounded-full hover:bg-navy-50 flex items-center justify-center text-navy-400 hover:text-navy-600 transition cursor-pointer"
+                className="w-8 h-8 rounded-full hover:bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-600 transition cursor-pointer"
               >
                 <Icon name="x" size={16} />
               </button>
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSaveTierFromManager} className="bg-navy-50/70 p-4 rounded-2xl border border-navy-100 space-y-3 shrink-0 text-xs">
+            <form onSubmit={handleSaveTierFromManager} className="bg-slate-50/70 p-4 rounded-2xl border border-slate-100 space-y-3 shrink-0 text-xs">
               <div className="flex items-center justify-between">
-                <span className="font-bold text-navy-900">
+                <span className="font-bold text-slate-900">
                   {editingTier ? `Editing: ${editingTier.name}` : 'Add New Duration Tier'}
                 </span>
                 {editingTier && (
@@ -1964,7 +1964,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
                       setEditingTier(null);
                       setTierForm({ name: '', unitCount: 1, unitType: 'months', multiplier: 1.0 });
                     }}
-                    className="text-[11px] font-bold text-navy-500 hover:text-navy-800"
+                    className="text-[11px] font-bold text-slate-500 hover:text-slate-800"
                   >
                     Cancel Edit
                   </button>
@@ -1973,23 +1973,23 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                 <div className="space-y-1">
-                  <label className="font-bold text-navy-700">Duration Count</label>
+                  <label className="font-bold text-slate-700">Duration Count</label>
                   <input
                     type="number"
                     min="1"
                     required
                     value={tierForm.unitCount}
                     onChange={(e) => setTierForm({ ...tierForm, unitCount: Math.max(1, parseInt(e.target.value) || 1) })}
-                    className="w-full px-3 py-2 rounded-xl border border-navy-200 bg-white font-bold"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-bold"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-bold text-navy-700">Time Unit</label>
+                  <label className="font-bold text-slate-700">Time Unit</label>
                   <select
                     value={tierForm.unitType}
                     onChange={(e) => setTierForm({ ...tierForm, unitType: e.target.value as any })}
-                    className="w-full px-3 py-2 rounded-xl border border-navy-200 bg-white font-bold"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-bold"
                   >
                     <option value="months">Months (30D per mo)</option>
                     <option value="years">Years (365D per yr)</option>
@@ -1999,26 +1999,26 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-bold text-navy-700">Multiplier Rate</label>
+                  <label className="font-bold text-slate-700">Multiplier Rate</label>
                   <input
                     type="number"
                     step="0.1"
                     placeholder="1.0"
                     value={tierForm.multiplier}
                     onChange={(e) => setTierForm({ ...tierForm, multiplier: parseFloat(e.target.value) || 1.0 })}
-                    className="w-full px-3 py-2 rounded-xl border border-navy-200 bg-white font-mono font-bold"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-mono font-bold"
                   />
                 </div>
               </div>
 
               <div className="space-y-1">
-                <label className="font-bold text-navy-700">Tier Display Name (Optional)</label>
+                <label className="font-bold text-slate-700">Tier Display Name (Optional)</label>
                 <input
                   type="text"
                   placeholder="e.g. 2 Years (B.Tech Course), 1 Semester"
                   value={tierForm.name}
                   onChange={(e) => setTierForm({ ...tierForm, name: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-navy-200 bg-white font-medium"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-medium"
                 />
               </div>
 
@@ -2034,20 +2034,20 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
 
             {/* List of Duration Tiers */}
             <div className="overflow-y-auto space-y-2 flex-1 pr-1">
-              <div className="text-xs font-bold text-navy-700 mb-1">Configured Duration Tiers ({durationTiers.length})</div>
-              <div className="divide-y divide-navy-100 border border-navy-100 rounded-2xl overflow-hidden">
+              <div className="text-xs font-bold text-slate-700 mb-1">Configured Duration Tiers ({durationTiers.length})</div>
+              <div className="divide-y divide-slate-100 border border-slate-100 rounded-2xl overflow-hidden">
                 {durationTiers.map((tier) => (
                   <div
                     key={tier.id}
-                    className="p-3 bg-white hover:bg-navy-50/50 flex items-center justify-between gap-3 text-xs transition"
+                    className="p-3 bg-white hover:bg-slate-50/50 flex items-center justify-between gap-3 text-xs transition"
                   >
                     <div className="flex items-center gap-3">
                       <span className="px-2 py-1 rounded-lg text-xs font-black uppercase tracking-wider bg-brand-50 text-brand-700 border border-brand-200">
                         {tier.days} Days
                       </span>
                       <div>
-                        <div className="font-extrabold text-navy-900">{tier.name}</div>
-                        <div className="text-[11px] text-navy-500">
+                        <div className="font-extrabold text-slate-900">{tier.name}</div>
+                        <div className="text-[11px] text-slate-500">
                           Multiplier: <strong className="text-purple-700">{tier.multiplier}x</strong> base rate
                         </div>
                       </div>
@@ -2057,7 +2057,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
                       <button
                         type="button"
                         onClick={() => handleEditTier(tier)}
-                        className="p-1.5 rounded-lg hover:bg-purple-50 text-navy-400 hover:text-purple-600 transition cursor-pointer"
+                        className="p-1.5 rounded-lg hover:bg-purple-50 text-slate-400 hover:text-purple-600 transition cursor-pointer"
                         title="Edit Tier"
                       >
                         <Icon name="edit" size={14} />
@@ -2065,7 +2065,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
                       <button
                         type="button"
                         onClick={() => handleDeleteTierFromManager(tier.id, tier.name)}
-                        className="p-1.5 rounded-lg hover:bg-rose-50 text-navy-400 hover:text-rose-600 transition cursor-pointer"
+                        className="p-1.5 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition cursor-pointer"
                         title="Delete Tier"
                       >
                         <Icon name="trash-2" size={14} />
@@ -2076,11 +2076,11 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
               </div>
             </div>
 
-            <div className="pt-3 border-t border-navy-100 flex justify-end shrink-0">
+            <div className="pt-3 border-t border-slate-100 flex justify-end shrink-0">
               <button
                 type="button"
                 onClick={() => setTierManagerOpen(false)}
-                className="px-5 py-2 rounded-xl bg-navy-900 hover:bg-navy-800 text-white font-bold text-xs transition shadow-sm cursor-pointer"
+                className="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition shadow-sm cursor-pointer"
               >
                 Done
               </button>
@@ -2091,14 +2091,14 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
 
       {/* Quick Add / Edit Branch Modal */}
       {showAddCategoryModal && (
-        <div className="fixed inset-0 bg-navy-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-sm space-y-4 shadow-2xl animate-scale-in border border-navy-100">
-            <div className="flex items-center justify-between border-b border-navy-100 pb-3">
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-sm space-y-4 shadow-2xl animate-scale-in border border-slate-100">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600">
                   <Icon name="layers" size={16} />
                 </div>
-                <h3 className="font-extrabold text-navy-900 text-sm">
+                <h3 className="font-extrabold text-slate-900 text-sm">
                   {editingBranch ? 'Edit Academic Branch' : 'Add Academic Branch'}
                 </h3>
               </div>
@@ -2108,7 +2108,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
                   setEditingBranch(null);
                   setShowAddCategoryModal(false);
                 }}
-                className="text-navy-400 hover:text-navy-600 cursor-pointer"
+                className="text-slate-400 hover:text-slate-600 cursor-pointer"
               >
                 <Icon name="x" size={16} />
               </button>
@@ -2116,25 +2116,25 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
 
             <form onSubmit={handleSaveCategory} className="space-y-3 text-xs">
               <div className="space-y-1">
-                <label className="font-bold text-navy-700">Branch Code *</label>
+                <label className="font-bold text-slate-700">Branch Code *</label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. AI & DS, EEE, ECE, CSE"
                   value={newCatCode}
                   onChange={(e) => setNewCatCode(e.target.value.toUpperCase())}
-                  className="w-full px-3 py-2 rounded-xl border border-navy-200 bg-white font-bold focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-bold focus:outline-none focus:ring-2 focus:ring-purple-500/20"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="font-bold text-navy-700">Branch Full Name</label>
+                <label className="font-bold text-slate-700">Branch Full Name</label>
                 <input
                   type="text"
                   placeholder="e.g. Artificial Intelligence & Data Science"
                   value={newCatName}
                   onChange={(e) => setNewCatName(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-navy-200 bg-white font-medium focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-medium focus:outline-none focus:ring-2 focus:ring-purple-500/20"
                 />
               </div>
 
@@ -2145,7 +2145,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
                     setEditingBranch(null);
                     setShowAddCategoryModal(false);
                   }}
-                  className="px-3.5 py-1.5 rounded-xl border border-navy-200 text-navy-600 font-bold hover:bg-navy-50 cursor-pointer"
+                  className="px-3.5 py-1.5 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50 cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -2162,22 +2162,22 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
       )}
       {/* Medium of Instruction / Languages Manager Modal */}
       {languageManagerOpen && (
-        <div className="fixed inset-0 bg-navy-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-lg space-y-4 shadow-2xl animate-scale-in border border-navy-100 max-h-[85vh] flex flex-col">
-            <div className="flex items-center justify-between border-b border-navy-100 pb-3 shrink-0">
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-lg space-y-4 shadow-2xl animate-scale-in border border-slate-100 max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 shrink-0">
               <div className="flex items-center gap-2.5">
                 <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 shadow-xs">
                   <Icon name="globe" size={20} />
                 </div>
                 <div>
-                  <h3 className="text-base font-extrabold text-navy-900">Mediums of Instruction / Languages</h3>
-                  <p className="text-xs text-navy-500">Configure languages available in student admission forms</p>
+                  <h3 className="text-base font-extrabold text-slate-900">Mediums of Instruction / Languages</h3>
+                  <p className="text-xs text-slate-500">Configure languages available in student admission forms</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setLanguageManagerOpen(false)}
-                className="w-8 h-8 rounded-full hover:bg-navy-50 flex items-center justify-center text-navy-400 hover:text-navy-600 transition cursor-pointer"
+                className="w-8 h-8 rounded-full hover:bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-600 transition cursor-pointer"
               >
                 <Icon name="x" size={16} />
               </button>
@@ -2190,7 +2190,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
                 placeholder="Add new language (e.g. Sanskrit, Tamil, French)..."
                 value={newLanguageInput}
                 onChange={(e) => setNewLanguageInput(e.target.value)}
-                className="flex-1 px-3.5 py-2.5 rounded-xl border border-navy-200 text-xs font-semibold text-navy-900 focus:outline-none focus:ring-2 focus:ring-brand-500 shadow-xs"
+                className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500 shadow-xs"
               />
               <button
                 type="submit"
@@ -2204,11 +2204,11 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
 
             {/* Languages List */}
             <div className="flex-1 overflow-y-auto space-y-2 pr-1">
-              <div className="text-[11px] font-bold text-navy-400 uppercase tracking-wider">
+              <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                 Configured Languages ({languages.length})
               </div>
               {languages.length === 0 ? (
-                <div className="text-center py-6 text-xs text-navy-400 italic bg-navy-50/50 rounded-2xl border border-dashed border-navy-200">
+                <div className="text-center py-6 text-xs text-slate-400 italic bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
                   No languages configured. Add one above.
                 </div>
               ) : (
@@ -2216,16 +2216,16 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
                   {languages.map((lang) => (
                     <div
                       key={lang}
-                      className="flex items-center justify-between p-3 rounded-xl border border-navy-100 bg-navy-50/60 hover:bg-navy-50 transition shadow-xs"
+                      className="flex items-center justify-between p-3 rounded-xl border border-slate-100 bg-slate-50/60 hover:bg-slate-50 transition shadow-xs"
                     >
                       <div className="flex items-center gap-2">
                         <Icon name="globe" size={14} className="text-blue-500" />
-                        <span className="text-xs font-bold text-navy-800">{lang}</span>
+                        <span className="text-xs font-bold text-slate-800">{lang}</span>
                       </div>
                       <button
                         type="button"
                         onClick={() => handleDeleteLanguage(lang)}
-                        className="text-navy-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-white transition cursor-pointer"
+                        className="text-slate-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-white transition cursor-pointer"
                         title={`Delete ${lang}`}
                       >
                         <Icon name="trash-2" size={13} />
@@ -2236,7 +2236,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
               )}
             </div>
 
-            <div className="pt-3 border-t border-navy-100 flex justify-end shrink-0">
+            <div className="pt-3 border-t border-slate-100 flex justify-end shrink-0">
               <button
                 type="button"
                 onClick={() => setLanguageManagerOpen(false)}
@@ -2251,16 +2251,16 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
 
       {/* Course Type / Classification Manager Modal (Add, Edit, Delete) */}
       {classificationManagerOpen && (
-        <div className="fixed inset-0 bg-navy-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-lg space-y-4 shadow-2xl animate-scale-in border border-navy-100 max-h-[85vh] flex flex-col">
-            <div className="flex items-center justify-between border-b border-navy-100 pb-3 shrink-0">
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-lg space-y-4 shadow-2xl animate-scale-in border border-slate-100 max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 shrink-0">
               <div className="flex items-center gap-2.5">
                 <div className="w-10 h-10 rounded-2xl bg-purple-50 flex items-center justify-center text-purple-600 shadow-xs">
                   <Icon name="tag" size={20} />
                 </div>
                 <div>
-                  <h3 className="text-base font-extrabold text-navy-900">Manage Course Classifications</h3>
-                  <p className="text-xs text-navy-500">Add, edit, or delete course types and classifications</p>
+                  <h3 className="text-base font-extrabold text-slate-900">Manage Course Classifications</h3>
+                  <p className="text-xs text-slate-500">Add, edit, or delete course types and classifications</p>
                 </div>
               </div>
               <button
@@ -2271,16 +2271,16 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
                   setNewClassValue('');
                   setNewClassLabel('');
                 }}
-                className="w-8 h-8 rounded-full hover:bg-navy-50 flex items-center justify-center text-navy-400 hover:text-navy-600 transition cursor-pointer"
+                className="w-8 h-8 rounded-full hover:bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-600 transition cursor-pointer"
               >
                 <Icon name="x" size={16} />
               </button>
             </div>
 
             {/* Add / Edit Form */}
-            <form onSubmit={handleAddClassification} className="bg-navy-50/70 p-4 rounded-2xl border border-navy-100 space-y-2.5 shrink-0 text-xs">
+            <form onSubmit={handleAddClassification} className="bg-slate-50/70 p-4 rounded-2xl border border-slate-100 space-y-2.5 shrink-0 text-xs">
               <div className="flex items-center justify-between">
-                <span className="font-bold text-navy-900">
+                <span className="font-bold text-slate-900">
                   {editingClassification ? `Editing: ${editingClassification.label || editingClassification.value}` : 'Add New Classification'}
                 </span>
                 {editingClassification && (
@@ -2291,7 +2291,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
                       setNewClassValue('');
                       setNewClassLabel('');
                     }}
-                    className="text-[11px] font-bold text-navy-500 hover:text-navy-700 cursor-pointer"
+                    className="text-[11px] font-bold text-slate-500 hover:text-slate-700 cursor-pointer"
                   >
                     Cancel Edit
                   </button>
@@ -2299,24 +2299,24 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div>
-                  <label className="text-[10px] font-bold text-navy-600 uppercase mb-1 block">Short Code / Value *</label>
+                  <label className="text-[10px] font-bold text-slate-600 uppercase mb-1 block">Short Code / Value *</label>
                   <input
                     type="text"
                     required
                     placeholder="e.g. Honors Degree"
                     value={newClassValue}
                     onChange={(e) => setNewClassValue(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-navy-200 text-xs font-bold text-navy-900 focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white shadow-xs"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white shadow-xs"
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-navy-600 uppercase mb-1 block">Display Label (Optional)</label>
+                  <label className="text-[10px] font-bold text-slate-600 uppercase mb-1 block">Display Label (Optional)</label>
                   <input
                     type="text"
                     placeholder="e.g. Honors & Research Track"
                     value={newClassLabel}
                     onChange={(e) => setNewClassLabel(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-navy-200 text-xs font-semibold text-navy-900 focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white shadow-xs"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white shadow-xs"
                   />
                 </div>
               </div>
@@ -2332,24 +2332,24 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
 
             {/* Classifications List */}
             <div className="flex-1 overflow-y-auto space-y-2 pr-1">
-              <div className="text-[11px] font-bold text-navy-400 uppercase tracking-wider">
+              <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                 Configured Classifications ({classifications.length})
               </div>
               <div className="space-y-2">
                 {classifications.map((item) => (
                   <div
                     key={item.id || item.value}
-                    className="flex items-center justify-between p-3 rounded-xl border border-navy-100 bg-navy-50/60 hover:bg-navy-50 transition shadow-xs"
+                    className="flex items-center justify-between p-3 rounded-xl border border-slate-100 bg-slate-50/60 hover:bg-slate-50 transition shadow-xs"
                   >
                     <div>
-                      <div className="font-bold text-navy-900 text-xs">{item.label}</div>
-                      <div className="text-[10px] text-navy-400 font-mono">Value: {item.value}</div>
+                      <div className="font-bold text-slate-900 text-xs">{item.label}</div>
+                      <div className="text-[10px] text-slate-400 font-mono">Value: {item.value}</div>
                     </div>
                     <div className="flex items-center gap-1">
                       <button
                         type="button"
                         onClick={() => handleEditClassification(item)}
-                        className="p-1.5 rounded-lg hover:bg-brand-50 text-navy-500 hover:text-brand-600 transition cursor-pointer"
+                        className="p-1.5 rounded-lg hover:bg-brand-50 text-slate-500 hover:text-brand-600 transition cursor-pointer"
                         title="Edit Classification"
                       >
                         <Icon name="edit" size={13} />
@@ -2368,7 +2368,7 @@ export function CoursesPage({ embedded = false }: { embedded?: boolean }) {
               </div>
             </div>
 
-            <div className="pt-3 border-t border-navy-100 flex justify-end shrink-0">
+            <div className="pt-3 border-t border-slate-100 flex justify-end shrink-0">
               <button
                 type="button"
                 onClick={() => {

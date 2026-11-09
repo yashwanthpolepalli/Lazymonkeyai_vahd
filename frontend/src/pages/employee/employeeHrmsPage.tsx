@@ -314,21 +314,41 @@ export function EmployeeHrmsPage() {
   };
 
   return (
-    <div className="space-y-6 w-full pb-16 font-sans animate-fade-in">
+    <div className="px-4 sm:px-6 py-4 space-y-5 font-sans text-slate-900 animate-fade-in relative pb-12">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-navy-900 text-white text-xs font-semibold px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2 border border-brand-500/30 animate-fade-in">
-          <Icon name="check-circle" size={16} className="text-brand-400" />
+        <div className="fixed top-20 right-6 z-50 bg-emerald-900/90 text-white text-xs font-bold px-4 py-3 rounded-2xl shadow-2xl backdrop-blur-md border border-emerald-500/30 flex items-center gap-2.5 animate-slide-in">
+          <Icon name="check-circle" size={18} className="text-emerald-400" />
           <span>{toastMessage}</span>
         </div>
       )}
 
+      {/* ── Breadcrumb & Header matching screenshot ───────────────────── */}
+      <div className="space-y-1">
+        <div className="text-xs font-bold text-slate-600 mb-1 flex items-center gap-1.5">
+          <Icon name="home" size={13} className="text-blue-600" />
+          <span className="text-blue-600 hover:underline cursor-pointer">Employee</span>
+          <span className="text-slate-400">›</span>
+          <span className="text-slate-900 font-black">My Attendance</span>
+        </div>
 
+        <div className="flex items-center gap-3.5 pt-0.5">
+          <div className="w-11 h-11 rounded-2xl bg-purple-50 text-purple-600 border border-purple-100 flex items-center justify-center shrink-0 shadow-2xs">
+            <Icon name="calendar" size={22} className="text-purple-600" />
+          </div>
+          <div>
+            <h1 className="text-2xl sm:text-[28px] font-black text-slate-900 tracking-tight leading-tight">
+              My Attendance
+            </h1>
+            <p className="text-xs sm:text-[13px] text-slate-500 font-medium mt-0.5">
+              Manage your daily attendance, leaves and payroll in one place.
+            </p>
+          </div>
+        </div>
+      </div>
 
-      {/* ───────────────────────────────────────────────────────────── */}
-      {/* 2. NAVIGATION SUB-PILLS                                       */}
-      {/* ───────────────────────────────────────────────────────────── */}
-      <div className="bg-white border border-navy-100 rounded-2xl p-2 shadow-sm flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+      {/* ── Navigation Sub-Pills Bar matching screenshot ──────────────── */}
+      <div className="bg-white border border-slate-200/90 rounded-2xl p-1.5 shadow-2xs flex items-center gap-2 overflow-x-auto no-scrollbar">
         {[
           { id: 'attendance', label: 'Daily Attendance & Punch', icon: 'clock' },
           { id: 'leave', label: 'Leave Requests & Approvals', icon: 'calendar' },
@@ -340,13 +360,13 @@ export function EmployeeHrmsPage() {
               key={tab.id}
               onClick={() => setTab(tab.id as employeeHrmsTab)}
               className={cn(
-                'px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer',
+                'px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer',
                 isSelected
-                  ? 'bg-purple-600 text-white shadow-md shadow-purple-600/20'
-                  : 'text-navy-600 hover:text-navy-900 hover:bg-navy-50'
+                  ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-orange-500 hover:opacity-95 text-white shadow-xs'
+                  : 'text-slate-700 hover:text-slate-900 hover:bg-slate-50'
               )}
             >
-              <Icon name={tab.icon} size={15} />
+              <Icon name={tab.icon} size={15} className={isSelected ? 'text-white' : 'text-purple-600'} />
               <span>{tab.label}</span>
             </button>
           );
@@ -362,80 +382,137 @@ export function EmployeeHrmsPage() {
           <EmployeeGeofencePunchWidget onPunchSuccess={fetchemployeeData} />
 
 
-          {/* KPI Row */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white rounded-2xl p-5 border border-navy-100 shadow-sm">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-navy-500 uppercase tracking-wider">Days Present</span>
-                <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                  <Icon name="check-circle" size={16} />
+          {/* KPI Row matching modern dashboard theme */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="p-5 bg-white border border-slate-200/90 rounded-2xl shadow-2xs hover:shadow-md transition-all duration-200 relative overflow-hidden flex flex-col justify-between group">
+              <div className="flex items-start gap-4 relative z-10">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100/90 flex items-center justify-center shrink-0 shadow-2xs">
+                  <Icon name="user-check" size={22} className="text-emerald-600" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span className="text-xs font-bold text-slate-600 block">Days Present</span>
+                  <div className="text-3xl font-black text-slate-900 tracking-tight leading-none mt-1">
+                    {attendanceLogs.length > 0 ? new Set(attendanceLogs.map((a: any) => a.timestamp?.slice(0, 10))).size : 24} Days
+                  </div>
+                  <div className="text-xs font-bold mt-2 flex items-center gap-1 text-emerald-600">
+                    This current month
+                  </div>
                 </div>
               </div>
-              <div className="text-2xl font-black text-navy-900">
-                {attendanceLogs.length > 0 ? new Set(attendanceLogs.map((a: any) => a.timestamp?.slice(0, 10))).size : 24} Days
-              </div>
-              <div className="text-[11px] text-emerald-600 font-bold mt-1">This current month</div>
+              <svg className="absolute -bottom-1 right-0 w-3/4 h-12 pointer-events-none opacity-40 group-hover:opacity-60 transition-opacity text-emerald-200/60" viewBox="0 0 160 50" fill="none" preserveAspectRatio="none">
+                <path d="M0,50 Q45,28 95,38 T160,12 L160,50 Z" fill="currentColor" />
+              </svg>
             </div>
 
-            <div className="bg-white rounded-2xl p-5 border border-navy-100 shadow-sm">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-navy-500 uppercase tracking-wider">Approved Leaves</span>
-                <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
-                  <Icon name="calendar" size={16} />
+            <div className="p-5 bg-white border border-slate-200/90 rounded-2xl shadow-2xs hover:shadow-md transition-all duration-200 relative overflow-hidden flex flex-col justify-between group">
+              <div className="flex items-start gap-4 relative z-10">
+                <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 border border-purple-100/90 flex items-center justify-center shrink-0 shadow-2xs">
+                  <Icon name="calendar" size={22} className="text-purple-600" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span className="text-xs font-bold text-slate-600 block">Approved Leaves</span>
+                  <div className="text-3xl font-black text-slate-900 tracking-tight leading-none mt-1">
+                    {leaves.filter((l) => (l.status || '').toLowerCase() === 'approved').reduce((acc, l) => acc + (l.days || 0), 0)} Days
+                  </div>
+                  <div className="text-xs font-bold mt-2 flex items-center gap-1 text-purple-600">
+                    Excused &amp; paid leaves
+                  </div>
                 </div>
               </div>
-              <div className="text-2xl font-black text-purple-700">
-                {leaves.filter((l) => l.status === 'Approved').reduce((acc, l) => acc + (l.days || 0), 0)} Days
-              </div>
-              <div className="text-[11px] text-purple-700 font-bold mt-1">Excused &amp; paid leaves</div>
+              <svg className="absolute -bottom-1 right-0 w-3/4 h-12 pointer-events-none opacity-40 group-hover:opacity-60 transition-opacity text-purple-200/60" viewBox="0 0 160 50" fill="none" preserveAspectRatio="none">
+                <path d="M0,50 Q45,28 95,38 T160,12 L160,50 Z" fill="currentColor" />
+              </svg>
             </div>
 
-            <div className="bg-white rounded-2xl p-5 border border-navy-100 shadow-sm">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-navy-500 uppercase tracking-wider">Active PT Clients</span>
-                <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-                  <Icon name="users" size={16} />
+            <div className="p-5 bg-white border border-slate-200/90 rounded-2xl shadow-2xs hover:shadow-md transition-all duration-200 relative overflow-hidden flex flex-col justify-between group">
+              <div className="flex items-start gap-4 relative z-10">
+                <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 border border-blue-100/90 flex items-center justify-center shrink-0 shadow-2xs">
+                  <Icon name="users" size={22} className="text-blue-600" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span className="text-xs font-bold text-slate-600 block">Active PT Clients</span>
+                  <div className="text-3xl font-black text-slate-900 tracking-tight leading-none mt-1">
+                    {employeeProfile?.assigned_students_count || 4} Members
+                  </div>
+                  <div className="text-xs font-bold mt-2 flex items-center gap-1 text-blue-600">
+                    Assigned for training
+                  </div>
                 </div>
               </div>
-              <div className="text-2xl font-black text-navy-900">
-                {employeeProfile?.assigned_students_count || 4} Members
-              </div>
-              <div className="text-[11px] text-blue-600 font-bold mt-1">Assigned for training</div>
+              <svg className="absolute -bottom-1 right-0 w-3/4 h-12 pointer-events-none opacity-40 group-hover:opacity-60 transition-opacity text-sky-200/60" viewBox="0 0 160 50" fill="none" preserveAspectRatio="none">
+                <path d="M0,50 Q45,28 95,38 T160,12 L160,50 Z" fill="currentColor" />
+              </svg>
             </div>
 
-            <div className="bg-white rounded-2xl p-5 border border-navy-100 shadow-sm">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-navy-500 uppercase tracking-wider">Punctuality Score</span>
-                <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
-                  <Icon name="award" size={16} />
+            <div className="p-5 bg-white border border-slate-200/90 rounded-2xl shadow-2xs hover:shadow-md transition-all duration-200 relative overflow-hidden flex flex-col justify-between group">
+              <div className="flex items-start gap-4 relative z-10">
+                <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 border border-amber-100/90 flex items-center justify-center shrink-0 shadow-2xs">
+                  <Icon name="award" size={22} className="text-amber-600" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span className="text-xs font-bold text-slate-600 block">Punctuality Score</span>
+                  <div className="text-3xl font-black text-slate-900 tracking-tight leading-none mt-1">
+                    98.5%
+                  </div>
+                  <div className="text-xs font-bold mt-2 flex items-center gap-1 text-amber-600">
+                    On-time attendance rate
+                  </div>
                 </div>
               </div>
-              <div className="text-2xl font-black text-navy-900">98.5%</div>
-              <div className="text-[11px] text-amber-600 font-bold mt-1">On-time attendance rate</div>
+              <svg className="absolute -bottom-1 right-0 w-3/4 h-12 pointer-events-none opacity-40 group-hover:opacity-60 transition-opacity text-amber-200/60" viewBox="0 0 160 50" fill="none" preserveAspectRatio="none">
+                <path d="M0,50 Q45,28 95,38 T160,12 L160,50 Z" fill="currentColor" />
+              </svg>
             </div>
           </div>
 
           {/* Personal Punch History */}
-          <div className="bg-white border border-navy-100 rounded-2xl shadow-sm p-5 space-y-4">
-            <div className="flex items-center justify-between border-b border-navy-100 pb-3">
-              <div>
-                <h3 className="text-sm font-black text-navy-900 flex items-center gap-2">
-                  <Icon name="history" size={16} className="text-purple-600" />
-                  <span>Personal Attendance &amp; Shift History</span>
-                </h3>
-                <p className="text-xs text-navy-500">Live biometric &amp; mobile punches recorded in database.</p>
+          <div className="bg-white border border-slate-200/90 rounded-2xl shadow-2xs p-5 space-y-4 relative overflow-hidden">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 border border-purple-100 shadow-2xs">
+                  <Icon name="history" size={18} className="text-purple-600" />
+                </div>
+                <div>
+                  <h3 className="text-sm sm:text-base font-black text-slate-900 tracking-tight">
+                    Personal Attendance &amp; Shift History
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium">Live biometric &amp; mobile punches recorded in database.</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <div className="border border-slate-200 bg-white hover:bg-slate-50 rounded-xl px-3.5 py-1.5 text-xs font-bold text-slate-700 flex items-center gap-1.5 shadow-2xs cursor-pointer">
+                  <Icon name="calendar" size={14} className="text-purple-600" />
+                  <span>This Month</span>
+                  <Icon name="chevron-down" size={13} className="text-slate-400" />
+                </div>
+                <div className="border border-slate-200 bg-white hover:bg-slate-50 rounded-xl px-3.5 py-1.5 text-xs font-bold text-slate-700 flex items-center gap-1.5 shadow-2xs cursor-pointer">
+                  <Icon name="download" size={14} className="text-slate-600" />
+                  <span>Export</span>
+                  <Icon name="chevron-down" size={13} className="text-slate-400" />
+                </div>
               </div>
             </div>
 
             {attendanceLogs.length === 0 ? (
-              <div className="py-12 text-center text-navy-400 text-xs font-bold">
-                <Icon name="calendar-check" size={28} className="mx-auto text-navy-300 mb-2" />
-                <div>No personal punch records logged yet. Clock in using the widget above.</div>
+              <div className="py-14 text-center space-y-2 relative z-10">
+                <div className="w-14 h-14 rounded-2xl bg-purple-50 text-purple-600 border border-purple-100 flex items-center justify-center mx-auto mb-3 shadow-2xs">
+                  <Icon name="calendar" size={28} className="text-purple-600" />
+                </div>
+                <h4 className="text-base font-black text-slate-900">
+                  No attendance records yet
+                </h4>
+                <p className="text-xs text-slate-500 font-medium max-w-sm mx-auto">
+                  Your check-in and check-out history will appear here.
+                </p>
+                <svg className="absolute -bottom-1 left-0 right-0 w-full h-16 pointer-events-none opacity-30 text-purple-200" viewBox="0 0 160 50" fill="none" preserveAspectRatio="none">
+                  <path d="M0,50 Q45,28 95,38 T160,12 L160,50 Z" fill="currentColor" />
+                </svg>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-navy-50/70 text-[11px] font-black uppercase text-navy-500 tracking-wider border-b border-navy-100">
+                  <thead className="bg-slate-50/80 text-[11px] font-bold uppercase text-slate-500 tracking-wider border-b border-slate-200/80">
                     <tr>
                       <th className="py-3 px-4">TIMESTAMP</th>
                       <th className="py-3 px-4">ACTION</th>
@@ -444,7 +521,7 @@ export function EmployeeHrmsPage() {
                       <th className="py-3 px-4">STATUS</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-navy-50 font-medium text-navy-800">
+                  <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
                     {attendanceLogs.map((log: any, i: number) => {
                       const t = log.timestamp ? new Date(log.timestamp) : new Date();
                       const timeStr = t.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
@@ -454,8 +531,8 @@ export function EmployeeHrmsPage() {
                       return (
                         <tr key={log.id || i} className="hover:bg-purple-50/30 transition-colors">
                           <td className="py-3 px-4">
-                            <div className="font-bold text-navy-900">{timeStr}</div>
-                            <div className="text-[10px] text-navy-400">{dateStr}</div>
+                            <div className="font-bold text-slate-900">{timeStr}</div>
+                            <div className="text-[10px] text-slate-400">{dateStr}</div>
                           </td>
                           <td className="py-3 px-4">
                             <span
@@ -468,10 +545,10 @@ export function EmployeeHrmsPage() {
                               <span>{isCheckIn ? 'Clock In' : 'Clock Out'}</span>
                             </span>
                           </td>
-                          <td className="py-3 px-4 font-semibold text-navy-700">
+                          <td className="py-3 px-4 font-semibold text-slate-700">
                             {log.event_type || log.meta_data?.method || 'GPS Geofence'}
                           </td>
-                          <td className="py-3 px-4 text-navy-500">
+                          <td className="py-3 px-4 text-slate-500">
                             {log.device_name || log.meta_data?.branch || ''}
                           </td>
                           <td className="py-3 px-4">
@@ -502,9 +579,9 @@ export function EmployeeHrmsPage() {
               const used = policy.used_days ?? policy.balance?.used_days ?? 0;
               const isPaid = policy.paid_type === 'PAID' || policy.is_paid;
               return (
-                <div key={policy.id} className="bg-white rounded-2xl p-5 border border-navy-100 shadow-sm">
+                <div key={policy.id} className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-2xs">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-bold text-navy-500 uppercase tracking-wider">{policy.name} ({policy.code})</span>
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{policy.name} ({policy.code})</span>
                     <span
                       className={cn(
                         'text-[9px] font-black px-1.5 py-0.2 rounded',
@@ -515,7 +592,7 @@ export function EmployeeHrmsPage() {
                     </span>
                   </div>
                   <div className="text-2xl font-black text-purple-700">{rem} Days</div>
-                  <div className="text-[11px] text-navy-400 mt-1">
+                  <div className="text-[11px] text-slate-400 mt-1">
                     {policy.annual_quota > 0 ? `${used}d used of ${policy.annual_quota}d quota` : 'Unlimited quota'}
                   </div>
                 </div>
@@ -523,8 +600,8 @@ export function EmployeeHrmsPage() {
             })}
 
             {/* Pending Approvals Summary */}
-            <div className="bg-white rounded-2xl p-5 border border-navy-100 shadow-sm">
-              <div className="text-xs font-bold text-navy-500 uppercase tracking-wider mb-2">Pending Approvals</div>
+            <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-2xs">
+              <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Pending Approvals</div>
               <div className="text-2xl font-black text-amber-600">
                 {leaves.filter((l) => l.status === 'Pending').length} Request(s)
               </div>
@@ -535,19 +612,19 @@ export function EmployeeHrmsPage() {
           </div>
 
           {/* Leave Applications History */}
-          <div className="bg-white border border-navy-100 rounded-2xl shadow-sm p-5 space-y-4">
-            <div className="flex items-center justify-between border-b border-navy-100 pb-3">
+          <div className="bg-white border border-slate-200/90 rounded-2xl shadow-2xs p-5 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
-                <h3 className="text-sm font-black text-navy-900 flex items-center gap-2">
+                <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
                   <Icon name="calendar" size={16} className="text-purple-600" />
                   <span>My Leave Applications &amp; Status</span>
                 </h3>
-                <p className="text-xs text-navy-500">All submitted leave requests and owner review feedback.</p>
+                <p className="text-xs text-slate-500">All submitted leave requests and owner review feedback.</p>
               </div>
 
               <button
                 onClick={() => setShowApplyModal(true)}
-                className="px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+                className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-orange-500 hover:opacity-95 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition cursor-pointer"
               >
                 <Icon name="plus" size={13} />
                 <span>New Application</span>
@@ -555,14 +632,14 @@ export function EmployeeHrmsPage() {
             </div>
 
             {leaves.length === 0 ? (
-              <div className="py-12 text-center text-navy-400 text-xs font-bold space-y-2">
-                <Icon name="calendar-x" size={28} className="mx-auto text-navy-300" />
+              <div className="py-12 text-center text-slate-400 text-xs font-bold space-y-2">
+                <Icon name="calendar-x" size={28} className="mx-auto text-slate-300" />
                 <div>No leave applications submitted yet.</div>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-navy-50/70 text-[11px] font-black uppercase text-navy-500 tracking-wider border-b border-navy-100">
+                  <thead className="bg-slate-50/80 text-[11px] font-bold uppercase text-slate-500 tracking-wider border-b border-slate-200/80">
                     <tr>
                       <th className="py-3 px-4">LEAVE TYPE</th>
                       <th className="py-3 px-4">DURATION</th>
@@ -573,7 +650,7 @@ export function EmployeeHrmsPage() {
                       <th className="py-3 px-4">APPLIED ON</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-navy-50 font-medium text-navy-800">
+                  <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
                     {leaves.map((l) => (
                       <tr key={l.id} className="hover:bg-purple-50/30 transition-colors">
                         <td className="py-3 px-4">
@@ -590,11 +667,11 @@ export function EmployeeHrmsPage() {
                             {l.leave_type}
                           </span>
                         </td>
-                        <td className="py-3 px-4 font-mono font-bold text-navy-900">
+                        <td className="py-3 px-4 font-mono font-bold text-slate-900">
                           {l.start_date} → {l.end_date}
                         </td>
-                        <td className="py-3 px-4 font-black text-navy-900">{l.days} Day(s)</td>
-                        <td className="py-3 px-4 text-navy-600 max-w-xs truncate" title={l.reason}>
+                        <td className="py-3 px-4 font-black text-slate-900">{l.days} Day(s)</td>
+                        <td className="py-3 px-4 text-slate-600 max-w-xs truncate" title={l.reason}>
                           {l.reason || '—'}
                         </td>
                         <td className="py-3 px-4">
@@ -621,8 +698,8 @@ export function EmployeeHrmsPage() {
                             {l.status}
                           </span>
                         </td>
-                        <td className="py-3 px-4 text-navy-500">{l.approved_by || 'Pending Review'}</td>
-                        <td className="py-3 px-4 text-navy-400 font-mono text-[11px]">{l.applied_on}</td>
+                        <td className="py-3 px-4 text-slate-500">{l.approved_by || 'Pending Review'}</td>
+                        <td className="py-3 px-4 text-slate-400 font-mono text-[11px]">{l.applied_on}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -639,23 +716,23 @@ export function EmployeeHrmsPage() {
       {activeTab === 'payroll' && (
         <div className="space-y-6 animate-fade-in">
           {/* Salary Structure Card */}
-          <div className="bg-gradient-to-br from-blue-900 via-indigo-950 to-navy-950 text-white rounded-3xl p-6 sm:p-7 shadow-xl space-y-5 border border-blue-500/20">
+          <div className="bg-gradient-to-br from-blue-600 via-indigo-700 to-purple-800 text-white rounded-3xl p-6 sm:p-7 shadow-lg space-y-5 border border-white/20">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
               <div>
-                <span className="text-[10px] font-black uppercase tracking-widest text-blue-300">
+                <span className="text-[10px] font-black uppercase tracking-widest text-blue-200">
                   Registered Salary Structure
                 </span>
                 <h2 className="text-xl sm:text-2xl font-black text-white mt-0.5">
-                  ₹{(employeeProfile?.base_monthly_salary || 0).toLocaleString()} <span className="text-sm font-normal text-blue-200">/ month Base</span>
+                  ₹{(employeeProfile?.base_monthly_salary || 0).toLocaleString()} <span className="text-sm font-normal text-blue-100">/ month Base</span>
                 </h2>
               </div>
               <div className="flex items-center gap-3">
                 <div className="bg-white/10 px-3.5 py-2 rounded-xl text-xs backdrop-blur-xs border border-white/10">
-                  <span className="text-blue-200 block text-[10px] uppercase font-bold">PT Commission</span>
+                  <span className="text-blue-100 block text-[10px] uppercase font-bold">PT Commission</span>
                   <span className="font-bold text-white">₹{employeeProfile?.pt_session_rate || 500} / Session</span>
                 </div>
                 <div className="bg-white/10 px-3.5 py-2 rounded-xl text-xs backdrop-blur-xs border border-white/10">
-                  <span className="text-blue-200 block text-[10px] uppercase font-bold">Payout Account</span>
+                  <span className="text-blue-100 block text-[10px] uppercase font-bold">Payout Account</span>
                   <span className="font-bold text-white font-mono">
                     {employeeProfile?.upi_id || employeeProfile?.bank_account_no || 'UPI Auto-Disburse'}
                   </span>
@@ -663,32 +740,32 @@ export function EmployeeHrmsPage() {
               </div>
             </div>
 
-            <p className="text-xs text-blue-100/80 leading-relaxed max-w-2xl">
+            <p className="text-xs text-blue-100/90 leading-relaxed max-w-2xl">
               Monthly payroll is generated automatically by vahd management based on biometric attendance days, approved paid leaves, and total personal training sessions conducted.
             </p>
           </div>
 
           {/* Generated Monthly Payslips Table */}
-          <div className="bg-white border border-navy-100 rounded-2xl shadow-sm p-5 space-y-4">
-            <div className="flex items-center justify-between border-b border-navy-100 pb-3">
+          <div className="bg-white border border-slate-200/90 rounded-2xl shadow-2xs p-5 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
-                <h3 className="text-sm font-black text-navy-900 flex items-center gap-2">
+                <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
                   <Icon name="file-text" size={16} className="text-purple-600" />
                   <span>Monthly Payroll Invoices &amp; Payslips</span>
                 </h3>
-                <p className="text-xs text-navy-500">Statements generated by vahd Owner with downloadable payslips.</p>
+                <p className="text-xs text-slate-500">Statements generated by vahd Owner with downloadable payslips.</p>
               </div>
             </div>
 
             {payrollRecords.length === 0 ? (
-              <div className="py-12 text-center text-navy-400 text-xs font-bold space-y-2">
-                <Icon name="credit-card" size={28} className="mx-auto text-navy-300" />
+              <div className="py-12 text-center text-slate-400 text-xs font-bold space-y-2">
+                <Icon name="credit-card" size={28} className="mx-auto text-slate-300" />
                 <div>No payroll records generated yet by vahd owner.</div>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-navy-50/70 text-[11px] font-black uppercase text-navy-500 tracking-wider border-b border-navy-100">
+                  <thead className="bg-slate-50/80 text-[11px] font-bold uppercase text-slate-500 tracking-wider border-b border-slate-200/80">
                     <tr>
                       <th className="py-3 px-4">MONTH / YEAR</th>
                       <th className="py-3 px-4">BASE EARNED</th>
@@ -700,7 +777,7 @@ export function EmployeeHrmsPage() {
                       <th className="py-3 px-4 text-right">PAYSLIP</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-navy-50 font-medium text-navy-800">
+                  <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
                     {payrollRecords.map((p) => {
                       const isPaid = p.status === 'Paid';
                       return (
@@ -708,7 +785,7 @@ export function EmployeeHrmsPage() {
                           <td className="py-3.5 px-4 font-bold text-purple-700">
                             {p.month} {p.year}
                           </td>
-                          <td className="py-3.5 px-4 font-mono font-bold text-navy-900">
+                          <td className="py-3.5 px-4 font-mono font-bold text-slate-900">
                             ₹{(p.base_salary_earned ?? p.base_salary).toLocaleString()}
                           </td>
                           <td className="py-3.5 px-4">
@@ -727,7 +804,7 @@ export function EmployeeHrmsPage() {
                           <td className="py-3.5 px-4 font-mono text-rose-600 font-bold">
                             -₹{(p.deductions ?? 0).toLocaleString()}
                           </td>
-                          <td className="py-3.5 px-4 font-mono font-black text-sm text-navy-900">
+                          <td className="py-3.5 px-4 font-mono font-black text-sm text-slate-900">
                             ₹{p.net_salary.toLocaleString()}
                           </td>
                           <td className="py-3.5 px-4">
@@ -751,7 +828,7 @@ export function EmployeeHrmsPage() {
                           <td className="py-3.5 px-4 text-right">
                             <button
                               onClick={() => setSelectedPayslip(p)}
-                              className="px-3 py-1.5 rounded-lg text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white shadow-xs transition cursor-pointer inline-flex items-center gap-1.5"
+                              className="px-3 py-1.5 rounded-lg text-xs font-bold bg-gradient-to-r from-blue-600 to-indigo-600 hover:opacity-95 text-white shadow-xs transition cursor-pointer inline-flex items-center gap-1.5"
                             >
                               <Icon name="download" size={13} />
                               <span>Payslip</span>
@@ -772,21 +849,21 @@ export function EmployeeHrmsPage() {
       {/* 6. APPLY LEAVE MODAL                                          */}
       {/* ───────────────────────────────────────────────────────────── */}
       {showApplyModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-950/60 backdrop-blur-xs p-4 animate-fade-in">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-navy-100 space-y-5 animate-scale-up">
-            <div className="flex items-center justify-between border-b border-navy-100 pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-slate-200/90 space-y-5 animate-scale-up">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2.5">
                 <div className="w-10 h-10 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center">
                   <Icon name="calendar" size={20} />
                 </div>
                 <div>
-                  <h3 className="text-lg font-black text-navy-900">Apply for Leave</h3>
-                  <p className="text-xs text-navy-500">Submit request for owner approval.</p>
+                  <h3 className="text-lg font-black text-slate-900">Apply for Leave</h3>
+                  <p className="text-xs text-slate-500">Submit request for owner approval.</p>
                 </div>
               </div>
               <button
                 onClick={() => setShowApplyModal(false)}
-                className="w-8 h-8 rounded-xl bg-navy-50 text-navy-500 hover:text-navy-900 flex items-center justify-center transition cursor-pointer"
+                className="w-8 h-8 rounded-xl bg-slate-50 text-slate-500 hover:text-slate-900 flex items-center justify-center transition cursor-pointer"
               >
                 <Icon name="x" size={16} />
               </button>
@@ -802,7 +879,7 @@ export function EmployeeHrmsPage() {
             <form onSubmit={handleApplyLeave} className="space-y-4">
               {/* Dynamic Leave Policy Selector */}
               <div>
-                <label className="block text-xs font-bold text-navy-700 mb-1.5">Leave Policy</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">Leave Policy</label>
                 <select
                   value={formLeaveTypeId}
                   onChange={(e) => {
@@ -811,7 +888,7 @@ export function EmployeeHrmsPage() {
                     const match = eligibleLeaveTypes.find((t) => t.id === selId);
                     if (match) setFormLeaveType(match.name);
                   }}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-navy-50 border border-navy-200 text-xs font-bold text-navy-900 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none cursor-pointer"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none cursor-pointer"
                 >
                   {eligibleLeaveTypes.length === 0 ? (
                     <option value="">No leave policies found</option>
@@ -857,28 +934,28 @@ export function EmployeeHrmsPage() {
               {/* Dates */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-navy-700 mb-1.5">Start Date</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Start Date</label>
                   <input
                     type="date"
                     value={formStartDate}
                     onChange={(e) => setFormStartDate(e.target.value)}
-                    className="w-full px-3.5 py-2 rounded-xl bg-navy-50 border border-navy-200 text-xs font-bold text-navy-900 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none"
+                    className="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-navy-700 mb-1.5">End Date</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">End Date</label>
                   <input
                     type="date"
                     value={formEndDate}
                     onChange={(e) => setFormEndDate(e.target.value)}
-                    className="w-full px-3.5 py-2 rounded-xl bg-navy-50 border border-navy-200 text-xs font-bold text-navy-900 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none"
+                    className="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none"
                   />
                 </div>
               </div>
 
               {/* Reason for Absence Selector & Description */}
               <div className="space-y-2">
-                <label className="block text-xs font-bold text-navy-700">
+                <label className="block text-xs font-bold text-slate-700">
                   Reason for Absence <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
@@ -896,7 +973,7 @@ export function EmployeeHrmsPage() {
                         });
                       }
                     }}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-navy-50 border border-navy-200 text-xs font-bold text-navy-900 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none cursor-pointer appearance-none pr-8"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none cursor-pointer appearance-none pr-8"
                   >
                     <option value="">-- Select Reason for Leave --</option>
                     {leaveReasonsList.map((r) => (
@@ -906,7 +983,7 @@ export function EmployeeHrmsPage() {
                     ))}
                     <option value="__custom__">+ Other / Custom Reason</option>
                   </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-navy-500">
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-500">
                     <Icon name="chevron-down" size={14} />
                   </div>
                 </div>
@@ -916,17 +993,17 @@ export function EmployeeHrmsPage() {
                   value={formReason}
                   onChange={(e) => setFormReason(e.target.value)}
                   placeholder="Additional remarks or specific justification..."
-                  className="w-full px-3.5 py-2 rounded-xl bg-navy-50 border border-navy-200 text-xs font-medium text-navy-900 placeholder-navy-400 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none resize-none"
+                  className="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-900 placeholder-slate-400 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none resize-none"
                 />
               </div>
 
               {/* Supporting Document Upload */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-bold text-navy-700">
+                  <label className="block text-xs font-bold text-slate-700">
                     Supporting Document / Certificate
                   </label>
-                  <span className="text-[10px] text-navy-400 font-medium">PDF, DOC, DOCX, JPG, PNG (Max 2MB)</span>
+                  <span className="text-[10px] text-slate-400 font-medium">PDF, DOC, DOCX, JPG, PNG (Max 2MB)</span>
                 </div>
 
                 {formAttachmentUrl ? (
@@ -942,10 +1019,10 @@ export function EmployeeHrmsPage() {
                         )}
                       </div>
                       <div className="min-w-0">
-                        <div className="text-xs font-bold text-navy-900 truncate" title={formAttachmentName}>
+                        <div className="text-xs font-bold text-slate-900 truncate" title={formAttachmentName}>
                           {formAttachmentName || 'Uploaded Document'}
                         </div>
-                        <div className="text-[10px] text-navy-400 font-semibold">{formAttachmentSize || 'Attached'}</div>
+                        <div className="text-[10px] text-slate-400 font-semibold">{formAttachmentSize || 'Attached'}</div>
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
@@ -969,14 +1046,14 @@ export function EmployeeHrmsPage() {
                     </div>
                   </div>
                 ) : (
-                  <label className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-navy-200 hover:border-purple-500 rounded-2xl bg-navy-50/60 hover:bg-purple-50/30 transition cursor-pointer group">
-                    <div className="w-10 h-10 rounded-2xl bg-white group-hover:bg-purple-100 text-navy-500 group-hover:text-purple-600 flex items-center justify-center shadow-xs transition mb-2">
+                  <label className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-slate-200 hover:border-purple-500 rounded-2xl bg-slate-50/60 hover:bg-purple-50/30 transition cursor-pointer group">
+                    <div className="w-10 h-10 rounded-2xl bg-white group-hover:bg-purple-100 text-slate-500 group-hover:text-purple-600 flex items-center justify-center shadow-xs transition mb-2">
                       <Icon name="upload-cloud" size={20} />
                     </div>
-                    <div className="text-xs font-bold text-navy-800 group-hover:text-purple-700">
+                    <div className="text-xs font-bold text-slate-800 group-hover:text-purple-700">
                       Click to upload document or certificate
                     </div>
-                    <div className="text-[10px] text-navy-400 mt-0.5">Supports PDF, DOC, DOCX, JPG, PNG</div>
+                    <div className="text-[10px] text-slate-400 mt-0.5">Supports PDF, DOC, DOCX, JPG, PNG</div>
                     <input
                       type="file"
                       accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp"
@@ -987,18 +1064,18 @@ export function EmployeeHrmsPage() {
                 )}
               </div>
 
-              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-navy-100">
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setShowApplyModal(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-navy-600 hover:bg-navy-50 transition cursor-pointer"
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submittingLeave}
-                  className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-sm transition cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-orange-500 hover:opacity-95 text-white font-bold text-xs shadow-sm transition cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
                 >
                   {submittingLeave && <Icon name="loader-2" size={14} className="animate-spin" />}
                   <span>Submit Application</span>
@@ -1013,39 +1090,39 @@ export function EmployeeHrmsPage() {
       {/* 7. DIGITAL PAYSLIP MODAL (DOWNLOAD / PRINT)                   */}
       {/* ───────────────────────────────────────────────────────────── */}
       {selectedPayslip && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-950/60 backdrop-blur-xs p-4 animate-fade-in">
-          <div className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl border border-navy-100 space-y-6 animate-scale-up">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200/90 space-y-6 animate-scale-up">
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-navy-100 pb-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
               <div className="flex items-center gap-3">
                 <div className="w-11 h-11 rounded-2xl bg-purple-600 text-white flex items-center justify-center font-black text-lg">
                   VA
                 </div>
                 <div>
-                  <h3 className="text-base font-black text-navy-900 tracking-tight">VAHD HRMS PLATFORM</h3>
-                  <p className="text-[11px] text-navy-500 font-mono">Official Salary Slip &amp; Earnings Statement</p>
+                  <h3 className="text-base font-black text-slate-900 tracking-tight">VAHD HRMS PLATFORM</h3>
+                  <p className="text-[11px] text-slate-500 font-mono">Official Salary Slip &amp; Earnings Statement</p>
                 </div>
               </div>
               <button
                 onClick={() => setSelectedPayslip(null)}
-                className="w-8 h-8 rounded-xl bg-navy-50 text-navy-500 hover:text-navy-900 flex items-center justify-center transition cursor-pointer"
+                className="w-8 h-8 rounded-xl bg-slate-50 text-slate-500 hover:text-slate-900 flex items-center justify-center transition cursor-pointer"
               >
                 <Icon name="x" size={16} />
               </button>
             </div>
 
             {/* Coach & Period Meta */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-navy-50/70 p-4 rounded-2xl border border-navy-100 text-xs">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80 text-xs">
               <div>
-                <div className="text-navy-400 text-[10px] uppercase font-bold">employee Name</div>
-                <div className="font-bold text-navy-900 mt-0.5">{selectedPayslip.employee_name || user?.name}</div>
+                <div className="text-slate-400 text-[10px] uppercase font-bold">Employee Name</div>
+                <div className="font-bold text-slate-900 mt-0.5">{selectedPayslip.employee_name || user?.name}</div>
               </div>
               <div>
-                <div className="text-navy-400 text-[10px] uppercase font-bold">Designation</div>
-                <div className="font-bold text-navy-900 mt-0.5">{selectedPayslip.designation || 'Fitness employee'}</div>
+                <div className="text-slate-400 text-[10px] uppercase font-bold">Designation</div>
+                <div className="font-bold text-slate-900 mt-0.5">{selectedPayslip.designation || 'Staff'}</div>
               </div>
               <div>
-                <div className="text-navy-400 text-[10px] uppercase font-bold">Salary Period</div>
+                <div className="text-slate-400 text-[10px] uppercase font-bold">Salary Period</div>
                 <div className="font-bold text-purple-700 mt-0.5">{selectedPayslip.month} {selectedPayslip.year}</div>
               </div>
             </div>
@@ -1053,27 +1130,27 @@ export function EmployeeHrmsPage() {
             {/* Itemized Breakdown Section */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
               {/* Earnings */}
-              <div className="border border-navy-100 rounded-2xl p-4 space-y-2.5">
+              <div className="border border-slate-200/90 rounded-2xl p-4 space-y-2.5">
                 <div className="font-black text-emerald-800 uppercase tracking-wider text-[11px] flex items-center justify-between">
                   <span>Earnings</span>
                   <span>Amount</span>
                 </div>
-                <div className="divide-y divide-navy-50 space-y-2 pt-1 font-medium">
+                <div className="divide-y divide-slate-100 space-y-2 pt-1 font-medium">
                   <div className="flex justify-between pt-1">
-                    <span className="text-navy-600">Base Salary Earned:</span>
-                    <span className="font-mono font-bold text-navy-900">
+                    <span className="text-slate-600">Base Salary Earned:</span>
+                    <span className="font-mono font-bold text-slate-900">
                       ₹{(selectedPayslip.base_salary_earned ?? selectedPayslip.base_salary).toLocaleString()}
                     </span>
                   </div>
                   <div className="flex justify-between pt-2">
-                    <span className="text-navy-600">PT Commissions:</span>
+                    <span className="text-slate-600">PT Commissions:</span>
                     <span className="font-mono font-bold text-purple-700">
                       +₹{(selectedPayslip.commission_earned ?? 0).toLocaleString()}
                     </span>
                   </div>
                   <div className="flex justify-between pt-2">
-                    <span className="text-navy-600">Allowances / Bonus:</span>
-                    <span className="font-mono font-bold text-navy-900">
+                    <span className="text-slate-600">Allowances / Bonus:</span>
+                    <span className="font-mono font-bold text-slate-900">
                       ₹{(selectedPayslip.allowances ?? 0).toLocaleString()}
                     </span>
                   </div>
@@ -1081,21 +1158,21 @@ export function EmployeeHrmsPage() {
               </div>
 
               {/* Deductions */}
-              <div className="border border-navy-100 rounded-2xl p-4 space-y-2.5">
+              <div className="border border-slate-200/90 rounded-2xl p-4 space-y-2.5">
                 <div className="font-black text-rose-800 uppercase tracking-wider text-[11px] flex items-center justify-between">
                   <span>Deductions</span>
                   <span>Amount</span>
                 </div>
-                <div className="divide-y divide-navy-50 space-y-2 pt-1 font-medium">
+                <div className="divide-y divide-slate-100 space-y-2 pt-1 font-medium">
                   <div className="flex justify-between pt-1">
-                    <span className="text-navy-600">Absent Days Deduction:</span>
+                    <span className="text-slate-600">Absent Days Deduction:</span>
                     <span className="font-mono font-bold text-rose-600">
                       -₹{(selectedPayslip.deductions ?? 0).toLocaleString()}
                     </span>
                   </div>
                   <div className="flex justify-between pt-2">
-                    <span className="text-navy-600">Tax / PF Deductions:</span>
-                    <span className="font-mono text-navy-500">₹0</span>
+                    <span className="text-slate-600">Tax / PF Deductions:</span>
+                    <span className="font-mono text-slate-500">₹0</span>
                   </div>
                 </div>
               </div>
@@ -1128,7 +1205,7 @@ export function EmployeeHrmsPage() {
               <button
                 type="button"
                 onClick={() => window.print()}
-                className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition cursor-pointer flex items-center gap-1.5 shadow-sm"
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:opacity-95 text-white text-xs font-bold transition cursor-pointer flex items-center gap-1.5 shadow-sm"
               >
                 <Icon name="printer" size={14} />
                 <span>Download / Print Payslip</span>
@@ -1136,7 +1213,7 @@ export function EmployeeHrmsPage() {
               <button
                 type="button"
                 onClick={() => setSelectedPayslip(null)}
-                className="px-5 py-2 rounded-xl bg-navy-100 text-navy-700 hover:bg-navy-200 text-xs font-bold transition cursor-pointer"
+                className="px-5 py-2 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-bold transition cursor-pointer"
               >
                 Close
               </button>

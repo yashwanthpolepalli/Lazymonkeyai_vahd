@@ -55,15 +55,15 @@ export function TableColumnSettingsPopover({
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          'px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer',
+          'px-4 py-2 rounded-full border text-xs font-bold flex items-center gap-2 transition-all shadow-2xs cursor-pointer',
           isOpen
             ? 'bg-blue-50 border-blue-300 text-blue-700 ring-2 ring-blue-500/20'
-            : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
+            : 'bg-white hover:bg-slate-50 border-slate-200/90 text-slate-700'
         )}
       >
         <Icon name="settings" size={14} className={isOpen ? 'text-blue-600' : 'text-slate-500'} />
         <span>Column Settings</span>
-        <span className="ml-0.5 px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">
+        <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-slate-100 text-slate-600">
           {activeColumnCount}
         </span>
       </button>

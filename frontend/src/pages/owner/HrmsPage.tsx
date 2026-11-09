@@ -200,11 +200,11 @@ export function HrmsPage() {
   }, []);
 
   return (
-    <div className="space-y-4 w-full pb-16">
+    <div className="space-y-3.5 w-full px-4 sm:px-6 py-4 pb-16">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-navy-900 text-white text-xs font-semibold px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2 border border-brand-500/30 animate-fade-in">
-          <Icon name="check-circle" size={16} className="text-brand-400" />
+        <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white text-xs font-semibold px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2 border border-slate-700 animate-fade-in">
+          <Icon name="check-circle" size={16} className="text-emerald-400" />
           <span>{toastMessage}</span>
         </div>
       )}
@@ -212,8 +212,8 @@ export function HrmsPage() {
       {/* ───────────────────────────────────────────────────────────── */}
       {/* 0. PRIMARY SWITCH OPTION: STUDENTS VIEW vs EMPLOYEES VIEW      */}
       {/* ───────────────────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-3xl p-2.5 shadow-xs">
-        <div className="inline-flex p-1 rounded-2xl bg-slate-100/90 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+        <div className="flex items-center gap-2.5">
           {canViewStudents && (
             <button
               type="button"
@@ -222,13 +222,13 @@ export function HrmsPage() {
                 setSearchParams({ view: 'students' });
               }}
               className={cn(
-                'flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-extrabold transition-all duration-200',
+                'flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all duration-150 cursor-pointer shadow-2xs',
                 viewMode === 'students'
-                  ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm border border-slate-200/60 dark:border-slate-700 scale-[1.01]'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white shadow-md shadow-blue-500/20'
+                  : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200/90'
               )}
             >
-              <Icon name="users" size={16} className={viewMode === 'students' ? 'text-blue-600' : 'text-slate-500'} />
+              <Icon name="users" size={15} className={viewMode === 'students' ? 'text-white' : 'text-slate-500'} />
               <span>Students View</span>
             </button>
           )}
@@ -240,20 +240,20 @@ export function HrmsPage() {
                 setSearchParams({ view: 'employees' });
               }}
               className={cn(
-                'flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-extrabold transition-all duration-200',
+                'flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all duration-150 cursor-pointer shadow-2xs',
                 viewMode === 'employees'
-                  ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm border border-slate-200/60 dark:border-slate-700 scale-[1.01]'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white shadow-md shadow-blue-500/20'
+                  : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200/90'
               )}
             >
-              <Icon name="user-check" size={16} className={viewMode === 'employees' ? 'text-blue-600' : 'text-slate-500'} />
+              <Icon name="user-check" size={15} className={viewMode === 'employees' ? 'text-white' : 'text-slate-500'} />
               <span>Employees View</span>
             </button>
           )}
         </div>
 
-        <div className="flex items-center gap-2 text-xs font-bold text-slate-500 pr-2">
-          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+        <div className="flex items-center gap-2 text-xs font-bold text-slate-600 pr-1">
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block shrink-0 shadow-2xs" />
           <span>{viewMode === 'students' ? (localStorage.getItem('ssdc_college_name') ? `${localStorage.getItem('ssdc_college_name')} • Student Management` : 'Student Management Portal') : 'VAHD Enterprise • Staff HRMS'}</span>
         </div>
       </div>
@@ -269,10 +269,10 @@ export function HrmsPage() {
       {/* 2. EMPLOYEES VIEW MODE                                         */}
       {/* ───────────────────────────────────────────────────────────── */}
       {viewMode === 'employees' && (
-        <div className="space-y-4">
+        <div className="space-y-3.5">
           {/* Top HRMS Category Navigation Bar */}
-          <div className="bg-white border border-navy-100 rounded-2xl p-1.5 shadow-xs overflow-x-auto">
-            <div className="flex items-center gap-1 min-w-max">
+          <div className="bg-white border border-slate-200/90 rounded-2xl p-1.5 shadow-2xs overflow-x-auto no-scrollbar">
+            <div className="flex items-center gap-1.5 min-w-max">
               {[
                 { id: 'Employee Management', label: 'Employee Management', icon: 'users', permKey: 'hrms_employees' },
                 { id: 'Attendance', label: 'Attendance', icon: 'clock', permKey: 'hrms_attendance' },
@@ -296,12 +296,13 @@ export function HrmsPage() {
                 <button
                   key={cat.id}
                   onClick={() => switchTab(cat.id as HrmsCategory)}
-                  className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${activeCategory === cat.id
-                    ? 'bg-purple-50 text-purple-700 border border-purple-200/80 shadow-sm'
-                    : 'text-navy-600 hover:text-navy-900 hover:bg-navy-50'
-                    }`}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                    activeCategory === cat.id
+                      ? 'bg-purple-50 text-purple-700 border border-purple-200/80 shadow-2xs'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                  }`}
                 >
-                  <Icon name={cat.icon} size={15} className={activeCategory === cat.id ? 'text-purple-600' : 'text-navy-400'} />
+                  <Icon name={cat.icon} size={15} className={activeCategory === cat.id ? 'text-purple-600' : 'text-slate-400'} />
                   <span>{cat.label}</span>
                 </button>
               ))}
@@ -310,9 +311,9 @@ export function HrmsPage() {
 
           {/* Sub-Pills Under Employee Management */}
           {activeCategory === 'Employee Management' && (
-            <div className="flex items-center gap-2 overflow-x-auto pb-1">
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-0.5">
               {[
-                { id: 'employees', label: 'Employee Directory', icon: 'user-cog', permKey: 'employee_details' },
+                { id: 'employees', label: 'Employee Directory', icon: 'users', permKey: 'employee_details' },
                 { id: 'departments', label: 'Departments', icon: 'building-2', permKey: 'hrms_departments' },
                 { id: 'designations', label: 'Designations', icon: 'award', permKey: 'hrms_designations' },
                 { id: 'teams', label: 'Teams', icon: 'users-2', permKey: 'hrms_teams' },
@@ -329,12 +330,13 @@ export function HrmsPage() {
                     setActiveSubTab(sub.id);
                     setSearchParams({ view: 'employees', tab: sub.id });
                   }}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${activeSubTab === sub.id
-                    ? 'bg-purple-600 text-white shadow-md shadow-purple-600/20'
-                    : 'bg-white hover:bg-navy-50 text-navy-600 border border-navy-200/60'
-                    }`}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                    activeSubTab === sub.id
+                      ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-orange-500 text-white shadow-md shadow-blue-500/20'
+                      : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/90 shadow-2xs'
+                  }`}
                 >
-                  <Icon name={sub.icon} size={14} />
+                  <Icon name={sub.icon} size={14} className={activeSubTab === sub.id ? 'text-white' : 'text-slate-500'} />
                   <span>{sub.label}</span>
                 </button>
               ))}
@@ -368,23 +370,23 @@ export function HrmsPage() {
           {activeCategory === 'Employee Management' && activeSubTab === 'teams' && (
             <div className="space-y-5 animate-fade-in">
               <div>
-                <h2 className="text-xl font-black text-navy-900 tracking-tight">Functional Teams</h2>
-                <p className="text-xs text-navy-500">Operational units collaborating across specialized fitness tracks.</p>
+                <h2 className="text-xl font-black text-slate-900 tracking-tight">Functional Teams</h2>
+                <p className="text-xs text-slate-500">Operational units collaborating across specialized fitness tracks.</p>
               </div>
 
               {teams.length === 0 ? (
-                <div className="card p-12 text-center text-navy-400 bg-white border border-navy-100 rounded-2xl">
+                <div className="card p-12 text-center text-slate-400 bg-white border border-slate-100 rounded-2xl">
                   No teams created yet.
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {teams.map((team) => (
-                    <div key={team.id} className="card p-5 bg-white border border-navy-100 rounded-2xl shadow-sm space-y-3">
-                      <h4 className="text-sm font-bold text-navy-900">{team.name}</h4>
-                      <p className="text-xs text-navy-500 leading-snug">{team.description || team.department}</p>
+                    <div key={team.id} className="card p-5 bg-white border border-slate-100 rounded-2xl shadow-sm space-y-3">
+                      <h4 className="text-sm font-bold text-slate-900">{team.name}</h4>
+                      <p className="text-xs text-slate-500 leading-snug">{team.description || team.department}</p>
                       {team.lead_name && (
-                        <div className="pt-2 border-t border-navy-50 flex items-center justify-between text-xs">
-                          <span className="text-navy-400">Team Lead:</span>
+                        <div className="pt-2 border-t border-slate-50 flex items-center justify-between text-xs">
+                          <span className="text-slate-400">Team Lead:</span>
                           <span className="font-bold text-purple-700">{team.lead_name}</span>
                         </div>
                       )}
@@ -401,13 +403,13 @@ export function HrmsPage() {
           {activeCategory === 'Employee Management' && activeSubTab === 'documents' && (
             <div className="space-y-5 animate-fade-in">
               <div>
-                <h2 className="text-xl font-black text-navy-900 tracking-tight">Employee Documents</h2>
-                <p className="text-xs text-navy-500">Verified KYC identity proofs, employee certifications, and contracts.</p>
+                <h2 className="text-xl font-black text-slate-900 tracking-tight">Employee Documents</h2>
+                <p className="text-xs text-slate-500">Verified KYC identity proofs, employee certifications, and contracts.</p>
               </div>
 
-              <div className="bg-white border border-navy-100 rounded-2xl shadow-sm overflow-hidden">
+              <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-navy-50/50 text-[11px] font-black uppercase text-navy-500 tracking-wider border-b border-navy-100">
+                  <thead className="bg-slate-50/50 text-[11px] font-black uppercase text-slate-500 tracking-wider border-b border-slate-100">
                     <tr>
                       <th className="py-3.5 px-4">DOCUMENT TITLE</th>
                       <th className="py-3.5 px-4">EMPLOYEE</th>
@@ -417,29 +419,29 @@ export function HrmsPage() {
                       <th className="py-3.5 px-4">UPLOADED DATE</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-navy-50 font-medium text-navy-800">
+                  <tbody className="divide-y divide-slate-50 font-medium text-slate-800">
                     {documents.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="py-12 text-center text-navy-400 font-bold">
+                        <td colSpan={6} className="py-12 text-center text-slate-400 font-bold">
                           No documents uploaded yet.
                         </td>
                       </tr>
                     ) : (
                       documents.map((doc) => (
-                        <tr key={doc.id} className="hover:bg-navy-50/40">
-                          <td className="py-3.5 px-4 font-bold text-navy-900 flex items-center gap-2">
+                        <tr key={doc.id} className="hover:bg-slate-50/40">
+                          <td className="py-3.5 px-4 font-bold text-slate-900 flex items-center gap-2">
                             <Icon name="file-text" size={15} className="text-purple-600 shrink-0" />
                             {doc.title}
                           </td>
                           <td className="py-3.5 px-4 font-bold text-purple-700">{doc.employee_name || '--'}</td>
                           <td className="py-3.5 px-4">{doc.doc_type || '--'}</td>
-                          <td className="py-3.5 px-4 font-mono text-navy-500">{doc.file_size || '--'}</td>
+                          <td className="py-3.5 px-4 font-mono text-slate-500">{doc.file_size || '--'}</td>
                           <td className="py-3.5 px-4">
                             <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
                               {doc.status}
                             </span>
                           </td>
-                          <td className="py-3.5 px-4 font-mono text-navy-500">{doc.uploaded_at || '--'}</td>
+                          <td className="py-3.5 px-4 font-mono text-slate-500">{doc.uploaded_at || '--'}</td>
                         </tr>
                       ))
                     )}
@@ -487,7 +489,7 @@ export function HrmsPage() {
                       }}
                       className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap shadow-2xs ${isSelected
                         ? 'bg-purple-600 text-white shadow-md shadow-purple-600/25 ring-2 ring-purple-300/40'
-                        : 'bg-white hover:bg-navy-50 text-navy-600 border border-navy-200/80'
+                        : 'bg-white hover:bg-slate-50 text-slate-600 border border-slate-200/80'
                         }`}
                     >
                       <Icon name={sub.icon} size={14} />
@@ -504,14 +506,14 @@ export function HrmsPage() {
                 isHoUser || geofencePortalEnabled ? (
                   <HrmsGeofencePortal onSuccessToast={triggerToast} />
                 ) : (
-                  <div className="bg-white p-12 rounded-2xl border border-navy-100 shadow-2xs text-center space-y-3">
+                  <div className="bg-white p-12 rounded-2xl border border-slate-100 shadow-2xs text-center space-y-3">
                     <div className="w-14 h-14 mx-auto rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center">
                       <Icon name="lock" size={26} />
                     </div>
-                    <h3 className="text-base font-extrabold text-navy-900">
+                    <h3 className="text-base font-extrabold text-slate-900">
                       Attendance &amp; Geofence Portal Disabled
                     </h3>
-                    <p className="text-xs text-navy-500 max-w-md mx-auto font-medium">
+                    <p className="text-xs text-slate-500 max-w-md mx-auto font-medium">
                       This page is controlled by Head Office. Access to the Attendance &amp; Geofence Portal is currently disabled for this branch or organization.
                     </p>
                     <button
@@ -559,13 +561,13 @@ export function HrmsPage() {
           {activeCategory === 'Exit Management' && (
             <div className="space-y-5 animate-fade-in">
               <div>
-                <h2 className="text-xl font-black text-navy-900 tracking-tight">Exit Management & Handover</h2>
-                <p className="text-xs text-navy-500">Employee resignations, equipment handover checklists, and final clearance.</p>
+                <h2 className="text-xl font-black text-slate-900 tracking-tight">Exit Management & Handover</h2>
+                <p className="text-xs text-slate-500">Employee resignations, equipment handover checklists, and final clearance.</p>
               </div>
 
-              <div className="bg-white border border-navy-100 rounded-2xl shadow-sm overflow-hidden">
+              <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-navy-50/50 text-[11px] font-black uppercase text-navy-500 tracking-wider border-b border-navy-100">
+                  <thead className="bg-slate-50/50 text-[11px] font-black uppercase text-slate-500 tracking-wider border-b border-slate-100">
                     <tr>
                       <th className="py-3.5 px-4">EMPLOYEE</th>
                       <th className="py-3.5 px-4">RESIGNATION DATE</th>
@@ -577,27 +579,27 @@ export function HrmsPage() {
                       <th className="py-3.5 px-4 text-right">ACTION</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-navy-50 font-medium text-navy-800">
+                  <tbody className="divide-y divide-slate-50 font-medium text-slate-800">
                     {exitRequests.length === 0 ? (
                       <tr>
-                        <td colSpan={8} className="py-12 text-center text-navy-400 font-bold">
+                        <td colSpan={8} className="py-12 text-center text-slate-400 font-bold">
                           No exit requests logged.
                         </td>
                       </tr>
                     ) : (
                       exitRequests.map((x) => (
-                        <tr key={x.id} className="hover:bg-navy-50/40">
-                          <td className="py-3.5 px-4 font-bold text-navy-900">{x.employee_name}</td>
+                        <tr key={x.id} className="hover:bg-slate-50/40">
+                          <td className="py-3.5 px-4 font-bold text-slate-900">{x.employee_name}</td>
                           <td className="py-3.5 px-4 font-mono">{x.resignation_date}</td>
                           <td className="py-3.5 px-4 font-mono font-bold text-purple-700">{x.last_working_day}</td>
-                          <td className="py-3.5 px-4 text-navy-600 max-w-xs">{x.reason || '--'}</td>
+                          <td className="py-3.5 px-4 text-slate-600 max-w-xs">{x.reason || '--'}</td>
                           <td className="py-3.5 px-4">
                             <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700">
                               {x.handover_status}
                             </span>
                           </td>
                           <td className="py-3.5 px-4">
-                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-navy-100 text-navy-700">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700">
                               {x.settlement_status}
                             </span>
                           </td>

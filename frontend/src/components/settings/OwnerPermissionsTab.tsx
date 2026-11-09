@@ -572,35 +572,31 @@ export function OwnerPermissionsTab({ onBack }: Props) {
         </div>
       )}
 
-      {/* Top Breadcrumb & Action Bar - Exactly as Image 1 */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-3">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-1">
-            <span className="hover:text-blue-600 cursor-pointer" onClick={() => (onBack ? onBack() : null)}>
-              Home
-            </span>
-            <Icon name="chevron-right" size={12} />
-            <span className="hover:text-blue-600 cursor-pointer" onClick={() => (onBack ? onBack() : null)}>
-              Settings
-            </span>
-            <Icon name="chevron-right" size={12} />
-            <span className="text-slate-800 dark:text-slate-200 font-bold">Permissions</span>
+      {/* Top Breadcrumb & Action Bar */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-2xs">
+        <div className="flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-2xl bg-sky-50 text-sky-600 border border-sky-100 flex items-center justify-center shrink-0">
+            <Icon name="key" size={22} className="text-sky-600" />
           </div>
-          <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Permissions</h2>
-          <p className="text-xs text-slate-500 font-medium">Settings · {owners.length} records</p>
+          <div>
+            <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-0.5">
+              <span className="hover:text-blue-600 hover:underline cursor-pointer transition-colors flex items-center gap-1" onClick={() => (onBack ? onBack() : null)}>
+                <Icon name="home" size={12} />
+                <span>Home</span>
+              </span>
+              <Icon name="chevron-right" size={12} />
+              <span className="hover:text-blue-600 hover:underline cursor-pointer transition-colors" onClick={() => (onBack ? onBack() : null)}>
+                Settings
+              </span>
+              <Icon name="chevron-right" size={12} />
+              <span className="text-slate-800 font-bold">Permissions</span>
+            </div>
+            <h2 className="text-xl sm font-black text-slate-900 tracking-tight">Permissions Matrix</h2>
+            <p className="text-xs text-slate-500 font-medium">Settings · <span className="font-bold text-slate-700">{owners.length}</span> role access records</p>
+          </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Back button */}
-          <button
-            type="button"
-            onClick={() => (onBack ? onBack() : null)}
-            className="px-3.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
-          >
-            <Icon name="chevron-left" size={14} />
-            <span>Back</span>
-          </button>
-
+        <div className="flex flex-wrap items-center gap-2 self-start md:self-center">
           {/* Delete All button */}
           <button
             type="button"
@@ -615,7 +611,7 @@ export function OwnerPermissionsTab({ onBack }: Props) {
           <button
             type="button"
             onClick={handleOpenAdd}
-            className="px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+            className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-orange-500 hover:opacity-95 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
           >
             <Icon name="plus" size={14} />
             <span>+ Add Permission</span>
@@ -624,7 +620,7 @@ export function OwnerPermissionsTab({ onBack }: Props) {
       </div>
 
       {/* Filter Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-2xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-slate-200/90 shadow-2xs">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 flex-1 max-w-xl">
           <div className="relative flex-1">
             <Icon name="search" size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -633,7 +629,7 @@ export function OwnerPermissionsTab({ onBack }: Props) {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search permissions..."
-              className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
@@ -647,7 +643,7 @@ export function OwnerPermissionsTab({ onBack }: Props) {
                 localStorage.setItem('vahd_selected_org_id', val);
                 window.dispatchEvent(new CustomEvent('vahd:org_changed', { detail: { id: val } }));
               }}
-              className="w-full sm:w-auto px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+              className="w-full sm:w-auto px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
             >
               <option value="all">🏢 All Organisations</option>
               {branches.map((b) => (
@@ -659,7 +655,7 @@ export function OwnerPermissionsTab({ onBack }: Props) {
           </div>
         </div>
 
-        <div className="flex items-center gap-4 text-xs font-bold text-slate-600 dark:text-slate-400">
+        <div className="flex items-center gap-4 text-xs font-bold text-slate-600">
           <span>{filteredOwners.length} records</span>
           <label className="flex items-center gap-1.5 cursor-pointer select-none">
             <input
@@ -674,10 +670,10 @@ export function OwnerPermissionsTab({ onBack }: Props) {
       </div>
 
       {/* Permissions Table */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-2xs overflow-hidden">
+      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50/80 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 font-bold uppercase text-[10px] tracking-wider border-b border-slate-200 dark:border-slate-700">
+            <thead className="bg-slate-50/80 text-slate-500 font-bold uppercase text-[10px] tracking-wider border-b border-slate-200">
               <tr>
                 <th className="w-10 py-3.5 px-4 text-center">
                   <input
@@ -697,7 +693,7 @@ export function OwnerPermissionsTab({ onBack }: Props) {
                 <th className="py-3.5 px-4 text-center">ACTIONS</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-200">
+            <tbody className="divide-y divide-slate-100 text-slate-700">
               {filteredOwners.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="py-16 text-center text-slate-400 font-medium">
@@ -708,10 +704,10 @@ export function OwnerPermissionsTab({ onBack }: Props) {
                       </div>
                     ) : (
                       <div className="flex flex-col items-center justify-center gap-2.5">
-                        <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400">
+                        <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400">
                           <Icon name="shield-alert" size={24} />
                         </div>
-                        <p className="text-xs font-bold text-slate-600 dark:text-slate-300">
+                        <p className="text-xs font-bold text-slate-600">
                           {searchQuery
                             ? 'No permissions found matching your search.'
                             : selectedOrgFilter !== 'all'
@@ -727,7 +723,7 @@ export function OwnerPermissionsTab({ onBack }: Props) {
                                 localStorage.setItem('vahd_selected_org_id', 'all');
                                 window.dispatchEvent(new CustomEvent('vahd:org_changed', { detail: { id: 'all' } }));
                               }}
-                              className="px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-50 text-slate-700 dark:text-slate-200 text-xs font-bold transition-all cursor-pointer"
+                              className="px-3 py-1.5 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all cursor-pointer"
                             >
                               View All Organisations
                             </button>
@@ -753,7 +749,7 @@ export function OwnerPermissionsTab({ onBack }: Props) {
                     <tr
                       key={owner.id}
                       className={cn(
-                        'hover:bg-slate-50/70 dark:hover:bg-slate-800/50 transition-colors',
+                        'hover transition-colors',
                         isChecked && 'bg-blue-50/30'
                       )}
                     >
@@ -779,7 +775,7 @@ export function OwnerPermissionsTab({ onBack }: Props) {
                       </td>
 
                       {/* Organisation */}
-                      <td className="py-3.5 px-4 font-semibold text-slate-900 dark:text-white">
+                      <td className="py-3.5 px-4 font-semibold text-slate-900">
                         <div className="flex items-center gap-1.5">
                           <Icon name="building-2" size={13} className="text-blue-500 shrink-0" />
                           <span>{owner.organization_name || 'Central Head Office'}</span>
@@ -788,18 +784,18 @@ export function OwnerPermissionsTab({ onBack }: Props) {
 
                       {/* Owner / Officer */}
                       <td className="py-3.5 px-4">
-                        <div className="font-semibold text-slate-800 dark:text-slate-100">{owner.full_name || '—'}</div>
+                        <div className="font-semibold text-slate-800">{owner.full_name || '—'}</div>
                         {owner.email && <div className="text-[11px] text-slate-400 font-normal">{owner.email}</div>}
                       </td>
 
                       {/* Designation */}
-                      <td className="py-3.5 px-4 font-medium text-slate-700 dark:text-slate-300">
+                      <td className="py-3.5 px-4 font-medium text-slate-700">
                         {owner.designation || '—'}
                       </td>
 
                       {/* Role Name */}
-                      <td className="py-3.5 px-4 font-medium text-slate-600 dark:text-slate-300">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700">
+                      <td className="py-3.5 px-4 font-medium text-slate-600">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-slate-100 text-slate-800 border border-slate-200">
                           {owner.role_title || 'Owner'}
                         </span>
                       </td>
@@ -810,8 +806,8 @@ export function OwnerPermissionsTab({ onBack }: Props) {
                           className={cn(
                             'inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold border',
                             owner.is_active
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800'
-                              : 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-800'
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              : 'bg-rose-50 text-rose-700 border-rose-200'
                           )}
                         >
                           {owner.is_active ? 'Active' : 'Inactive'}
@@ -823,7 +819,7 @@ export function OwnerPermissionsTab({ onBack }: Props) {
                         <button
                           type="button"
                           onClick={() => handleOpenView(owner)}
-                          className="inline-flex items-center px-3 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-800 transition-colors cursor-pointer"
+                          className="inline-flex items-center px-3 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200 hover transition-colors cursor-pointer"
                         >
                           {activeModules} modules
                         </button>
@@ -877,11 +873,11 @@ export function OwnerPermissionsTab({ onBack }: Props) {
       {/* ───────────────────────────────────────────────────────────────── */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-900/60 backdrop-blur-xs animate-fade-in overflow-y-auto">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-4xl my-auto overflow-hidden max-h-[92vh] flex flex-col">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-4xl my-auto overflow-hidden max-h-[92vh] flex flex-col">
             {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900">
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-white">
               <div className="space-y-0.5">
-                <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">
+                <h3 className="text-lg font-black text-slate-900 tracking-tight">
                   {modalMode === 'create'
                     ? 'Add Permission'
                     : modalMode === 'edit'
@@ -896,7 +892,7 @@ export function OwnerPermissionsTab({ onBack }: Props) {
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-100 transition-colors cursor-pointer"
               >
                 <Icon name="x" size={18} />
               </button>
@@ -908,14 +904,14 @@ export function OwnerPermissionsTab({ onBack }: Props) {
               <div className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
-                    <label className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 block mb-1.5">
+                    <label className="text-xs font-black uppercase tracking-wider text-slate-700 block mb-1.5">
                       ORGANISATION / BRANCH <span className="text-rose-500">*</span>
                     </label>
                     <select
                       disabled={modalMode === 'view'}
                       value={formOrgId}
                       onChange={(e) => setFormOrgId(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       <option value="">Central Head Office / All Branches</option>
                       {branches.map((b) => (
@@ -927,7 +923,7 @@ export function OwnerPermissionsTab({ onBack }: Props) {
                   </div>
 
                   <div>
-                    <label className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 block mb-1.5">
+                    <label className="text-xs font-black uppercase tracking-wider text-slate-700 block mb-1.5">
                       DESIGNATION <span className="text-rose-500">*</span>
                     </label>
                     <input
@@ -938,7 +934,7 @@ export function OwnerPermissionsTab({ onBack }: Props) {
                       onChange={(e) => setFormDesignation(e.target.value)}
                       placeholder={availableDesignations.length > 0 ? "Select or enter designation..." : "Enter designation..."}
                       required
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                     {availableDesignations.length > 0 && (
                       <datalist id="available-designations">
@@ -950,7 +946,7 @@ export function OwnerPermissionsTab({ onBack }: Props) {
                   </div>
 
                   <div>
-                    <label className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 block mb-1.5">
+                    <label className="text-xs font-black uppercase tracking-wider text-slate-700 block mb-1.5">
                       ROLE / PERMISSION NAME <span className="text-rose-500">*</span>
                     </label>
                     <input
@@ -960,22 +956,22 @@ export function OwnerPermissionsTab({ onBack }: Props) {
                       onChange={(e) => setFormRoleName(e.target.value)}
                       placeholder="Enter role / permission name (e.g. Branch Owner, Manager)..."
                       required
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                 </div>
 
                 {/* Owner Account & Login Credentials Section */}
-                <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/40 p-4 space-y-3">
-                  <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-2">
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4 space-y-3">
+                  <div className="flex items-center justify-between border-b border-slate-200 pb-2">
                     <div className="flex items-center gap-2">
                       <Icon name="user-check" size={15} className="text-blue-600" />
-                      <span className="text-xs font-black text-slate-800 dark:text-slate-200">
+                      <span className="text-xs font-black text-slate-800">
                         Owner Account & Login Credentials
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <label className="font-bold text-slate-700 dark:text-slate-300 text-xs cursor-pointer flex items-center gap-1.5 select-none">
+                      <label className="font-bold text-slate-700 text-xs cursor-pointer flex items-center gap-1.5 select-none">
                         <input
                           type="checkbox"
                           disabled={modalMode === 'view'}
@@ -990,7 +986,7 @@ export function OwnerPermissionsTab({ onBack }: Props) {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-1">
                     <div>
-                      <label className="font-bold text-slate-600 dark:text-slate-400 text-xs block mb-1">
+                      <label className="font-bold text-slate-600 text-xs block mb-1">
                         Full Name / Officer Name
                       </label>
                       <input
@@ -999,12 +995,12 @@ export function OwnerPermissionsTab({ onBack }: Props) {
                         value={formFullName}
                         onChange={(e) => setFormFullName(e.target.value)}
                         placeholder="e.g. Officer Name"
-                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-900 dark:text-white"
+                        className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-xs font-semibold text-slate-900"
                       />
                     </div>
 
                     <div>
-                      <label className="font-bold text-slate-600 dark:text-slate-400 text-xs block mb-1">
+                      <label className="font-bold text-slate-600 text-xs block mb-1">
                         Login Email <span className="text-rose-500">*</span>
                       </label>
                       <input
@@ -1014,12 +1010,12 @@ export function OwnerPermissionsTab({ onBack }: Props) {
                         onChange={(e) => setFormEmail(e.target.value)}
                         placeholder="owner@organization.gov.in"
                         required={modalMode === 'create'}
-                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-900 dark:text-white"
+                        className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-xs font-semibold text-slate-900"
                       />
                     </div>
 
                     <div>
-                      <label className="font-bold text-slate-600 dark:text-slate-400 text-xs block mb-1">
+                      <label className="font-bold text-slate-600 text-xs block mb-1">
                         Phone Number
                       </label>
                       <input
@@ -1028,13 +1024,13 @@ export function OwnerPermissionsTab({ onBack }: Props) {
                         value={formPhone}
                         onChange={(e) => setFormPhone(e.target.value)}
                         placeholder="+91 9876543210"
-                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-900 dark:text-white"
+                        className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-xs font-semibold text-slate-900"
                       />
                     </div>
 
                     {modalMode !== 'view' && (
                       <div>
-                        <label className="font-bold text-slate-600 dark:text-slate-400 text-xs block mb-1">
+                        <label className="font-bold text-slate-600 text-xs block mb-1">
                           Password {modalMode === 'create' ? '(Default: Admin@123)' : '(Leave blank to keep)'}
                         </label>
                         <input
@@ -1042,7 +1038,7 @@ export function OwnerPermissionsTab({ onBack }: Props) {
                           value={formPassword}
                           onChange={(e) => setFormPassword(e.target.value)}
                           placeholder="••••••••"
-                          className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-900 dark:text-white"
+                          className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-xs font-semibold text-slate-900"
                         />
                       </div>
                     )}
@@ -1052,11 +1048,11 @@ export function OwnerPermissionsTab({ onBack }: Props) {
 
               {/* Granular Module Access Matrix Table with Quick Full Access / Clear All */}
               <div className="space-y-2">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700">
-                  <div className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-300">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 bg-slate-50 rounded-xl border border-slate-200">
+                  <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
                     <Icon name="shield-check" size={15} className="text-emerald-600" />
                     <span>Module Permissions Matrix</span>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-100 text-blue-700">
                       {Object.entries(permissionsMatrix).filter(([k, v]) => k !== '_designation' && v).length} / {TOTAL_AVAILABLE_PERMISSIONS} Actions Enabled
                     </span>
                   </div>
@@ -1074,7 +1070,7 @@ export function OwnerPermissionsTab({ onBack }: Props) {
                       <button
                         type="button"
                         onClick={() => setPermissionsMatrix({})}
-                        className="px-2.5 py-1 rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-[11px] font-bold transition-all cursor-pointer"
+                        className="px-2.5 py-1 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 text-[11px] font-bold transition-all cursor-pointer"
                       >
                         Clear All
                       </button>
@@ -1082,9 +1078,9 @@ export function OwnerPermissionsTab({ onBack }: Props) {
                   )}
                 </div>
 
-                <div className="border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden shadow-2xs">
+                <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
                   <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700">
+                  <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
                     <tr>
                       <th className="py-2.5 px-4 font-bold">Module</th>
                       <th className="py-2.5 px-3 text-center w-16">View</th>
@@ -1094,11 +1090,11 @@ export function OwnerPermissionsTab({ onBack }: Props) {
                       <th className="py-2.5 px-3 text-center w-16">Import</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  <tbody className="divide-y divide-slate-100">
                     {PERMISSION_MATRIX_CONFIG.map((group) => (
                       <React.Fragment key={group.id}>
                         {/* Group Header in Blue Bold - As in Image 2 */}
-                        <tr className="bg-slate-50/50 dark:bg-slate-800/40">
+                        <tr className="bg-slate-50/50">
                           <td colSpan={6} className="py-2 px-4 font-black text-blue-600 text-[11px] tracking-wide">
                             {group.title}
                           </td>
@@ -1108,9 +1104,9 @@ export function OwnerPermissionsTab({ onBack }: Props) {
                         {group.rows.map((row) => (
                           <tr
                             key={row.key}
-                            className="hover:bg-slate-50/60 dark:hover:bg-slate-800/30 transition-colors"
+                            className="hover transition-colors"
                           >
-                            <td className="py-2 px-4 text-slate-800 dark:text-slate-200 font-medium">
+                            <td className="py-2 px-4 text-slate-800 font-medium">
                               {row.label}
                             </td>
 
@@ -1188,11 +1184,11 @@ export function OwnerPermissionsTab({ onBack }: Props) {
             </div>
 
               {/* Modal Action Buttons: Cancel and Save (As in Image 2) */}
-              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-200 dark:border-slate-800">
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-200">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 text-slate-700 dark:text-slate-200 text-xs font-bold transition-all cursor-pointer shadow-2xs"
+                  className="px-4 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all cursor-pointer shadow-2xs"
                 >
                   Cancel
                 </button>
@@ -1201,14 +1197,14 @@ export function OwnerPermissionsTab({ onBack }: Props) {
                   <button
                     type="submit"
                     disabled={saving}
-                    className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-blue-500/20 disabled:opacity-50 transition-all cursor-pointer"
+                    className="px-5 py-2 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-orange-500 hover:opacity-95 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-orange-500/20 disabled:opacity-50 transition-all cursor-pointer"
                   >
                     {saving ? (
                       <Icon name="loader" size={14} className="animate-spin" />
                     ) : (
                       <Icon name="check" size={14} />
                     )}
-                    <span>Save</span>
+                    <span>Save Permissions</span>
                   </button>
                 )}
               </div>

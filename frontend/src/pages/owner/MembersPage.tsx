@@ -396,52 +396,61 @@ export function MembersPage() {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in pb-8">
-      <PageHeader
-        title="Students"
-        breadcrumb={[isEmployeeView ? 'Employee' : 'Owner', 'Students']}
-        actions={
-          !isEmployeeView ? (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleOpenRenewalModal}
-                disabled={selectedMemberIds.length === 0}
-                className={cn(
-                  'btn-secondary flex items-center gap-2 text-sm font-semibold transition-all',
-                  selectedMemberIds.length > 0
-                    ? 'border-brand-500 text-brand-600 bg-brand-50 ring-2 ring-brand-500/20 shadow-glow'
-                    : 'opacity-50 cursor-not-allowed'
-                )}
-              >
-                <Icon name="refresh-cw" size={16} /> Renewal {selectedMemberIds.length > 0 && `(${selectedMemberIds.length})`}
-              </button>
-              <button onClick={() => setEnrollOpen(true)} className="btn-primary flex items-center gap-2">
-                <Icon name="plus" size={16} /> Add Student
-              </button>
-            </div>
-          ) : undefined
-        }
-      />
+    <div className="px-4 sm:px-6 py-4 space-y-5 font-sans text-slate-900 animate-fade-in relative pb-12">
+      {/* ── Breadcrumb & Header matching design reference ───────────────── */}
+      <div className="space-y-1">
+        <div className="text-xs font-bold text-slate-600 mb-1 flex items-center gap-1.5">
+          <Icon name="home" size={13} className="text-blue-600" />
+          <span
+            className="text-blue-600 hover:underline cursor-pointer"
+            onClick={() => navigate(isEmployeeView ? '/employee' : '/owner')}
+          >
+            {isEmployeeView ? 'Employee' : 'Home'}
+          </span>
+          <span className="text-slate-400">›</span>
+          <span className="text-slate-900 font-black">Students</span>
+        </div>
 
-      <div className="card p-4">
-        <div className="flex flex-col sm:flex-row gap-3 mb-4 items-stretch sm:items-center">
-          <div className="relative flex-1">
-            <Icon name="search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-navy-400" />
-            <input
-              type="text"
-              placeholder="Search students by name, phone, email or course..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="input-field pl-9 w-full"
-            />
+        <div className="flex items-center gap-3.5 pt-0.5">
+          <div className="w-11 h-11 rounded-2xl bg-purple-50 text-purple-600 border border-purple-100 flex items-center justify-center shrink-0 shadow-2xs">
+            <Icon name="graduation-cap" size={22} className="text-purple-600" />
           </div>
+          <div>
+            <h1 className="text-2xl sm:text-[28px] font-black text-slate-900 tracking-tight leading-tight">
+              Students
+            </h1>
+            <p className="text-xs sm:text-[13px] text-slate-500 font-medium mt-0.5">
+              Manage, search and view all students, their attendance and status.
+            </p>
+          </div>
+        </div>
+      </div>
 
-          {/* Attendance Filter (Left side of status filter) */}
-          <div className="relative min-w-[170px]">
+      {/* ── Search, Filters & Action Toolbar ────────────────────────────── */}
+      <div className="bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+        {/* Search Input with purple icon */}
+        <div className="relative flex-1">
+          <Icon name="search" size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-purple-600 pointer-events-none" />
+          <input
+            type="text"
+            placeholder="Search students by name, phone, email or course..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50/80 border border-slate-200/90 text-xs font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all"
+          />
+        </div>
+
+        {/* Filters & Actions */}
+        <div className="flex items-center gap-2.5 flex-wrap">
+          {/* Attendance Filter with Calendar Icon */}
+          <div className="relative">
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-purple-600">
+              <Icon name="calendar" size={14} />
+            </div>
             <select
               value={attendanceFilter}
               onChange={(e) => setAttendanceFilter(e.target.value as any)}
-              className="input-field py-2.5 pr-9 pl-3 text-xs font-semibold text-navy-700 bg-white border border-navy-200 rounded-xl appearance-none cursor-pointer w-full focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+              className="appearance-none pl-9 pr-8 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold shadow-2xs cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             >
               <option value="All">All Attendance</option>
               <option value=">=75">≥ 75% (Eligible)</option>
@@ -449,58 +458,107 @@ export function MembersPage() {
               <option value="<60">&lt; 60% (Shortage)</option>
               <option value="0">0% (No Attendance)</option>
             </select>
-            <Icon
-              name="chevron-down"
-              size={14}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-navy-400 pointer-events-none"
-            />
+            <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+              <Icon name="chevron-down" size={13} />
+            </div>
           </div>
 
-          {/* Status Filter */}
-          <div className="relative min-w-[150px]">
+          {/* Status Filter with Layers Icon */}
+          <div className="relative">
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-purple-600">
+              <Icon name="layers" size={14} />
+            </div>
             <select
               value={filter}
               onChange={(e) => setFilter(e.target.value as FilterType)}
-              className="input-field py-2.5 pr-9 pl-3 text-xs font-semibold text-navy-700 bg-white border border-navy-200 rounded-xl appearance-none cursor-pointer w-full focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+              className="appearance-none pl-9 pr-8 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold shadow-2xs cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             >
               <option value="All">All Status</option>
               <option value="Active">Active</option>
               <option value="Inactive">Inactive</option>
             </select>
-            <Icon
-              name="chevron-down"
-              size={14}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-navy-400 pointer-events-none"
-            />
+            <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+              <Icon name="chevron-down" size={13} />
+            </div>
           </div>
-        </div>
 
+          {/* Owner Bulk Renewal Action */}
+          {!isEmployeeView && selectedMemberIds.length > 0 && (
+            <button
+              type="button"
+              onClick={handleOpenRenewalModal}
+              className="px-3.5 py-2.5 rounded-xl border border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+            >
+              <Icon name="refresh-cw" size={14} />
+              <span>Renewal ({selectedMemberIds.length})</span>
+            </button>
+          )}
+
+          {/* Add Student Button with vibrant gradient */}
+          <button
+            type="button"
+            onClick={() => setEnrollOpen(true)}
+            className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-orange-500 hover:opacity-95 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+          >
+            <Icon name="plus" size={15} />
+            <span>Add Student</span>
+          </button>
+        </div>
+      </div>
+
+      {/* ── Table & Empty State Card ─────────────────────────────────────── */}
+      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden relative">
         {loading ? (
-          <SkeletonTable rows={8} cols={isEmployeeView ? 7 : 9} />
+          <div className="p-5">
+            <SkeletonTable rows={8} cols={isEmployeeView ? 7 : 9} />
+          </div>
         ) : filtered.length === 0 ? (
-          <EmptyState icon="!" title="No students found" description="Try adjusting your search or filters." />
+          <div className="py-16 px-6 text-center space-y-2 relative z-10">
+            <div className="w-14 h-14 rounded-2xl bg-purple-50 text-purple-600 border border-purple-100 flex items-center justify-center mx-auto mb-3 shadow-2xs">
+              <Icon name="graduation-cap" size={28} className="text-purple-600" />
+            </div>
+            <h3 className="text-lg font-black text-slate-900 tracking-tight">
+              No Students Found
+            </h3>
+            <p className="text-xs text-slate-500 font-medium max-w-md mx-auto mt-1 mb-5">
+              Try adjusting your search or filters, or add a new student to get started.
+            </p>
+            <button
+              type="button"
+              onClick={() => setEnrollOpen(true)}
+              className="bg-gradient-to-r from-blue-600 via-indigo-600 to-orange-500 hover:opacity-95 text-white px-6 py-2.5 rounded-full text-xs font-black shadow-xs flex items-center gap-1.5 mx-auto cursor-pointer"
+            >
+              <Icon name="plus" size={14} />
+              <span>Add Student</span>
+            </button>
+
+            {/* Bottom pastel waves matching screenshot */}
+            <svg className="absolute -bottom-1 left-0 right-0 w-full h-16 pointer-events-none opacity-30 text-purple-200" viewBox="0 0 160 50" fill="none" preserveAspectRatio="none">
+              <path d="M0,50 Q45,28 95,38 T160,12 L160,50 Z" fill="currentColor" />
+            </svg>
+          </div>
         ) : (
-          <div className="overflow-x-auto -mx-4 px-4">
+          <div className="overflow-x-auto">
             <table className={cn('w-full', isEmployeeView ? 'min-w-[800px]' : 'min-w-[950px]')}>
               <thead>
-                <tr className="border-b border-navy-100">
-                  <th className="px-3 py-3 w-10 text-center">
+                <tr className="border-b border-slate-100 bg-slate-50/60">
+                  <th className="px-3.5 py-3.5 w-10 text-center">
                     <input
                       type="checkbox"
                       checked={filtered.length > 0 && selectedMemberIds.length === filtered.length}
                       onChange={handleSelectAll}
-                      className="w-4 h-4 rounded border-navy-300 text-brand-600 focus:ring-brand-500 cursor-pointer"
+                      className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                     />
                   </th>
                   {(isEmployeeView
                     ? ['Student', 'Email', 'Course', 'Parent No', 'Status', 'Attendance', '']
                     : ['Student', 'Course', 'Status', 'Attendance', 'Last Visit', 'Expiry', 'Revenue', 'Risk', '']
                   ).map((h, i) => (
-                    <th key={h || i} className="text-left text-xs font-semibold text-navy-400 uppercase tracking-wider px-3 py-3">{h}</th>
+                    <th key={h || i} className="text-left text-xs font-bold text-slate-500 uppercase tracking-wider px-3.5 py-3.5">{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-slate-100">
                 {filtered.map((m) => {
                   const name = m.name || (m as any).full_name || 'Student';
                   const initials = name ? name.split(' ').map((n: string) => n[0]).join('').slice(0, 2) : 'S';
@@ -519,84 +577,84 @@ export function MembersPage() {
                         }
                       }}
                       className={cn(
-                        'border-b border-navy-50 hover:bg-navy-50 transition-colors',
+                        'hover:bg-slate-50/80 transition-colors',
                         !isEmployeeView && 'cursor-pointer',
-                        isSelected && 'bg-brand-50/50'
+                        isSelected && 'bg-blue-50/40'
                       )}
                     >
-                      <td className="px-3 py-3 w-10 text-center" onClick={(e) => e.stopPropagation()}>
+                      <td className="px-3.5 py-3.5 w-10 text-center" onClick={(e) => e.stopPropagation()}>
                         <input
                           type="checkbox"
                           checked={isSelected}
                           onChange={(e) => handleToggleSelect(m.id, e)}
-                          className="w-4 h-4 rounded border-navy-300 text-brand-600 focus:ring-brand-500 cursor-pointer"
+                          className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                         />
                       </td>
-                      <td className="px-3 py-3">
+                      <td className="px-3.5 py-3.5">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white text-xs font-bold shrink-0 shadow-2xs">
                             {initials}
                           </div>
                           <div className="min-w-0">
-                            <div className="text-sm font-semibold text-navy-900 truncate">{name}</div>
-                            <div className="text-xs text-navy-600 font-mono font-medium truncate">{m.phone || '—'}</div>
+                            <div className="text-sm font-bold text-slate-900 truncate">{name}</div>
+                            <div className="text-xs text-slate-500 font-mono font-medium truncate">{m.phone || '—'}</div>
                           </div>
                         </div>
                       </td>
 
                       {/* Email Column (Employee View) */}
                       {isEmployeeView && (
-                        <td className="px-3 py-3 text-sm text-navy-600 font-medium truncate max-w-[200px]">
+                        <td className="px-3.5 py-3.5 text-xs text-slate-600 font-medium truncate max-w-[200px]">
                           {m.email ? (
-                            <span className="text-navy-700">{m.email}</span>
+                            <span className="text-slate-700">{m.email}</span>
                           ) : (
-                            <span className="text-navy-400">—</span>
+                            <span className="text-slate-400">—</span>
                           )}
                         </td>
                       )}
 
                       {/* Course Column (both Employee & Owner) */}
-                      <td className="px-3 py-3 text-sm text-navy-700 font-medium">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-brand-50 text-brand-700 border border-brand-200">
+                      <td className="px-3.5 py-3.5 text-xs text-slate-700 font-medium">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-50 text-purple-700 border border-purple-200/80">
                           {courseName}
                         </span>
                       </td>
 
                       {/* Parent No Column (Employee View) */}
                       {isEmployeeView && (
-                        <td className="px-3 py-3 text-sm text-navy-600 font-mono font-medium">
+                        <td className="px-3.5 py-3.5 text-xs text-slate-600 font-mono font-medium">
                           {parentPhone ? (
                             <span>{parentPhone}</span>
                           ) : (
-                            <span className="text-navy-400">—</span>
+                            <span className="text-slate-400">—</span>
                           )}
                         </td>
                       )}
 
                       {/* Status Column */}
-                      <td className="px-3 py-3"><Badge variant={statusConf.variant}>{statusConf.label}</Badge></td>
+                      <td className="px-3.5 py-3.5"><Badge variant={statusConf.variant}>{statusConf.label}</Badge></td>
 
                       {/* Attendance Column */}
-                      <td className="px-3 py-3">
+                      <td className="px-3.5 py-3.5">
                         <div className="flex items-center gap-2">
-                          <div className="w-16 h-1.5 rounded-full bg-navy-100 overflow-hidden">
-                            <div className="h-full rounded-full bg-brand-500" style={{ width: `${m.attendance || 0}%` }} />
+                          <div className="w-16 h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                            <div className="h-full rounded-full bg-blue-500" style={{ width: `${m.attendance || 0}%` }} />
                           </div>
-                          <span className="text-xs text-navy-500 font-medium">{m.attendance || 0}%</span>
+                          <span className="text-xs text-slate-600 font-bold">{m.attendance || 0}%</span>
                         </div>
                       </td>
 
                       {/* Owner-only Columns: Last Visit, Expiry, Revenue, Risk */}
                       {!isEmployeeView && (
                         <>
-                          <td className="px-3 py-3 text-sm text-navy-500">{m.lastVisit || '—'}</td>
-                          <td className="px-3 py-3 text-sm font-medium text-navy-700">{formatDateDDMMYY(m.expiry)}</td>
-                          <td className="px-3 py-3 text-sm font-semibold text-navy-900">{m.revenue}</td>
-                          <td className="px-3 py-3"><Badge variant={riskConf.variant}>{riskConf.label}</Badge></td>
+                          <td className="px-3.5 py-3.5 text-xs text-slate-500">{m.lastVisit || '—'}</td>
+                          <td className="px-3.5 py-3.5 text-xs font-bold text-slate-700">{formatDateDDMMYY(m.expiry)}</td>
+                          <td className="px-3.5 py-3.5 text-xs font-bold text-slate-900">{m.revenue}</td>
+                          <td className="px-3.5 py-3.5"><Badge variant={riskConf.variant}>{riskConf.label}</Badge></td>
                         </>
                       )}
 
-                      <td className="px-3 py-3"><Icon name="chevron-right" size={16} className="text-navy-300" /></td>
+                      <td className="px-3.5 py-3.5"><Icon name="chevron-right" size={16} className="text-slate-300" /></td>
                     </tr>
                   );
                 })}
@@ -617,29 +675,29 @@ export function MembersPage() {
 
       {/* Renewal Modal */}
       {renewalOpen && (
-        <div className="fixed inset-0 bg-navy-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 animate-fade-in overflow-y-auto">
-          <div className="bg-white rounded-3xl p-5 sm:p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto space-y-4 shadow-2xl animate-scale-in border border-navy-100 my-auto">
-            <div className="flex items-center justify-between border-b border-navy-100 pb-3 sticky -top-5 sm:-top-6 bg-white/95 backdrop-blur-md z-10 pt-1">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 animate-fade-in overflow-y-auto">
+          <div className="bg-white rounded-3xl p-5 sm:p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto space-y-4 shadow-2xl animate-scale-in border border-slate-100 my-auto">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 sticky -top-5 sm:-top-6 bg-white/95 backdrop-blur-md z-10 pt-1">
               <div className="flex items-center gap-2">
                 <div className="w-9 h-9 rounded-xl bg-brand-50 flex items-center justify-center">
                   <Icon name="refresh-cw" size={18} className="text-brand-600" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-navy-900">Renew Membership</h3>
-                  <p className="text-xs text-navy-400">Selected {selectedMembers.length} member(s) for renewal</p>
+                  <h3 className="text-base font-bold text-slate-900">Renew Membership</h3>
+                  <p className="text-xs text-slate-400">Selected {selectedMembers.length} member(s) for renewal</p>
                 </div>
               </div>
-              <button onClick={() => setRenewalOpen(false)} className="text-navy-400 hover:text-navy-600 p-1.5 rounded-xl hover:bg-navy-50 transition">
+              <button onClick={() => setRenewalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-50 transition">
                 <Icon name="x" size={18} />
               </button>
             </div>
 
             {/* Selected Members Summary */}
-            <div className="card p-3 bg-navy-50 max-h-32 overflow-y-auto space-y-1.5 border border-navy-200">
-              <div className="text-[11px] font-bold text-navy-500 uppercase tracking-wider mb-1">Target Members</div>
+            <div className="card p-3 bg-slate-50 max-h-32 overflow-y-auto space-y-1.5 border border-slate-200">
+              <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Target Members</div>
               {selectedMembers.map((sm) => (
-                <div key={sm.id} className="flex items-center justify-between text-xs bg-white p-2 rounded-lg border border-navy-100">
-                  <div className="font-semibold text-navy-900">{sm.name} ({sm.phone || sm.email})</div>
+                <div key={sm.id} className="flex items-center justify-between text-xs bg-white p-2 rounded-lg border border-slate-100">
+                  <div className="font-semibold text-slate-900">{sm.name} ({sm.phone || sm.email})</div>
                   <Badge variant="brand">{sm.membership || 'Standard'}</Badge>
                 </div>
               ))}
@@ -650,8 +708,8 @@ export function MembersPage() {
               <div className="space-y-3">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
-                    <label className="text-xs font-bold text-navy-900 block">Select Membership Plan</label>
-                    <p className="text-[11px] text-navy-400">Choose membership plan and duration tier. Price and billing auto-accommodate.</p>
+                    <label className="text-xs font-bold text-slate-900 block">Select Membership Plan</label>
+                    <p className="text-[11px] text-slate-400">Choose membership plan and duration tier. Price and billing auto-accommodate.</p>
                   </div>
                   <div className="relative min-w-[180px]">
                     <input
@@ -659,9 +717,9 @@ export function MembersPage() {
                       placeholder="Search programs..."
                       value={renewalPlanSearch}
                       onChange={(e) => setRenewalPlanSearch(e.target.value)}
-                      className="input-field text-xs py-1.5 pl-8 pr-3 w-full bg-navy-50"
+                      className="input-field text-xs py-1.5 pl-8 pr-3 w-full bg-slate-50"
                     />
-                    <div className="absolute left-2.5 top-1/2 -translate-y-1/2 text-navy-400 pointer-events-none">
+                    <div className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
                       <Icon name="search" size={12} />
                     </div>
                   </div>
@@ -690,10 +748,10 @@ export function MembersPage() {
                               'px-2.5 py-1 rounded-xl text-[11px] font-semibold whitespace-nowrap transition-all flex items-center gap-1 border cursor-pointer shrink-0',
                               isActive
                                 ? 'bg-brand-600 text-white border-brand-600 shadow-sm font-bold'
-                                : 'bg-white text-navy-600 border-navy-200 hover:border-navy-300 hover:bg-navy-50'
+                                : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
                             )}
                           >
-                            <Icon name={opt.icon} size={12} className={isActive ? 'text-white' : 'text-navy-500'} />
+                            <Icon name={opt.icon} size={12} className={isActive ? 'text-white' : 'text-slate-500'} />
                             <span>{opt.label}</span>
                           </button>
                         );
@@ -703,9 +761,9 @@ export function MembersPage() {
                 })()}
 
                 {/* Duration Tiers Selector */}
-                <div className="space-y-1.5 pt-1 border-t border-navy-100">
+                <div className="space-y-1.5 pt-1 border-t border-slate-100">
                   <div className="flex items-center justify-between gap-2">
-                    <div className="text-[10px] font-bold text-navy-500 uppercase tracking-wider flex items-center gap-1">
+                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
                       <Icon name="clock" size={11} className="text-brand-500" /> Duration Tiers
                     </div>
                     <div className="text-[10px] text-brand-600 font-bold bg-brand-50 border border-brand-100 px-2 py-0.5 rounded-full">
@@ -729,7 +787,7 @@ export function MembersPage() {
                             'px-2 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer flex flex-col items-center justify-center',
                             isActive
                               ? 'bg-brand-50 border-brand-500 text-brand-700 ring-2 ring-brand-500/20 shadow-sm'
-                              : 'bg-white border-navy-200 text-navy-600 hover:border-navy-300 hover:bg-navy-50/60'
+                              : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50/60'
                           )}
                         >
                           <span>{tier.label}</span>
@@ -760,8 +818,8 @@ export function MembersPage() {
 
                   if (filteredPrograms.length === 0) {
                     return (
-                      <div className="card p-4 text-center bg-navy-50/60 border border-navy-200">
-                        <p className="text-xs font-bold text-navy-700">No matching programs found</p>
+                      <div className="card p-4 text-center bg-slate-50/60 border border-slate-200">
+                        <p className="text-xs font-bold text-slate-700">No matching programs found</p>
                         <button
                           type="button"
                           onClick={() => {
@@ -806,7 +864,7 @@ export function MembersPage() {
 
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-1.5 flex-wrap">
-                                  <span className="text-xs font-bold text-navy-900 line-clamp-1">
+                                  <span className="text-xs font-bold text-slate-900 line-clamp-1">
                                     {prog.name}
                                   </span>
                                   {prog.isCombo && (
@@ -823,10 +881,10 @@ export function MembersPage() {
 
                             {/* Price for current duration */}
                             <div className="text-right shrink-0">
-                              <div className="text-sm font-extrabold text-navy-900">
+                              <div className="text-sm font-extrabold text-slate-900">
                                 ₹{pricing.price.toLocaleString('en-IN')}
                               </div>
-                              <div className="text-[10px] text-navy-400">
+                              <div className="text-[10px] text-slate-400">
                                 {renewalDurationDays} Days
                               </div>
                             </div>
@@ -841,14 +899,14 @@ export function MembersPage() {
               {/* Renewal Date Range */}
               <div className="card p-3 bg-brand-50/40 border border-brand-200 space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-navy-800">Renewal Validity</span>
+                  <span className="text-xs font-bold text-slate-800">Renewal Validity</span>
                   <Badge variant="success">
                     Expiry: {formatDateDDMMYY(renewalExpiryDate)}
                   </Badge>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-[11px] font-semibold text-navy-600 block mb-1">Start Date</label>
+                    <label className="text-[11px] font-semibold text-slate-600 block mb-1">Start Date</label>
                     <input
                       type="date"
                       value={renewalStartDate}
@@ -860,7 +918,7 @@ export function MembersPage() {
                     />
                   </div>
                   <div>
-                    <label className="text-[11px] font-semibold text-navy-600 block mb-1">Expiry Date (DD-MM-YY)</label>
+                    <label className="text-[11px] font-semibold text-slate-600 block mb-1">Expiry Date (DD-MM-YY)</label>
                     <input
                       type="date"
                       value={renewalExpiryDate}
@@ -881,28 +939,28 @@ export function MembersPage() {
 
                 return (
                   <>
-                    <div className="card p-3 bg-navy-50/80 rounded-2xl border border-navy-200/80 space-y-2">
-                      <div className="flex items-center justify-between text-xs text-navy-600">
+                    <div className="card p-3 bg-slate-50/80 rounded-2xl border border-slate-200/80 space-y-2">
+                      <div className="flex items-center justify-between text-xs text-slate-600">
                         <span>Base Subtotal ({currentRenewalProgram.name})</span>
-                        <span className="font-semibold text-navy-900">₹{subtotal.toLocaleString()}</span>
+                        <span className="font-semibold text-slate-900">₹{subtotal.toLocaleString()}</span>
                       </div>
-                      <div className="flex items-center justify-between text-xs text-navy-600">
+                      <div className="flex items-center justify-between text-xs text-slate-600">
                         <label className="flex items-center gap-1.5 cursor-pointer select-none">
                           <input
                             type="checkbox"
                             checked={renewalIncludeGst && isGstActive}
                             disabled={!isGstActive}
                             onChange={(e) => setRenewalIncludeGst(e.target.checked)}
-                            className="w-3.5 h-3.5 rounded border-navy-300 text-brand-600 focus:ring-brand-500 disabled:opacity-50"
+                            className="w-3.5 h-3.5 rounded border-slate-300 text-brand-600 focus:ring-brand-500 disabled:opacity-50"
                           />
                           <span>{isGstActive ? `Include GST (${effectiveGstRate}%)` : 'GST Engine Disabled (0% Nil)'}</span>
                         </label>
-                        <span className="font-semibold text-navy-900">
+                        <span className="font-semibold text-slate-900">
                           ₹{gst.toLocaleString()}
                         </span>
                       </div>
-                      <div className="border-t border-navy-200 pt-2 flex items-center justify-between">
-                        <span className="text-xs font-bold text-navy-900">Total Renewal Amount</span>
+                      <div className="border-t border-slate-200 pt-2 flex items-center justify-between">
+                        <span className="text-xs font-bold text-slate-900">Total Renewal Amount</span>
                         <span className="text-base font-bold text-brand-600">
                           ₹{totalAmount.toLocaleString()}
                         </span>
@@ -924,7 +982,7 @@ export function MembersPage() {
                 );
               })()}
 
-              <div className="flex gap-2 pt-3 pb-1 border-t border-navy-100 sticky -bottom-5 sm:-bottom-6 bg-white/95 backdrop-blur-md z-10">
+              <div className="flex gap-2 pt-3 pb-1 border-t border-slate-100 sticky -bottom-5 sm:-bottom-6 bg-white/95 backdrop-blur-md z-10">
                 <button type="button" onClick={() => setRenewalOpen(false)} className="btn-secondary flex-1">
                   Cancel
                 </button>

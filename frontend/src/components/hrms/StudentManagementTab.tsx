@@ -375,7 +375,7 @@ export function StudentManagementTab() {
     const name = studentName || 'this student';
     if (!window.confirm(`Are you sure you want to delete ${name}? This action cannot be undone.`)) return;
     try {
-      const res = await apiClient.delete(`/students/${studentId}`);
+      const res: any = await apiClient.delete(`/students/${studentId}`);
       // Check explicit success field if present
       if (res && res.success === false) {
         showToast(res.message || 'Failed to delete student.');
@@ -610,7 +610,7 @@ export function StudentManagementTab() {
   const isPartialSelected = selectedIds.size > 0 && selectedIds.size < filteredStudents.length;
 
   return (
-    <div className="space-y-4 animate-fade-in text-slate-800 dark:text-slate-200">
+    <div className="space-y-4 animate-fade-in text-slate-800">
 
       {/* Toast Notification */}
       {toast && (
@@ -624,49 +624,49 @@ export function StudentManagementTab() {
       {/* 1. TOP METRICS CARDS                                           */}
       {/* ───────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="card p-4 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl shadow-xs">
+        <div className="card p-4 bg-white border border-slate-200/90 rounded-2xl shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">Total Students</span>
             <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
               <Icon name="users" size={16} />
             </div>
           </div>
-          <div className="text-2xl font-black text-slate-900 dark:text-white mt-2">{totalStudents}</div>
+          <div className="text-2xl font-black text-slate-900 mt-2">{totalStudents}</div>
           <div className="text-[11px] font-semibold text-emerald-600 mt-0.5 truncate">
             {localStorage.getItem('ssdc_college_name') || 'Enrolled Students'}
           </div>
         </div>
 
-        <div className="card p-4 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl shadow-xs">
+        <div className="card p-4 bg-white border border-slate-200/90 rounded-2xl shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">Active Admissions</span>
             <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
               <Icon name="check-circle" size={16} />
             </div>
           </div>
-          <div className="text-2xl font-black text-slate-900 dark:text-white mt-2">{activeStudents}</div>
+          <div className="text-2xl font-black text-slate-900 mt-2">{activeStudents}</div>
           <div className="text-[11px] font-semibold text-slate-400 mt-0.5">Verified & Enrolled</div>
         </div>
 
-        <div className="card p-4 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl shadow-xs">
+        <div className="card p-4 bg-white border border-slate-200/90 rounded-2xl shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">Face ID Enrolled</span>
             <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
               <Icon name="camera" size={16} />
             </div>
           </div>
-          <div className="text-2xl font-black text-slate-900 dark:text-white mt-2">{faceEnrolledCount}</div>
+          <div className="text-2xl font-black text-slate-900 mt-2">{faceEnrolledCount}</div>
           <div className="text-[11px] font-semibold text-purple-600 mt-0.5">Biometric Live Ready</div>
         </div>
 
-        <div className="card p-4 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl shadow-xs">
+        <div className="card p-4 bg-white border border-slate-200/90 rounded-2xl shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">Degree Programs</span>
             <div className="w-8 h-8 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center font-bold">
               <Icon name="graduation-cap" size={16} />
             </div>
           </div>
-          <div className="text-2xl font-black text-slate-900 dark:text-white mt-2">{dynamicCourses.length}</div>
+          <div className="text-2xl font-black text-slate-900 mt-2">{dynamicCourses.length}</div>
           <div className="text-[11px] font-semibold text-orange-600 mt-0.5">Active Academic Programs</div>
         </div>
       </div>
@@ -674,7 +674,7 @@ export function StudentManagementTab() {
       {/* ───────────────────────────────────────────────────────────── */}
       {/* 2. CONTROLS BAR: SEARCH, VIEW SWITCHER, ENROLL ACTION          */}
       {/* ───────────────────────────────────────────────────────────── */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-4 shadow-xs space-y-3">
+      <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-xs space-y-3">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
           {/* Search Input & Course Filter */}
           <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 flex-1 max-w-2xl">
@@ -685,19 +685,19 @@ export function StudentManagementTab() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search by student name, roll no, phone, father name, aadhar..."
-                className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"
+                className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus transition"
               />
             </div>
 
             {/* Course Filter Dropdown */}
             <div className="relative min-w-[180px] sm:w-56 shrink-0">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-blue-600 dark:text-blue-400">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-blue-600">
                 <Icon name="book-open" size={14} />
               </div>
               <select
                 value={selectedCourse}
                 onChange={(e) => setSelectedCourse(e.target.value)}
-                className="w-full pl-9 pr-8 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none cursor-pointer shadow-xs"
+                className="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none cursor-pointer shadow-xs"
               >
                 <option value="All">All Courses ({students.length})</option>
                 {dynamicCourses.map((c) => {
@@ -720,13 +720,13 @@ export function StudentManagementTab() {
             {/* Sub-Branch Filter Dropdown: Only shown if the selected organisation has multiple sub-branches */}
             {subBranches.length > 1 && (
               <div className="relative min-w-[170px] sm:w-52 shrink-0">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-indigo-600 dark:text-indigo-400">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-indigo-600">
                   <Icon name="map-pin" size={14} />
                 </div>
                 <select
                   value={selectedSubBranch}
                   onChange={(e) => setSelectedSubBranch(e.target.value)}
-                  className="w-full pl-9 pr-8 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none cursor-pointer shadow-xs truncate"
+                  className="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none cursor-pointer shadow-xs truncate"
                 >
                   <option value="all">All Branches ({subBranches.length})</option>
                   {subBranches.map((b) => (
@@ -753,18 +753,18 @@ export function StudentManagementTab() {
               }}
             />
 
-            <div className="h-6 w-px bg-slate-200 dark:bg-slate-700 hidden sm:block" />
+            <div className="h-6 w-px bg-slate-200 hidden sm:block" />
 
             {/* View Mode Toggle: Icons only */}
-            <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-xl p-1 border border-slate-200 dark:border-slate-700 shadow-2xs">
+            <div className="flex items-center bg-slate-100 rounded-xl p-1 border border-slate-200 shadow-2xs">
               <button
                 type="button"
                 onClick={() => handleSetViewMode('table')}
                 className={cn(
                   'p-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center',
                   viewMode === 'table'
-                    ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs border border-slate-200/80 dark:border-slate-700'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    ? 'bg-white text-blue-600 shadow-xs border border-slate-200/80'
+                    : 'text-slate-600 hover:text-slate-900'
                 )}
                 title="Row / Table View"
               >
@@ -776,8 +776,8 @@ export function StudentManagementTab() {
                 className={cn(
                   'p-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center',
                   viewMode === 'grid'
-                    ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs border border-slate-200/80 dark:border-slate-700'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    ? 'bg-white text-blue-600 shadow-xs border border-slate-200/80'
+                    : 'text-slate-600 hover:text-slate-900'
                 )}
                 title="Grid Cards View"
               >
@@ -799,7 +799,7 @@ export function StudentManagementTab() {
             <button
               type="button"
               onClick={() => fetchStudents()}
-              className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 dark:border-slate-700 text-slate-600 dark:text-slate-300 transition shadow-2xs"
+              className="p-2 rounded-xl border border-slate-200 hover text-slate-600 transition shadow-2xs"
               title="Refresh Student Directory"
             >
               <Icon name="refresh-cw" size={15} />
@@ -808,7 +808,7 @@ export function StudentManagementTab() {
             <button
               type="button"
               onClick={() => setIsWhatsAppReportsModalOpen(true)}
-              className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md shadow-emerald-500/25 transition flex items-center gap-1.5 shrink-0"
+              className="px-3.5 py-2 rounded-xl bg-emerald-600 hover text-white font-extrabold text-xs shadow-md shadow-emerald-500/25 transition flex items-center gap-1.5 shrink-0"
               title="Open WhatsApp Attendance Reports and Automated Parent Dispatch console"
             >
               <Icon name="message-square" size={14} />
@@ -831,23 +831,23 @@ export function StudentManagementTab() {
       {/* 2B. BULK SELECTION ACTION BAR                                  */}
       {/* ───────────────────────────────────────────────────────────── */}
       {selectedIds.size > 0 && (
-        <div className="bg-blue-50 dark:bg-blue-950/40 border-2 border-blue-200 dark:border-blue-800/80 rounded-2xl p-3 flex flex-wrap items-center justify-between gap-3 shadow-sm animate-fade-in">
+        <div className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-3 flex flex-wrap items-center justify-between gap-3 shadow-sm animate-fade-in">
           <div className="flex items-center gap-2.5">
             <span className="w-2.5 h-2.5 rounded-full bg-blue-600 animate-ping" />
-            <span className="text-xs font-black text-blue-900 dark:text-blue-100">
+            <span className="text-xs font-black text-blue-900">
               {selectedIds.size} student{selectedIds.size > 1 ? 's' : ''} selected
             </span>
             <button
               type="button"
               onClick={handleSelectAll}
-              className="text-xs font-bold text-blue-700 dark:text-blue-300 hover:underline ml-2"
+              className="text-xs font-bold text-blue-700 hover:underline ml-2"
             >
               {isAllSelected ? 'Deselect All' : `Select All (${filteredStudents.length})`}
             </button>
             <button
               type="button"
               onClick={() => setSelectedIds(new Set())}
-              className="text-xs font-medium text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 ml-1"
+              className="text-xs font-medium text-slate-500 hover ml-1"
             >
               Clear
             </button>
@@ -858,7 +858,7 @@ export function StudentManagementTab() {
               type="button"
               onClick={handleBatchSyncBiometric}
               disabled={batchActionLoading}
-              className="px-3 py-1.5 rounded-xl bg-purple-100 hover:bg-purple-200 text-purple-800 dark:bg-purple-900/60 dark:text-purple-200 font-bold text-xs transition flex items-center gap-1.5"
+              className="px-3 py-1.5 rounded-xl bg-purple-100 hover text-purple-800 font-bold text-xs transition flex items-center gap-1.5"
             >
               <Icon name="camera" size={13} />
               <span>Sync Biometrics</span>
@@ -868,7 +868,7 @@ export function StudentManagementTab() {
               type="button"
               onClick={handleBatchDelete}
               disabled={batchActionLoading}
-              className="px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs transition flex items-center gap-1.5 shadow-sm shadow-rose-600/20"
+              className="px-3.5 py-1.5 rounded-xl bg-rose-600 hover text-white font-extrabold text-xs transition flex items-center gap-1.5 shadow-sm shadow-rose-600/20"
             >
               <Icon name="trash-2" size={13} />
               <span>Delete Selected ({selectedIds.size})</span>
@@ -892,7 +892,7 @@ export function StudentManagementTab() {
           <button
             type="button"
             onClick={() => fetchStudents()}
-            className="px-3.5 py-1.5 bg-rose-600 text-white rounded-xl text-xs font-bold hover:bg-rose-700 transition shrink-0"
+            className="px-3.5 py-1.5 bg-rose-600 text-white rounded-xl text-xs font-bold hover transition shrink-0"
           >
             Retry
           </button>
@@ -900,16 +900,16 @@ export function StudentManagementTab() {
       )}
 
       {loading ? (
-        <div className="card p-12 text-center text-slate-400 bg-white dark:bg-slate-900 border border-slate-200/90 rounded-2xl">
+        <div className="card p-12 text-center text-slate-400 bg-white border border-slate-200/90 rounded-2xl">
           <div className="w-8 h-8 border-2 border-blue-600/30 border-t-blue-600 rounded-full animate-spin mx-auto mb-2" />
           <span>Loading Sri Sai Degree College Student Directory...</span>
         </div>
       ) : filteredStudents.length === 0 ? (
-        <div className="card p-12 text-center bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl space-y-3">
-          <div className="w-14 h-14 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-600 mx-auto flex items-center justify-center">
+        <div className="card p-12 text-center bg-white border border-slate-200/90 rounded-2xl space-y-3">
+          <div className="w-14 h-14 rounded-full bg-blue-50 text-blue-600 mx-auto flex items-center justify-center">
             <Icon name="graduation-cap" size={28} />
           </div>
-          <h3 className="text-base font-extrabold text-slate-900 dark:text-white">No Students Found</h3>
+          <h3 className="text-base font-extrabold text-slate-900">No Students Found</h3>
           <p className="text-xs text-slate-500 max-w-sm mx-auto">
             {search || selectedCourse !== 'All'
               ? 'No student matching the search or course filter.'
@@ -926,10 +926,10 @@ export function StudentManagementTab() {
         </div>
       ) : viewMode === 'table' ? (
         /* Row / Table View */
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl shadow-xs overflow-hidden">
+        <div className="bg-white border border-slate-200/90 rounded-2xl shadow-xs overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50/80 dark:bg-slate-800/80 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">
+              <thead className="bg-slate-50/80 text-[11px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200">
                 <tr>
                   <th className="p-3.5 w-10 text-center">
                     <input
@@ -945,7 +945,7 @@ export function StudentManagementTab() {
                   </th>
                   {visibleColumns.studentNo && <th className="p-3.5 font-bold tracking-wider">STUDENT NO.</th>}
                   {visibleColumns.name && <th className="p-3.5 font-bold tracking-wider">NAME</th>}
-                  {visibleColumns.parentMobile && <th className="p-3.5 font-bold tracking-wider text-emerald-700 dark:text-emerald-400">PARENT WHATSAPP</th>}
+                  {visibleColumns.parentMobile && <th className="p-3.5 font-bold tracking-wider text-emerald-700">PARENT WHATSAPP</th>}
                   {visibleColumns.mobile && <th className="p-3.5 font-bold tracking-wider">MOBILE</th>}
                   {visibleColumns.email && <th className="p-3.5 font-bold tracking-wider">EMAIL</th>}
                   {visibleColumns.gender && <th className="p-3.5 font-bold tracking-wider">GENDER</th>}
@@ -955,7 +955,7 @@ export function StudentManagementTab() {
                   {visibleColumns.zone && <th className="p-3.5 font-bold tracking-wider">ZONE</th>}
                   {visibleColumns.multiZone && <th className="p-3.5 font-bold tracking-wider">MULTI ZONE</th>}
                   {visibleColumns.district && <th className="p-3.5 font-bold tracking-wider">DISTRICT</th>}
-                  {visibleColumns.placeOfWork && <th className="p-3.5 font-bold tracking-wider text-indigo-700 dark:text-indigo-400">ORGANISATION</th>}
+                  {visibleColumns.placeOfWork && <th className="p-3.5 font-bold tracking-wider text-indigo-700">ORGANISATION</th>}
                   {visibleColumns.sourceMandal && <th className="p-3.5 font-bold tracking-wider">SOURCE MANDAL</th>}
                   {visibleColumns.sourceVillage && <th className="p-3.5 font-bold tracking-wider">SOURCE VILLAGE</th>}
                   {visibleColumns.joined && <th className="p-3.5 font-bold tracking-wider">JOINED</th>}
@@ -978,7 +978,7 @@ export function StudentManagementTab() {
                   <th className="p-3.5 font-bold tracking-wider text-center">ACTIONS</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
+              <tbody className="divide-y divide-slate-100 font-medium">
                 {filteredStudents.map((s, idx) => {
                   const meta = s.meta_data || {};
                   const sCourse = getStudentCourse(s);
@@ -1029,8 +1029,8 @@ export function StudentManagementTab() {
                       className={cn(
                         'transition-colors',
                         isSelected
-                          ? 'bg-blue-50/70 dark:bg-blue-950/30'
-                          : 'hover:bg-slate-50/80 dark:hover:bg-slate-800/50'
+                          ? 'bg-blue-50/70'
+                          : 'hover:bg-slate-50'
                       )}
                     >
                       {/* Checkbox Column */}
@@ -1046,7 +1046,7 @@ export function StudentManagementTab() {
                       {/* STUDENT NO. */}
                       {visibleColumns.studentNo && (
                         <td className="p-3.5">
-                          <span className="font-mono font-bold text-xs text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 px-2.5 py-1 rounded-lg border border-blue-200 dark:border-blue-800 inline-block">
+                          <span className="font-mono font-bold text-xs text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200 inline-block">
                             {studentNo}
                           </span>
                         </td>
@@ -1056,7 +1056,7 @@ export function StudentManagementTab() {
                       {visibleColumns.name && (
                         <td className="p-3.5">
                           <div className="min-w-0">
-                            <div className="font-extrabold text-slate-900 dark:text-white uppercase truncate">
+                            <div className="font-extrabold text-slate-900 uppercase truncate">
                               {s.full_name || s.name}
                             </div>
                             <div className="text-[11px] text-slate-400 font-mono truncate">
@@ -1068,10 +1068,10 @@ export function StudentManagementTab() {
 
                       {/* PARENT WHATSAPP */}
                       {visibleColumns.parentMobile && (
-                        <td className="p-3.5 text-xs font-mono font-bold text-emerald-800 dark:text-emerald-300">
+                        <td className="p-3.5 text-xs font-mono font-bold text-emerald-800">
                           {s.parent_phone || meta.parent_phone ? (
                             <div className="flex items-center gap-1.5">
-                              <span className="inline-flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-lg border border-emerald-200 dark:border-emerald-800 text-[11px]">
+                              <span className="inline-flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200 text-[11px]">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
                                 {s.parent_phone || meta.parent_phone}
                               </span>
@@ -1079,7 +1079,7 @@ export function StudentManagementTab() {
                                 type="button"
                                 onClick={() => handleSendSingleStudentWhatsAppReport(s.id)}
                                 title="Send Monthly Attendance to Parent WhatsApp"
-                                className="p-1 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/50 rounded-md transition"
+                                className="p-1 text-emerald-600 hover hover rounded-md transition"
                               >
                                 <Icon name="message-square" size={12} />
                               </button>
@@ -1092,28 +1092,28 @@ export function StudentManagementTab() {
 
                       {/* MOBILE */}
                       {visibleColumns.mobile && (
-                        <td className="p-3.5 text-xs font-mono text-slate-700 dark:text-slate-300">
+                        <td className="p-3.5 text-xs font-mono text-slate-700">
                           {s.phone || '—'}
                         </td>
                       )}
 
                       {/* EMAIL */}
                       {visibleColumns.email && (
-                        <td className="p-3.5 text-xs text-slate-700 dark:text-slate-300">
+                        <td className="p-3.5 text-xs text-slate-700">
                           {s.email || '—'}
                         </td>
                       )}
 
                       {/* GENDER */}
                       {visibleColumns.gender && (
-                        <td className="p-3.5 text-xs text-slate-700 dark:text-slate-300">
+                        <td className="p-3.5 text-xs text-slate-700">
                           {s.gender || meta.gender || '—'}
                         </td>
                       )}
 
                       {/* DATE OF BIRTH */}
                       {visibleColumns.dob && (
-                        <td className="p-3.5 text-xs text-slate-700 dark:text-slate-300">
+                        <td className="p-3.5 text-xs text-slate-700">
                           {meta.dob || '—'}
                         </td>
                       )}
@@ -1121,7 +1121,7 @@ export function StudentManagementTab() {
                       {/* DESIGNATION (Course) */}
                       {visibleColumns.designation && (
                         <td className="p-3.5">
-                          <span className="font-extrabold text-slate-900 dark:text-slate-100 block truncate">
+                          <span className="font-extrabold text-slate-900 block truncate">
                             {sCourse || '—'}
                           </span>
                           {sMedium ? (
@@ -1135,7 +1135,7 @@ export function StudentManagementTab() {
                       {/* ROLE */}
                       {visibleColumns.role && (
                         <td className="p-3.5">
-                          <span className="px-2.5 py-1 rounded-xl text-[11px] font-bold inline-block bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                          <span className="px-2.5 py-1 rounded-xl text-[11px] font-bold inline-block bg-indigo-50 text-indigo-700 border border-indigo-200">
                             {sRole}
                           </span>
                         </td>
@@ -1143,21 +1143,21 @@ export function StudentManagementTab() {
 
                       {/* ZONE */}
                       {visibleColumns.zone && (
-                        <td className="p-3.5 text-xs text-slate-700 dark:text-slate-300">
+                        <td className="p-3.5 text-xs text-slate-700">
                           {meta.zone || '—'}
                         </td>
                       )}
 
                       {/* MULTI ZONE */}
                       {visibleColumns.multiZone && (
-                        <td className="p-3.5 text-xs text-slate-700 dark:text-slate-300">
+                        <td className="p-3.5 text-xs text-slate-700">
                           {meta.multi_zone || '—'}
                         </td>
                       )}
 
                       {/* DISTRICT */}
                       {visibleColumns.district && (
-                        <td className="p-3.5 text-xs font-medium text-slate-700 dark:text-slate-300">
+                        <td className="p-3.5 text-xs font-medium text-slate-700">
                           <div className="flex items-center gap-1.5">
                             <Icon name="map-pin" size={13} className="text-slate-400 shrink-0" />
                             <span>{sDistrict}</span>
@@ -1167,7 +1167,7 @@ export function StudentManagementTab() {
 
                       {/* PLACE OF WORK (Campus) */}
                       {visibleColumns.placeOfWork && (
-                        <td className="p-3.5 text-xs font-semibold text-slate-900 dark:text-slate-100">
+                        <td className="p-3.5 text-xs font-semibold text-slate-900">
                           <div className="flex items-center gap-1.5">
                             <Icon name="building-2" size={13} className="text-blue-600 shrink-0" />
                             <span>{sPlaceOfWork}</span>
@@ -1177,42 +1177,42 @@ export function StudentManagementTab() {
 
                       {/* SOURCE MANDAL */}
                       {visibleColumns.sourceMandal && (
-                        <td className="p-3.5 text-xs text-slate-700 dark:text-slate-300">
+                        <td className="p-3.5 text-xs text-slate-700">
                           {meta.mandal || meta.source_mandal || '—'}
                         </td>
                       )}
 
                       {/* SOURCE VILLAGE */}
                       {visibleColumns.sourceVillage && (
-                        <td className="p-3.5 text-xs text-slate-700 dark:text-slate-300">
+                        <td className="p-3.5 text-xs text-slate-700">
                           {meta.village || meta.source_village || '—'}
                         </td>
                       )}
 
                       {/* JOINED */}
                       {visibleColumns.joined && (
-                        <td className="p-3.5 text-xs text-slate-700 dark:text-slate-300">
+                        <td className="p-3.5 text-xs text-slate-700">
                           {s.created_at ? s.created_at.slice(0, 10) : '—'}
                         </td>
                       )}
 
                       {/* RETIREMENT DATE / COMPLETION */}
                       {visibleColumns.retirementDate && (
-                        <td className="p-3.5 text-xs text-slate-700 dark:text-slate-300">
+                        <td className="p-3.5 text-xs text-slate-700">
                           {meta.course_end_date || meta.completion_date || '—'}
                         </td>
                       )}
 
                       {/* PRESENT STATION DATE */}
                       {visibleColumns.presentStationDate && (
-                        <td className="p-3.5 text-xs text-slate-700 dark:text-slate-300">
+                        <td className="p-3.5 text-xs text-slate-700">
                           {meta.academic_year || '—'}
                         </td>
                       )}
 
                       {/* LENGTH OF SERVICE */}
                       {visibleColumns.lengthOfService && (
-                        <td className="p-3.5 text-xs text-slate-700 dark:text-slate-300">
+                        <td className="p-3.5 text-xs text-slate-700">
                           {meta.year_of_study || 'Year 1'}
                         </td>
                       )}
@@ -1223,7 +1223,7 @@ export function StudentManagementTab() {
                           {studentPunchStatus === 'Present' && (
                             <span
                               title={studentPunchDetails || 'In and out matched working hours'}
-                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shadow-2xs whitespace-nowrap"
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs whitespace-nowrap"
                             >
                               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
                               Present
@@ -1232,7 +1232,7 @@ export function StudentManagementTab() {
                           {studentPunchStatus === 'Absent' && (
                             <span
                               title={studentPunchDetails || 'Not marked IN and OUT'}
-                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 shadow-2xs whitespace-nowrap"
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200 shadow-2xs whitespace-nowrap"
                             >
                               <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
                               Absent
@@ -1241,7 +1241,7 @@ export function StudentManagementTab() {
                           {studentPunchStatus === 'Missed Punch' && (
                             <span
                               title={studentPunchDetails || 'Marked IN but missed to mark OUT'}
-                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 shadow-2xs whitespace-nowrap"
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200 shadow-2xs whitespace-nowrap"
                             >
                               <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
                               Missed Punch
@@ -1250,7 +1250,7 @@ export function StudentManagementTab() {
                           {studentPunchStatus === 'Early Logout' && (
                             <span
                               title={studentPunchDetails || 'Marked IN and OUT with early departure'}
-                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 shadow-2xs whitespace-nowrap"
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-purple-50 text-purple-700 border border-purple-200 shadow-2xs whitespace-nowrap"
                             >
                               <span className="w-1.5 h-1.5 rounded-full bg-purple-500 shrink-0" />
                               Early Logout
@@ -1268,8 +1268,8 @@ export function StudentManagementTab() {
                             className={cn(
                               'px-2.5 py-1 rounded-full text-[10px] font-extrabold border inline-block cursor-pointer outline-none transition shadow-2xs',
                               (s.status || 'ACTIVE').toUpperCase() === 'ACTIVE'
-                                ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700 hover:bg-emerald-100'
-                                : 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-700 hover:bg-rose-100'
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100'
+                                : 'bg-rose-50 text-rose-700 border-rose-300 hover:bg-rose-100'
                             )}
                           >
                             <option value="ACTIVE">ACTIVE</option>
@@ -1280,77 +1280,77 @@ export function StudentManagementTab() {
 
                       {/* AADHAR */}
                       {visibleColumns.aadhar && (
-                        <td className="p-3.5 text-xs font-mono text-slate-700 dark:text-slate-300">
+                        <td className="p-3.5 text-xs font-mono text-slate-700">
                           {meta.aadhar_number || '—'}
                         </td>
                       )}
 
                       {/* PAN */}
                       {visibleColumns.pan && (
-                        <td className="p-3.5 text-xs font-mono text-slate-700 dark:text-slate-300">
+                        <td className="p-3.5 text-xs font-mono text-slate-700">
                           {meta.pan || '—'}
                         </td>
                       )}
 
                       {/* CASTE */}
                       {visibleColumns.caste && (
-                        <td className="p-3.5 text-xs text-slate-700 dark:text-slate-300">
+                        <td className="p-3.5 text-xs text-slate-700">
                           {meta.caste || '—'}
                         </td>
                       )}
 
                       {/* SUB CASTE */}
                       {visibleColumns.subCaste && (
-                        <td className="p-3.5 text-xs text-slate-700 dark:text-slate-300">
+                        <td className="p-3.5 text-xs text-slate-700">
                           {meta.sub_caste || '—'}
                         </td>
                       )}
 
                       {/* BLOOD GROUP */}
                       {visibleColumns.bloodGroup && (
-                        <td className="p-3.5 text-xs text-slate-700 dark:text-slate-300">
+                        <td className="p-3.5 text-xs text-slate-700">
                           {meta.blood_group || '—'}
                         </td>
                       )}
 
                       {/* FATHER'S NAME */}
                       {visibleColumns.fatherName && (
-                        <td className="p-3.5 text-xs text-slate-700 dark:text-slate-300">
+                        <td className="p-3.5 text-xs text-slate-700">
                           {meta.father_name || '—'}
                         </td>
                       )}
 
                       {/* MOTHER'S NAME */}
                       {visibleColumns.motherName && (
-                        <td className="p-3.5 text-xs text-slate-700 dark:text-slate-300">
+                        <td className="p-3.5 text-xs text-slate-700">
                           {meta.mother_name || '—'}
                         </td>
                       )}
 
                       {/* MARITAL STATUS */}
                       {visibleColumns.maritalStatus && (
-                        <td className="p-3.5 text-xs text-slate-700 dark:text-slate-300">
+                        <td className="p-3.5 text-xs text-slate-700">
                           {meta.marital_status || '—'}
                         </td>
                       )}
 
                       {/* NATIVE DISTRICT */}
                       {visibleColumns.nativeDistrict && (
-                        <td className="p-3.5 text-xs text-slate-700 dark:text-slate-300">
+                        <td className="p-3.5 text-xs text-slate-700">
                           {meta.native_district || meta.district || '—'}
                         </td>
                       )}
 
                       {/* PERMANENT ADDRESS */}
                       {visibleColumns.permanentAddress && (
-                        <td className="p-3.5 text-xs text-slate-700 dark:text-slate-300 max-w-xs truncate">
+                        <td className="p-3.5 text-xs text-slate-700 max-w-xs truncate">
                           {permAddr}
                         </td>
                       )}
 
                       {/* TEMPORARY ADDRESS */}
                       {visibleColumns.temporaryAddress && (
-                        <td className="p-3.5 text-xs text-slate-700 dark:text-slate-300 max-w-xs truncate">
+                        <td className="p-3.5 text-xs text-slate-700 max-w-xs truncate">
                           {tempAddr}
                         </td>
                       )}
@@ -1361,7 +1361,7 @@ export function StudentManagementTab() {
                           <button
                             type="button"
                             onClick={() => handleEditStudent(s)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 hover text-slate-700 border border-slate-200 transition"
                             title="Edit Student Details"
                           >
                             <Icon name="pen" size={12} />
@@ -1370,7 +1370,7 @@ export function StudentManagementTab() {
                           <button
                             type="button"
                             onClick={() => setPasswordResetTarget(s)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-purple-50 hover:bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 border border-purple-200 dark:border-purple-800 transition"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-purple-50 hover text-purple-700 border border-purple-200 transition"
                             title="Reset Student Password"
                           >
                             <Icon name="key" size={12} className="text-purple-600" />
@@ -1379,7 +1379,7 @@ export function StudentManagementTab() {
                           <button
                             type="button"
                             onClick={() => setSelectedStudentForView(s)}
-                            className="p-1.5 rounded-lg text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition font-bold"
+                            className="p-1.5 rounded-lg text-blue-600 hover transition font-bold"
                             title="View Full Admission Dossier"
                           >
                             <Icon name="file-text" size={15} />
@@ -1387,7 +1387,7 @@ export function StudentManagementTab() {
                           <button
                             type="button"
                             onClick={() => handleDeleteStudent(s.id, s.full_name || s.name)}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition"
+                            className="p-1.5 rounded-lg text-slate-400 hover hover transition"
                             title="Delete Student Record"
                           >
                             <Icon name="trash-2" size={15} />
@@ -1416,10 +1416,10 @@ export function StudentManagementTab() {
               <div
                 key={s.id}
                 className={cn(
-                  'card p-4 bg-white dark:bg-slate-900 border rounded-2xl shadow-xs space-y-3 hover:shadow-md transition relative',
+                  'card p-4 bg-white border rounded-2xl shadow-xs space-y-3 hover:shadow-md transition relative',
                   isSelected
-                    ? 'border-blue-500 ring-2 ring-blue-400/40 bg-blue-50/20 dark:bg-blue-950/20'
-                    : 'border-slate-200/90 dark:border-slate-800'
+                    ? 'border-blue-500 ring-2 ring-blue-400/40 bg-blue-50/20'
+                    : 'border-slate-200/90'
                 )}
               >
                 {/* Header with Checkbox & Photo & Status */}
@@ -1440,7 +1440,7 @@ export function StudentManagementTab() {
                       </div>
                     )}
                     <div>
-                      <h4 className="font-extrabold text-sm text-slate-900 dark:text-white uppercase leading-tight">
+                      <h4 className="font-extrabold text-sm text-slate-900 uppercase leading-tight">
                         {s.full_name || s.name}
                       </h4>
                       <span className="font-mono text-[11px] text-blue-600 font-bold block">
@@ -1455,24 +1455,24 @@ export function StudentManagementTab() {
                 </div>
 
                 {/* Info Container */}
-                <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 space-y-1.5 text-xs">
+                <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 space-y-1.5 text-xs">
                   <div className="flex items-center justify-between">
                     <span className="text-slate-400">Course:</span>
-                    <span className="font-extrabold text-slate-800 dark:text-slate-200">{sCourse}</span>
+                    <span className="font-extrabold text-slate-800">{sCourse}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-slate-400">Medium:</span>
-                    <span className="font-semibold text-slate-700 dark:text-slate-300">{sMedium} Medium</span>
+                    <span className="font-semibold text-slate-700">{sMedium} Medium</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-slate-400">Father's Name:</span>
-                    <span className="font-semibold text-slate-700 dark:text-slate-300">{sFather}</span>
+                    <span className="font-semibold text-slate-700">{sFather}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-slate-400">Phone:</span>
                     <span className="font-mono font-bold text-blue-600">{s.phone}</span>
                   </div>
-                  <div className="flex items-center justify-between pt-1 border-t border-slate-200/60 dark:border-slate-700/60">
+                  <div className="flex items-center justify-between pt-1 border-t border-slate-200/60">
                     <span className="text-slate-400">Face ID:</span>
                     {s.face_registered || s.face_image ? (
                       <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-1">
@@ -1492,11 +1492,11 @@ export function StudentManagementTab() {
                 </div>
 
                 {/* Card Action Buttons */}
-                <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-800 gap-2">
+                <div className="flex items-center justify-between pt-1 border-t border-slate-100 gap-2">
                   <button
                     type="button"
                     onClick={() => setSelectedStudentForView(s)}
-                    className="px-2.5 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold transition flex items-center gap-1.5"
+                    className="px-2.5 py-1.5 rounded-xl bg-blue-50 hover text-blue-700 text-xs font-bold transition flex items-center gap-1.5"
                   >
                     <Icon name="file-text" size={13} /> Admission Form
                   </button>
@@ -1504,7 +1504,7 @@ export function StudentManagementTab() {
                     <button
                       type="button"
                       onClick={() => setPasswordResetTarget(s)}
-                      className="p-1.5 rounded-lg text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950/50 transition font-bold"
+                      className="p-1.5 rounded-lg text-purple-600 hover transition font-bold"
                       title="Reset Student Password"
                     >
                       <Icon name="key" size={14} />
@@ -1512,7 +1512,7 @@ export function StudentManagementTab() {
                     <button
                       type="button"
                       onClick={() => handleEditStudent(s)}
-                      className="p-1.5 rounded-lg text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/50 transition font-bold"
+                      className="p-1.5 rounded-lg text-amber-600 hover transition font-bold"
                       title="Edit Student"
                     >
                       <Icon name="edit" size={14} />
@@ -1520,7 +1520,7 @@ export function StudentManagementTab() {
                     <button
                       type="button"
                       onClick={() => handleDeleteStudent(s.id, s.full_name || s.name)}
-                      className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition"
+                      className="p-1.5 rounded-lg text-rose-500 hover transition"
                       title="Delete Student"
                     >
                       <Icon name="trash-2" size={14} />
@@ -1562,7 +1562,7 @@ export function StudentManagementTab() {
       {/* Full View Student Admission Application Dossier Modal */}
       {selectedStudentForView && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/70 backdrop-blur-sm overflow-y-auto animate-fade-in">
-          <div className="bg-white dark:bg-slate-900 border-2 border-slate-300 dark:border-slate-700 rounded-3xl w-full max-w-3xl shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col">
+          <div className="bg-white border-2 border-slate-300 rounded-3xl w-full max-w-3xl shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col">
 
             {/* Header */}
             <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-800 text-white p-4 flex items-center justify-between shadow-md">
@@ -1636,7 +1636,7 @@ export function StudentManagementTab() {
                       photoBase64: selectedStudentForView.profile_image || selectedStudentForView.face_image || null,
                     });
                   }}
-                  className="px-3.5 py-1.5 bg-white/20 hover:bg-white/30 rounded-xl text-xs font-black text-white flex items-center gap-1.5 transition shadow-xs cursor-pointer"
+                  className="px-3.5 py-1.5 bg-white/20 hover rounded-xl text-xs font-black text-white flex items-center gap-1.5 transition shadow-xs cursor-pointer"
                   title="Print Official Admission Form (A4)"
                 >
                   <Icon name="printer" size={14} /> Print Form
@@ -1644,7 +1644,7 @@ export function StudentManagementTab() {
                 <button
                   type="button"
                   onClick={() => setSelectedStudentForView(null)}
-                  className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white cursor-pointer"
+                  className="w-7 h-7 rounded-full bg-white/10 hover flex items-center justify-center text-white cursor-pointer"
                 >
                   <Icon name="x" size={16} />
                 </button>
@@ -1685,11 +1685,11 @@ export function StudentManagementTab() {
                   <span className="text-slate-400 font-bold">3. Mother's Name:</span>
                   <div className="font-bold text-slate-900 uppercase">{selectedStudentForView.meta_data?.mother_name || 'N/A'}</div>
                 </div>
-                <div className="bg-emerald-50 dark:bg-emerald-950/40 p-2.5 rounded-xl border border-emerald-200 dark:border-emerald-800">
-                  <span className="text-emerald-700 dark:text-emerald-300 font-bold flex items-center gap-1 text-[11px]">
+                <div className="bg-emerald-50 p-2.5 rounded-xl border border-emerald-200">
+                  <span className="text-emerald-700 font-bold flex items-center gap-1 text-[11px]">
                     <Icon name="message-square" size={12} /> Parent WhatsApp:
                   </span>
-                  <div className="font-mono font-black text-emerald-900 dark:text-emerald-100 mt-0.5 text-xs">
+                  <div className="font-mono font-black text-emerald-900 mt-0.5 text-xs">
                     {selectedStudentForView.parent_phone || selectedStudentForView.meta_data?.parent_phone || 'N/A'}
                   </div>
                 </div>
@@ -1725,12 +1725,12 @@ export function StudentManagementTab() {
               )}
             </div>
 
-            <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex items-center justify-between gap-2">
+            <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between gap-2">
               <button
                 type="button"
                 onClick={() => handleSendSingleStudentWhatsAppReport(selectedStudentForView.id)}
                 disabled={sendingSingleReport}
-                className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition"
+                className="px-3.5 py-2 rounded-xl bg-emerald-600 hover text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition"
               >
                 <Icon name="message-square" size={13} />
                 <span>{sendingSingleReport ? 'Sending...' : 'Send WhatsApp Attendance to Parent'}</span>
@@ -1739,7 +1739,7 @@ export function StudentManagementTab() {
               <button
                 type="button"
                 onClick={() => setSelectedStudentForView(null)}
-                className="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs"
+                className="px-5 py-2 rounded-xl bg-slate-900 hover text-white font-bold text-xs"
               >
                 Close
               </button>

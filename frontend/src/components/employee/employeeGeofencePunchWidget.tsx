@@ -336,10 +336,10 @@ export function EmployeeGeofencePunchWidget({ onPunchSuccess }: employeeGeofence
   ];
 
   return (
-    <div className="card p-5 bg-gradient-to-br from-slate-900 via-purple-950 to-navy-950 text-white rounded-3xl shadow-xl border border-purple-700/40 relative overflow-hidden font-sans space-y-4">
-      {/* Background glow */}
-      <div className="absolute -right-12 -top-12 w-48 h-48 bg-purple-500/15 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -left-8 bottom-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none" />
+    <div className="card p-5 sm:p-6 bg-gradient-to-r from-blue-600 via-indigo-600 via-purple-600 to-orange-500 text-white rounded-3xl shadow-lg relative overflow-hidden font-sans space-y-4">
+      {/* Background ambient lighting */}
+      <div className="absolute -right-12 -top-12 w-64 h-64 bg-white/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -left-12 -bottom-12 w-64 h-64 bg-blue-400/10 rounded-full blur-3xl pointer-events-none" />
 
       {/* Toast */}
       {toast && (
@@ -367,111 +367,91 @@ export function EmployeeGeofencePunchWidget({ onPunchSuccess }: employeeGeofence
       )}
 
       {/* ── Top Header ────────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/10">
-        <div className="flex items-center gap-2.5">
-          <div className="w-10 h-10 rounded-2xl bg-purple-500/20 text-purple-300 flex items-center justify-center border border-purple-400/30">
-            <Icon name="scan-face" size={18} />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/15">
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-2xl bg-white/20 backdrop-blur-sm text-white flex items-center justify-center border border-white/30 shrink-0 shadow-2xs">
+            <Icon name="scan-face" size={20} />
           </div>
           <div>
-            <h3 className="text-sm font-black text-white flex items-center gap-1.5">
-              <span>employee Shift Punch</span>
+            <h3 className="text-base sm:text-lg font-black text-white leading-tight">
+              Employee Shift Punch
             </h3>
-            <p className="text-[11px] text-slate-300 font-medium">
-              {activeScheme?.branch_name || user?.branchName || ''}{activeScheme?.branch_name || user?.branchName ? ' • ' : ''}
-              {distanceTovahd !== null ? `${distanceTovahd}m from vahd` : 'GPS Active'}
+            <p className="text-xs text-white/90 font-medium mt-0.5">
+              {activeScheme?.branch_name || user?.branchName || 'Main Headquarters Branch'} • {distanceTovahd !== null ? `${distanceTovahd}m from branch` : 'GPS Active'}
             </p>
           </div>
         </div>
 
-        {/* Live Status Badge */}
+        {/* Live Status Badge matching screenshot */}
         <div>
-          {punchStatus.isClockedIn ? (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm shadow-emerald-500/20">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              On Duty ({punchStatus.clockInTime})
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold bg-white text-slate-800 shadow-2xs">
+            <span className={cn('w-2 h-2 rounded-full shrink-0', punchStatus.isClockedIn ? 'bg-emerald-500 animate-pulse' : 'bg-emerald-500')} />
+            <span>
+              {punchStatus.isClockedIn
+                ? `On Duty (${punchStatus.clockInTime})`
+                : punchStatus.clockOutTime
+                  ? `Shift Ended (${punchStatus.clockOutTime})`
+                  : 'Ready for Shift Punch'}
             </span>
-          ) : punchStatus.clockOutTime ? (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-slate-800 text-slate-300 border border-slate-700">
-              <Icon name="check" size={10} className="text-emerald-400" />
-              Shift Ended ({punchStatus.clockOutTime})
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-slate-800 text-slate-300 border border-slate-700">
-              <span className="w-2 h-2 rounded-full bg-slate-500" />
-              Ready for Shift Punch
-            </span>
-          )}
+          </div>
         </div>
       </div>
 
       {/* ── Verification Method Selector ─────────────────────────────── */}
-      <div className="space-y-1.5">
-        <div className="flex items-center justify-between text-[11px] font-bold text-purple-300 uppercase tracking-wider">
-          <span className="flex items-center gap-1.5">
-            <Icon name="shield-check" size={13} className="text-purple-400" />
-            <span>Select Verification Method:</span>
-          </span>
+      <div className="space-y-2">
+        <div className="flex items-center justify-between text-xs font-bold text-white/95">
+          <div className="flex items-center gap-1.5">
+            <Icon name="shield-check" size={15} className="text-white" />
+            <span>Select Verification Method</span>
+          </div>
           {faceStatus.is_enrolled && (
             <button
               type="button"
               onClick={handleOpenRegisterModal}
-              className="text-[10px] text-purple-300 hover:text-purple-100 underline flex items-center gap-1 cursor-pointer transition-colors"
+              className="text-[11px] text-white/90 hover:text-white underline flex items-center gap-1 cursor-pointer transition-colors"
             >
-              <Icon name="refresh-cw" size={10} />
+              <Icon name="refresh-cw" size={11} />
               <span>Update Registered Face</span>
             </button>
           )}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {methodsList.map((m) => {
             const isSelected = selectedMethod === m.id;
-
-            if (m.disabled) {
-              return (
-                <div
-                  key={m.id}
-                  title={(m as any).hint}
-                  className="p-3 rounded-2xl border border-slate-800/80 bg-slate-900/40 text-slate-500 text-xs font-bold flex items-center justify-between cursor-not-allowed opacity-50"
-                >
-                  <div className="flex items-center gap-2">
-                    <Icon name={m.icon} size={15} className="text-slate-600" />
-                    <span>{m.label}</span>
-                  </div>
-                  <span className="text-[9px] font-semibold text-purple-400/80 bg-purple-950/60 px-2 py-0.5 rounded border border-purple-800/40">
-                    {m.badge}
-                  </span>
-                </div>
-              );
-            }
 
             return (
               <button
                 key={m.id}
                 type="button"
                 onClick={() => {
-                  setSelectedMethod(m.id);
-                  if (m.id === 'FACE_ID' && !faceStatus.is_enrolled) handleOpenRegisterModal();
+                  if (!m.disabled) {
+                    setSelectedMethod(m.id);
+                    if (m.id === 'FACE_ID' && !faceStatus.is_enrolled) handleOpenRegisterModal();
+                  }
                 }}
+                disabled={m.disabled}
                 className={cn(
-                  'p-3 rounded-2xl border text-xs font-black transition-all flex items-center justify-between cursor-pointer',
-                  isSelected
-                    ? 'bg-purple-600/40 border-purple-400 text-white shadow-md shadow-purple-600/30 ring-1 ring-purple-400/30'
-                    : 'bg-slate-800/40 border-slate-700/60 text-slate-300 hover:bg-slate-800 hover:text-white'
+                  'p-2 pl-4 pr-2.5 rounded-full text-xs font-bold transition-all flex items-center justify-between shadow-2xs',
+                  m.disabled
+                    ? 'bg-white/80 text-slate-500 cursor-not-allowed opacity-75'
+                    : isSelected
+                      ? 'bg-white text-slate-900 ring-2 ring-white/90 shadow-md'
+                      : 'bg-white/95 hover:bg-white text-slate-800 cursor-pointer'
                 )}
               >
-                <div className="flex items-center gap-2">
-                  <Icon name={m.icon} size={15} className={isSelected ? 'text-purple-300' : 'text-slate-400'} />
-                  <span>{m.label}</span>
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <Icon name={m.icon} size={16} className="text-purple-600 shrink-0" />
+                  <span className="truncate">{m.label}</span>
                 </div>
                 <span
                   className={cn(
-                    'text-[9px] font-bold px-2 py-0.5 rounded border transition-colors',
+                    'text-[11px] font-bold px-3 py-1 rounded-full transition-colors shrink-0 ml-2',
                     m.id === 'FACE_ID' && !faceStatus.is_enrolled
-                      ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 animate-pulse'
-                      : isSelected
-                        ? 'bg-purple-500/30 text-purple-200 border-purple-400/50'
-                        : 'bg-slate-800 text-slate-400 border-slate-700'
+                      ? 'bg-slate-100 text-slate-700'
+                      : m.id === 'MANUAL' && isWithinGeofence
+                        ? 'bg-emerald-100 text-emerald-700'
+                        : 'bg-slate-100 text-slate-500'
                   )}
                 >
                   {m.badge}
@@ -489,13 +469,13 @@ export function EmployeeGeofencePunchWidget({ onPunchSuccess }: employeeGeofence
           onClick={() => handleActionClick('CHECK_IN')}
           disabled={loading || punchStatus.isClockedIn}
           className={cn(
-            'py-3.5 px-4 rounded-2xl font-extrabold text-xs transition-all flex items-center justify-center gap-2 border shadow-lg cursor-pointer',
+            'py-3.5 px-6 rounded-full font-black text-xs sm:text-sm tracking-wide transition-all flex items-center justify-center gap-2 shadow-md border cursor-pointer',
             punchStatus.isClockedIn
-              ? 'bg-emerald-950/30 border-emerald-900/30 text-emerald-400/50 cursor-not-allowed'
-              : 'bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white border-emerald-400/30 shadow-emerald-600/20'
+              ? 'bg-blue-400/40 border-white/20 text-white/50 cursor-not-allowed'
+              : 'bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-600 hover:opacity-95 text-white border-white/30 shadow-blue-600/30 active:scale-[0.98]'
           )}
         >
-          <Icon name="log-in" size={16} />
+          <Icon name="arrow-right" size={16} />
           <span>
             {loading ? 'Verifying...' : `CLOCK IN (${selectedMethod === 'FACE_ID' ? 'Face ID' : selectedMethod === 'MANUAL' ? 'GPS Punch' : 'Biometric'})`}
           </span>
@@ -506,10 +486,10 @@ export function EmployeeGeofencePunchWidget({ onPunchSuccess }: employeeGeofence
           onClick={() => handleActionClick('CHECK_OUT')}
           disabled={loading || !punchStatus.isClockedIn}
           className={cn(
-            'py-3.5 px-4 rounded-2xl font-extrabold text-xs transition-all flex items-center justify-center gap-2 border shadow-lg cursor-pointer',
+            'py-3.5 px-6 rounded-full font-black text-xs sm:text-sm tracking-wide transition-all flex items-center justify-center gap-2 shadow-md border cursor-pointer',
             !punchStatus.isClockedIn
-              ? 'bg-rose-950/30 border-rose-900/30 text-rose-400/50 cursor-not-allowed'
-              : 'bg-rose-600 hover:bg-rose-500 active:scale-[0.98] text-white border-rose-400/30 shadow-rose-600/20'
+              ? 'bg-white/40 border-white/20 text-rose-300 cursor-not-allowed'
+              : 'bg-white hover:bg-slate-50 text-rose-600 border-white/40 active:scale-[0.98]'
           )}
         >
           <Icon name="log-out" size={16} />

@@ -460,21 +460,21 @@ export function EnrollmentModal({
 
   return (
     <>
-      <div className="fixed inset-0 bg-navy-900/50 backdrop-blur-sm z-50 animate-fade-in" onClick={handleClose} />
+      <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 animate-fade-in" onClick={handleClose} />
       <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl sm:max-w-3xl max-h-[92vh] overflow-y-auto bg-white rounded-3xl shadow-2xl z-50 animate-slide-up">
         {/* Modal Header */}
-        <div className="sticky top-0 bg-white/95 backdrop-blur border-b border-navy-100 p-5 flex items-center justify-between z-20">
+        <div className="sticky top-0 bg-white/95 backdrop-blur border-b border-slate-100 p-5 flex items-center justify-between z-20">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center animate-bounce-in">
               <Icon name="user-plus" size={20} className="text-white" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-navy-900">{personType === 'employee' ? 'New Employee' : 'New Student'} Enrollment</h2>
-              <p className="text-xs text-navy-400">Step {step + 1} of {steps.length} · {steps[step]}</p>
+              <h2 className="text-base font-bold text-slate-900">{personType === 'employee' ? 'New Employee' : 'New Student'} Enrollment</h2>
+              <p className="text-xs text-slate-400">Step {step + 1} of {steps.length} · {steps[step]}</p>
             </div>
           </div>
-          <button onClick={handleClose} className="p-2 rounded-lg hover:bg-navy-100 transition-colors">
-            <Icon name="x" size={18} className="text-navy-500" />
+          <button onClick={handleClose} className="p-2 rounded-lg hover:bg-slate-100 transition-colors">
+            <Icon name="x" size={18} className="text-slate-500" />
           </button>
         </div>
 
@@ -483,10 +483,10 @@ export function EnrollmentModal({
           <div className="flex items-center gap-1">
             {steps.map((s, i) => (
               <div key={s} className="flex items-center gap-1 flex-1">
-                <div className={cn('w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300', i < step ? 'bg-success-600 text-white' : i === step ? 'bg-brand-600 text-white animate-device-pulse' : 'bg-navy-100 text-navy-400')}>
+                <div className={cn('w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300', i < step ? 'bg-success-600 text-white' : i === step ? 'bg-brand-600 text-white animate-device-pulse' : 'bg-slate-100 text-slate-400')}>
                   {i < step ? <Icon name="check" size={14} /> : i + 1}
                 </div>
-                {i < steps.length - 1 && <div className={cn('flex-1 h-0.5 rounded-full transition-all duration-500', i < step ? 'bg-success-500' : 'bg-navy-100')} />}
+                {i < steps.length - 1 && <div className={cn('flex-1 h-0.5 rounded-full transition-all duration-500', i < step ? 'bg-success-500' : 'bg-slate-100')} />}
               </div>
             ))}
           </div>
@@ -498,14 +498,14 @@ export function EnrollmentModal({
           {step === 0 && (
             <div className="space-y-4 animate-fade-in">
               <div className="grid grid-cols-2 gap-3">
-                <div><label className="text-sm font-semibold text-navy-700 mb-1.5 block">Full Name</label><input type="text" placeholder="Enter name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input-field" /></div>
-                <div><label className="text-sm font-semibold text-navy-700 mb-1.5 block">Phone</label><input type="text" placeholder="+91 ..." value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="input-field" /></div>
-                <div className={personType === 'employee' ? 'col-span-2' : ''}><label className="text-sm font-semibold text-navy-700 mb-1.5 block">Email</label><input type="email" placeholder="email@example.com" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="input-field" /></div>
+                <div><label className="text-sm font-semibold text-slate-700 mb-1.5 block">Full Name</label><input type="text" placeholder="Enter name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input-field" /></div>
+                <div><label className="text-sm font-semibold text-slate-700 mb-1.5 block">Phone</label><input type="text" placeholder="+91 ..." value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="input-field" /></div>
+                <div className={personType === 'employee' ? 'col-span-2' : ''}><label className="text-sm font-semibold text-slate-700 mb-1.5 block">Email</label><input type="email" placeholder="email@example.com" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="input-field" /></div>
                 {personType === 'member' && (
-                  <div><label className="text-sm font-semibold text-navy-700 mb-1.5 block">Age</label><input type="number" placeholder="25" value={form.age} onChange={(e) => setForm({ ...form, age: e.target.value })} className="input-field" /></div>
+                  <div><label className="text-sm font-semibold text-slate-700 mb-1.5 block">Age</label><input type="number" placeholder="25" value={form.age} onChange={(e) => setForm({ ...form, age: e.target.value })} className="input-field" /></div>
                 )}
-                <div><label className="text-sm font-semibold text-navy-700 mb-1.5 block">Gender</label><select value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })} className="input-field"><option value="">Select gender</option><option value="Male">Male</option><option value="Female">Female</option><option value="Other">Other</option></select></div>
-                <div><label className="text-sm font-semibold text-navy-700 mb-1.5 block">Branch</label><select value={form.branch} onChange={(e) => setForm({ ...form, branch: e.target.value })} className="input-field"><option value="">Select branch</option>{branches.map((b) => (<option key={b.id} value={b.branch_name}>{b.branch_name} {b.city ? `(${b.city})` : ''}</option>))}</select></div>
+                <div><label className="text-sm font-semibold text-slate-700 mb-1.5 block">Gender</label><select value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })} className="input-field"><option value="">Select gender</option><option value="Male">Male</option><option value="Female">Female</option><option value="Other">Other</option></select></div>
+                <div><label className="text-sm font-semibold text-slate-700 mb-1.5 block">Branch</label><select value={form.branch} onChange={(e) => setForm({ ...form, branch: e.target.value })} className="input-field"><option value="">Select branch</option>{branches.map((b) => (<option key={b.id} value={b.branch_name}>{b.branch_name} {b.city ? `(${b.city})` : ''}</option>))}</select></div>
               </div>
               <button onClick={() => setStep(1)} disabled={!form.name || !form.phone} className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">Continue <Icon name="chevron-right" size={16} /></button>
             </div>
@@ -517,7 +517,7 @@ export function EnrollmentModal({
               <div className="space-y-4 animate-fade-in">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-semibold text-navy-700 mb-1.5 block">Base Monthly Salary (₹)</label>
+                    <label className="text-xs font-semibold text-slate-700 mb-1.5 block">Base Monthly Salary (₹)</label>
                     <input
                       type="number"
                       placeholder="e.g. 35000"
@@ -527,7 +527,7 @@ export function EnrollmentModal({
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold text-navy-700 mb-1.5 block">Date of Joining</label>
+                    <label className="text-xs font-semibold text-slate-700 mb-1.5 block">Date of Joining</label>
                     <input
                       type="date"
                       value={form.join_date}
@@ -536,7 +536,7 @@ export function EnrollmentModal({
                     />
                   </div>
                   <div className="col-span-2">
-                    <label className="text-xs font-semibold text-navy-700 mb-1.5 block">UPI ID (Optional)</label>
+                    <label className="text-xs font-semibold text-slate-700 mb-1.5 block">UPI ID (Optional)</label>
                     <input
                       type="text"
                       placeholder="e.g. emp@okaxis"
@@ -546,7 +546,7 @@ export function EnrollmentModal({
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold text-navy-700 mb-1.5 block">Bank Account Number</label>
+                    <label className="text-xs font-semibold text-slate-700 mb-1.5 block">Bank Account Number</label>
                     <input
                       type="text"
                       placeholder="e.g. 918234567890"
@@ -556,7 +556,7 @@ export function EnrollmentModal({
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold text-navy-700 mb-1.5 block">Bank IFSC Code</label>
+                    <label className="text-xs font-semibold text-slate-700 mb-1.5 block">Bank IFSC Code</label>
                     <input
                       type="text"
                       placeholder="e.g. SBIN0001234"
@@ -581,8 +581,8 @@ export function EnrollmentModal({
                 {/* Header & Search */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                   <div>
-                    <label className="text-sm font-bold text-navy-900 block">Select Membership Plan</label>
-                    <p className="text-xs text-navy-400">Choose membership plan and duration tier. Price and billing auto-accommodate.</p>
+                    <label className="text-sm font-bold text-slate-900 block">Select Membership Plan</label>
+                    <p className="text-xs text-slate-400">Choose membership plan and duration tier. Price and billing auto-accommodate.</p>
                   </div>
                   <div className="relative min-w-[200px]">
                     <input
@@ -590,9 +590,9 @@ export function EnrollmentModal({
                       placeholder="Search programs..."
                       value={planSearchQuery}
                       onChange={(e) => setPlanSearchQuery(e.target.value)}
-                      className="input-field text-xs py-1.5 pl-8 pr-3 w-full bg-navy-50/70"
+                      className="input-field text-xs py-1.5 pl-8 pr-3 w-full bg-slate-50/70"
                     />
-                    <div className="absolute left-2.5 top-1/2 -translate-y-1/2 text-navy-400 pointer-events-none">
+                    <div className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
                       <Icon name="search" size={13} />
                     </div>
                   </div>
@@ -626,7 +626,7 @@ export function EnrollmentModal({
 
                   return (
                     <div className="space-y-2">
-                      <div className="text-[11px] font-bold text-navy-500 uppercase tracking-wider flex items-center gap-1.5">
+                      <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
                         <Icon name="layers" size={13} className="text-brand-500" /> Program Categories
                       </div>
                       <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
@@ -641,13 +641,13 @@ export function EnrollmentModal({
                                 'px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 border cursor-pointer shrink-0',
                                 isActive
                                   ? 'bg-brand-600 text-white border-brand-600 shadow-sm font-bold'
-                                  : 'bg-white text-navy-600 border-navy-200 hover:border-navy-300 hover:bg-navy-50'
+                                  : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
                               )}
                             >
                               <Icon
                                 name={opt.id === 'all' ? 'layers' : opt.isCombo ? 'flame' : 'activity'}
                                 size={13}
-                                className={isActive ? 'text-white' : 'text-navy-500'}
+                                className={isActive ? 'text-white' : 'text-slate-500'}
                               />
                               <span>{opt.label}</span>
                             </button>
@@ -659,9 +659,9 @@ export function EnrollmentModal({
                 })()}
 
                 {/* Duration Tiers Selector */}
-                <div className="space-y-2 pt-1 border-t border-navy-100">
+                <div className="space-y-2 pt-1 border-t border-slate-100">
                   <div className="flex items-center justify-between gap-2">
-                    <div className="text-[11px] font-bold text-navy-500 uppercase tracking-wider flex items-center gap-1.5">
+                    <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
                       <Icon name="clock" size={13} className="text-brand-500" /> Duration Tiers
                     </div>
                     <div className="text-[11px] text-brand-600 font-bold bg-brand-50 border border-brand-100 px-2.5 py-0.5 rounded-full">
@@ -680,11 +680,11 @@ export function EnrollmentModal({
                             'px-3 py-2.5 rounded-xl text-xs font-bold transition-all border cursor-pointer flex flex-col items-center justify-center gap-0.5',
                             isActive
                               ? 'bg-brand-50 border-brand-500 text-brand-700 ring-2 ring-brand-500/20 shadow-sm'
-                              : 'bg-white border-navy-200 text-navy-600 hover:border-navy-300 hover:bg-navy-50/60'
+                              : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50/60'
                           )}
                         >
                           <span>{tier.label}</span>
-                          <span className="text-[10px] font-medium text-navy-400">
+                          <span className="text-[10px] font-medium text-slate-400">
                             {tier.days === 30 ? '1 Month' : tier.days === 90 ? '3 Months' : tier.days === 180 ? '6 Months' : '1 Year'}
                           </span>
                         </button>
@@ -712,12 +712,12 @@ export function EnrollmentModal({
 
                   if (filteredPrograms.length === 0) {
                     return (
-                      <div className="card p-6 text-center bg-navy-50/60 border border-navy-200">
-                        <div className="w-10 h-10 rounded-xl bg-navy-100 flex items-center justify-center mx-auto mb-2 text-navy-400">
+                      <div className="card p-6 text-center bg-slate-50/60 border border-slate-200">
+                        <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center mx-auto mb-2 text-slate-400">
                           <Icon name="search" size={18} />
                         </div>
-                        <p className="text-sm font-bold text-navy-700">No matching programs found</p>
-                        <p className="text-xs text-navy-400 mt-0.5">Try resetting your filters or search query.</p>
+                        <p className="text-sm font-bold text-slate-700">No matching programs found</p>
+                        <p className="text-xs text-slate-400 mt-0.5">Try resetting your filters or search query.</p>
                         <button
                           type="button"
                           onClick={() => {
@@ -764,7 +764,7 @@ export function EnrollmentModal({
 
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                                  <span className="text-sm font-bold text-navy-900 group-hover:text-brand-600 transition-colors">
+                                  <span className="text-sm font-bold text-slate-900 group-hover:text-brand-600 transition-colors">
                                     {prog.name}
                                   </span>
                                   {prog.isCombo && (
@@ -775,7 +775,7 @@ export function EnrollmentModal({
                                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand-50 text-brand-700 capitalize">
                                     {prog.categoryLabel}
                                   </span>
-                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-navy-100 text-navy-600">
+                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
                                     {durationTag}
                                   </span>
                                   {prog.badge && (
@@ -790,10 +790,10 @@ export function EnrollmentModal({
                             {/* Right: Pricing & Selection Indicator */}
                             <div className="flex items-center gap-3 shrink-0">
                               <div className="text-right">
-                                <div className="text-base font-extrabold text-navy-900 flex items-center justify-end">
+                                <div className="text-base font-extrabold text-slate-900 flex items-center justify-end">
                                   <span className="text-brand-600">₹{pricing.price.toLocaleString('en-IN')}</span>
                                 </div>
-                                <div className="text-[11px] font-medium text-navy-400">
+                                <div className="text-[11px] font-medium text-slate-400">
                                   per {pricing.periodLabel}
                                 </div>
                               </div>
@@ -803,10 +803,10 @@ export function EnrollmentModal({
                                   'w-6 h-6 rounded-full flex items-center justify-center transition-all border shrink-0',
                                   isSelected
                                     ? 'bg-brand-600 border-brand-600 text-white shadow-sm ring-2 ring-brand-500/20'
-                                    : 'border-navy-300 bg-white group-hover:border-navy-400'
+                                    : 'border-slate-300 bg-white group-hover:border-slate-400'
                                 )}
                               >
-                                {isSelected ? <Icon name="check" size={13} className="text-white" /> : <div className="w-2 h-2 rounded-full bg-navy-200" />}
+                                {isSelected ? <Icon name="check" size={13} className="text-white" /> : <div className="w-2 h-2 rounded-full bg-slate-200" />}
                               </div>
                             </div>
                           </div>
@@ -824,10 +824,10 @@ export function EnrollmentModal({
                         <Icon name="check-circle" size={16} />
                       </div>
                       <div className="min-w-0">
-                        <div className="text-xs font-bold text-navy-900 uppercase tracking-wide truncate">
+                        <div className="text-xs font-bold text-slate-900 uppercase tracking-wide truncate">
                           Verified Plan: {currentProgram?.name} — {durationLabel}
                         </div>
-                        <div className="text-[11px] text-navy-500 font-medium">
+                        <div className="text-[11px] text-slate-500 font-medium">
                           Base Fee: ₹{currentActivePricing.price.toLocaleString('en-IN')} / {currentActivePricing.periodLabel}
                         </div>
                       </div>
@@ -839,7 +839,7 @@ export function EnrollmentModal({
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2.5 border-t border-slate-200/80">
                     <div>
-                      <label className="text-xs font-semibold text-navy-700 mb-1 flex items-center gap-1.5">
+                      <label className="text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
                         <Icon name="calendar" size={13} className="text-brand-500" /> Start Date
                       </label>
                       <input
@@ -850,7 +850,7 @@ export function EnrollmentModal({
                       />
                     </div>
                     <div>
-                      <label className="text-xs font-semibold text-navy-700 mb-1 flex items-center gap-1.5">
+                      <label className="text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
                         <Icon name="calendar-check" size={13} className="text-emerald-600" /> Expiry Date (DD-MM-YY)
                       </label>
                       <input
@@ -901,7 +901,7 @@ export function EnrollmentModal({
                 </div>
 
                 <div>
-                  <label className="text-sm font-semibold text-navy-700 mb-2 block">
+                  <label className="text-sm font-semibold text-slate-700 mb-2 block">
                     Preferred EMP Payout Mode
                   </label>
                   <div className="flex flex-wrap gap-2">
@@ -922,7 +922,7 @@ export function EnrollmentModal({
                           'px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all border cursor-pointer',
                           paymentMethod === m && !customPaymentMethod
                             ? 'bg-emerald-600 text-white border-emerald-600 shadow-md scale-105'
-                            : 'bg-navy-50 text-navy-600 border-navy-200 hover:bg-navy-100'
+                            : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
                         )}
                       >
                         {m}
@@ -935,7 +935,7 @@ export function EnrollmentModal({
                         'px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all border cursor-pointer',
                         paymentMethod === 'Custom'
                           ? 'bg-emerald-600 text-white border-emerald-600 shadow-md scale-105'
-                          : 'bg-navy-50 text-navy-600 border-navy-200 hover:bg-navy-100'
+                          : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
                       )}
                     >
                       + Other / Custom
@@ -944,7 +944,7 @@ export function EnrollmentModal({
 
                   {paymentMethod === 'Custom' && (
                     <div className="mt-3 animate-fade-in">
-                      <label className="text-xs font-semibold text-navy-600 mb-1 block">Custom Payout Mode Name</label>
+                      <label className="text-xs font-semibold text-slate-600 mb-1 block">Custom Payout Mode Name</label>
                       <input
                         type="text"
                         placeholder="e.g. Payroll Direct Deposit, Third-Party Agency, Wire"
@@ -967,34 +967,34 @@ export function EnrollmentModal({
               </div>
             ) : (
               <div className="space-y-4 animate-fade-in">
-                <div className="card p-4 bg-navy-50 space-y-2.5 border border-navy-200/80">
+                <div className="card p-4 bg-slate-50 space-y-2.5 border border-slate-200/80">
                   <div className="flex justify-between text-sm">
-                    <span className="text-navy-800 font-bold">{currentProgram?.name} — {durationLabel}</span>
-                    <span className="font-extrabold text-navy-900">₹{subtotal.toLocaleString('en-IN')}</span>
+                    <span className="text-slate-800 font-bold">{currentProgram?.name} — {durationLabel}</span>
+                    <span className="font-extrabold text-slate-900">₹{subtotal.toLocaleString('en-IN')}</span>
                   </div>
-                  <div className="flex justify-between text-sm text-navy-600">
+                  <div className="flex justify-between text-sm text-slate-600">
                     <span>Subtotal</span>
                     <span className="font-semibold">₹{subtotal.toLocaleString('en-IN')}</span>
                   </div>
 
                   {/* GST Toggle Checkbox */}
-                  <div className="pt-2 border-t border-navy-200/60 flex items-center justify-between">
-                    <label className="flex items-center gap-2 cursor-pointer select-none text-xs font-bold text-navy-800 hover:text-brand-600 transition-colors">
+                  <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between">
+                    <label className="flex items-center gap-2 cursor-pointer select-none text-xs font-bold text-slate-800 hover:text-brand-600 transition-colors">
                       <input
                         type="checkbox"
                         checked={includeGst && isGstActive}
                         disabled={!isGstActive}
                         onChange={(e) => setIncludeGst(e.target.checked)}
-                        className="w-4 h-4 rounded border-navy-300 text-brand-600 focus:ring-brand-500 cursor-pointer disabled:opacity-50"
+                        className="w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500 cursor-pointer disabled:opacity-50"
                       />
                       <span>{isGstActive ? `Include GST (${effectiveGstRate}%)` : 'GST Engine Disabled (0% Nil)'}</span>
                     </label>
-                    <span className={cn('text-sm font-semibold', includeGst && isGstActive ? 'text-navy-700' : 'text-navy-400')}>
+                    <span className={cn('text-sm font-semibold', includeGst && isGstActive ? 'text-slate-700' : 'text-slate-400')}>
                       {includeGst && isGstActive ? `₹${gst.toLocaleString('en-IN')}` : '₹0 (Without GST)'}
                     </span>
                   </div>
 
-                  <div className="flex justify-between text-base font-bold text-navy-900 pt-2 border-t border-navy-200">
+                  <div className="flex justify-between text-base font-bold text-slate-900 pt-2 border-t border-slate-200">
                     <span>Total</span>
                     <span className="text-brand-600 font-extrabold text-lg">₹{total.toLocaleString('en-IN')}</span>
                   </div>
@@ -1022,26 +1022,26 @@ export function EnrollmentModal({
             <div className="space-y-4 animate-fade-in">
               <div className="text-center mb-4">
                 <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-brand-500 to-ai-600 flex items-center justify-center mx-auto mb-3 animate-bounce-in"><Icon name="fingerprint" size={28} className="text-white" /></div>
-                <h3 className="text-base font-bold text-navy-900">Biometric Device Enrollment</h3>
-                <p className="text-sm text-navy-500">Scan via real live eSSL physical device or connected hardware scanner.</p>
+                <h3 className="text-base font-bold text-slate-900">Biometric Device Enrollment</h3>
+                <p className="text-sm text-slate-500">Scan via real live eSSL physical device or connected hardware scanner.</p>
               </div>
 
               {biometricType === null && (
                 <div className="grid grid-cols-3 gap-3">
                   <button onClick={() => setBiometricType('face')} className="card card-hover p-5 text-center group border-2 border-transparent hover:border-brand-500">
                     <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center mx-auto mb-3 transition-transform group-hover:scale-110"><Icon name="scan-face" size={22} className="text-white" /></div>
-                    <div className="text-sm font-bold text-navy-900">Face</div>
-                    <div className="text-xs text-navy-400 mt-1">Live Face Scanner</div>
+                    <div className="text-sm font-bold text-slate-900">Face</div>
+                    <div className="text-xs text-slate-400 mt-1">Live Face Scanner</div>
                   </button>
                   <button onClick={() => setBiometricType('fingerprint')} className="card card-hover p-5 text-center group border-2 border-transparent hover:border-success-500">
                     <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-success-400 to-success-600 flex items-center justify-center mx-auto mb-3 transition-transform group-hover:scale-110"><Icon name="fingerprint" size={22} className="text-white" /></div>
-                    <div className="text-sm font-bold text-navy-900">Fingerprint</div>
-                    <div className="text-xs text-navy-400 mt-1">Physical Bio Reader</div>
+                    <div className="text-sm font-bold text-slate-900">Fingerprint</div>
+                    <div className="text-xs text-slate-400 mt-1">Physical Bio Reader</div>
                   </button>
                   <button onClick={() => setBiometricType('face_and_fingerprint')} className="card card-hover p-5 text-center group border-2 border-transparent hover:border-ai-500">
                     <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-ai-400 to-ai-600 flex items-center justify-center mx-auto mb-3 transition-transform group-hover:scale-110"><Icon name="shield" size={22} className="text-white" /></div>
-                    <div className="text-sm font-bold text-navy-900">Both</div>
-                    <div className="text-xs text-navy-400 mt-1">Face + Fingerprint</div>
+                    <div className="text-sm font-bold text-slate-900">Both</div>
+                    <div className="text-xs text-slate-400 mt-1">Face + Fingerprint</div>
                   </button>
                 </div>
               )}
@@ -1049,28 +1049,28 @@ export function EnrollmentModal({
               {biometricType && captureState === 'idle' && (
                 <div className="space-y-4">
                   <div>
-                    <label className="text-sm font-semibold text-navy-700 mb-2 block">
+                    <label className="text-sm font-semibold text-slate-700 mb-2 block">
                       Detected Physical Devices
                     </label>
                     {availableDevices.length === 0 && devices.length === 0 ? (
-                      <div className="card p-5 text-center space-y-3 bg-navy-50 border border-navy-200">
-                        <div className="w-12 h-12 rounded-2xl bg-navy-100 flex items-center justify-center mx-auto animate-pulse-soft">
-                          <Icon name="wifi-off" size={22} className="text-navy-400" />
+                      <div className="card p-5 text-center space-y-3 bg-slate-50 border border-slate-200">
+                        <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto animate-pulse-soft">
+                          <Icon name="wifi-off" size={22} className="text-slate-400" />
                         </div>
                         <div>
-                          <div className="text-sm font-bold text-navy-700">No Physical Devices Detected</div>
-                          <div className="text-xs text-navy-400 mt-1">
+                          <div className="text-sm font-bold text-slate-700">No Physical Devices Detected</div>
+                          <div className="text-xs text-slate-400 mt-1">
                             Connect your eSSL hardware terminal via LAN, WiFi, or Bluetooth and register it in the Devices section.
                           </div>
                         </div>
-                        <div className="flex items-center justify-center gap-4 pt-2 border-t border-navy-200">
-                          <div className="flex items-center gap-1.5 text-xs text-navy-400">
+                        <div className="flex items-center justify-center gap-4 pt-2 border-t border-slate-200">
+                          <div className="flex items-center gap-1.5 text-xs text-slate-400">
                             <Icon name="network" size={13} className="text-brand-500" />LAN
                           </div>
-                          <div className="flex items-center gap-1.5 text-xs text-navy-400">
+                          <div className="flex items-center gap-1.5 text-xs text-slate-400">
                             <Icon name="wifi" size={13} className="text-success-500" />WiFi
                           </div>
-                          <div className="flex items-center gap-1.5 text-xs text-navy-400">
+                          <div className="flex items-center gap-1.5 text-xs text-slate-400">
                             <Icon name="bluetooth" size={13} className="text-ai-500" />Bluetooth
                           </div>
                         </div>
@@ -1108,15 +1108,15 @@ export function EnrollmentModal({
                               onClick={() => setSelectedDevice(d.id)}
                               className={cn(
                                 'w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left',
-                                selectedDevice === d.id ? 'border-brand-500 bg-brand-50 ring-2 ring-brand-500/20' : 'border-navy-200 hover:border-navy-300'
+                                selectedDevice === d.id ? 'border-brand-500 bg-brand-50 ring-2 ring-brand-500/20' : 'border-slate-200 hover:border-slate-300'
                               )}
                             >
-                              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-navy-500 to-navy-700 flex items-center justify-center shrink-0">
+                              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-500 to-slate-700 flex items-center justify-center shrink-0">
                                 <Icon name={d.capabilities.includes('face') ? 'scan-face' : 'fingerprint'} size={18} className="text-white" />
                               </div>
                               <div className="flex-1 min-w-0">
-                                <div className="text-sm font-bold text-navy-900 truncate">{d.name}</div>
-                                <div className="text-xs text-navy-400 truncate">{subline}</div>
+                                <div className="text-sm font-bold text-slate-900 truncate">{d.name}</div>
+                                <div className="text-xs text-slate-400 truncate">{subline}</div>
                               </div>
                               {/* Real connection type badge */}
                               <div className={cn('flex items-center gap-1 text-xs font-semibold shrink-0', connColor)}>
@@ -1142,7 +1142,7 @@ export function EnrollmentModal({
               {/* Live Scanner View (Face Camera / Fingerprint Scanner) */}
               {(captureState === 'connecting' || captureState === 'capturing' || captureState === 'processing') && (
                 <div className="space-y-4">
-                  <div className="relative aspect-video rounded-2xl bg-navy-950 overflow-hidden flex items-center justify-center border-2 border-brand-500/40 shadow-glow">
+                  <div className="relative aspect-video rounded-2xl bg-slate-950 overflow-hidden flex items-center justify-center border-2 border-brand-500/40 shadow-glow">
                     {/* Live Face Scanner Stream / Camera Feed */}
                     {(biometricType === 'face' || biometricType === 'face_and_fingerprint') && (
                       <div className="relative w-full h-full flex items-center justify-center bg-black">
@@ -1189,21 +1189,21 @@ export function EnrollmentModal({
                       </div>
                     )}
 
-                    <div className="absolute top-3 left-3 flex items-center gap-2 px-2.5 py-1 rounded-lg bg-navy-900/80 backdrop-blur border border-navy-700">
+                    <div className="absolute top-3 left-3 flex items-center gap-2 px-2.5 py-1 rounded-lg bg-slate-900/80 backdrop-blur border border-slate-700">
                       <span className="w-2.5 h-2.5 rounded-full bg-brand-400 animate-live-dot" />
                       <span className="text-xs font-bold text-white tracking-wider">LIVE PHYSICAL SCANNER</span>
                     </div>
 
-                    <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-navy-800">
+                    <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-slate-800">
                       <div className="h-full bg-gradient-to-r from-brand-400 via-success-400 to-brand-600 transition-all duration-100" style={{ width: `${captureProgress}%` }} />
                     </div>
                   </div>
 
                   {/* Terminal Log Output from eSSL Device */}
-                  <div ref={logRef} className="h-32 overflow-y-auto rounded-xl bg-navy-950 p-3 space-y-1 border border-navy-800">
+                  <div ref={logRef} className="h-32 overflow-y-auto rounded-xl bg-slate-950 p-3 space-y-1 border border-slate-800">
                     {captureLog.map((line, i) => (
                       <div key={i} className="text-xs font-mono text-success-400 animate-fade-in flex items-center gap-2">
-                        <span className="text-navy-500">[{new Date().toLocaleTimeString('en-US', { hour12: false })}]</span>
+                        <span className="text-slate-500">[{new Date().toLocaleTimeString('en-US', { hour12: false })}]</span>
                         <span>{`> ${line}`}</span>
                       </div>
                     ))}
@@ -1215,8 +1215,8 @@ export function EnrollmentModal({
               {captureState === 'success' && (
                 <div className="text-center space-y-4 animate-bounce-in">
                   <div className="w-16 h-16 rounded-2xl bg-success-50 flex items-center justify-center mx-auto"><Icon name="check-circle" size={32} className="text-success-600" /></div>
-                  <div><h3 className="text-base font-bold text-navy-900">Biometric Captured & Device Synced!</h3><p className="text-sm text-navy-500 mt-1">Biometric template successfully stored on eSSL hardware terminal.</p></div>
-                  <div className="card p-3 bg-navy-50 text-left text-xs font-mono text-navy-600">
+                  <div><h3 className="text-base font-bold text-slate-900">Biometric Captured & Device Synced!</h3><p className="text-sm text-slate-500 mt-1">Biometric template successfully stored on eSSL hardware terminal.</p></div>
+                  <div className="card p-3 bg-slate-50 text-left text-xs font-mono text-slate-600">
                     Device: {devices.find((d) => d.id === selectedDevice)?.name || 'eSSL AiFace ERIS'}<br />
                     Method: {biometricType?.toUpperCase()}<br />
                     Status: 200 OK (Device Synced)
@@ -1228,7 +1228,7 @@ export function EnrollmentModal({
               {captureState === 'failed' && (
                 <div className="text-center space-y-4">
                   <div className="w-16 h-16 rounded-2xl bg-danger-50 flex items-center justify-center mx-auto"><Icon name="alert-circle" size={32} className="text-danger-600" /></div>
-                  <div><h3 className="text-base font-bold text-navy-900">Device Communication Failed</h3><p className="text-sm text-navy-500 mt-1">Could not connect to physical scanner. Check network cable & power.</p></div>
+                  <div><h3 className="text-base font-bold text-slate-900">Device Communication Failed</h3><p className="text-sm text-slate-500 mt-1">Could not connect to physical scanner. Check network cable & power.</p></div>
                   <button onClick={() => { setCaptureState('idle'); setCaptureProgress(0); setCaptureLog([]); }} className="btn-primary w-full">Retry Capture</button>
                 </div>
               )}
@@ -1245,32 +1245,32 @@ export function EnrollmentModal({
           {/* Step 4: Review */}
           {step === 4 && (
             <div className="space-y-4 animate-fade-in">
-              <h3 className="text-base font-bold text-navy-900 text-center">Review & Confirm {personType === 'employee' ? 'EMP' : 'Member'}</h3>
+              <h3 className="text-base font-bold text-slate-900 text-center">Review & Confirm {personType === 'employee' ? 'EMP' : 'Member'}</h3>
               <div className="card p-4 space-y-2 text-sm">
-                <div className="flex justify-between"><span className="text-navy-400">Name</span><span className="font-semibold text-navy-900">{form.name || '—'}</span></div>
-                <div className="flex justify-between"><span className="text-navy-400">Phone</span><span className="font-semibold text-navy-900">{form.phone || '—'}</span></div>
-                <div className="flex justify-between"><span className="text-navy-400">Email</span><span className="font-semibold text-navy-900">{form.email || '—'}</span></div>
+                <div className="flex justify-between"><span className="text-slate-400">Name</span><span className="font-semibold text-slate-900">{form.name || '—'}</span></div>
+                <div className="flex justify-between"><span className="text-slate-400">Phone</span><span className="font-semibold text-slate-900">{form.phone || '—'}</span></div>
+                <div className="flex justify-between"><span className="text-slate-400">Email</span><span className="font-semibold text-slate-900">{form.email || '—'}</span></div>
                 {personType === 'employee' ? (
                   <>
-                    <div className="flex justify-between"><span className="text-navy-400">Branch</span><span className="font-semibold text-navy-900">{form.branch || '—'}</span></div>
-                    <div className="flex justify-between"><span className="text-navy-400">Date of Joining</span><span className="font-bold text-emerald-600">{formatDateDDMMYY(form.join_date)}</span></div>
-                    <div className="flex justify-between"><span className="text-navy-400">Base Monthly Salary</span><span className="font-bold text-slate-900">₹{Number(form.salary || 0).toLocaleString('en-IN')}/mo</span></div>
-                    <div className="flex justify-between"><span className="text-navy-400">Bank Account</span><span className="font-semibold text-slate-900">{form.bank_account_no ? `${form.bank_account_no} (${form.bank_ifsc || 'IFSC N/A'})` : '—'}</span></div>
-                    <div className="flex justify-between"><span className="text-navy-400">UPI ID</span><span className="font-semibold text-slate-900">{form.upi_id || '—'}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-400">Branch</span><span className="font-semibold text-slate-900">{form.branch || '—'}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-400">Date of Joining</span><span className="font-bold text-emerald-600">{formatDateDDMMYY(form.join_date)}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-400">Base Monthly Salary</span><span className="font-bold text-slate-900">₹{Number(form.salary || 0).toLocaleString('en-IN')}/mo</span></div>
+                    <div className="flex justify-between"><span className="text-slate-400">Bank Account</span><span className="font-semibold text-slate-900">{form.bank_account_no ? `${form.bank_account_no} (${form.bank_ifsc || 'IFSC N/A'})` : '—'}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-400">UPI ID</span><span className="font-semibold text-slate-900">{form.upi_id || '—'}</span></div>
                   </>
                 ) : (
                   <>
-                    <div className="flex justify-between"><span className="text-navy-400">Age / Gender</span><span className="font-semibold text-navy-900">{form.age || '—'} / {form.gender}</span></div>
-                    <div className="flex justify-between"><span className="text-navy-400">Branch</span><span className="font-semibold text-navy-900">{form.branch || '—'}</span></div>
-                    <div className="flex justify-between"><span className="text-navy-400">Program & Plan</span><span className="font-semibold text-navy-900">{currentProgram?.name || 'Standard Membership'} — {durationLabel} (₹{subtotal.toLocaleString('en-IN')})</span></div>
-                    <div className="flex justify-between"><span className="text-navy-400">Plan Validity</span><span className="font-semibold text-navy-900">{startDate} to {expiryDate}</span></div>
-                    <div className="flex justify-between"><span className="text-navy-400">Expiry (DD-MM-YY)</span><span className="font-bold text-brand-600">{formatDateDDMMYY(expiryDate)}</span></div>
-                    <div className="flex justify-between"><span className="text-navy-400">Payment Method</span><span className="font-bold text-brand-600">{activePaymentMethod}</span></div>
-                    <div className="flex justify-between"><span className="text-navy-400">GST Billing</span><span className="font-semibold text-navy-900">{includeGst && isGstActive && effectiveGstRate > 0 ? `Include GST ${effectiveGstRate}% (₹${gst.toLocaleString('en-IN')})` : 'Without GST (0%)'}</span></div>
-                    <div className="flex justify-between text-base font-bold text-navy-900 pt-2 border-t border-navy-100"><span>Total Amount</span><span className="text-brand-600 font-extrabold text-lg">₹{total.toLocaleString('en-IN')}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-400">Age / Gender</span><span className="font-semibold text-slate-900">{form.age || '—'} / {form.gender}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-400">Branch</span><span className="font-semibold text-slate-900">{form.branch || '—'}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-400">Program & Plan</span><span className="font-semibold text-slate-900">{currentProgram?.name || 'Standard Membership'} — {durationLabel} (₹{subtotal.toLocaleString('en-IN')})</span></div>
+                    <div className="flex justify-between"><span className="text-slate-400">Plan Validity</span><span className="font-semibold text-slate-900">{startDate} to {expiryDate}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-400">Expiry (DD-MM-YY)</span><span className="font-bold text-brand-600">{formatDateDDMMYY(expiryDate)}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-400">Payment Method</span><span className="font-bold text-brand-600">{activePaymentMethod}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-400">GST Billing</span><span className="font-semibold text-slate-900">{includeGst && isGstActive && effectiveGstRate > 0 ? `Include GST ${effectiveGstRate}% (₹${gst.toLocaleString('en-IN')})` : 'Without GST (0%)'}</span></div>
+                    <div className="flex justify-between text-base font-bold text-slate-900 pt-2 border-t border-slate-100"><span>Total Amount</span><span className="text-brand-600 font-extrabold text-lg">₹{total.toLocaleString('en-IN')}</span></div>
                   </>
                 )}
-                <div className="flex justify-between"><span className="text-navy-400">Biometric Status</span><span className="font-semibold text-navy-900">{captureState === 'success' ? 'Enrolled & Synced' : 'Skipped'}</span></div>
+                <div className="flex justify-between"><span className="text-slate-400">Biometric Status</span><span className="font-semibold text-slate-900">{captureState === 'success' ? 'Enrolled & Synced' : 'Skipped'}</span></div>
               </div>
               <div className="flex gap-2">
                 <button onClick={() => setStep(3)} className="btn-secondary flex-1 flex items-center justify-center gap-2"><Icon name="chevron-left" size={16} /> Back</button>
@@ -1335,12 +1335,12 @@ export function EnrollmentModal({
           {step === 5 && (
             <div className="text-center space-y-4 animate-bounce-in py-4">
               <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-success-400 to-success-600 flex items-center justify-center mx-auto shadow-glow"><Icon name="check-circle" size={40} className="text-white" /></div>
-              <div><h3 className="text-lg font-bold text-navy-900">{personType === 'employee' ? 'employee Registered!' : 'Enrollment Complete!'}</h3><p className="text-sm text-navy-500 mt-1">{form.name} has been successfully registered.</p></div>
+              <div><h3 className="text-lg font-bold text-slate-900">{personType === 'employee' ? 'employee Registered!' : 'Enrollment Complete!'}</h3><p className="text-sm text-slate-500 mt-1">{form.name} has been successfully registered.</p></div>
               <div className="grid grid-cols-2 gap-3 text-left">
-                <div className="card p-3 bg-navy-50"><div className="text-xs text-navy-400">{personType === 'employee' ? 'employee ID' : 'Member ID'}</div><div className="text-sm font-bold text-navy-900">{personId.toUpperCase()}</div></div>
-                <div className="card p-3 bg-navy-50"><div className="text-xs text-navy-400">{personType === 'employee' ? 'Specialization' : 'Plan'}</div><div className="text-sm font-bold text-navy-900">{form.goal || 'Personal Training'}</div></div>
-                <div className="card p-3 bg-navy-50"><div className="text-xs text-navy-400">{personType === 'employee' ? 'Base Salary' : 'Total Paid'}</div><div className="text-sm font-bold text-navy-900">{personType === 'employee' ? `₹${Number(form.salary || 0).toLocaleString('en-IN')}` : `₹${total.toLocaleString()}`}</div></div>
-                <div className="card p-3 bg-navy-50"><div className="text-xs text-navy-400">Biometric</div><div className="text-sm font-bold text-navy-900">{captureState === 'success' ? 'Device Synced' : 'Skipped'}</div></div>
+                <div className="card p-3 bg-slate-50"><div className="text-xs text-slate-400">{personType === 'employee' ? 'employee ID' : 'Member ID'}</div><div className="text-sm font-bold text-slate-900">{personId.toUpperCase()}</div></div>
+                <div className="card p-3 bg-slate-50"><div className="text-xs text-slate-400">{personType === 'employee' ? 'Specialization' : 'Plan'}</div><div className="text-sm font-bold text-slate-900">{form.goal || 'Personal Training'}</div></div>
+                <div className="card p-3 bg-slate-50"><div className="text-xs text-slate-400">{personType === 'employee' ? 'Base Salary' : 'Total Paid'}</div><div className="text-sm font-bold text-slate-900">{personType === 'employee' ? `₹${Number(form.salary || 0).toLocaleString('en-IN')}` : `₹${total.toLocaleString()}`}</div></div>
+                <div className="card p-3 bg-slate-50"><div className="text-xs text-slate-400">Biometric</div><div className="text-sm font-bold text-slate-900">{captureState === 'success' ? 'Device Synced' : 'Skipped'}</div></div>
               </div>
               <div className="flex gap-2">
                 <button onClick={handleClose} className="btn-secondary flex-1">Close</button>

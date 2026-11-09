@@ -388,8 +388,9 @@ export function StudentGeofenceCheckinWidget({ onCheckinSuccess }: studentGeofen
     ];
 
   return (
-    <div className="card p-5 bg-gradient-to-br from-slate-900 via-blue-950 to-navy-950 text-white rounded-3xl shadow-xl border border-blue-700/40 relative overflow-hidden font-sans space-y-4">
-      <div className="absolute -right-12 -top-12 w-48 h-48 bg-blue-500/15 rounded-full blur-3xl pointer-events-none" />
+    <div className="card p-5 sm:p-6 bg-gradient-to-r from-blue-600 via-indigo-600 via-purple-600 to-orange-500 text-white rounded-3xl shadow-lg relative overflow-hidden font-sans space-y-4">
+      <div className="absolute -right-12 -top-12 w-64 h-64 bg-white/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -left-12 -bottom-12 w-64 h-64 bg-blue-400/10 rounded-full blur-3xl pointer-events-none" />
 
       {toast && (
         <div
@@ -399,7 +400,7 @@ export function StudentGeofenceCheckinWidget({ onCheckinSuccess }: studentGeofen
               ? 'bg-emerald-950/95 text-emerald-200 border-emerald-500/50'
               : toast.type === 'error'
                 ? 'bg-rose-950/95 text-rose-200 border-rose-500/50'
-                : 'bg-blue-950/95 text-blue-200 border-blue-500/50'
+                : 'bg-purple-950/95 text-purple-200 border-purple-500/50'
           )}
         >
           <Icon
@@ -410,7 +411,7 @@ export function StudentGeofenceCheckinWidget({ onCheckinSuccess }: studentGeofen
                 ? 'text-emerald-400 shrink-0'
                 : toast.type === 'error'
                   ? 'text-rose-400 shrink-0'
-                  : 'text-blue-400 shrink-0'
+                  : 'text-purple-400 shrink-0'
             }
           />
           <span>{toast.msg}</span>
@@ -418,57 +419,54 @@ export function StudentGeofenceCheckinWidget({ onCheckinSuccess }: studentGeofen
       )}
 
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/10">
-        <div className="flex items-center gap-2.5">
-          <div className="w-10 h-10 rounded-2xl bg-blue-500/20 text-blue-300 flex items-center justify-center border border-blue-400/30">
-            <Icon name="check-circle" size={18} />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/15">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-sm text-white flex items-center justify-center border border-white/30 shrink-0 shadow-2xs">
+            <Icon name="check" size={20} />
           </div>
           <div>
-            <h3 className="text-sm font-black text-white flex items-center gap-1.5">
-              <span>vahd Attendance Check-In</span>
+            <h3 className="text-base font-black text-white leading-tight">
+              vahd Attendance Check-In
             </h3>
-            <p className="text-[11px] text-slate-300 font-medium">
-              {activeScheme?.branch_name || user?.branchName || 'Main vahd Entrance'} • Real-Time Biometric Access
+            <p className="text-xs text-white/90 font-medium mt-0.5">
+              {activeScheme?.branch_name || user?.branchName || 'Main Headquarters Branch'} • Real-Time Biometric Access
             </p>
           </div>
         </div>
 
-        {/* Live Attendance Status Badge */}
+        {/* Live Attendance Status Badge matching screenshot */}
         <div>
-          {checkinStatus.isCheckedIn ? (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm shadow-emerald-500/20">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              Checked In ({checkinStatus.checkInTime})
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold bg-white text-slate-800 shadow-2xs">
+            <span className={cn('w-2 h-2 rounded-full shrink-0', checkinStatus.isCheckedIn ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400')} />
+            <span>
+              {checkinStatus.isCheckedIn
+                ? `Checked In (${checkinStatus.checkInTime})`
+                : 'Not Checked In'}
             </span>
-          ) : (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-slate-800 text-slate-300 border border-slate-700">
-              <span className="w-2 h-2 rounded-full bg-slate-500" />
-              Not Checked In
-            </span>
-          )}
+          </div>
         </div>
       </div>
 
       {/* Verification Method Selector */}
-      <div className="space-y-1.5">
-        <div className="flex items-center justify-between text-[11px] font-bold text-blue-300 uppercase tracking-wider">
+      <div className="space-y-2">
+        <div className="flex items-center justify-between text-xs font-bold text-white/95 uppercase tracking-wider">
           <span className="flex items-center gap-1.5">
-            <Icon name="shield-check" size={13} className="text-blue-400" />
-            <span>Select Verification Method:</span>
+            <Icon name="shield-check" size={15} className="text-white" />
+            <span>SELECT VERIFICATION METHOD:</span>
           </span>
           {faceStatus.is_enrolled && (
             <button
               type="button"
               onClick={handleOpenRegisterModal}
-              className="text-[10px] text-blue-300 hover:text-blue-100 underline flex items-center gap-1 cursor-pointer transition-colors"
+              className="text-[11px] text-white/90 hover:text-white underline flex items-center gap-1 cursor-pointer transition-colors capitalize tracking-normal"
             >
-              <Icon name="refresh-cw" size={10} />
+              <Icon name="refresh-cw" size={11} />
               <span>Update Registered Face</span>
             </button>
           )}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {methodsList.map((m) => {
             const isSelected = selectedMethod === m.id;
 
@@ -477,13 +475,13 @@ export function StudentGeofenceCheckinWidget({ onCheckinSuccess }: studentGeofen
                 <div
                   key={m.id}
                   title={m.hint}
-                  className="p-3 rounded-2xl border border-slate-800/80 bg-slate-900/40 text-slate-500 text-xs font-bold flex items-center justify-between cursor-not-allowed opacity-50 relative group"
+                  className="p-2 pl-4 pr-2.5 rounded-full text-xs font-bold bg-white/80 text-slate-500 shadow-2xs flex items-center justify-between cursor-not-allowed opacity-75"
                 >
-                  <div className="flex items-center gap-2">
-                    <Icon name={m.icon} size={15} className="text-slate-600" />
-                    <span>{m.label}</span>
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <Icon name={m.icon} size={16} className="text-purple-600 shrink-0" />
+                    <span className="truncate">{m.label}</span>
                   </div>
-                  <span className="text-[9px] font-semibold text-blue-400/80 bg-blue-950/60 px-2 py-0.5 rounded border border-blue-800/40">
+                  <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-slate-100 text-slate-600 shrink-0 ml-2">
                     {m.badge}
                   </span>
                 </div>
@@ -501,28 +499,28 @@ export function StudentGeofenceCheckinWidget({ onCheckinSuccess }: studentGeofen
                   }
                 }}
                 className={cn(
-                  'p-3 rounded-2xl border text-xs font-black transition-all flex items-center justify-between cursor-pointer',
+                  'p-2 pl-4 pr-2.5 rounded-full text-xs font-bold transition-all flex items-center justify-between shadow-2xs cursor-pointer',
                   isSelected
-                    ? 'bg-blue-600/40 border-blue-400 text-white shadow-md shadow-blue-600/30 ring-1 ring-blue-400/30'
-                    : 'bg-slate-800/40 border-slate-700/60 text-slate-300 hover:bg-slate-800 hover:text-white'
+                    ? 'bg-white text-slate-900 ring-2 ring-white/90 shadow-md'
+                    : 'bg-white/95 hover:bg-white text-slate-800'
                 )}
               >
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2.5 min-w-0">
                   <Icon
                     name={m.icon}
-                    size={15}
-                    className={isSelected ? 'text-blue-300' : 'text-slate-400'}
+                    size={16}
+                    className="text-purple-600 shrink-0"
                   />
-                  <span>{m.label}</span>
+                  <span className="truncate">{m.label}</span>
                 </div>
                 <span
                   className={cn(
-                    'text-[9px] font-bold px-2 py-0.5 rounded border transition-colors',
+                    'text-[11px] font-bold px-3 py-1 rounded-full transition-colors shrink-0 ml-2',
                     m.id === 'FACE_ID' && !faceStatus.is_enrolled
-                      ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 animate-pulse'
-                      : isSelected
-                        ? 'bg-blue-500/30 text-blue-200 border-blue-400/50'
-                        : 'bg-slate-800 text-slate-400 border-slate-700'
+                      ? 'bg-purple-50 text-purple-700'
+                      : m.id === 'MANUAL'
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : 'bg-slate-100 text-slate-700'
                   )}
                 >
                   {m.badge}
@@ -533,17 +531,17 @@ export function StudentGeofenceCheckinWidget({ onCheckinSuccess }: studentGeofen
         </div>
       </div>
 
-      {/* Action Buttons */}
+      {/* Action Buttons (Rounded-full matching screenshot) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
         <button
           type="button"
           onClick={() => handleActionClick('CHECK_IN')}
           disabled={loading || checkinStatus.isCheckedIn}
           className={cn(
-            'py-3.5 px-4 rounded-2xl font-extrabold text-xs transition-all flex items-center justify-center gap-2 border shadow-lg cursor-pointer',
+            'py-3.5 px-6 rounded-full font-black text-xs sm:text-sm transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer active:scale-[0.98]',
             checkinStatus.isCheckedIn
-              ? 'bg-emerald-950/30 border-emerald-900/30 text-emerald-400/50 cursor-not-allowed'
-              : 'bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white border-emerald-400/30 shadow-emerald-600/20'
+              ? 'bg-emerald-950/40 text-emerald-200/50 cursor-not-allowed opacity-60'
+              : 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:opacity-95 text-white'
           )}
         >
           <Icon name="log-in" size={16} />
@@ -559,10 +557,10 @@ export function StudentGeofenceCheckinWidget({ onCheckinSuccess }: studentGeofen
           onClick={() => handleActionClick('CHECK_OUT')}
           disabled={loading || !checkinStatus.isCheckedIn}
           className={cn(
-            'py-3.5 px-4 rounded-2xl font-extrabold text-xs transition-all flex items-center justify-center gap-2 border shadow-lg cursor-pointer',
+            'py-3.5 px-6 rounded-full font-black text-xs sm:text-sm transition-all flex items-center justify-center gap-2 border shadow-md cursor-pointer active:scale-[0.98]',
             !checkinStatus.isCheckedIn
-              ? 'bg-rose-950/30 border-rose-900/30 text-rose-400/50 cursor-not-allowed'
-              : 'bg-rose-600 hover:bg-rose-500 active:scale-[0.98] text-white border-rose-400/30 shadow-rose-600/20'
+              ? 'bg-white/40 text-rose-300 border-white/20 cursor-not-allowed opacity-60'
+              : 'bg-white hover:bg-slate-50 text-rose-600 border-slate-200'
           )}
         >
           <Icon name="log-out" size={16} />

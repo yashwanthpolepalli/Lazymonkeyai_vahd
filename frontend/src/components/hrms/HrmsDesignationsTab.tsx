@@ -371,10 +371,10 @@ export function HrmsDesignationsTab() {
       {/* 1. Header & Action Buttons */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-black text-navy-900 tracking-tight flex items-center gap-2">
+          <h2 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
             <span>Roles &amp; Designations</span>
           </h2>
-          <p className="text-xs text-navy-500 font-medium">
+          <p className="text-xs text-slate-500 font-medium">
             Define role hierarchy, career levels, and department designations with dynamic staff mapping.
           </p>
         </div>
@@ -391,7 +391,7 @@ export function HrmsDesignationsTab() {
           <button
             type="button"
             onClick={handleOpenLevelManager}
-            className="px-3.5 py-2 rounded-xl text-xs font-bold border border-navy-200 bg-white hover:bg-navy-50 text-navy-700 flex items-center gap-1.5 shadow-xs active:scale-[0.98] transition-all cursor-pointer"
+            className="px-3.5 py-2 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 flex items-center gap-1.5 shadow-xs active:scale-[0.98] transition-all cursor-pointer"
           >
             <Icon name="layers" size={15} className="text-purple-600" />
             <span>Manage Career Levels ({careerLevels.length})</span>
@@ -410,58 +410,58 @@ export function HrmsDesignationsTab() {
 
       {/* 2. KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
-        <div className="bg-white rounded-2xl p-4 border border-navy-100 shadow-sm relative overflow-hidden flex flex-col justify-between">
+        <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm relative overflow-hidden flex flex-col justify-between">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-navy-500">Total Designations</span>
+            <span className="text-xs font-bold text-slate-500">Total Designations</span>
             <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
               <Icon name="award" size={16} />
             </div>
           </div>
           <div className="space-y-0.5">
-            <div className="text-2xl font-black text-navy-900">{totalRoles}</div>
-            <div className="text-[11px] font-medium text-navy-400">Configured job roles</div>
+            <div className="text-2xl font-black text-slate-900">{totalRoles}</div>
+            <div className="text-[11px] font-medium text-slate-400">Configured job roles</div>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-4 border border-navy-100 shadow-sm relative overflow-hidden flex flex-col justify-between">
+        <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm relative overflow-hidden flex flex-col justify-between">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-navy-500">Assigned Staff</span>
+            <span className="text-xs font-bold text-slate-500">Assigned Staff</span>
             <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
               <Icon name="users" size={16} />
             </div>
           </div>
           <div className="space-y-0.5">
-            <div className="text-2xl font-black text-navy-900">{totalAssignedStaff}</div>
+            <div className="text-2xl font-black text-slate-900">{totalAssignedStaff}</div>
             <div className="text-[11px] font-bold text-blue-600 flex items-center gap-1">
               <span>Mapped to active staff</span>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-4 border border-navy-100 shadow-sm relative overflow-hidden flex flex-col justify-between">
+        <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm relative overflow-hidden flex flex-col justify-between">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-navy-500">Career Levels</span>
+            <span className="text-xs font-bold text-slate-500">Career Levels</span>
             <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
               <Icon name="layers" size={16} />
             </div>
           </div>
           <div className="space-y-0.5">
-            <div className="text-2xl font-black text-navy-900">{totalLevelsCount}</div>
+            <div className="text-2xl font-black text-slate-900">{totalLevelsCount}</div>
             <div className="text-[11px] font-bold text-amber-600 flex items-center gap-1">
               <span>Customizable tiers</span>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-4 border border-navy-100 shadow-sm relative overflow-hidden flex flex-col justify-between">
+        <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm relative overflow-hidden flex flex-col justify-between">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-navy-500">Departments Covered</span>
+            <span className="text-xs font-bold text-slate-500">Departments Covered</span>
             <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
               <Icon name="building-2" size={16} />
             </div>
           </div>
           <div className="space-y-0.5">
-            <div className="text-2xl font-black text-navy-900">{departmentsCovered}</div>
+            <div className="text-2xl font-black text-slate-900">{departmentsCovered}</div>
             <div className="text-[11px] font-bold text-emerald-600 flex items-center gap-1">
               <span>Operational units</span>
             </div>
@@ -470,15 +470,15 @@ export function HrmsDesignationsTab() {
       </div>
 
       {/* 3. Search and Dynamic Multi-Filter Bar */}
-      <div className="bg-white p-3 rounded-2xl border border-navy-100 shadow-sm flex flex-col sm:flex-row gap-3 items-center justify-between">
+      <div className="bg-white p-3 rounded-2xl border border-slate-100 shadow-sm flex flex-col sm:flex-row gap-3 items-center justify-between">
         <div className="relative w-full sm:w-80">
-          <Icon name="search" size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-navy-400" />
+          <Icon name="search" size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
             placeholder="Search designations, departments, levels..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3.5 py-2 text-xs rounded-xl bg-navy-50/50 border border-navy-100 text-navy-900 placeholder:text-navy-400 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium"
+            className="w-full pl-9 pr-3.5 py-2 text-xs rounded-xl bg-slate-50/50 border border-slate-100 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium"
           />
         </div>
 
@@ -487,7 +487,7 @@ export function HrmsDesignationsTab() {
             <select
               value={deptFilter}
               onChange={(e) => setDeptFilter(e.target.value)}
-              className="px-3 py-1.5 rounded-xl border border-navy-200 bg-white text-navy-700 font-bold focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+              className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-slate-700 font-bold focus:outline-none focus:ring-2 focus:ring-purple-500/20"
             >
               <option value="ALL">All Departments ({dynamicDeptNames.length})</option>
               {dynamicDeptNames.map((dept) => (
@@ -502,7 +502,7 @@ export function HrmsDesignationsTab() {
             <select
               value={levelFilter}
               onChange={(e) => setLevelFilter(e.target.value)}
-              className="px-3 py-1.5 rounded-xl border border-navy-200 bg-white text-navy-700 font-bold focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+              className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-slate-700 font-bold focus:outline-none focus:ring-2 focus:ring-purple-500/20"
             >
               <option value="ALL">All Career Levels ({careerLevels.length})</option>
               {careerLevels.map((lvl) => (
@@ -529,15 +529,15 @@ export function HrmsDesignationsTab() {
           )}
 
           {/* Row / Grid View Toggle */}
-          <div className="bg-navy-50 p-1 rounded-xl flex items-center border border-navy-100">
+          <div className="bg-slate-50 p-1 rounded-xl flex items-center border border-slate-100">
             <button
               type="button"
               onClick={() => handleSetViewMode('grid')}
               className={cn(
                 'p-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1',
                 viewMode === 'grid'
-                  ? 'bg-white text-purple-700 shadow-xs border border-navy-100 font-bold'
-                  : 'text-navy-400 hover:text-navy-700'
+                  ? 'bg-white text-purple-700 shadow-xs border border-slate-100 font-bold'
+                  : 'text-slate-400 hover:text-slate-700'
               )}
               title="Grid View"
             >
@@ -549,8 +549,8 @@ export function HrmsDesignationsTab() {
               className={cn(
                 'p-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1',
                 viewMode === 'row'
-                  ? 'bg-white text-purple-700 shadow-xs border border-navy-100 font-bold'
-                  : 'text-navy-400 hover:text-navy-700'
+                  ? 'bg-white text-purple-700 shadow-xs border border-slate-100 font-bold'
+                  : 'text-slate-400 hover:text-slate-700'
               )}
               title="Row / Table View"
             >
@@ -562,18 +562,18 @@ export function HrmsDesignationsTab() {
 
       {/* 4. Designations List / Grid or Row View */}
       {loading ? (
-        <div className="p-12 text-center text-navy-400 text-xs flex flex-col items-center gap-2">
+        <div className="p-12 text-center text-slate-400 text-xs flex flex-col items-center gap-2">
           <Icon name="loader" size={24} className="animate-spin text-purple-600" />
           <span>Loading designations...</span>
         </div>
       ) : filteredDesignations.length === 0 ? (
-        <div className="p-12 text-center bg-white rounded-3xl border border-dashed border-navy-200 space-y-3">
+        <div className="p-12 text-center bg-white rounded-3xl border border-dashed border-slate-200 space-y-3">
           <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center mx-auto">
             <Icon name="award" size={24} />
           </div>
           <div>
-            <h3 className="font-extrabold text-navy-900 text-base">No Designations Found</h3>
-            <p className="text-xs text-navy-500 max-w-sm mx-auto mt-1">
+            <h3 className="font-extrabold text-slate-900 text-base">No Designations Found</h3>
+            <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1">
               {searchQuery || deptFilter !== 'ALL' || levelFilter !== 'ALL'
                 ? 'No roles match your search filters. Try clearing filters.'
                 : 'Create customizable job designations to organize roles and assign staff.'}
@@ -589,10 +589,10 @@ export function HrmsDesignationsTab() {
           </button>
         </div>
       ) : viewMode === 'row' ? (
-        <div className="bg-white rounded-2xl border border-navy-100 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-navy-50/70 border-b border-navy-100 text-navy-500 font-extrabold uppercase text-[10px] tracking-wider">
+              <thead className="bg-slate-50/70 border-b border-slate-100 text-slate-500 font-extrabold uppercase text-[10px] tracking-wider">
                 <tr>
                   <th className="py-3 px-4">Designation & Role</th>
                   <th className="py-3 px-4">Department</th>
@@ -602,7 +602,7 @@ export function HrmsDesignationsTab() {
                   <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-navy-100">
+              <tbody className="divide-y divide-slate-100">
                 {filteredDesignations.map((desg) => {
                   const levelStyle = getLevelStyle(desg.level);
                   const employeesList = desg.employees || [];
@@ -615,16 +615,16 @@ export function HrmsDesignationsTab() {
                             <Icon name="award" size={16} />
                           </div>
                           <div>
-                            <div className="font-extrabold text-navy-900 text-sm group-hover:text-purple-700 transition">
+                            <div className="font-extrabold text-slate-900 text-sm group-hover:text-purple-700 transition">
                               {desg.title}
                             </div>
                           </div>
                         </div>
                       </td>
                       <td className="py-3 px-4 whitespace-nowrap">
-                        <div className="flex items-center gap-1.5 text-navy-700 font-semibold">
-                          <Icon name="building-2" size={13} className="text-navy-400" />
-                          <span>{desg.department || <span className="text-navy-400 italic">General</span>}</span>
+                        <div className="flex items-center gap-1.5 text-slate-700 font-semibold">
+                          <Icon name="building-2" size={13} className="text-slate-400" />
+                          <span>{desg.department || <span className="text-slate-400 italic">General</span>}</span>
                         </div>
                       </td>
                       <td className="py-3 px-4 whitespace-nowrap">
@@ -641,8 +641,8 @@ export function HrmsDesignationsTab() {
                         </span>
                       </td>
                       <td className="py-3 px-4 max-w-xs">
-                        <div className="text-[11px] text-navy-500 line-clamp-1">
-                          {desg.description || <span className="italic text-navy-400">No description</span>}
+                        <div className="text-[11px] text-slate-500 line-clamp-1">
+                          {desg.description || <span className="italic text-slate-400">No description</span>}
                         </div>
                       </td>
                       <td className="py-3 px-4">
@@ -691,7 +691,7 @@ export function HrmsDesignationsTab() {
                           <button
                             type="button"
                             onClick={() => handleDelete(desg.id, desg.title)}
-                            className="p-1.5 rounded-lg text-navy-400 hover:text-rose-600 hover:bg-rose-50 border border-navy-100 transition cursor-pointer"
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-slate-100 transition cursor-pointer"
                             title="Delete Designation"
                           >
                             <Icon name="trash-2" size={13} />
@@ -712,7 +712,7 @@ export function HrmsDesignationsTab() {
             return (
               <div
                 key={desg.id}
-                className="bg-white rounded-3xl p-5 border border-navy-100 shadow-sm hover:shadow-md hover:border-purple-200 transition-all flex flex-col justify-between group relative"
+                className="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm hover:shadow-md hover:border-purple-200 transition-all flex flex-col justify-between group relative"
               >
                 <div>
                   {/* Top Bar */}
@@ -729,12 +729,12 @@ export function HrmsDesignationsTab() {
                         <Icon name="layers" size={10} />
                         <span>{desg.level || 'Unassigned Level'}</span>
                       </span>
-                      <h3 className="text-base font-extrabold text-navy-900 group-hover:text-purple-700 transition">
+                      <h3 className="text-base font-extrabold text-slate-900 group-hover:text-purple-700 transition">
                         {desg.title}
                       </h3>
                       {desg.department && (
-                        <div className="flex items-center gap-1 text-xs font-semibold text-navy-500">
-                          <Icon name="building-2" size={12} className="text-navy-400" />
+                        <div className="flex items-center gap-1 text-xs font-semibold text-slate-500">
+                          <Icon name="building-2" size={12} className="text-slate-400" />
                           <span>{desg.department}</span>
                         </div>
                       )}
@@ -753,7 +753,7 @@ export function HrmsDesignationsTab() {
                       <button
                         type="button"
                         onClick={() => handleDelete(desg.id, desg.title)}
-                        className="p-1 rounded-lg text-navy-400 hover:text-rose-600 hover:bg-rose-50 border border-navy-100 transition cursor-pointer"
+                        className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-slate-100 transition cursor-pointer"
                         title="Delete Designation"
                       >
                         <Icon name="trash-2" size={13} />
@@ -763,16 +763,16 @@ export function HrmsDesignationsTab() {
 
                   {/* Description */}
                   {desg.description ? (
-                    <p className="text-xs text-navy-600 font-medium line-clamp-2 mb-4 leading-relaxed bg-navy-50/40 p-2.5 rounded-xl border border-navy-100/60">
+                    <p className="text-xs text-slate-600 font-medium line-clamp-2 mb-4 leading-relaxed bg-slate-50/40 p-2.5 rounded-xl border border-slate-100/60">
                       {desg.description}
                     </p>
                   ) : (
-                    <p className="text-xs text-navy-400 italic mb-4">No description configured for this role.</p>
+                    <p className="text-xs text-slate-400 italic mb-4">No description configured for this role.</p>
                   )}
                 </div>
 
                 {/* Footer / Mapped Staff Overview */}
-                <div className="pt-3 border-t border-navy-100 flex items-center justify-between mt-auto">
+                <div className="pt-3 border-t border-slate-100 flex items-center justify-between mt-auto">
                   <div className="flex items-center gap-2">
                     <div className="flex -space-x-1.5 overflow-hidden">
                       {desg.employees && desg.employees.length > 0 ? (
@@ -786,12 +786,12 @@ export function HrmsDesignationsTab() {
                           </div>
                         ))
                       ) : (
-                        <div className="w-6 h-6 rounded-full bg-navy-100 text-navy-400 font-bold text-[9px] flex items-center justify-center border border-navy-200">
+                        <div className="w-6 h-6 rounded-full bg-slate-100 text-slate-400 font-bold text-[9px] flex items-center justify-center border border-slate-200">
                           0
                         </div>
                       )}
                     </div>
-                    <span className="text-xs font-bold text-navy-700">
+                    <span className="text-xs font-bold text-slate-700">
                       {desg.employee_count || 0} Assigned Staff
                     </span>
                   </div>
@@ -813,24 +813,24 @@ export function HrmsDesignationsTab() {
 
       {/* 5. Create / Edit Designation Modal */}
       {modalOpen && (
-        <div className="fixed inset-0 bg-navy-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-lg space-y-4 shadow-2xl animate-scale-in border border-navy-100 max-h-[92vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-navy-100 pb-3">
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-lg space-y-4 shadow-2xl animate-scale-in border border-slate-100 max-h-[92vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
                 <div className="w-9 h-9 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600">
                   <Icon name="award" size={18} />
                 </div>
                 <div>
-                  <h3 className="text-base font-extrabold text-navy-900">
+                  <h3 className="text-base font-extrabold text-slate-900">
                     {editingDesg ? 'Edit Designation' : 'Create New Designation'}
                   </h3>
-                  <p className="text-xs text-navy-500">Configure job title, department assignment, and level</p>
+                  <p className="text-xs text-slate-500">Configure job title, department assignment, and level</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setModalOpen(false)}
-                className="w-8 h-8 rounded-full hover:bg-navy-50 flex items-center justify-center text-navy-400 hover:text-navy-600 transition cursor-pointer"
+                className="w-8 h-8 rounded-full hover:bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-600 transition cursor-pointer"
               >
                 <Icon name="x" size={16} />
               </button>
@@ -838,21 +838,21 @@ export function HrmsDesignationsTab() {
 
             <form onSubmit={handleSave} className="space-y-3.5 text-xs">
               <div className="space-y-1">
-                <label className="font-bold text-navy-700">Designation Title *</label>
+                <label className="font-bold text-slate-700">Designation Title *</label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. Senior Fitness employee, Head Coach"
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-navy-200 bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 font-medium"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 font-medium"
                 />
               </div>
 
               {/* Department Assignment with Dynamic Add */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <label className="font-bold text-navy-700">Department *</label>
+                  <label className="font-bold text-slate-700">Department *</label>
                   {!quickAddDeptMode && (
                     <button
                       type="button"
@@ -872,7 +872,7 @@ export function HrmsDesignationsTab() {
                       <button
                         type="button"
                         onClick={() => setQuickAddDeptMode(false)}
-                        className="text-navy-400 hover:text-navy-600"
+                        className="text-slate-400 hover:text-slate-600"
                       >
                         <Icon name="x" size={12} />
                       </button>
@@ -906,7 +906,7 @@ export function HrmsDesignationsTab() {
                   <select
                     value={formData.department}
                     onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-navy-200 bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 font-bold"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 font-bold"
                   >
                     {departments.length === 0 && <option value="">No departments found — Create one</option>}
                     {departments.map((d) => (
@@ -921,7 +921,7 @@ export function HrmsDesignationsTab() {
               {/* Career Level Assignment with Dynamic Add */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <label className="font-bold text-navy-700">Career Level *</label>
+                  <label className="font-bold text-slate-700">Career Level *</label>
                   {!quickAddLevelMode && (
                     <button
                       type="button"
@@ -941,7 +941,7 @@ export function HrmsDesignationsTab() {
                       <button
                         type="button"
                         onClick={() => setQuickAddLevelMode(false)}
-                        className="text-navy-400 hover:text-navy-600"
+                        className="text-slate-400 hover:text-slate-600"
                       >
                         <Icon name="x" size={12} />
                       </button>
@@ -968,7 +968,7 @@ export function HrmsDesignationsTab() {
                   <select
                     value={formData.level}
                     onChange={(e) => setFormData({ ...formData, level: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-navy-200 bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 font-bold"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 font-bold"
                   >
                     {careerLevels.length === 0 && <option value="">No levels defined — Add one</option>}
                     {careerLevels.map((lvl) => (
@@ -981,21 +981,21 @@ export function HrmsDesignationsTab() {
               </div>
 
               <div className="space-y-1">
-                <label className="font-bold text-navy-700">Job Role &amp; Responsibilities</label>
+                <label className="font-bold text-slate-700">Job Role &amp; Responsibilities</label>
                 <textarea
                   rows={3}
                   placeholder="Specify the key deliverables, qualification expectations, and duties for this role..."
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-3.5 py-2 rounded-xl border border-navy-200 bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 font-medium"
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 font-medium"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-navy-100">
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="px-4 py-2 rounded-xl border border-navy-200 hover:bg-navy-50 text-navy-600 font-bold transition cursor-pointer"
+                  className="px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold transition cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -1014,31 +1014,31 @@ export function HrmsDesignationsTab() {
 
       {/* 6. Career Levels Manager Modal (Full Add / Edit / Delete) */}
       {levelManagerOpen && (
-        <div className="fixed inset-0 bg-navy-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-2xl space-y-4 shadow-2xl animate-scale-in border border-navy-100 max-h-[88vh] flex flex-col">
-            <div className="flex items-center justify-between border-b border-navy-100 pb-3 shrink-0">
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-2xl space-y-4 shadow-2xl animate-scale-in border border-slate-100 max-h-[88vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 shrink-0">
               <div className="flex items-center gap-2">
                 <div className="w-9 h-9 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600">
                   <Icon name="layers" size={18} />
                 </div>
                 <div>
-                  <h3 className="text-base font-extrabold text-navy-900">Career Levels Manager</h3>
-                  <p className="text-xs text-navy-500">Create, customize, edit, and delete organization career tiers</p>
+                  <h3 className="text-base font-extrabold text-slate-900">Career Levels Manager</h3>
+                  <p className="text-xs text-slate-500">Create, customize, edit, and delete organization career tiers</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setLevelManagerOpen(false)}
-                className="w-8 h-8 rounded-full hover:bg-navy-50 flex items-center justify-center text-navy-400 hover:text-navy-600 transition cursor-pointer"
+                className="w-8 h-8 rounded-full hover:bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-600 transition cursor-pointer"
               >
                 <Icon name="x" size={16} />
               </button>
             </div>
 
             {/* Add / Edit Level Form */}
-            <form onSubmit={handleSaveLevel} className="bg-navy-50/60 p-4 rounded-2xl border border-navy-100 space-y-3 shrink-0">
+            <form onSubmit={handleSaveLevel} className="bg-slate-50/60 p-4 rounded-2xl border border-slate-100 space-y-3 shrink-0">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-navy-900">
+                <span className="text-xs font-bold text-slate-900">
                   {editingLevel ? `Editing: ${editingLevel.name}` : 'Add New Career Level'}
                 </span>
                 {editingLevel && (
@@ -1048,7 +1048,7 @@ export function HrmsDesignationsTab() {
                       setEditingLevel(null);
                       setLevelForm({ name: '', code: '', color: 'purple', description: '' });
                     }}
-                    className="text-[11px] font-bold text-navy-500 hover:text-navy-800"
+                    className="text-[11px] font-bold text-slate-500 hover:text-slate-800"
                   >
                     Cancel Edit
                   </button>
@@ -1057,36 +1057,36 @@ export function HrmsDesignationsTab() {
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
                 <div className="space-y-1 sm:col-span-2">
-                  <label className="font-bold text-navy-700">Level Name *</label>
+                  <label className="font-bold text-slate-700">Level Name *</label>
                   <input
                     type="text"
                     required
                     placeholder="e.g. Senior Specialist, Director"
                     value={levelForm.name}
                     onChange={(e) => setLevelForm({ ...levelForm, name: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-navy-200 bg-white font-medium focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-medium focus:outline-none focus:ring-2 focus:ring-purple-500/20"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-bold text-navy-700">Code / Tier</label>
+                  <label className="font-bold text-slate-700">Code / Tier</label>
                   <input
                     type="text"
                     placeholder="e.g. L3, DIR"
                     value={levelForm.code}
                     onChange={(e) => setLevelForm({ ...levelForm, code: e.target.value.toUpperCase() })}
-                    className="w-full px-3 py-2 rounded-xl border border-navy-200 bg-white font-mono font-bold focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-mono font-bold focus:outline-none focus:ring-2 focus:ring-purple-500/20"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
                 <div className="space-y-1">
-                  <label className="font-bold text-navy-700">Badge Color Theme</label>
+                  <label className="font-bold text-slate-700">Badge Color Theme</label>
                   <select
                     value={levelForm.color}
                     onChange={(e) => setLevelForm({ ...levelForm, color: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-navy-200 bg-white font-bold focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-bold focus:outline-none focus:ring-2 focus:ring-purple-500/20"
                   >
                     <option value="purple">Purple Theme (Specialist / Senior)</option>
                     <option value="blue">Blue Theme (Mid-Level / Core)</option>
@@ -1098,13 +1098,13 @@ export function HrmsDesignationsTab() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-bold text-navy-700">Description / Scope</label>
+                  <label className="font-bold text-slate-700">Description / Scope</label>
                   <input
                     type="text"
                     placeholder="e.g. Independent specialists with 3+ yrs experience"
                     value={levelForm.description}
                     onChange={(e) => setLevelForm({ ...levelForm, description: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-navy-200 bg-white font-medium focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-medium focus:outline-none focus:ring-2 focus:ring-purple-500/20"
                   />
                 </div>
               </div>
@@ -1121,13 +1121,13 @@ export function HrmsDesignationsTab() {
 
             {/* List of Defined Career Levels */}
             <div className="overflow-y-auto space-y-2 flex-1 pr-1">
-              <div className="text-xs font-bold text-navy-700 mb-1">Defined Career Levels ({careerLevels.length})</div>
+              <div className="text-xs font-bold text-slate-700 mb-1">Defined Career Levels ({careerLevels.length})</div>
               {careerLevels.length === 0 ? (
-                <div className="p-6 text-center text-xs text-navy-400 border border-dashed border-navy-200 rounded-2xl">
+                <div className="p-6 text-center text-xs text-slate-400 border border-dashed border-slate-200 rounded-2xl">
                   No career levels defined yet. Add your first level above.
                 </div>
               ) : (
-                <div className="divide-y divide-navy-100 border border-navy-100 rounded-2xl overflow-hidden">
+                <div className="divide-y divide-slate-100 border border-slate-100 rounded-2xl overflow-hidden">
                   {careerLevels.map((lvl) => {
                     const style = getColorClasses(lvl.color);
                     const associatedCount = designations.filter(
@@ -1137,7 +1137,7 @@ export function HrmsDesignationsTab() {
                     return (
                       <div
                         key={lvl.id}
-                        className="p-3 bg-white hover:bg-navy-50/50 flex items-center justify-between gap-3 text-xs transition"
+                        className="p-3 bg-white hover:bg-slate-50/50 flex items-center justify-between gap-3 text-xs transition"
                       >
                         <div className="flex items-center gap-3">
                           <span
@@ -1151,19 +1151,19 @@ export function HrmsDesignationsTab() {
                             {lvl.code || 'LVL'}
                           </span>
                           <div>
-                            <div className="font-extrabold text-navy-900">{lvl.name}</div>
-                            <div className="text-[11px] text-navy-500">{lvl.description || 'No description'}</div>
+                            <div className="font-extrabold text-slate-900">{lvl.name}</div>
+                            <div className="text-[11px] text-slate-500">{lvl.description || 'No description'}</div>
                           </div>
                         </div>
 
                         <div className="flex items-center gap-3">
-                          <span className="text-[11px] font-bold text-navy-400 bg-navy-50 px-2 py-0.5 rounded-lg border border-navy-100">
+                          <span className="text-[11px] font-bold text-slate-400 bg-slate-50 px-2 py-0.5 rounded-lg border border-slate-100">
                             {associatedCount} Role{associatedCount === 1 ? '' : 's'}
                           </span>
                           <button
                             type="button"
                             onClick={() => handleEditLevel(lvl)}
-                            className="p-1.5 rounded-lg hover:bg-purple-50 text-navy-400 hover:text-purple-600 transition cursor-pointer"
+                            className="p-1.5 rounded-lg hover:bg-purple-50 text-slate-400 hover:text-purple-600 transition cursor-pointer"
                             title="Edit Level"
                           >
                             <Icon name="edit" size={14} />
@@ -1171,7 +1171,7 @@ export function HrmsDesignationsTab() {
                           <button
                             type="button"
                             onClick={() => handleDeleteLevel(lvl.id, lvl.name)}
-                            className="p-1.5 rounded-lg hover:bg-rose-50 text-navy-400 hover:text-rose-600 transition cursor-pointer"
+                            className="p-1.5 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition cursor-pointer"
                             title="Delete Level"
                           >
                             <Icon name="trash-2" size={14} />
@@ -1184,11 +1184,11 @@ export function HrmsDesignationsTab() {
               )}
             </div>
 
-            <div className="pt-3 border-t border-navy-100 flex justify-end shrink-0">
+            <div className="pt-3 border-t border-slate-100 flex justify-end shrink-0">
               <button
                 type="button"
                 onClick={() => setLevelManagerOpen(false)}
-                className="px-5 py-2 rounded-xl bg-navy-900 hover:bg-navy-800 text-white font-bold text-xs transition shadow-sm cursor-pointer"
+                className="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition shadow-sm cursor-pointer"
               >
                 Close &amp; Apply
               </button>
@@ -1199,18 +1199,18 @@ export function HrmsDesignationsTab() {
 
       {/* 7. Mapped Staff Modal */}
       {viewStaffDesg && (
-        <div className="fixed inset-0 bg-navy-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl animate-scale-in border border-navy-100">
-            <div className="flex items-center justify-between border-b border-navy-100 pb-3 shrink-0">
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl animate-scale-in border border-slate-100">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 shrink-0">
               <div className="flex items-center gap-2">
                 <div className="w-10 h-10 rounded-2xl bg-purple-50 flex items-center justify-center text-purple-600">
                   <Icon name="award" size={20} />
                 </div>
                 <div>
-                  <h3 className="text-base font-extrabold text-navy-900">
+                  <h3 className="text-base font-extrabold text-slate-900">
                     {viewStaffDesg.title} — Assigned Staff
                   </h3>
-                  <p className="text-xs text-navy-500">
+                  <p className="text-xs text-slate-500">
                     {viewStaffDesg.employee_count} staff member(s) holding this designation
                   </p>
                 </div>
@@ -1218,7 +1218,7 @@ export function HrmsDesignationsTab() {
               <button
                 type="button"
                 onClick={() => setViewStaffDesg(null)}
-                className="w-8 h-8 rounded-full hover:bg-navy-50 flex items-center justify-center text-navy-400 hover:text-navy-600 transition cursor-pointer"
+                className="w-8 h-8 rounded-full hover:bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-600 transition cursor-pointer"
               >
                 <Icon name="x" size={16} />
               </button>
@@ -1226,11 +1226,11 @@ export function HrmsDesignationsTab() {
 
             <div className="overflow-y-auto py-4 space-y-2.5 flex-1 pr-1">
               {!viewStaffDesg.employees || viewStaffDesg.employees.length === 0 ? (
-                <div className="p-8 text-center text-xs text-navy-400 border border-dashed border-navy-200 rounded-2xl">
+                <div className="p-8 text-center text-xs text-slate-400 border border-dashed border-slate-200 rounded-2xl">
                   No staff members currently assigned to {viewStaffDesg.title}.
                 </div>
               ) : (
-                <div className="divide-y divide-navy-50 border border-navy-100 rounded-2xl overflow-hidden">
+                <div className="divide-y divide-slate-50 border border-slate-100 rounded-2xl overflow-hidden">
                   {viewStaffDesg.employees.map((emp) => {
                     const initials = emp.name
                       .split(' ')
@@ -1242,14 +1242,14 @@ export function HrmsDesignationsTab() {
                     return (
                       <div
                         key={emp.id}
-                        className="p-3.5 bg-white hover:bg-navy-50/50 flex items-center justify-between gap-3 text-xs transition"
+                        className="p-3.5 bg-white hover:bg-slate-50/50 flex items-center justify-between gap-3 text-xs transition"
                       >
                         <div className="flex items-center gap-3">
                           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-extrabold text-xs flex items-center justify-center shadow-xs">
                             {initials}
                           </div>
                           <div>
-                            <div className="font-bold text-navy-900 flex items-center gap-1.5">
+                            <div className="font-bold text-slate-900 flex items-center gap-1.5">
                               <span>{emp.name}</span>
                               {emp.code && (
                                 <span className="font-mono text-[10px] font-bold text-purple-700 bg-purple-50 px-1.5 py-0.2 rounded border border-purple-200/60">
@@ -1257,13 +1257,13 @@ export function HrmsDesignationsTab() {
                                 </span>
                               )}
                             </div>
-                            <div className="text-[11px] text-navy-400">{emp.email}</div>
+                            <div className="text-[11px] text-slate-400">{emp.email}</div>
                           </div>
                         </div>
 
                         <div className="flex items-center gap-3">
                           <div className="text-right">
-                            <div className="font-semibold text-navy-800 text-xs">
+                            <div className="font-semibold text-slate-800 text-xs">
                               {emp.department || viewStaffDesg.department}
                             </div>
                             <div className="text-[10px] font-bold text-emerald-600">{emp.status || 'Active'}</div>
@@ -1276,8 +1276,8 @@ export function HrmsDesignationsTab() {
               )}
             </div>
 
-            <div className="pt-3 border-t border-navy-100 flex items-center justify-between text-xs shrink-0">
-              <span className="text-navy-500 font-medium">
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs shrink-0">
+              <span className="text-slate-500 font-medium">
                 Career Level: <strong className="font-bold text-purple-700">{viewStaffDesg.level}</strong>
               </span>
               <button

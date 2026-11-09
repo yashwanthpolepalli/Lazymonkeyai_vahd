@@ -503,8 +503,8 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
           className={cn(
             'appearance-none pl-6 pr-5 py-1 rounded-full text-[11px] font-black cursor-pointer border shadow-2xs transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/40 select-none',
             item.is_active
-              ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100 hover:border-emerald-400 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800'
-              : 'bg-slate-100 text-slate-600 border-slate-300 hover:bg-slate-200 hover:border-slate-400 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
+              ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-slate-100'
+              : 'bg-slate-100 text-slate-600 border-slate-300 hover:bg-slate-100'
           )}
           title={`Status: ${item.is_active ? 'Active' : 'Inactive'}. Click to change.`}
         >
@@ -527,7 +527,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
         onClick={() => handleSetItemStatus(item, !item.is_active)}
         className={cn(
           'w-7 h-4 rounded-full p-0.5 transition-colors cursor-pointer relative shrink-0 focus:outline-none focus:ring-1 focus:ring-blue-500/50',
-          item.is_active ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-slate-300 hover:bg-slate-400 dark:bg-slate-600'
+          item.is_active ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-slate-300 hover:bg-slate-400'
         )}
         title={item.is_active ? 'Quick toggle: Click to make Inactive' : 'Quick toggle: Click to make Active'}
       >
@@ -1109,92 +1109,65 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
           className="hidden"
         />
 
-        {/* Top Breadcrumb & Actions Bar */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-3">
-          <div>
-            <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-1">
-              <span className="hover:text-blue-600 cursor-pointer" onClick={() => (onBack ? onBack() : setSelectedCatId(null))}>Home</span>
-              <Icon name="chevron-right" size={12} />
-              <span className="hover:text-blue-600 cursor-pointer" onClick={() => (onBack ? onBack() : setSelectedCatId(null))}>Settings</span>
-              <Icon name="chevron-right" size={12} />
-              <span className="text-slate-800 dark:text-slate-200 font-bold">{selectedCategory.title}</span>
+        {/* Top Header Card */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-2xs">
+          <div className="flex items-center gap-3.5">
+            <div className={cn("w-11 h-11 rounded-2xl flex items-center justify-center border shrink-0", selectedCategory.bgLight, selectedCategory.textColor, "border-slate-200/60")}>
+              <Icon name={selectedCategory.icon || "layers"} size={22} className={selectedCategory.textColor} />
             </div>
-            <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-              {selectedCategory.title}
-            </h2>
-            <p className="text-xs text-slate-500 font-medium">
-              Settings · {categoryItems.length} records
-            </p>
+            <div>
+              <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-0.5">
+                <span className="hover:text-blue-600 hover:underline cursor-pointer transition-colors flex items-center gap-1" onClick={() => (onBack ? onBack() : setSelectedCatId(null))}>
+                  <Icon name="home" size={12} />
+                  <span>Home</span>
+                </span>
+                <Icon name="chevron-right" size={12} />
+                <span className="hover:text-blue-600 hover:underline cursor-pointer transition-colors" onClick={() => (onBack ? onBack() : setSelectedCatId(null))}>Settings</span>
+                <Icon name="chevron-right" size={12} />
+                <span className="text-slate-800 font-bold">{selectedCategory.title}</span>
+              </div>
+              <h2 className="text-xl sm font-black text-slate-900 tracking-tight">
+                {selectedCategory.title}
+              </h2>
+              <p className="text-xs text-slate-500 font-medium">
+                Master Data · <span className="font-bold text-slate-700">{categoryItems.length}</span> records
+              </p>
+            </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Back Button */}
-            <button
-              type="button"
-              onClick={() => {
-                if (onBack) {
-                  onBack();
-                } else {
-                  setSelectedCatId(null);
-                }
-                setSearchQuery('');
-                setStatusFilter('all');
-                setSelectedItemIds([]);
-              }}
-              className="px-3.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
-            >
-              <Icon name="chevron-left" size={14} />
-              <span>Back</span>
-            </button>
-
+          <div className="flex flex-wrap items-center gap-2 self-start md:self-center">
             {/* Import & Export Buttons */}
             {canImport && (
               <>
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="px-3.5 py-1.5 rounded-xl border border-blue-200 bg-blue-50/70 hover:bg-blue-100/80 text-blue-700 dark:text-blue-400 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                  className="px-3.5 py-1.5 rounded-xl border border-blue-200 bg-blue-50/70 hover:bg-blue-100 text-blue-700 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
                 >
                   <Icon name="upload" size={13} />
                   <span>Import Excel / CSV</span>
                 </button>
 
-                {/* Export Buttons */}
+                {/* Export Button (Consolidated Single Action) */}
                 <button
                   type="button"
                   onClick={() => handleExportData('csv')}
-                  className="px-3 py-1.5 rounded-xl border border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100 text-emerald-700 dark:text-emerald-400 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
-                  title="Export records to CSV"
+                  className="px-3 py-1.5 rounded-xl border border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100 text-emerald-700 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                  title="Export records to spreadsheet"
                 >
                   <Icon name="download" size={13} />
-                  <span>Export CSV</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleExportData('xlsx')}
-                  className="px-3 py-1.5 rounded-xl border border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100 text-emerald-700 dark:text-emerald-400 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
-                  title="Export records to Excel"
-                >
-                  <Icon name="download" size={13} />
-                  <span>Export Excel</span>
+                  <span>Export</span>
                 </button>
 
-                {/* Sample Files */}
-                <button
-                  type="button"
-                  onClick={handleDownloadSampleXlsx}
-                  className="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline px-1 cursor-pointer"
-                  title="Download sample template for Excel"
-                >
-                  Sample .xlsx
-                </button>
+                {/* Sample Template (Consolidated Single Action) */}
                 <button
                   type="button"
                   onClick={handleDownloadSampleCsv}
-                  className="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline px-1 cursor-pointer"
-                  title="Download sample template for CSV"
+                  className="px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                  title="Download sample import template"
                 >
-                  Sample .csv
+                  <Icon name="file-text" size={13} />
+                  <span>Sample Template</span>
                 </button>
               </>
             )}
@@ -1253,15 +1226,15 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
               <button
                 type="button"
                 onClick={handleOpenAdd}
-                className="px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+                className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-orange-500 hover:opacity-95 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
               >
                 <Icon name="plus" size={14} />
                 <span>
                   {selectedCategory.id === 'departments'
-                    ? `+ Add ${deptTab === 'students' ? 'Student' : deptTab === 'employees' ? 'Employee' : ''} Department`
+                    ? `Add ${deptTab === 'students' ? 'Student' : deptTab === 'employees' ? 'Employee' : ''} Department`
                     : selectedCategory.id === 'technical_skills'
-                      ? `+ Add ${skillTab === 'students' ? 'Student' : skillTab === 'employees' ? 'Employee' : ''} Skill`
-                      : `+ Add ${selectedCategory.title}`}
+                      ? `Add ${skillTab === 'students' ? 'Student' : skillTab === 'employees' ? 'Employee' : ''} Skill`
+                      : `Add ${selectedCategory.title}`}
                 </span>
               </button>
             )}
@@ -1270,23 +1243,23 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
 
         {/* Technical Skills Sub-Views Switcher (All vs Employees Skills vs Students Skills) */}
         {selectedCategory.id === 'technical_skills' && (
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-2.5 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-2xs">
-            <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-100/90 dark:bg-slate-800/90 rounded-xl border border-slate-200/80 dark:border-slate-700/80">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-2.5 rounded-2xl border border-slate-200/90 shadow-2xs">
+            <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-100/90 rounded-xl border border-slate-200/80">
               <button
                 type="button"
                 onClick={() => setSkillTab('all')}
                 className={cn(
                   'flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer',
                   skillTab === 'all'
-                    ? 'bg-white dark:bg-slate-900 text-violet-700 dark:text-violet-400 shadow-xs border border-violet-200 dark:border-violet-900/60'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    ? 'bg-white text-violet-700 shadow-xs border border-violet-200'
+                    : 'text-slate-600 hover:text-slate-900'
                 )}
               >
                 <Icon name="code" size={15} className={skillTab === 'all' ? 'text-violet-600' : 'text-slate-400'} />
                 <span>All Technical Skills</span>
                 <span className={cn(
                   'text-[10px] px-2 py-0.5 rounded-full font-black',
-                  skillTab === 'all' ? 'bg-violet-100 dark:bg-violet-950/80 text-violet-700 dark:text-violet-300' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                  skillTab === 'all' ? 'bg-violet-100 text-violet-700' : 'bg-slate-200 text-slate-600'
                 )}>
                   {skillCounts.all}
                 </span>
@@ -1298,15 +1271,15 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                 className={cn(
                   'flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer',
                   skillTab === 'employees'
-                    ? 'bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-xs border border-emerald-200 dark:border-emerald-900/60'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    ? 'bg-white text-emerald-700 shadow-xs border border-emerald-200'
+                    : 'text-slate-600 hover:text-slate-900'
                 )}
               >
                 <Icon name="briefcase" size={15} className={skillTab === 'employees' ? 'text-emerald-600' : 'text-slate-400'} />
                 <span>Employees Skills</span>
                 <span className={cn(
                   'text-[10px] px-2 py-0.5 rounded-full font-black',
-                  skillTab === 'employees' ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                  skillTab === 'employees' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'
                 )}>
                   {skillCounts.employees}
                 </span>
@@ -1318,15 +1291,15 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                 className={cn(
                   'flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer',
                   skillTab === 'students'
-                    ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-400 shadow-xs border border-indigo-200 dark:border-indigo-900/60'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    ? 'bg-white text-indigo-700 shadow-xs border border-indigo-200'
+                    : 'text-slate-600 hover:text-slate-900'
                 )}
               >
                 <Icon name="graduation-cap" size={15} className={skillTab === 'students' ? 'text-indigo-600' : 'text-slate-400'} />
                 <span>Students Skills</span>
                 <span className={cn(
                   'text-[10px] px-2 py-0.5 rounded-full font-black',
-                  skillTab === 'students' ? 'bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                  skillTab === 'students' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-200 text-slate-600'
                 )}>
                   {skillCounts.students}
                 </span>
@@ -1337,23 +1310,23 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
 
         {/* Department Sub-Views Switcher (Students Departments vs Employee Departments vs All) */}
         {selectedCategory.id === 'departments' && (
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-2.5 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-2xs">
-            <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-100/90 dark:bg-slate-800/90 rounded-xl border border-slate-200/80 dark:border-slate-700/80">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-2.5 rounded-2xl border border-slate-200/90 shadow-2xs">
+            <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-100/90 rounded-xl border border-slate-200/80">
               <button
                 type="button"
                 onClick={() => setDeptTab('students')}
                 className={cn(
                   'flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer',
                   deptTab === 'students'
-                    ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-400 shadow-xs border border-indigo-200 dark:border-indigo-900/60'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    ? 'bg-white text-indigo-700 shadow-xs border border-indigo-200'
+                    : 'text-slate-600 hover:text-slate-900'
                 )}
               >
                 <Icon name="graduation-cap" size={15} className={deptTab === 'students' ? 'text-indigo-600' : 'text-slate-400'} />
                 <span>Students Departments</span>
                 <span className={cn(
                   'text-[10px] px-2 py-0.5 rounded-full font-black',
-                  deptTab === 'students' ? 'bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                  deptTab === 'students' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-200 text-slate-600'
                 )}>
                   {deptCounts.students}
                 </span>
@@ -1365,15 +1338,15 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                 className={cn(
                   'flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer',
                   deptTab === 'employees'
-                    ? 'bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-xs border border-emerald-200 dark:border-emerald-900/60'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    ? 'bg-white text-emerald-700 shadow-xs border border-emerald-200'
+                    : 'text-slate-600 hover:text-slate-900'
                 )}
               >
                 <Icon name="briefcase" size={15} className={deptTab === 'employees' ? 'text-emerald-600' : 'text-slate-400'} />
                 <span>Employee Departments</span>
                 <span className={cn(
                   'text-[10px] px-2 py-0.5 rounded-full font-black',
-                  deptTab === 'employees' ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                  deptTab === 'employees' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'
                 )}>
                   {deptCounts.employees}
                 </span>
@@ -1385,15 +1358,15 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                 className={cn(
                   'flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer',
                   deptTab === 'all'
-                    ? 'bg-white dark:bg-slate-900 text-blue-700 dark:text-blue-400 shadow-xs border border-blue-200 dark:border-blue-900/60'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    ? 'bg-white text-blue-700 shadow-xs border border-blue-200'
+                    : 'text-slate-600 hover:text-slate-900'
                 )}
               >
                 <Icon name="layers" size={15} className={deptTab === 'all' ? 'text-blue-600' : 'text-slate-400'} />
                 <span>All Departments</span>
                 <span className={cn(
                   'text-[10px] px-2 py-0.5 rounded-full font-black',
-                  deptTab === 'all' ? 'bg-blue-100 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                  deptTab === 'all' ? 'bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-600'
                 )}>
                   {deptCounts.all}
                 </span>
@@ -1403,7 +1376,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
         )}
 
         {/* Dynamic Filter Bar (Search + Active/Inactive Filter Tabs + Counts) */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-2xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-slate-200/90 shadow-2xs">
           <div className="flex flex-wrap items-center gap-2.5 flex-1">
             <div className="relative flex-1 min-w-[200px] max-w-sm">
               <Icon name="search" size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -1412,25 +1385,25 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={`Search ${selectedCategory.title.toLowerCase()}...`}
-                className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
             {/* Dynamic Status Filter Selector for all pages */}
-            <div className="flex items-center gap-1 p-1 bg-slate-100/90 dark:bg-slate-800/90 rounded-xl border border-slate-200/80 dark:border-slate-700/80 text-xs font-bold">
+            <div className="flex items-center gap-1 p-1 bg-slate-100/90 rounded-xl border border-slate-200/80 text-xs font-bold">
               <button
                 type="button"
                 onClick={() => setStatusFilter('all')}
                 className={cn(
                   'px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1.5',
                   statusFilter === 'all'
-                    ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs'
-                    : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                    ? 'bg-white text-slate-900 shadow-2xs'
+                    : 'text-slate-500 hover:text-slate-700'
                 )}
                 title="Show all records"
               >
                 <span>All Status</span>
-                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-slate-200 text-slate-600">
                   {statusCounts.all}
                 </span>
               </button>
@@ -1441,7 +1414,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                   'px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1.5',
                   statusFilter === 'active'
                     ? 'bg-emerald-600 text-white shadow-2xs font-extrabold'
-                    : 'text-emerald-700 dark:text-emerald-400 hover:text-emerald-900'
+                    : 'text-emerald-700 hover:text-emerald-900'
                 )}
                 title="Show active records only"
               >
@@ -1449,7 +1422,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                 <span>Active</span>
                 <span className={cn(
                   'text-[10px] px-1.5 py-0.2 rounded-full font-black',
-                  statusFilter === 'active' ? 'bg-emerald-700 text-white' : 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300'
+                  statusFilter === 'active' ? 'bg-emerald-700 text-white' : 'bg-emerald-100 text-emerald-800'
                 )}>
                   {statusCounts.active}
                 </span>
@@ -1461,7 +1434,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                   'px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1.5',
                   statusFilter === 'inactive'
                     ? 'bg-slate-700 text-white shadow-2xs font-extrabold'
-                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                    : 'text-slate-500 hover:text-slate-700'
                 )}
                 title="Show inactive records only"
               >
@@ -1469,7 +1442,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                 <span>Inactive</span>
                 <span className={cn(
                   'text-[10px] px-1.5 py-0.2 rounded-full font-black',
-                  statusFilter === 'inactive' ? 'bg-slate-800 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                  statusFilter === 'inactive' ? 'bg-slate-800 text-white' : 'bg-slate-200 text-slate-600'
                 )}>
                   {statusCounts.inactive}
                 </span>
@@ -1477,25 +1450,16 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
             </div>
           </div>
 
-          <div className="flex items-center gap-4 text-xs font-bold text-slate-600 dark:text-slate-400">
+          <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
             <span>{filteredItems.length} records</span>
-            <label className="flex items-center gap-1.5 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={filteredItems.length > 0 && selectedItemIds.length === filteredItems.length}
-                onChange={(e) => handleSelectAll(e.target.checked)}
-                className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-              />
-              <span>Select All</span>
-            </label>
           </div>
         </div>
 
         {/* Master Data Table */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-2xs overflow-hidden">
+        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50/80 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 font-bold uppercase text-[10px] tracking-wider border-b border-slate-200 dark:border-slate-700">
+              <thead className="bg-slate-50/80 text-slate-500 font-bold uppercase text-[10px] tracking-wider border-b border-slate-200">
                 <tr>
                   {!isLeaveReasons && (
                     <th className="w-10 py-3.5 px-4 text-center">
@@ -1556,14 +1520,11 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                     </>
                   ) : (
                     <>
-                      <th className="py-3.5 px-4">NAME</th>
-                      <th className="py-3.5 px-4">CODE</th>
+                      <th className="py-3.5 px-4">{selectedCategory.id === 'districts' ? 'DISTRICT NAME' : 'NAME'}</th>
+                      <th className="py-3.5 px-4">{selectedCategory.id === 'districts' ? 'DISTRICT CODE' : 'CODE'}</th>
                       <th className="py-3.5 px-4">IS ACTIVE</th>
                       {selectedCategory.parentCategory && (
                         <th className="py-3.5 px-4 uppercase">{selectedCategory.parentCategory.replace('_', ' ')}</th>
-                      )}
-                      {selectedCategory.id === 'districts' && (
-                        <th className="py-3.5 px-4">DISTRICT CODE</th>
                       )}
                       {['gender_types', 'blood_groups', 'castes'].includes(selectedCategory.id) && (
                         <th className="py-3.5 px-4">DESCRIPTION / INFO</th>
@@ -1574,16 +1535,16 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                   <th className="py-3.5 px-4 text-right">ACTIONS</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
+              <tbody className="divide-y divide-slate-100 text-slate-700">
                 {filteredItems.length === 0 ? (
                   <tr>
                     <td colSpan={10} className="py-12 text-center text-slate-400 font-semibold">
                       {selectedCategory.id === 'departments' ? (
                         <div className="max-w-md mx-auto space-y-3">
-                          <div className="w-12 h-12 mx-auto rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                          <div className="w-12 h-12 mx-auto rounded-2xl bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-600">
                             <Icon name={deptTab === 'students' ? 'graduation-cap' : deptTab === 'employees' ? 'briefcase' : 'layers'} size={24} />
                           </div>
-                          <div className="text-sm font-black text-slate-800 dark:text-slate-200">
+                          <div className="text-sm font-black text-slate-800">
                             No {deptTab === 'students' ? 'Students' : deptTab === 'employees' ? 'Employee' : ''} Departments Found
                           </div>
                           <p className="text-xs text-slate-400">
@@ -1605,7 +1566,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                             <button
                               type="button"
                               onClick={() => fileInputRef.current?.click()}
-                              className="px-3.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                              className="px-3.5 py-1.5 rounded-xl border border-slate-300 bg-white text-slate-700 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
                             >
                               <Icon name="upload" size={13} />
                               <span>Import CSV</span>
@@ -1614,10 +1575,10 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                         </div>
                       ) : selectedCategory.id === 'technical_skills' ? (
                         <div className="max-w-md mx-auto space-y-3">
-                          <div className="w-12 h-12 mx-auto rounded-2xl bg-violet-50 dark:bg-violet-950/60 border border-violet-200 dark:border-violet-800 flex items-center justify-center text-violet-600 dark:text-violet-400">
+                          <div className="w-12 h-12 mx-auto rounded-2xl bg-violet-50 border border-violet-200 flex items-center justify-center text-violet-600">
                             <Icon name={skillTab === 'students' ? 'graduation-cap' : skillTab === 'employees' ? 'briefcase' : 'code'} size={24} />
                           </div>
-                          <div className="text-sm font-black text-slate-800 dark:text-slate-200">
+                          <div className="text-sm font-black text-slate-800">
                             No {skillTab === 'students' ? 'Students' : skillTab === 'employees' ? 'Employees' : ''} Technical Skills Found
                           </div>
                           <p className="text-xs text-slate-400">
@@ -1639,7 +1600,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                             <button
                               type="button"
                               onClick={() => fileInputRef.current?.click()}
-                              className="px-3.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                              className="px-3.5 py-1.5 rounded-xl border border-slate-300 bg-white text-slate-700 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
                             >
                               <Icon name="upload" size={13} />
                               <span>Import CSV</span>
@@ -1647,10 +1608,15 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                           </div>
                         </div>
                       ) : (
-                        <>
-                          <Icon name="layers" size={24} className="mx-auto text-slate-300 mb-2" />
-                          <div>No records found for "{selectedCategory.title}".</div>
-                        </>
+                        <div className="py-12 flex flex-col items-center justify-center text-center">
+                          <div className="w-12 h-12 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center justify-center text-slate-400 mb-3 shadow-2xs">
+                            <Icon name={selectedCategory.icon || "layers"} size={22} className="text-slate-400" />
+                          </div>
+                          <div className="text-sm font-bold text-slate-800">No records found for "{selectedCategory.title}"</div>
+                          <p className="text-xs text-slate-400 mt-1 max-w-sm">
+                            Click "+ Add {selectedCategory.title}" above or import from Excel / CSV to add records.
+                          </p>
+                        </div>
                       )}
                     </td>
                   </tr>
@@ -1661,8 +1627,8 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                       <tr
                         key={item.id}
                         className={cn(
-                          'hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors',
-                          isChecked ? 'bg-blue-50/60 dark:bg-blue-900/20' : ''
+                          'hover transition-colors',
+                          isChecked ? 'bg-blue-50/60' : ''
                         )}
                       >
                         {!isLeaveReasons && (
@@ -1683,26 +1649,26 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                             <td className="py-3.5 px-4 font-mono text-[11px] text-slate-500">
                               {item.extra_info || item.parent_id || '—'}
                             </td>
-                            <td className="py-3.5 px-4 font-bold text-slate-900 dark:text-white">
+                            <td className="py-3.5 px-4 font-bold text-slate-900">
                               {item.name}
                             </td>
                             <td className="py-3.5 px-4">
                               {renderActiveStatusSelector(item)}
                             </td>
-                            <td className="py-3.5 px-4 font-bold text-slate-800 dark:text-slate-200">
+                            <td className="py-3.5 px-4 font-bold text-slate-800">
                               {item.parent_name || '—'}
                             </td>
                           </>
                         ) : isInstitutionType ? (
                           /* Institution Type Columns (Screenshot 1) */
                           <>
-                            <td className="py-3.5 px-4 font-bold text-slate-900 dark:text-white">
+                            <td className="py-3.5 px-4 font-bold text-slate-900">
                               {item.name}
                             </td>
-                            <td className="py-3.5 px-4 font-mono font-semibold text-slate-600 dark:text-slate-300">
+                            <td className="py-3.5 px-4 font-mono font-semibold text-slate-600">
                               {item.code || '—'}
                             </td>
-                            <td className="py-3.5 px-4 font-mono text-slate-600 dark:text-slate-300">
+                            <td className="py-3.5 px-4 font-mono text-slate-600">
                               {item.check_in_time ? (
                                 <span className="flex items-center gap-1">
                                   <Icon name="clock" size={12} className="text-rose-500" />
@@ -1712,7 +1678,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                                 '—'
                               )}
                             </td>
-                            <td className="py-3.5 px-4 font-mono text-slate-600 dark:text-slate-300">
+                            <td className="py-3.5 px-4 font-mono text-slate-600">
                               {item.check_out_time ? (
                                 <span className="flex items-center gap-1">
                                   <Icon name="clock" size={12} className="text-rose-500" />
@@ -1722,7 +1688,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                                 '—'
                               )}
                             </td>
-                            <td className="py-3.5 px-4 font-semibold text-slate-700 dark:text-slate-300">
+                            <td className="py-3.5 px-4 font-semibold text-slate-700">
                               {item.level ? (
                                 <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-bold text-[10px]">
                                   {String(item.level).includes('Level') ? item.level : `Level ${item.level}`}
@@ -1731,7 +1697,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                                 '—'
                               )}
                             </td>
-                            <td className="py-3.5 px-4 font-semibold text-slate-600 dark:text-slate-300">
+                            <td className="py-3.5 px-4 font-semibold text-slate-600">
                               {item.display_order ?? '—'}
                             </td>
                             <td className="py-3.5 px-4">
@@ -1741,27 +1707,27 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                         ) : isLeaveReasons ? (
                           /* Leave Reasons Columns (Screenshot 4) */
                           <>
-                            <td className="py-3.5 px-4 font-bold text-slate-900 dark:text-white">
+                            <td className="py-3.5 px-4 font-bold text-slate-900">
                               {item.name}
                             </td>
                             <td className="py-3.5 px-4">
                               {renderActiveStatusSelector(item)}
                             </td>
-                            <td className="py-3.5 px-4 font-bold text-slate-800 dark:text-slate-200">
+                            <td className="py-3.5 px-4 font-bold text-slate-800">
                               {item.days ?? '—'}
                             </td>
                           </>
                         ) : selectedCategory.id === 'departments' ? (
                           <>
-                            <td className="py-3.5 px-4 font-bold text-slate-900 dark:text-white">
+                            <td className="py-3.5 px-4 font-bold text-slate-900">
                               <div className="flex items-center gap-2">
                                 <span className={cn(
                                   'w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-xs',
                                   getDepartmentType(item) === 'student'
-                                    ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950/80 dark:text-indigo-300'
+                                    ? 'bg-indigo-100 text-indigo-700'
                                     : getDepartmentType(item) === 'employee'
-                                      ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-300'
-                                      : 'bg-blue-100 text-blue-700 dark:bg-blue-950/80 dark:text-blue-300'
+                                      ? 'bg-emerald-100 text-emerald-700'
+                                      : 'bg-blue-100 text-blue-700'
                                 )}>
                                   <Icon
                                     name={
@@ -1777,7 +1743,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                                 <span>{item.name}</span>
                               </div>
                             </td>
-                            <td className="py-3.5 px-4 font-mono font-bold text-slate-700 dark:text-slate-300">
+                            <td className="py-3.5 px-4 font-mono font-bold text-slate-700">
                               {item.code}
                             </td>
                             <td className="py-3.5 px-4">
@@ -1785,23 +1751,23 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                                 const t = getDepartmentType(item);
                                 if (t === 'student') {
                                   return (
-                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800">
-                                      <Icon name="graduation-cap" size={12} className="text-indigo-600 dark:text-indigo-400" />
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black bg-indigo-50 text-indigo-700 border border-indigo-200/80">
+                                      <Icon name="graduation-cap" size={12} className="text-indigo-600" />
                                       <span>Students View</span>
                                     </span>
                                   );
                                 }
                                 if (t === 'employee') {
                                   return (
-                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800">
-                                      <Icon name="briefcase" size={12} className="text-emerald-600 dark:text-emerald-400" />
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200/80">
+                                      <Icon name="briefcase" size={12} className="text-emerald-600" />
                                       <span>Employee View</span>
                                     </span>
                                   );
                                 }
                                 return (
-                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200/80 dark:border-blue-800">
-                                    <Icon name="layers" size={12} className="text-blue-600 dark:text-blue-400" />
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black bg-blue-50 text-blue-700 border border-blue-200/80">
+                                    <Icon name="layers" size={12} className="text-blue-600" />
                                     <span>Both (Shared)</span>
                                   </span>
                                 );
@@ -1816,15 +1782,15 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                           </>
                         ) : selectedCategory.id === 'technical_skills' ? (
                           <>
-                            <td className="py-3.5 px-4 font-bold text-slate-900 dark:text-white">
+                            <td className="py-3.5 px-4 font-bold text-slate-900">
                               <div className="flex items-center gap-2">
                                 <span className={cn(
                                   'w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-xs',
                                   getTechnicalSkillType(item) === 'student'
-                                    ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950/80 dark:text-indigo-300'
+                                    ? 'bg-indigo-100 text-indigo-700'
                                     : getTechnicalSkillType(item) === 'employee'
-                                      ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-300'
-                                      : 'bg-violet-100 text-violet-700 dark:bg-violet-950/80 dark:text-violet-300'
+                                      ? 'bg-emerald-100 text-emerald-700'
+                                      : 'bg-violet-100 text-violet-700'
                                 )}>
                                   <Icon
                                     name={
@@ -1840,7 +1806,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                                 <span>{item.name}</span>
                               </div>
                             </td>
-                            <td className="py-3.5 px-4 font-mono font-bold text-slate-700 dark:text-slate-300">
+                            <td className="py-3.5 px-4 font-mono font-bold text-slate-700">
                               {item.code || '—'}
                             </td>
                             <td className="py-3.5 px-4">
@@ -1848,23 +1814,23 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                                 const t = getTechnicalSkillType(item);
                                 if (t === 'student') {
                                   return (
-                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800">
-                                      <Icon name="graduation-cap" size={12} className="text-indigo-600 dark:text-indigo-400" />
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black bg-indigo-50 text-indigo-700 border border-indigo-200/80">
+                                      <Icon name="graduation-cap" size={12} className="text-indigo-600" />
                                       <span>Students Skills</span>
                                     </span>
                                   );
                                 }
                                 if (t === 'employee') {
                                   return (
-                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800">
-                                      <Icon name="briefcase" size={12} className="text-emerald-600 dark:text-emerald-400" />
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200/80">
+                                      <Icon name="briefcase" size={12} className="text-emerald-600" />
                                       <span>Employees Skills</span>
                                     </span>
                                   );
                                 }
                                 return (
-                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black bg-violet-50 text-violet-700 dark:bg-violet-950/60 dark:text-violet-300 border border-violet-200/80 dark:border-violet-800">
-                                    <Icon name="layers" size={12} className="text-violet-600 dark:text-violet-400" />
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black bg-violet-50 text-violet-700 border border-violet-200/80">
+                                    <Icon name="layers" size={12} className="text-violet-600" />
                                     <span>Both (Employee & Student)</span>
                                   </span>
                                 );
@@ -1880,7 +1846,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                         ) : isQualification ? (
                           /* Qualification Columns (Screenshot 2) */
                           <>
-                            <td className="py-3.5 px-4 font-bold text-slate-900 dark:text-white">
+                            <td className="py-3.5 px-4 font-bold text-slate-900">
                               {item.name}
                             </td>
                             <td className="py-3.5 px-4">
@@ -1890,27 +1856,22 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                         ) : (
                           /* Default Master Data Columns (District, Mandal, etc.) */
                           <>
-                            <td className="py-3.5 px-4 font-bold text-slate-900 dark:text-white">
+                            <td className="py-3.5 px-4 font-bold text-slate-900">
                               {item.name}
                             </td>
-                            <td className="py-3.5 px-4 font-mono font-semibold text-slate-600 dark:text-slate-300">
+                            <td className="py-3.5 px-4 font-mono font-semibold text-slate-600">
                               {item.code}
                             </td>
                             <td className="py-3.5 px-4">
                               {renderActiveStatusSelector(item)}
                             </td>
                             {selectedCategory.parentCategory && (
-                              <td className="py-3.5 px-4 font-semibold text-slate-700 dark:text-slate-300">
+                              <td className="py-3.5 px-4 font-semibold text-slate-700">
                                 {item.parent_name || '—'}
                               </td>
                             )}
-                            {selectedCategory.id === 'districts' && (
-                              <td className="py-3.5 px-4 font-mono font-bold text-slate-700 dark:text-slate-300">
-                                {item.extra_info || item.code}
-                              </td>
-                            )}
                             {['gender_types', 'blood_groups', 'castes'].includes(selectedCategory.id) && (
-                              <td className="py-3.5 px-4 text-slate-600 dark:text-slate-300 font-medium">
+                              <td className="py-3.5 px-4 text-slate-600 font-medium">
                                 {item.extra_info || item.description || '—'}
                               </td>
                             )}
@@ -1947,7 +1908,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                               <button
                                 type="button"
                                 onClick={() => handleDeleteItem(item.id, item.name)}
-                                className="p-1 rounded-md bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors cursor-pointer"
+                                className="p-1 rounded-md bg-rose-50 text-rose-600 hover transition-colors cursor-pointer"
                                 title="Delete Record"
                               >
                                 <Icon name="x" size={13} />
@@ -1969,9 +1930,9 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
         {/* ─────────────────────────────────────────────────────────────────── */}
         {modalOpen && (
           <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-fade-in">
-            <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-md shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-scale-in">
-              <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-800">
-                <h3 className="text-sm font-black text-slate-900 dark:text-white">
+            <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl border border-slate-200 overflow-hidden animate-scale-in">
+              <div className="flex items-center justify-between p-4 border-b border-slate-100">
+                <h3 className="text-sm font-black text-slate-900">
                   {modalMode === 'add'
                     ? `Add ${selectedCategory.title}`
                     : modalMode === 'edit'
@@ -1981,7 +1942,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  className="p-1 rounded-lg text-slate-400 hover:bg-slate-100 transition-colors"
                 >
                   <Icon name="x" size={16} />
                 </button>
@@ -1991,7 +1952,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                 {/* 1. Parent Selection if Specialization (Screenshot 3) or Mandal/Town */}
                 {selectedCategory.parentCategory && (
                   <div className="space-y-1">
-                    <label className="block font-black uppercase text-[10px] tracking-wider text-slate-700 dark:text-slate-300">
+                    <label className="block font-black uppercase text-[10px] tracking-wider text-slate-700">
                       {isSpecialization ? 'QUALIFICATION *' : `${selectedCategory.parentCategory.replace('_', ' ').toUpperCase()} *`}
                     </label>
                     <select
@@ -1999,7 +1960,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                       onChange={(e) => setFormParentId(e.target.value)}
                       disabled={modalMode === 'view'}
                       required
-                      className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
+                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
                     >
                       <option value="">Select...</option>
                       {parentOptions.map((p) => (
@@ -2013,7 +1974,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
 
                 {/* 2. Primary Name Field */}
                 <div className="space-y-1">
-                  <label className="block font-black uppercase text-[10px] tracking-wider text-slate-700 dark:text-slate-300">
+                  <label className="block font-black uppercase text-[10px] tracking-wider text-slate-700">
                     {isLeaveReasons
                       ? 'LEAVE REASON *'
                       : isInstitutionType
@@ -2045,14 +2006,14 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                     }
                     disabled={modalMode === 'view'}
                     required
-                    className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
                   />
                 </div>
 
                 {/* 3. Leave Reasons Days (Screenshot 5) */}
                 {isLeaveReasons && (
                   <div className="space-y-1">
-                    <label className="block font-black uppercase text-[10px] tracking-wider text-slate-700 dark:text-slate-300">
+                    <label className="block font-black uppercase text-[10px] tracking-wider text-slate-700">
                       MAX DAYS ALLOWED
                     </label>
                     <input
@@ -2061,7 +2022,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                       onChange={(e) => setFormDays(e.target.value)}
                       placeholder="e.g. 12 (leave blank for unlimited)"
                       disabled={modalMode === 'view'}
-                      className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
+                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
                     />
                   </div>
                 )}
@@ -2069,7 +2030,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                 {/* 4. Code Field (optional for institution type, district, etc.) */}
                 {!isLeaveReasons && (
                   <div className="space-y-1">
-                    <label className="block font-black uppercase text-[10px] tracking-wider text-slate-700 dark:text-slate-300">
+                    <label className="block font-black uppercase text-[10px] tracking-wider text-slate-700">
                       CODE
                     </label>
                     <input
@@ -2088,7 +2049,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                                 : 'Optional — e.g. HYD, or leave blank to auto-generate'
                       }
                       disabled={modalMode === 'view'}
-                      className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
+                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
                     />
                   </div>
                 )}
@@ -2096,7 +2057,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                 {/* 5. Extra Info / Notes for Gender, Blood Groups, Castes, and Districts */}
                 {['gender_types', 'blood_groups', 'castes', 'districts'].includes(selectedCategory.id) && (
                   <div className="space-y-1">
-                    <label className="block font-black uppercase text-[10px] tracking-wider text-slate-700 dark:text-slate-300">
+                    <label className="block font-black uppercase text-[10px] tracking-wider text-slate-700">
                       {selectedCategory.id === 'districts'
                         ? 'DISTRICT SHORT CODE'
                         : selectedCategory.id === 'blood_groups'
@@ -2119,7 +2080,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                               : 'e.g. Backward Class Group A'
                       }
                       disabled={modalMode === 'view'}
-                      className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
+                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
                     />
                   </div>
                 )}
@@ -2129,7 +2090,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                   <>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1">
-                        <label className="block font-black uppercase text-[10px] tracking-wider text-slate-700 dark:text-slate-300">
+                        <label className="block font-black uppercase text-[10px] tracking-wider text-slate-700">
                           CHECK-IN TIME
                         </label>
                         <input
@@ -2138,11 +2099,11 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                           onChange={(e) => setFormCheckIn(e.target.value)}
                           placeholder="e.g. 09:00 AM"
                           disabled={modalMode === 'view'}
-                          className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
+                          className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
                         />
                       </div>
                       <div className="space-y-1">
-                        <label className="block font-black uppercase text-[10px] tracking-wider text-slate-700 dark:text-slate-300">
+                        <label className="block font-black uppercase text-[10px] tracking-wider text-slate-700">
                           CHECK-OUT TIME
                         </label>
                         <input
@@ -2151,14 +2112,14 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                           onChange={(e) => setFormCheckOut(e.target.value)}
                           placeholder="e.g. 05:00 PM"
                           disabled={modalMode === 'view'}
-                          className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
+                          className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
                         />
                       </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1">
-                        <label className="block font-black uppercase text-[10px] tracking-wider text-slate-700 dark:text-slate-300">
+                        <label className="block font-black uppercase text-[10px] tracking-wider text-slate-700">
                           LEVEL
                         </label>
                         <input
@@ -2167,11 +2128,11 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                           onChange={(e) => setFormLevel(e.target.value)}
                           placeholder="e.g. 0"
                           disabled={modalMode === 'view'}
-                          className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
+                          className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
                         />
                       </div>
                       <div className="space-y-1">
-                        <label className="block font-black uppercase text-[10px] tracking-wider text-slate-700 dark:text-slate-300">
+                        <label className="block font-black uppercase text-[10px] tracking-wider text-slate-700">
                           DISPLAY ORDER
                         </label>
                         <input
@@ -2180,13 +2141,13 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                           onChange={(e) => setFormDisplayOrder(e.target.value)}
                           placeholder="e.g. 0"
                           disabled={modalMode === 'view'}
-                          className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
+                          className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
                         />
                       </div>
                     </div>
 
                     <div className="space-y-1">
-                      <label className="block font-black uppercase text-[10px] tracking-wider text-slate-700 dark:text-slate-300">
+                      <label className="block font-black uppercase text-[10px] tracking-wider text-slate-700">
                         DESCRIPTION
                       </label>
                       <input
@@ -2195,7 +2156,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                         onChange={(e) => setFormDescription(e.target.value)}
                         placeholder="Optional description"
                         disabled={modalMode === 'view'}
-                        className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
+                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
                       />
                     </div>
                   </>
@@ -2204,8 +2165,8 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                 {/* Department Type / View Audience Selection */}
                 {selectedCategory.id === 'departments' && (
                   <>
-                    <div className="space-y-1.5 p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700">
-                      <label className="block font-black uppercase text-[10px] tracking-wider text-slate-700 dark:text-slate-300">
+                    <div className="space-y-1.5 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                      <label className="block font-black uppercase text-[10px] tracking-wider text-slate-700">
                         DEPARTMENT VIEW AUDIENCE *
                       </label>
                       <p className="text-[11px] text-slate-500 font-medium leading-tight">
@@ -2219,13 +2180,13 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                           className={cn(
                             'flex items-center gap-2 p-2.5 rounded-xl border text-left transition-all cursor-pointer',
                             deptTypeInModal === 'student'
-                              ? 'bg-indigo-50 border-indigo-400 text-indigo-900 dark:bg-indigo-950/70 dark:border-indigo-600 dark:text-indigo-200 font-bold ring-2 ring-indigo-500/20 shadow-2xs'
-                              : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-300'
+                              ? 'bg-indigo-50 border-indigo-400 text-indigo-900 font-bold ring-2 ring-indigo-500/20 shadow-2xs'
+                              : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
                           )}
                         >
                           <div className={cn(
                             'w-7 h-7 rounded-lg flex items-center justify-center shrink-0',
-                            deptTypeInModal === 'student' ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-500'
+                            deptTypeInModal === 'student' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500'
                           )}>
                             <Icon name="graduation-cap" size={14} />
                           </div>
@@ -2242,13 +2203,13 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                           className={cn(
                             'flex items-center gap-2 p-2.5 rounded-xl border text-left transition-all cursor-pointer',
                             deptTypeInModal === 'employee'
-                              ? 'bg-emerald-50 border-emerald-400 text-emerald-900 dark:bg-emerald-950/70 dark:border-emerald-600 dark:text-emerald-200 font-bold ring-2 ring-emerald-500/20 shadow-2xs'
-                              : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-300'
+                              ? 'bg-emerald-50 border-emerald-400 text-emerald-900 font-bold ring-2 ring-emerald-500/20 shadow-2xs'
+                              : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
                           )}
                         >
                           <div className={cn(
                             'w-7 h-7 rounded-lg flex items-center justify-center shrink-0',
-                            deptTypeInModal === 'employee' ? 'bg-emerald-600 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-500'
+                            deptTypeInModal === 'employee' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-500'
                           )}>
                             <Icon name="briefcase" size={14} />
                           </div>
@@ -2265,13 +2226,13 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                           className={cn(
                             'flex items-center gap-2 p-2.5 rounded-xl border text-left transition-all cursor-pointer',
                             deptTypeInModal === 'both'
-                              ? 'bg-blue-50 border-blue-400 text-blue-900 dark:bg-blue-950/70 dark:border-blue-600 dark:text-blue-200 font-bold ring-2 ring-blue-500/20 shadow-2xs'
-                              : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-300'
+                              ? 'bg-blue-50 border-blue-400 text-blue-900 font-bold ring-2 ring-blue-500/20 shadow-2xs'
+                              : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
                           )}
                         >
                           <div className={cn(
                             'w-7 h-7 rounded-lg flex items-center justify-center shrink-0',
-                            deptTypeInModal === 'both' ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-500'
+                            deptTypeInModal === 'both' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500'
                           )}>
                             <Icon name="layers" size={14} />
                           </div>
@@ -2284,7 +2245,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                     </div>
 
                     <div className="space-y-1">
-                      <label className="block font-black uppercase text-[10px] tracking-wider text-slate-700 dark:text-slate-300">
+                      <label className="block font-black uppercase text-[10px] tracking-wider text-slate-700">
                         DESCRIPTION / PURPOSE
                       </label>
                       <input
@@ -2293,7 +2254,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                         onChange={(e) => setFormDescription(e.target.value)}
                         placeholder="e.g. Undergraduate computing, HR & payroll operations, etc."
                         disabled={modalMode === 'view'}
-                        className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
+                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
                       />
                     </div>
                   </>
@@ -2302,8 +2263,8 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                 {/* Technical Skill Applicability / Mapping Selection */}
                 {selectedCategory.id === 'technical_skills' && (
                   <>
-                    <div className="space-y-1.5 p-3 bg-violet-50/60 dark:bg-violet-950/40 rounded-xl border border-violet-200 dark:border-violet-800">
-                      <label className="block font-black uppercase text-[10px] tracking-wider text-violet-950 dark:text-violet-300">
+                    <div className="space-y-1.5 p-3 bg-violet-50/60 rounded-xl border border-violet-200">
+                      <label className="block font-black uppercase text-[10px] tracking-wider text-violet-950">
                         SKILL MAPPING / APPLICABLE FOR *
                       </label>
                       <p className="text-[11px] text-slate-500 font-medium leading-tight">
@@ -2317,13 +2278,13 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                           className={cn(
                             'flex items-center gap-2 p-2.5 rounded-xl border text-left transition-all cursor-pointer',
                             skillTypeInModal === 'both'
-                              ? 'bg-violet-50 border-violet-400 text-violet-900 dark:bg-violet-950/70 dark:border-violet-600 dark:text-violet-200 font-bold ring-2 ring-violet-500/20 shadow-2xs'
-                              : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-300'
+                              ? 'bg-violet-50 border-violet-400 text-violet-900 font-bold ring-2 ring-violet-500/20 shadow-2xs'
+                              : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
                           )}
                         >
                           <div className={cn(
                             'w-7 h-7 rounded-lg flex items-center justify-center shrink-0',
-                            skillTypeInModal === 'both' ? 'bg-violet-600 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-500'
+                            skillTypeInModal === 'both' ? 'bg-violet-600 text-white' : 'bg-slate-100 text-slate-500'
                           )}>
                             <Icon name="layers" size={14} />
                           </div>
@@ -2340,13 +2301,13 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                           className={cn(
                             'flex items-center gap-2 p-2.5 rounded-xl border text-left transition-all cursor-pointer',
                             skillTypeInModal === 'employee'
-                              ? 'bg-emerald-50 border-emerald-400 text-emerald-900 dark:bg-emerald-950/70 dark:border-emerald-600 dark:text-emerald-200 font-bold ring-2 ring-emerald-500/20 shadow-2xs'
-                              : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-300'
+                              ? 'bg-emerald-50 border-emerald-400 text-emerald-900 font-bold ring-2 ring-emerald-500/20 shadow-2xs'
+                              : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
                           )}
                         >
                           <div className={cn(
                             'w-7 h-7 rounded-lg flex items-center justify-center shrink-0',
-                            skillTypeInModal === 'employee' ? 'bg-emerald-600 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-500'
+                            skillTypeInModal === 'employee' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-500'
                           )}>
                             <Icon name="briefcase" size={14} />
                           </div>
@@ -2363,13 +2324,13 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                           className={cn(
                             'flex items-center gap-2 p-2.5 rounded-xl border text-left transition-all cursor-pointer',
                             skillTypeInModal === 'student'
-                              ? 'bg-indigo-50 border-indigo-400 text-indigo-900 dark:bg-indigo-950/70 dark:border-indigo-600 dark:text-indigo-200 font-bold ring-2 ring-indigo-500/20 shadow-2xs'
-                              : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-300'
+                              ? 'bg-indigo-50 border-indigo-400 text-indigo-900 font-bold ring-2 ring-indigo-500/20 shadow-2xs'
+                              : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
                           )}
                         >
                           <div className={cn(
                             'w-7 h-7 rounded-lg flex items-center justify-center shrink-0',
-                            skillTypeInModal === 'student' ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-500'
+                            skillTypeInModal === 'student' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500'
                           )}>
                             <Icon name="graduation-cap" size={14} />
                           </div>
@@ -2382,7 +2343,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                     </div>
 
                     <div className="space-y-1">
-                      <label className="block font-black uppercase text-[10px] tracking-wider text-slate-700 dark:text-slate-300">
+                      <label className="block font-black uppercase text-[10px] tracking-wider text-slate-700">
                         DESCRIPTION / DOMAIN
                       </label>
                       <input
@@ -2391,7 +2352,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                         onChange={(e) => setFormDescription(e.target.value)}
                         placeholder="e.g. Clinical diagnosis, laparoscopic surgery, ultrasound imaging"
                         disabled={modalMode === 'view'}
-                        className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
+                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
                       />
                     </div>
                   </>
@@ -2399,7 +2360,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
 
                 {/* Dynamic Active / Inactive Selector in Modal */}
                 <div className="space-y-1.5 pt-1">
-                  <label className="block font-black uppercase text-[10px] tracking-wider text-slate-700 dark:text-slate-300">
+                  <label className="block font-black uppercase text-[10px] tracking-wider text-slate-700">
                     RECORD STATUS
                   </label>
                   <div className="grid grid-cols-2 gap-2">
@@ -2411,8 +2372,8 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                         'flex items-center justify-center gap-2 py-2 px-3 rounded-xl border text-xs font-bold transition-all select-none',
                         modalMode !== 'view' ? 'cursor-pointer' : 'cursor-default',
                         formActive
-                          ? 'bg-emerald-50 border-emerald-400 text-emerald-800 dark:bg-emerald-950/70 dark:border-emerald-700 dark:text-emerald-200 ring-2 ring-emerald-500/20 shadow-2xs'
-                          : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 hover:border-slate-300'
+                          ? 'bg-emerald-50 border-emerald-400 text-emerald-800 ring-2 ring-emerald-500/20 shadow-2xs'
+                          : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'
                       )}
                     >
                       <span className={cn('w-2 h-2 rounded-full', formActive ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300')} />
@@ -2426,8 +2387,8 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                         'flex items-center justify-center gap-2 py-2 px-3 rounded-xl border text-xs font-bold transition-all select-none',
                         modalMode !== 'view' ? 'cursor-pointer' : 'cursor-default',
                         !formActive
-                          ? 'bg-slate-100 border-slate-400 text-slate-800 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-200 ring-2 ring-slate-500/20 shadow-2xs'
-                          : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 hover:border-slate-300'
+                          ? 'bg-slate-100 border-slate-400 text-slate-800 ring-2 ring-slate-500/20 shadow-2xs'
+                          : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'
                       )}
                     >
                       <span className={cn('w-2 h-2 rounded-full', !formActive ? 'bg-slate-600' : 'bg-slate-300')} />
@@ -2437,20 +2398,20 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                 </div>
 
                 {/* Actions */}
-                <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
                   <button
                     type="button"
                     onClick={() => setModalOpen(false)}
-                    className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold hover:bg-slate-50 transition-colors"
+                    className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 font-bold hover transition-colors"
                   >
                     {modalMode === 'view' ? 'Close' : 'Cancel'}
                   </button>
                   {modalMode !== 'view' && (
                     <button
                       type="submit"
-                      className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-xs transition-colors cursor-pointer"
+                      className="px-5 py-2 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-orange-500 hover:opacity-95 text-white font-bold shadow-xs transition-colors cursor-pointer"
                     >
-                      ✓ Save
+                      ✓ Save Record
                     </button>
                   )}
                 </div>
@@ -2469,7 +2430,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
     <div className="space-y-6 animate-fade-in">
       {/* Header Matching Screenshot 1 */}
       <div className="space-y-1">
-        <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight font-serif">
+        <h1 className="text-2xl md font-black text-slate-900 tracking-tight font-serif">
           Settings
         </h1>
         <p className="text-xs text-slate-500 font-medium">
@@ -2478,7 +2439,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
       </div>
 
       {/* Subtab indicator */}
-      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
+      <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
         <span className="text-blue-600 font-black text-sm">|</span>
         <span className="text-xs font-bold text-blue-600">Settings</span>
       </div>
@@ -2496,7 +2457,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                 setSearchQuery('');
                 setSelectedItemIds([]);
               }}
-              className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 hover:border-blue-400 p-4 sm:p-5 flex flex-col items-center justify-center text-center gap-3 transition-all hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 cursor-pointer group shadow-2xs min-h-[130px]"
+              className="bg-white rounded-2xl border border-slate-200/90 hover p-4 sm:p-5 flex flex-col items-center justify-center text-center gap-3 transition-all hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 cursor-pointer group shadow-2xs min-h-[130px]"
             >
               <div
                 className={cn(
@@ -2508,7 +2469,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                 <Icon name={cat.icon} size={22} />
               </div>
               <div>
-                <span className="text-xs font-bold text-slate-800 dark:text-slate-100 block leading-tight">
+                <span className="text-xs font-bold text-slate-800 block leading-tight">
                   {cat.title}
                 </span>
                 <span className="text-[10px] text-slate-400 font-medium mt-0.5 block">

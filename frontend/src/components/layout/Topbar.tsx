@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Icon } from '@/components/ui/Icon';
 import { Badge } from '@/components/ui/Badge';
 import { Logo } from './Logo';
 import { useAuth } from '@/context/AuthContext';
-import { getNavItems } from '@/config/navigation';
 import { cn } from '@/utils/cn';
 import { playNotificationBeep, getStoredLeads, LiveLeadNotification } from '@/utils/audioAlert';
 import { apiClient } from '@/services/apiClient';
@@ -26,23 +25,9 @@ export function Topbar() {
   const [showOrgDropdown, setShowOrgDropdown] = useState(false);
   const [topbarOrgs, setTopbarOrgs] = useState<Array<{ id: string; name: string; branch: string; city: string }>>([]);
   const [selectedTopbarOrg, setSelectedTopbarOrg] = useState<string>(() => localStorage.getItem('vahd_selected_org_id') || 'all');
-  const [items, setItems] = useState(() => (user ? getNavItems(user.role, user.permissions) : []));
   const [liveLeads, setLiveLeads] = useState<LiveLeadNotification[]>(() => getStoredLeads());
   const [systemNotifs, setSystemNotifs] = useState<SystemNotificationItem[]>([]);
   const [toastAlert, setToastAlert] = useState<LiveLeadNotification | null>(null);
-
-  useEffect(() => {
-    const updateItems = () => {
-      if (user) setItems(getNavItems(user.role, user.permissions));
-    };
-    updateItems();
-    window.addEventListener('vahd_modules_changed', updateItems);
-    window.addEventListener('storage', updateItems);
-    return () => {
-      window.removeEventListener('vahd_modules_changed', updateItems);
-      window.removeEventListener('storage', updateItems);
-    };
-  }, [user]);
 
   // Real-time Lead Notification & Audio Beep Listener for Super Admin / vahd Owners
   useEffect(() => {
@@ -189,7 +174,7 @@ export function Topbar() {
 
   const roleLabelMap: Record<string, string> = {
     super_admin: 'Super Admin',
-    ho: 'Head Office (HO)',
+    ho: 'Head Office (HQ)',
     owner: 'Owner',
     employee: 'Employee',
     student: 'Student',
@@ -241,15 +226,26 @@ export function Topbar() {
       )}
 
       {/* Top Header Row */}
-      <div className="h-16 flex items-center justify-between px-3 sm:px-4 gap-4 border-b border-slate-100 w-full">
+      <div className="h-16 flex items-center justify-between px-4 sm:px-6 gap-4 border-b border-slate-100 bg-white w-full">
         {/* Left: Brand Logo & vahd Location Selector */}
-        <div className="flex items-center gap-4 min-w-0">
+        <div className="flex items-center gap-2.5 min-w-0">
+          {/* Sidebar Collapse/Expand Toggle on Desktop */}
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent('vahd:toggle_sidebar'))}
+            className="hidden md:inline-flex items-center justify-center w-8 h-8 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer shrink-0"
+            title="Toggle sidebar (Ctrl+[)"
+            aria-label="Toggle sidebar"
+          >
+            <Icon name="panel-left" size={17} />
+          </button>
           <Logo size="sm" />
+          <div className="h-5 w-[1px] bg-slate-200 hidden sm:block mx-0.5" />
 
           {/* Organization Badge for Students/Employees vs Switcher for Admin/HO/Owners */}
           {user?.role === 'student' || user?.role === 'employee' ? (
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-purple-50/80 border border-purple-200 text-xs font-bold text-purple-900 shadow-xs">
-              <Icon name="map-pin" size={14} className="text-purple-600 shrink-0" />
+            <div className="hidden sm:flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-purple-50/70 border border-purple-200 text-xs font-bold text-purple-900 shadow-2xs">
+              <Icon name="map-pin" size={13} className="text-purple-600 shrink-0" />
               <span className="truncate max-w-[220px]" title={user?.vahdName || user?.branchName || 'Enrolled Organization'}>
                 {user?.vahdName || user?.branchName || (user as any)?.organization_name || (user as any)?.vahd_name || 'Assigned Organization'}
               </span>
@@ -258,9 +254,9 @@ export function Topbar() {
             <div className="relative">
               <button
                 onClick={() => setShowOrgDropdown(!showOrgDropdown)}
-                className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-800 hover:bg-slate-100 cursor-pointer transition-colors"
+                className="hidden sm:flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white border border-slate-200/90 text-xs font-bold text-slate-800 hover:bg-slate-50 cursor-pointer transition-colors shadow-2xs"
               >
-                <Icon name="map-pin" size={14} className="text-purple-600" />
+                <Icon name="map-pin" size={13} className="text-purple-600" />
                 <span className="truncate max-w-[200px]">
                   {(() => {
                     if (selectedTopbarOrg === 'all') {
@@ -281,7 +277,7 @@ export function Topbar() {
                       : user?.vahdName || 'All Organizations';
                   })()}
                 </span>
-                <Icon name="chevron-down" size={12} className="text-slate-400 shrink-0" />
+                <Icon name="chevron-down" size={12} className="text-slate-500 shrink-0" />
               </button>
 
               {showOrgDropdown && (
@@ -342,16 +338,16 @@ export function Topbar() {
           <div className="relative">
             <Icon
               name="search"
-              size={15}
-              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+              size={14}
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-purple-600"
             />
             <input
               type="text"
               placeholder="Search members, invoices, reports..."
-              className="w-full pl-9 pr-12 py-2 rounded-xl bg-slate-50/80 border border-slate-200 text-xs font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
+              className="w-full pl-9 pr-14 py-1.5 rounded-full bg-slate-50/70 border border-slate-200/90 text-xs font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 transition-all"
             />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded-md bg-white border border-slate-200 text-[10px] font-bold text-slate-400 shadow-2xs">
-              ⌘K
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 px-2 py-0.5 rounded-full bg-white border border-slate-200 text-[10px] font-bold text-slate-500 shadow-2xs">
+              Ctrl + K
             </span>
           </div>
         </div>
@@ -365,14 +361,10 @@ export function Topbar() {
                 setShowNotifs(!showNotifs);
                 setShowProfile(false);
               }}
-              className="relative p-2 rounded-xl hover:bg-slate-100 text-slate-600 transition-colors"
+              className="relative p-2 rounded-xl hover:bg-slate-100 text-slate-700 transition-colors"
             >
-              <Icon name="bell" size={19} />
-              {totalNotifBadge > 0 && (
-                <span className="absolute top-1 right-1 px-1 min-w-[18px] h-4 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center border-2 border-white animate-pulse">
-                  {totalNotifBadge}
-                </span>
-              )}
+              <Icon name="bell" size={18} />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 border border-white" />
             </button>
             {showNotifs && (
               <div className="absolute right-0 top-12 w-88 bg-white rounded-3xl p-4 space-y-3 animate-slide-up z-50 shadow-2xl border border-slate-100 max-h-[500px] overflow-y-auto">
@@ -488,8 +480,8 @@ export function Topbar() {
                   }}
                 />
               ) : (
-                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-600 text-white font-extrabold text-xs flex items-center justify-center border border-purple-200/80 shadow-2xs uppercase">
-                  {(user?.name || user?.email?.split('@')[0] || '')
+                <div className="w-8 h-8 rounded-full bg-purple-600 text-white font-black text-xs flex items-center justify-center border border-purple-300 shadow-2xs uppercase shrink-0">
+                  {user?.role === 'ho' ? 'HO' : (user?.name || user?.email?.split('@')[0] || '')
                     .split(' ')
                     .filter(Boolean)
                     .map((n) => n[0])
@@ -499,10 +491,10 @@ export function Topbar() {
                 </div>
               )}
               <div className="hidden sm:flex flex-col items-start leading-tight">
-                <span className="text-xs font-extrabold text-slate-900">{user?.name || user?.email?.split('@')[0] || ''}</span>
-                <span className="text-[10px] font-medium text-slate-400">{roleLabel}</span>
+                <span className="text-xs font-black text-slate-900 leading-none">{user?.name || 'Head Office Administrator'}</span>
+                <span className="text-[10px] font-medium text-slate-400 mt-0.5">{roleLabel}</span>
               </div>
-              <Icon name="chevron-down" size={14} className="text-slate-400 hidden sm:block" />
+              <Icon name="chevron-down" size={12} className="text-slate-400 hidden sm:block" />
             </button>
 
             {showProfile && (
@@ -560,44 +552,6 @@ export function Topbar() {
               </div>
             )}
           </div>
-        </div>
-      </div>
-
-      {/* Horizontal Pill Navigation Bar */}
-      <div className="w-full overflow-x-auto py-2 px-3 sm:px-4 no-scrollbar bg-slate-50/40 border-t border-slate-100/80">
-        <div className="flex items-center gap-2 min-w-max">
-          {items.map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              end={
-                item.path === '/owner' ||
-                item.path === '/ho' ||
-                item.path === '/employee' ||
-                item.path === '/app' ||
-                item.path === '/super-admin'
-              }
-              className={({ isActive }) =>
-                cn(
-                  'px-3.5 py-2 rounded-xl border text-xs flex items-center gap-2 transition-all duration-150 select-none shadow-2xs',
-                  isActive
-                    ? 'bg-purple-50 text-purple-700 border-purple-300 font-extrabold shadow-xs ring-1 ring-purple-300/50'
-                    : 'bg-white text-slate-700 border-slate-200/90 hover:bg-slate-50 hover:text-slate-950 font-bold hover:border-slate-300'
-                )
-              }
-            >
-              {({ isActive }) => (
-                <>
-                  <Icon
-                    name={item.icon}
-                    size={15}
-                    className={cn('shrink-0', isActive ? 'text-purple-700' : 'text-slate-500')}
-                  />
-                  <span>{item.label}</span>
-                </>
-              )}
-            </NavLink>
-          ))}
         </div>
       </div>
     </header>

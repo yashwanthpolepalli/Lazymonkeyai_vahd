@@ -138,6 +138,8 @@ export const HoDashboard: React.FC = () => {
   const [repData, setRepData] = useState<any | null>(null);
   const [loadingRep, setLoadingRep] = useState(false);
   const [branchActiveTab, setBranchActiveTab] = useState<Record<string, 'employees' | 'students'>>({});
+  const [dirSearchTerm, setDirSearchTerm] = useState('');
+  const [showBulkDropdown, setShowBulkDropdown] = useState(false);
 
   // Fetch Dashboard data from Backend API
   const fetchDashboardData = async (orgId?: string) => {
@@ -492,73 +494,87 @@ export const HoDashboard: React.FC = () => {
     return found ? `${found.vahd_name} - ${found.branch_name}` : 'Selected Organization';
   }, [selectedOrgId, data]);
 
+  const filteredOrganizations = useMemo(() => {
+    if (!data?.organizations) return [];
+    if (!dirSearchTerm.trim()) return data.organizations;
+    const term = dirSearchTerm.toLowerCase();
+    return data.organizations.filter(
+      (o) =>
+        (o.vahd_name && o.vahd_name.toLowerCase().includes(term)) ||
+        (o.branch_name && o.branch_name.toLowerCase().includes(term)) ||
+        (o.city && o.city.toLowerCase().includes(term)) ||
+        (o.owner_name && o.owner_name.toLowerCase().includes(term)) ||
+        (o.owners &&
+          o.owners.some(
+            (ow) =>
+              (ow.full_name || ow.name || '').toLowerCase().includes(term) ||
+              ow.email.toLowerCase().includes(term)
+          ))
+    );
+  }, [data?.organizations, dirSearchTerm]);
+
   return (
-    <div className="min-h-screen bg-slate-50/70 w-full px-3 sm:px-4 py-4 space-y-5">
-      {/* ── TOP HEADER SECTION ────────────────────────────────────────────── */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-100 text-purple-700 border border-purple-200">
+    <div className="min-h-full bg-transparent w-full px-4 sm:px-6 py-4 space-y-4">
+      {/* ── TOP BANNER SECTION ────────────────────────────────────────────── */}
+      <div className="relative pt-1 pb-2 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="inline-flex items-center gap-2">
+            <span className="px-3 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-100/90 text-purple-700 border border-purple-200/60 shadow-2xs">
               HEAD OFFICE COMMAND CENTER
             </span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-            {user?.name || 'Head Office'} • Organization Portal
+          <h1 className="text-2xl sm:text-[28px] font-black text-slate-900 tracking-tight leading-tight">
+            Head Office Administrator • Organization Portal
           </h1>
+          <p className="text-xs sm:text-[13px] text-slate-500 font-medium">
+            Manage organizations, branches, staff, and students from a single platform.
+          </p>
         </div>
 
-        {/* Header Right: Action Buttons */}
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Action: Onboard Owner */}
+        {/* Header Right: Onboard Owner Button */}
+        <div className="flex items-center gap-3">
           <button
             onClick={() => handleOpenOnboardModal()}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-xs font-bold shadow-lg shadow-purple-500/25 transition-all transform active:scale-95"
+            className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-gradient-to-r from-blue-600 via-indigo-600 to-orange-500 hover:opacity-95 text-white text-xs font-bold shadow-lg shadow-orange-500/20 transition-all transform active:scale-95 cursor-pointer"
           >
-            <Icon name="user-plus" size={14} />
+            <Icon name="user-plus" size={14} className="text-white" />
             <span>Onboard Owner</span>
-          </button>
-
-          {/* Action: Refresh Data */}
-          <button
-            onClick={() => fetchDashboardData()}
-            className="p-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors"
-            title="Refresh from Database"
-          >
-            <Icon name="refresh-cw" size={15} className={loading ? 'animate-spin' : ''} />
           </button>
         </div>
       </div>
 
       {/* ── HO PORTAL TAB SWITCHER ────────────────────────────────────────── */}
-      <div className="flex items-center gap-2 border-b border-slate-200 pb-3">
+      <div className="flex items-center gap-2.5 overflow-x-auto no-scrollbar pt-1">
         <button
           onClick={() => setHoTab('overview')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer ${hoTab === 'overview'
-            ? 'bg-purple-600 text-white shadow-md shadow-purple-600/25'
-            : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-            }`}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            hoTab === 'overview'
+              ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-orange-500 text-white shadow-md shadow-blue-500/20'
+              : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200/90 shadow-2xs'
+          }`}
         >
-          <Icon name="layout-dashboard" size={15} />
+          <Icon name="layout-grid" size={14} className={hoTab === 'overview' ? 'text-white' : 'text-slate-500'} />
           <span>Dashboard &amp; Directory</span>
         </button>
 
         <button
           onClick={() => navigate('/ho/organisations')}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer bg-white text-slate-700 hover:bg-amber-50 hover:text-amber-900 border border-slate-200 hover:border-amber-300 shadow-2xs"
+          className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer bg-white text-slate-700 hover:bg-slate-50 border border-slate-200/90 shadow-2xs"
           title="View Live Cross-Organization Attendance &amp; Leave Matrix"
         >
-          <Icon name="table" size={15} className="text-amber-600" />
+          <Icon name="layers" size={14} className="text-slate-500" />
           <span>Organisations Matrix</span>
         </button>
 
         <button
           onClick={() => setHoTab('attendance_reports')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer ${hoTab === 'attendance_reports'
-            ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-600/25'
-            : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-            }`}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            hoTab === 'attendance_reports'
+              ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-orange-500 text-white shadow-md shadow-blue-500/20'
+              : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200/90 shadow-2xs'
+          }`}
         >
-          <Icon name="calendar-check" size={15} />
+          <Icon name="file-text" size={14} className={hoTab === 'attendance_reports' ? 'text-white' : 'text-slate-500'} />
           <span>Branch Attendance Reports &amp; Downloads (Excel &amp; PDF)</span>
         </button>
       </div>
@@ -567,475 +583,595 @@ export const HoDashboard: React.FC = () => {
       {hoTab === 'overview' && (
         <>
           {/* ── KPI HIGHLIGHTS CARDS ──────────────────────────────────────────── */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             {/* KPI 1: Organizations Scope */}
             <div
               onClick={() => navigate('/ho/organisations')}
-              className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs relative overflow-hidden group hover:border-purple-300 hover:shadow-md transition-all cursor-pointer"
+              className="rounded-2xl border border-slate-200/90 bg-gradient-to-br from-white via-white to-purple-50/40 p-3.5 sm:p-4 shadow-2xs relative overflow-hidden flex items-start gap-3 group hover:border-purple-300 transition-all cursor-pointer"
               title="Click to view full Organisations Attendance Matrix"
             >
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider group-hover:text-purple-600 transition-colors">Organizations</span>
-                <div className="w-9 h-9 rounded-2xl bg-purple-50 text-purple-600 group-hover:bg-purple-600 group-hover:text-white flex items-center justify-center transition-all">
-                  <Icon name="building-2" size={18} />
-                </div>
+              <div className="w-9 h-9 rounded-xl bg-purple-50/90 border border-purple-100 flex items-center justify-center shrink-0">
+                <Icon name="building-2" size={17} className="text-purple-600" />
               </div>
-              <div className="space-y-1">
-                <div className="text-2xl sm:text-3xl font-black text-slate-900">
-                  {data?.is_filtered ? '1 Selected' : data?.total_organizations ?? 0}
+              <div className="space-y-0.5 min-w-0">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-800 block">
+                  ORGANIZATIONS
+                </span>
+                <div className="text-xl sm:text-2xl font-black text-slate-900 leading-tight">
+                  {data?.is_filtered ? '1' : data?.total_organizations ?? 0}
                 </div>
-                <p className="text-[11px] font-semibold text-slate-500 group-hover:text-purple-600 transition-colors flex items-center gap-1">
-                  <span>{data?.is_filtered ? data.selected_organization_name : 'Active branches under Head Office'}</span>
-                  <Icon name="arrow-up-right" size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                <p className="text-[11px] text-slate-400 font-medium truncate pt-0.5">
+                  Active branches under Head Office
                 </p>
               </div>
+              <div className="absolute -bottom-6 -right-6 w-20 h-20 bg-purple-100/40 rounded-full blur-xl pointer-events-none" />
             </div>
 
             {/* KPI 2: Total Employees */}
-            <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs relative overflow-hidden group hover:border-emerald-300 transition-all">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Staff</span>
-                <div className="w-9 h-9 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                  <Icon name="users" size={18} />
-                </div>
+            <div className="rounded-2xl border-2 border-sky-400/90 bg-gradient-to-br from-white via-sky-50/30 to-sky-100/50 p-3.5 sm:p-4 shadow-2xs relative overflow-hidden flex items-start gap-3 group hover:border-sky-500 transition-all">
+              <div className="w-9 h-9 rounded-xl bg-sky-50 border border-sky-100 flex items-center justify-center shrink-0">
+                <Icon name="users" size={17} className="text-sky-500" />
               </div>
-              <div className="space-y-1">
-                <div className="text-2xl sm:text-3xl font-black text-slate-900">
+              <div className="space-y-0.5 min-w-0">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-800 block">
+                  TOTAL STAFF
+                </span>
+                <div className="text-xl sm:text-2xl font-black text-slate-900 leading-tight">
                   {data?.total_employees ?? 0}
                 </div>
-                <p className="text-[11px] font-semibold text-emerald-600 flex items-center gap-1">
-                  <span>●</span> Active HRMS employees
+                <p className="text-[11px] text-emerald-600 font-bold flex items-center gap-1.5 pt-0.5 truncate">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block shrink-0" />
+                  <span>Active HRMS employees</span>
                 </p>
               </div>
+              <div className="absolute -bottom-6 -right-6 w-24 h-24 bg-sky-200/40 rounded-full blur-xl pointer-events-none" />
             </div>
 
             {/* KPI 3: Total Students */}
-            <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs relative overflow-hidden group hover:border-blue-300 transition-all">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Students</span>
-                <div className="w-9 h-9 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
-                  <Icon name="user-check" size={18} />
-                </div>
+            <div className="rounded-2xl border border-amber-300/90 bg-gradient-to-br from-white via-amber-50/20 to-amber-100/40 p-3.5 sm:p-4 shadow-2xs relative overflow-hidden flex items-start gap-3 group hover:border-amber-400 transition-all">
+              <div className="w-9 h-9 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center shrink-0">
+                <Icon name="graduation-cap" size={17} className="text-amber-600" />
               </div>
-              <div className="space-y-1">
-                <div className="text-2xl sm:text-3xl font-black text-slate-900">
+              <div className="space-y-0.5 min-w-0">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-800 block">
+                  TOTAL STUDENTS
+                </span>
+                <div className="text-xl sm:text-2xl font-black text-slate-900 leading-tight">
                   {data?.total_students ?? 0}
                 </div>
-                <p className="text-[11px] font-semibold text-blue-600">
+                <p className="text-[11px] text-blue-600 font-medium truncate pt-0.5">
                   Enrolled students
                 </p>
               </div>
+              <div className="absolute -bottom-6 -right-6 w-24 h-24 bg-amber-200/40 rounded-full blur-xl pointer-events-none" />
             </div>
 
-            {/* KPI 4: Live Attendance Today */}
-            <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs relative overflow-hidden group hover:border-amber-300 transition-all">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Today's Attendance</span>
-                <div className="w-9 h-9 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center">
-                  <Icon name="activity" size={18} />
-                </div>
+            {/* KPI 4: Today's Attendance */}
+            <div className="rounded-2xl border border-slate-200/90 bg-gradient-to-br from-white via-rose-50/20 to-rose-100/40 p-3.5 sm:p-4 shadow-2xs relative overflow-hidden flex items-start gap-3 group hover:border-rose-300 transition-all">
+              <div className="w-9 h-9 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center shrink-0">
+                <Icon name="activity" size={17} className="text-rose-500" />
               </div>
-              <div className="space-y-1">
-                <div className="text-2xl sm:text-3xl font-black text-slate-900">
+              <div className="space-y-0.5 min-w-0">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-800 block">
+                  TODAY'S ATTENDANCE
+                </span>
+                <div className="text-xl sm:text-2xl font-black text-slate-900 leading-tight">
                   {data?.today_punches ?? 0}
                 </div>
-                <p className="text-[11px] font-semibold text-amber-600">
+                <p className="text-[11px] text-amber-600 font-medium truncate pt-0.5">
                   {data?.attendance_rate ?? 0}% overall check-in rate
                 </p>
               </div>
+              <div className="absolute -bottom-6 -right-6 w-24 h-24 bg-rose-200/40 rounded-full blur-xl pointer-events-none" />
             </div>
           </div>
 
-
           {/* ── ORGANIZATIONS DIRECTORY & ONBOARDED OWNERS TABLE ─────────────── */}
-          <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
-            <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h3 className="text-lg font-black text-slate-900 tracking-tight">Institutions &amp; Branch Directory</h3>
-                <p className="text-xs text-slate-500 font-medium mt-0.5">
-                  Live mapping of Head Office institutions, assigned owners, and current personnel.
-                </p>
+          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+            <div className="p-4 sm:p-5 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              {/* Left: Icon + Title & Subtitle */}
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 border border-purple-100 flex items-center justify-center shrink-0">
+                  <Icon name="building-2" size={17} />
+                </div>
+                <div>
+                  <h3 className="text-sm sm:text-base font-black text-slate-900 tracking-tight leading-snug">
+                    Institutions &amp; Branch Directory
+                  </h3>
+                  <p className="text-[11px] sm:text-xs text-slate-400 font-normal">
+                    Live mapping of Head Office institutions, assigned owners, and current personnel.
+                  </p>
+                </div>
               </div>
-              {(selectedOrgIds.length > 0 || selectedOwnerIds.length > 0) ? (
-                <div className="flex flex-wrap items-center gap-2 bg-purple-50 border border-purple-200/80 rounded-2xl p-1.5 px-3 animate-in fade-in">
-                  {/* Selected Owners Action Bar */}
-                  {selectedOwnerIds.length > 0 && (
-                    <div className="flex items-center gap-2 pr-2 border-r border-purple-200/80">
-                      <span className="text-xs font-black text-rose-900 flex items-center gap-1.5 bg-rose-100/90 border border-rose-200 px-2.5 py-1 rounded-xl">
-                        <span className="w-4 h-4 rounded-full bg-rose-600 text-white flex items-center justify-center text-[10px] font-black">
-                          {selectedOwnerIds.length}
-                        </span>
-                        <span>{selectedOwnerIds.length === 1 ? 'Owner' : 'Owners'} Selected</span>
-                      </span>
 
+              {/* Right Controls */}
+              <div className="flex flex-wrap items-center gap-2.5">
+                {/* Search Input Pill */}
+                <div className="relative">
+                  <Icon name="search" size={13} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-purple-600" />
+                  <input
+                    type="text"
+                    value={dirSearchTerm}
+                    onChange={(e) => setDirSearchTerm(e.target.value)}
+                    placeholder="Search institutions or branches..."
+                    className="pl-9 pr-3.5 py-1.5 rounded-full border border-slate-200/90 bg-white text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-300 w-52 sm:w-64 transition-all"
+                  />
+                </div>
+
+                {/* Filter Button */}
+                <button
+                  type="button"
+                  onClick={() => {}}
+                  className="w-8 h-8 rounded-xl border border-slate-200/90 bg-white hover:bg-slate-50 text-blue-600 flex items-center justify-center shadow-2xs transition-colors cursor-pointer"
+                  title="Filter Directory"
+                >
+                  <Icon name="filter" size={13} />
+                </button>
+
+                {/* Bulk Actions Dropdown */}
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setShowBulkDropdown(!showBulkDropdown)}
+                    className="px-3 py-1.5 rounded-xl border border-slate-200/90 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+                  >
+                    <span>Bulk Actions</span>
+                    <Icon name="chevron-down" size={12} className="text-slate-500" />
+                  </button>
+                  {showBulkDropdown && (
+                    <div className="absolute right-0 top-9 w-48 bg-white rounded-xl p-1.5 shadow-xl border border-slate-200 z-30 text-xs animate-in fade-in">
                       <button
-                        type="button"
-                        onClick={handleOpenDeleteOwnersModal}
-                        className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
-                        title="Delete selected owner accounts without deleting the organisation"
+                        onClick={() => {
+                          handleToggleSelectAll();
+                          setShowBulkDropdown(false);
+                        }}
+                        className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-slate-50 text-slate-700 font-medium cursor-pointer"
                       >
-                        <Icon name="trash-2" size={13} />
-                        <span>Delete {selectedOwnerIds.length === 1 ? 'Owner' : `(${selectedOwnerIds.length}) Owners`}</span>
+                        {selectedOrgIds.length === (data?.organizations?.length || 0) ? 'Deselect All' : 'Select All'}
                       </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setSelectedOwnerIds([])}
-                        className="text-xs text-slate-500 hover:text-slate-800 font-bold px-2 py-1 cursor-pointer"
-                      >
-                        Clear Owners
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Selected Organisations Action Bar */}
-                  {selectedOrgIds.length > 0 && (
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-black text-purple-900 flex items-center gap-1.5">
-                        <span className="w-5 h-5 rounded-full bg-purple-600 text-white flex items-center justify-center text-[10px] font-black">
-                          {selectedOrgIds.length}
-                        </span>
-                        <span>{selectedOrgIds.length === 1 ? 'Institution' : 'Institutions'} Selected</span>
-                      </span>
-
-                      {selectedOrgIds.length === 1 && (
+                      {selectedOrgIds.length > 0 && (
                         <button
-                          type="button"
-                          onClick={() => handleOpenEditCredentials(selectedOrgIds[0])}
-                          className="px-3 py-1.5 rounded-xl bg-white hover:bg-purple-100 text-purple-700 border border-purple-200 text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+                          onClick={() => {
+                            setShowBulkDropdown(false);
+                            handleOpenDeleteModal(selectedOrgIds);
+                          }}
+                          className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-rose-50 text-rose-600 font-bold cursor-pointer"
                         >
-                          <Icon name="key" size={13} />
-                          <span>Edit Credentials</span>
+                          Delete Selected ({selectedOrgIds.length})
                         </button>
                       )}
-
-                      <button
-                        type="button"
-                        onClick={() => handleOpenDeleteModal(selectedOrgIds)}
-                        className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
-                      >
-                        <Icon name="trash-2" size={13} />
-                        <span>Delete {selectedOrgIds.length === 1 ? 'Institution' : `(${selectedOrgIds.length}) Institutions`}</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setSelectedOrgIds([])}
-                        className="text-xs text-slate-500 hover:text-slate-800 font-bold px-2 py-1 cursor-pointer"
-                      >
-                        Clear Selection
-                      </button>
+                      {selectedOwnerIds.length > 0 && (
+                        <button
+                          onClick={() => {
+                            setShowBulkDropdown(false);
+                            handleOpenDeleteOwnersModal();
+                          }}
+                          className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-rose-50 text-rose-600 font-bold cursor-pointer"
+                        >
+                          Delete Selected Owners ({selectedOwnerIds.length})
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
-              ) : (
-                <div className="text-xs text-slate-400 font-medium hidden sm:block">
-                  Select checkboxes on institutions or individual owners to edit or delete
-                </div>
-              )}
+
+                {/* + Add Institution / Branch Button */}
+                <button
+                  type="button"
+                  onClick={() => handleOpenOnboardModal()}
+                  className="px-4 py-1.5 rounded-full bg-gradient-to-r from-blue-600 via-indigo-600 to-orange-500 text-white text-xs font-bold shadow-xs shadow-orange-500/20 hover:opacity-95 flex items-center gap-1.5 transition-all cursor-pointer"
+                >
+                  <Icon name="plus" size={13} className="text-white" />
+                  <span>Add Institution / Branch</span>
+                </button>
+              </div>
             </div>
+
+            {/* Active selection banner if items are checked */}
+            {(selectedOrgIds.length > 0 || selectedOwnerIds.length > 0) && (
+              <div className="px-4 py-2 bg-purple-50/70 border-b border-purple-100 flex items-center justify-between text-xs animate-in fade-in">
+                <div className="flex items-center gap-2">
+                  {selectedOrgIds.length > 0 && (
+                    <span className="font-bold text-purple-900">
+                      {selectedOrgIds.length} {selectedOrgIds.length === 1 ? 'Institution' : 'Institutions'} selected
+                    </span>
+                  )}
+                  {selectedOwnerIds.length > 0 && (
+                    <span className="font-bold text-rose-900 ml-2">
+                      {selectedOwnerIds.length} {selectedOwnerIds.length === 1 ? 'Owner' : 'Owners'} selected
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  {selectedOrgIds.length === 1 && (
+                    <button
+                      onClick={() => handleOpenEditCredentials(selectedOrgIds[0])}
+                      className="px-2.5 py-1 rounded-lg bg-white border border-purple-200 text-purple-700 font-bold hover:bg-purple-50 cursor-pointer"
+                    >
+                      Edit Credentials
+                    </button>
+                  )}
+                  {selectedOrgIds.length > 0 && (
+                    <button
+                      onClick={() => handleOpenDeleteModal(selectedOrgIds)}
+                      className="px-2.5 py-1 rounded-lg bg-rose-600 text-white font-bold hover:bg-rose-700 cursor-pointer"
+                    >
+                      Delete
+                    </button>
+                  )}
+                  <button
+                    onClick={() => {
+                      setSelectedOrgIds([]);
+                      setSelectedOwnerIds([]);
+                    }}
+                    className="text-slate-500 hover:text-slate-800 font-bold px-2 py-1 cursor-pointer"
+                  >
+                    Clear Selection
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Directory Table */}
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50/80 text-slate-500 font-bold uppercase text-[10px] tracking-wider border-b border-slate-100">
+                <thead className="bg-white text-slate-700 font-bold uppercase text-[10px] tracking-wider border-b border-slate-100">
                   <tr>
                     <th className="w-10 py-3.5 px-4 text-center">
                       <input
                         type="checkbox"
                         checked={Boolean(
-                          data?.organizations &&
-                          data.organizations.length > 0 &&
-                          selectedOrgIds.length === data.organizations.length
+                          filteredOrganizations.length > 0 &&
+                          selectedOrgIds.length === filteredOrganizations.length
                         )}
                         onChange={handleToggleSelectAll}
                         className="w-4 h-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
                         title="Select All"
                       />
                     </th>
-                    <th className="py-3.5 px-4">Institution &amp; Branch</th>
-                    <th className="py-3.5 px-4">Onboarded Owner</th>
-                    <th className="py-3.5 px-4">Location</th>
-                    <th className="py-3.5 px-4 text-center">Emp</th>
-                    <th className="py-3.5 px-4 text-center">Students</th>
-                    <th className="py-3.5 px-4 text-right">Actions</th>
+                    <th className="py-3.5 px-4 text-[10px] font-black uppercase tracking-wider text-slate-700">
+                      INSTITUTION &amp; BRANCH
+                    </th>
+                    <th className="py-3.5 px-4 text-[10px] font-black uppercase tracking-wider text-slate-700">
+                      ONBOARDED OWNER
+                    </th>
+                    <th className="py-3.5 px-4 text-[10px] font-black uppercase tracking-wider text-slate-700">
+                      <div className="flex items-center gap-1">
+                        <Icon name="map-pin" size={12} className="text-purple-600" />
+                        <span>LOCATION</span>
+                      </div>
+                    </th>
+                    <th className="py-3.5 px-4 text-center text-[10px] font-black uppercase tracking-wider text-slate-700">
+                      <div className="flex items-center justify-center gap-1">
+                        <Icon name="users" size={12} className="text-slate-500" />
+                        <span>EMP</span>
+                      </div>
+                    </th>
+                    <th className="py-3.5 px-4 text-center text-[10px] font-black uppercase tracking-wider text-slate-700">
+                      <div className="flex items-center justify-center gap-1">
+                        <Icon name="graduation-cap" size={12} className="text-slate-500" />
+                        <span>STUDENTS</span>
+                      </div>
+                    </th>
+                    <th className="py-3.5 px-4 text-right text-[10px] font-black uppercase tracking-wider text-slate-700">
+                      ACTIONS
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-700">
-                  {data?.organizations && data.organizations.length > 0 ? (
-                    data.organizations.map((org) => {
+                  {filteredOrganizations.length > 0 ? (
+                    filteredOrganizations.map((org) => {
                       const isCurrentSelected = selectedOrgId === org.id;
                       const isChecked = selectedOrgIds.includes(org.id);
+
+                      // Compute primary owner display info
+                      const primaryOwner = org.owners?.find((o) => o.is_primary) || org.owners?.[0];
+                      const ownerDisplayName = primaryOwner?.full_name || primaryOwner?.name || org.owner_name || 'No Owner Assigned';
+                      const ownerInitials = ownerDisplayName
+                        .split(' ')
+                        .filter(Boolean)
+                        .map((p) => p[0])
+                        .join('')
+                        .slice(0, 2)
+                        .toUpperCase() || 'OW';
+                      const isMultiOwner = (org.owners?.length || 0) > 1;
+                      const isCollapsed = collapsedHierarchyOrgIds.includes(org.id);
+
                       return (
-                        <tr
-                          key={org.id}
-                          className={`hover:bg-slate-50/80 transition-colors ${isChecked
-                            ? 'bg-purple-50/60'
-                            : isCurrentSelected
-                              ? 'bg-purple-50/30 font-semibold'
-                              : ''
+                        <React.Fragment key={org.id}>
+                          <tr
+                            className={`hover:bg-slate-50/80 transition-colors ${
+                              isChecked
+                                ? 'bg-purple-50/50'
+                                : isCurrentSelected
+                                  ? 'bg-purple-50/20'
+                                  : 'bg-white'
                             }`}
-                        >
-                          {/* Checkbox */}
-                          <td className="py-4 px-4 text-center" onClick={(e) => e.stopPropagation()}>
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
-                              onChange={() => handleToggleSelectOrg(org.id)}
-                              className="w-4 h-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
-                            />
-                          </td>
+                          >
+                            {/* Checkbox */}
+                            <td className="py-3.5 px-4 text-center" onClick={(e) => e.stopPropagation()}>
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => handleToggleSelectOrg(org.id)}
+                                className="w-4 h-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
+                              />
+                            </td>
 
-                          {/* Organization & Branch */}
-                          <td className="py-4 px-4">
-                            <div className="flex items-center gap-3">
-                              <div className="w-9 h-9 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-xs shrink-0">
-                                <Icon name="building-2" size={16} />
+                            {/* Institution & Branch */}
+                            <td className="py-3.5 px-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 border border-purple-100 flex items-center justify-center shrink-0">
+                                  <Icon name="building-2" size={15} />
+                                </div>
+                                <div className="h-6 w-[1px] bg-slate-200 shrink-0" />
+                                <div>
+                                  <p className="font-extrabold text-slate-900 text-xs leading-snug">
+                                    {org.vahd_name}
+                                  </p>
+                                  <span className="text-[11px] text-slate-400 font-normal">
+                                    {org.branch_name || org.vahd_name}
+                                  </span>
+                                </div>
                               </div>
-                              <div>
-                                <p className="font-extrabold text-slate-900 text-sm">{org.vahd_name}</p>
-                                <span className="text-[11px] text-slate-400 font-medium">{org.branch_name}</span>
-                              </div>
-                            </div>
-                          </td>
+                            </td>
 
-                          {/* Onboarded Owner Column: Hierarchy Tree & Dropdown */}
-                          <td className="py-4 px-4 align-top">
-                            {org.owners && org.owners.length > 0 ? (
-                              (() => {
-                                const isCollapsed = collapsedHierarchyOrgIds.includes(org.id);
-                                return (
-                                  <div className="space-y-2 max-w-sm">
-                                    {/* Hierarchy Header & Dropdown Toggle */}
-                                    <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-slate-100">
-                                      <div className="flex items-center gap-1.5">
-                                        <span className="w-5 h-5 rounded-md bg-purple-100 text-purple-700 flex items-center justify-center text-[10px] font-black">
-                                          <Icon name="git-branch" size={11} />
-                                        </span>
-                                        <span className="text-[11px] font-extrabold text-slate-800 tracking-tight">
-                                          User Hierarchy
-                                        </span>
-                                        <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-slate-100 text-slate-600">
-                                          {org.owners.length} {org.owners.length > 1 ? 'Owners' : 'Owner'}
-                                        </span>
+                            {/* Onboarded Owner Column: Hierarchy Tree & Dropdown */}
+                            <td className="py-4 px-4 align-top">
+                              {org.owners && org.owners.length > 0 ? (
+                                (() => {
+                                  const isCollapsed = collapsedHierarchyOrgIds.includes(org.id);
+                                  return (
+                                    <div className="space-y-1.5 max-w-sm">
+                                      {/* Hierarchy Header & Dropdown Toggle */}
+                                      <div className="flex items-center justify-between gap-2 pb-1 border-b border-slate-100">
+                                        <div className="flex items-center gap-1.5">
+                                          <span className="w-5 h-5 rounded-md bg-purple-100 text-purple-700 flex items-center justify-center text-[10px] font-black shrink-0">
+                                            <Icon name="git-branch" size={11} />
+                                          </span>
+                                          <span className="text-[11px] font-extrabold text-slate-800 tracking-tight">
+                                            User Hierarchy
+                                          </span>
+                                          <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-slate-100 text-slate-600">
+                                            {org.owners.length} {org.owners.length > 1 ? 'Owners' : 'Owner'}
+                                          </span>
+                                        </div>
+
+                                        {org.owners.length > 1 && (
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              toggleOrgHierarchy(org.id);
+                                            }}
+                                            className="text-[10px] font-bold text-purple-600 hover:text-purple-800 flex items-center gap-0.5 px-1.5 py-0.5 rounded-md hover:bg-purple-50 transition-colors cursor-pointer"
+                                          >
+                                            <span>{isCollapsed ? 'Expand' : 'Collapse'}</span>
+                                            <Icon name={isCollapsed ? 'chevron-down' : 'chevron-up'} size={11} />
+                                          </button>
+                                        )}
                                       </div>
 
-                                      {org.owners.length > 1 && (
-                                        <button
-                                          type="button"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            toggleOrgHierarchy(org.id);
-                                          }}
-                                          className="text-[10px] font-bold text-purple-600 hover:text-purple-800 flex items-center gap-0.5 px-1.5 py-0.5 rounded-md hover:bg-purple-50 transition-colors cursor-pointer"
-                                        >
-                                          <span>{isCollapsed ? 'Expand' : 'Collapse'}</span>
-                                          <Icon name={isCollapsed ? 'chevron-down' : 'chevron-up'} size={11} />
-                                        </button>
-                                      )}
-                                    </div>
+                                      {/* Tree Nodes */}
+                                      {!isCollapsed ? (
+                                        <div className="relative pl-3 space-y-2 border-l-2 border-purple-200/90 ml-2 mt-1.5">
+                                          {org.owners.map((owner, idx) => {
+                                            const isOwnerChecked = selectedOwnerIds.includes(owner.id);
+                                            const isPrimary = Boolean(owner.is_primary);
 
-                                    {/* Tree Nodes */}
-                                    {!isCollapsed ? (
-                                      <div className="relative pl-3 space-y-2 border-l-2 border-purple-200/90 ml-2 mt-1">
-                                        {org.owners.map((owner, idx) => {
-                                          const isOwnerChecked = selectedOwnerIds.includes(owner.id);
-                                          const isPrimary = Boolean(owner.is_primary);
+                                            return (
+                                              <div key={owner.id || idx} className="relative group">
+                                                {/* Horizontal branch connector line */}
+                                                <div className="absolute -left-3 top-3.5 w-3 h-0.5 bg-purple-200/90" />
 
-                                          return (
-                                            <div key={owner.id || idx} className="relative group">
-                                              {/* Horizontal branch connector line */}
-                                              <div className="absolute -left-3 top-3.5 w-3 h-0.5 bg-purple-200/90" />
-
-                                              <div
-                                                className={`p-2.5 rounded-xl border transition-all ${isOwnerChecked
-                                                  ? 'bg-purple-50/95 border-purple-300 shadow-xs ring-1 ring-purple-400'
-                                                  : 'bg-slate-50/80 hover:bg-slate-50 border-slate-200/80 hover:border-slate-300'
+                                                <div
+                                                  className={`p-2.5 rounded-xl border transition-all ${
+                                                    isOwnerChecked
+                                                      ? 'bg-purple-50/95 border-purple-300 shadow-xs ring-1 ring-purple-400'
+                                                      : 'bg-white hover:bg-slate-50 border-slate-200/80 hover:border-slate-300'
                                                   }`}
-                                              >
-                                                <div className="flex items-start justify-between gap-2">
-                                                  <div className="flex items-start gap-2 min-w-0">
-                                                    {/* Particular Owner Checkbox */}
-                                                    <input
-                                                      type="checkbox"
-                                                      checked={isOwnerChecked}
-                                                      onChange={() => handleToggleSelectOwner(owner.id)}
-                                                      onClick={(e) => e.stopPropagation()}
-                                                      className="w-4 h-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500 cursor-pointer mt-0.5 shrink-0"
-                                                      title={`Select ${owner.full_name || owner.name} to delete or manage`}
-                                                    />
+                                                >
+                                                  <div className="flex items-start justify-between gap-2">
+                                                    <div className="flex items-start gap-2 min-w-0">
+                                                      {/* Particular Owner Checkbox */}
+                                                      <input
+                                                        type="checkbox"
+                                                        checked={isOwnerChecked}
+                                                        onChange={() => handleToggleSelectOwner(owner.id)}
+                                                        onClick={(e) => e.stopPropagation()}
+                                                        className="w-4 h-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500 cursor-pointer mt-0.5 shrink-0"
+                                                        title={`Select ${owner.full_name || owner.name} to delete or manage`}
+                                                      />
 
-                                                    {/* Avatar Icon */}
-                                                    <div
-                                                      className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${isPrimary
-                                                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                                                        : 'bg-purple-100 text-purple-800 border border-purple-200'
+                                                      {/* Avatar Icon */}
+                                                      <div
+                                                        className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
+                                                          isPrimary
+                                                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                                            : 'bg-purple-100 text-purple-800 border border-purple-200'
                                                         }`}
-                                                    >
-                                                      {isPrimary ? '👑' : <Icon name="user" size={13} />}
-                                                    </div>
-
-                                                    {/* Owner Details */}
-                                                    <div className="min-w-0 space-y-0.5">
-                                                      <div className="flex items-center gap-1.5 flex-wrap">
-                                                        <span className="font-extrabold text-slate-900 text-xs truncate">
-                                                          {owner.full_name || owner.name}
-                                                        </span>
-                                                        {owner.role_title && (
-                                                          <span className="text-[9px] font-semibold px-1.5 py-0.2 rounded bg-purple-50 text-purple-700 border border-purple-100">
-                                                            {owner.role_title}
-                                                          </span>
-                                                        )}
-                                                        <span
-                                                          className={`text-[9px] font-black uppercase px-1.5 py-0.2 rounded ${isPrimary
-                                                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                                            : 'bg-slate-100 text-slate-600 border border-slate-200'
-                                                            }`}
-                                                        >
-                                                          {isPrimary ? 'Primary Owner' : 'Co-Owner'}
-                                                        </span>
+                                                      >
+                                                        {isPrimary ? '👑' : <Icon name="user" size={13} />}
                                                       </div>
 
-                                                      <p className="text-[11px] text-slate-500 font-medium truncate">
-                                                        {owner.email}
-                                                      </p>
+                                                      {/* Owner Details */}
+                                                      <div className="min-w-0 space-y-0.5">
+                                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                                          <span className="font-extrabold text-slate-900 text-xs truncate">
+                                                            {owner.full_name || owner.name}
+                                                          </span>
+                                                          {owner.role_title && (
+                                                            <span className="text-[9px] font-semibold px-1.5 py-0.2 rounded bg-purple-50 text-purple-700 border border-purple-100">
+                                                              {owner.role_title}
+                                                            </span>
+                                                          )}
+                                                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-purple-50 text-purple-700 border border-purple-100">
+                                                            Owner
+                                                          </span>
+                                                        </div>
 
-                                                      {owner.phone && (
-                                                        <p className="text-[10px] text-slate-400 font-medium flex items-center gap-1">
-                                                          <span>📞</span>
-                                                          <span>{owner.phone}</span>
+                                                        <div>
+                                                          <span
+                                                            className={`text-[9px] font-black uppercase px-1.5 py-0.2 rounded ${
+                                                              isPrimary
+                                                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                                                : 'bg-slate-100 text-slate-600 border border-slate-200'
+                                                            }`}
+                                                          >
+                                                            {isPrimary ? 'PRIMARY OWNER' : 'Co-Owner'}
+                                                          </span>
+                                                        </div>
+
+                                                        <p className="text-[11px] text-slate-500 font-medium truncate pt-0.5">
+                                                          {owner.email}
                                                         </p>
-                                                      )}
-                                                    </div>
-                                                  </div>
 
-                                                  {/* Quick Individual Owner Action Buttons */}
-                                                  <div className="flex items-center gap-1 shrink-0 opacity-70 group-hover:opacity-100 transition-opacity">
-                                                    <button
-                                                      type="button"
-                                                      onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleOpenEditOwnerSpecific(org, owner);
-                                                      }}
-                                                      className="p-1 rounded-md bg-white hover:bg-purple-50 text-slate-500 hover:text-purple-700 border border-slate-200 hover:border-purple-200 transition-colors shadow-2xs cursor-pointer"
-                                                      title={`Edit credentials for ${owner.full_name || owner.name}`}
-                                                    >
-                                                      <Icon name="key" size={11} />
-                                                    </button>
-                                                    <button
-                                                      type="button"
-                                                      onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleOpenDeleteSingleOwner(org, owner);
-                                                      }}
-                                                      className="p-1 rounded-md bg-white hover:bg-rose-50 text-slate-400 hover:text-rose-600 border border-slate-200 hover:border-rose-200 transition-colors shadow-2xs cursor-pointer"
-                                                      title={`Delete owner ${owner.full_name || owner.name}`}
-                                                    >
-                                                      <Icon name="trash-2" size={11} />
-                                                    </button>
+                                                        {owner.phone && (
+                                                          <p className="text-[10px] text-slate-400 font-medium flex items-center gap-1">
+                                                            <span>📞</span>
+                                                            <span>{owner.phone}</span>
+                                                          </p>
+                                                        )}
+                                                      </div>
+                                                    </div>
+
+                                                    {/* Quick Individual Owner Action Buttons */}
+                                                    <div className="flex items-center gap-1 shrink-0 opacity-70 group-hover:opacity-100 transition-opacity">
+                                                      <button
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                          e.stopPropagation();
+                                                          handleOpenEditOwnerSpecific(org, owner);
+                                                        }}
+                                                        className="p-1 rounded-md bg-white hover:bg-purple-50 text-slate-400 hover:text-purple-700 border border-slate-200 hover:border-purple-200 transition-colors shadow-2xs cursor-pointer"
+                                                        title={`Edit credentials for ${owner.full_name || owner.name}`}
+                                                      >
+                                                        <Icon name="key" size={11} />
+                                                      </button>
+                                                      <button
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                          e.stopPropagation();
+                                                          handleOpenDeleteSingleOwner(org, owner);
+                                                        }}
+                                                        className="p-1 rounded-md bg-white hover:bg-rose-50 text-slate-400 hover:text-rose-600 border border-slate-200 hover:border-rose-200 transition-colors shadow-2xs cursor-pointer"
+                                                        title={`Delete owner ${owner.full_name || owner.name}`}
+                                                      >
+                                                        <Icon name="trash-2" size={11} />
+                                                      </button>
+                                                    </div>
                                                   </div>
                                                 </div>
                                               </div>
-                                            </div>
-                                          );
-                                        })}
-                                      </div>
-                                    ) : (
-                                      /* Collapsed Summary Pill */
-                                      <div
-                                        onClick={() => toggleOrgHierarchy(org.id)}
-                                        className="p-2.5 rounded-xl bg-slate-50 hover:bg-purple-50/60 border border-slate-200/80 cursor-pointer flex items-center justify-between text-xs transition-colors"
-                                      >
-                                        <div className="flex items-center gap-2">
-                                          <span className="font-bold text-slate-800">
-                                            {org.owner_name || (org.owners[0]?.full_name || org.owners[0]?.name)}
-                                          </span>
-                                          <span className="text-[10px] font-bold text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded-md border border-purple-100">
-                                            +{org.owners.length - 1} co-owners
+                                            );
+                                          })}
+                                        </div>
+                                      ) : (
+                                        /* Collapsed Summary Pill */
+                                        <div
+                                          onClick={() => toggleOrgHierarchy(org.id)}
+                                          className="p-2.5 rounded-xl bg-slate-50 hover:bg-purple-50/60 border border-slate-200/80 cursor-pointer flex items-center justify-between text-xs transition-colors"
+                                        >
+                                          <div className="flex items-center gap-2">
+                                            <span className="font-bold text-slate-800">
+                                              {org.owner_name || (org.owners[0]?.full_name || org.owners[0]?.name)}
+                                            </span>
+                                            <span className="text-[10px] font-bold text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded-md border border-purple-100">
+                                              +{org.owners.length - 1} co-owners
+                                            </span>
+                                          </div>
+                                          <span className="text-[10px] font-bold text-slate-400 flex items-center gap-0.5">
+                                            <span>View Tree</span>
+                                            <Icon name="chevron-down" size={11} />
                                           </span>
                                         </div>
-                                        <span className="text-[10px] font-bold text-slate-400 flex items-center gap-0.5">
-                                          <span>View Tree</span>
-                                          <Icon name="chevron-down" size={11} />
-                                        </span>
-                                      </div>
-                                    )}
+                                      )}
+                                    </div>
+                                  );
+                                })()
+                              ) : org.owner_name ? (
+                                <div className="space-y-1">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="font-extrabold text-slate-900 text-xs">{org.owner_name}</span>
+                                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-purple-50 text-purple-700 border border-purple-100">
+                                      Owner
+                                    </span>
                                   </div>
-                                );
-                              })()
-                            ) : org.owner_name ? (
-                              <div>
-                                <p className="font-bold text-slate-900">{org.owner_name}</p>
-                                <p className="text-[11px] text-slate-500">{org.owner_email}</p>
-                                {org.owner_phone && (
-                                  <p className="text-[10px] text-slate-400">📞 {org.owner_phone}</p>
-                                )}
+                                  <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                    PRIMARY OWNER
+                                  </span>
+                                  <p className="text-[11px] text-slate-500">{org.owner_email}</p>
+                                  {org.owner_phone && (
+                                    <p className="text-[10px] text-slate-400">📞 {org.owner_phone}</p>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-1.5 text-amber-600 font-bold text-[11px]">
+                                  <Icon name="alert-circle" size={13} />
+                                  <span>No Owner Assigned</span>
+                                </div>
+                              )}
+                            </td>
+
+                            {/* Location */}
+                            <td className="py-3.5 px-4">
+                              <div className="flex items-center gap-1.5 text-xs text-slate-700 font-medium">
+                                <Icon name="map-pin" size={13} className="text-slate-400 shrink-0" />
+                                <span>{org.city || 'Hyderabad'}</span>
                               </div>
-                            ) : (
-                              <div className="flex items-center gap-1.5 text-amber-600 font-bold text-[11px]">
-                                <Icon name="alert-circle" size={13} />
-                                <span>No Owner Assigned</span>
+                            </td>
+
+                            {/* EMP */}
+                            <td className="py-3.5 px-4 text-center">
+                              <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-extrabold text-xs inline-block">
+                                {org.employee_count}
+                              </span>
+                            </td>
+
+                            {/* STUDENTS */}
+                            <td className="py-3.5 px-4 text-center">
+                              <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-extrabold text-xs inline-block">
+                                {org.student_count}
+                              </span>
+                            </td>
+
+                            {/* ACTIONS */}
+                            <td className="py-3.5 px-4 text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <button
+                                  onClick={() => handleSelectOrganization(org.id)}
+                                  className="px-3 py-1 rounded-full border border-slate-200 bg-white hover:bg-slate-50 text-xs font-bold text-slate-800 shadow-2xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                                  title="Switch to this branch view"
+                                >
+                                  <Icon name="arrow-left-right" size={12} className="text-slate-600" />
+                                  <span>Switch View</span>
+                                </button>
+
+                                <button
+                                  onClick={() => handleOpenEditCredentials(org)}
+                                  className="w-7 h-7 rounded-full bg-purple-50 hover:bg-purple-100 text-purple-600 border border-purple-200/60 flex items-center justify-center transition-colors cursor-pointer shadow-2xs"
+                                  title="Edit Owner Credentials"
+                                >
+                                  <Icon name="pencil" size={12} />
+                                </button>
+
+                                <button
+                                  onClick={() => handleOpenDeleteModal([org.id])}
+                                  className="w-7 h-7 rounded-full bg-rose-50 hover:bg-rose-100 text-rose-500 border border-rose-200/60 flex items-center justify-center transition-colors cursor-pointer shadow-2xs"
+                                  title="Delete Organisation"
+                                >
+                                  <Icon name="trash-2" size={12} />
+                                </button>
                               </div>
-                            )}
-                          </td>
-
-                          {/* City */}
-                          <td className="py-4 px-4">
-                            <div className="flex items-center gap-1 text-slate-600 font-medium">
-                              <Icon name="map-pin" size={13} className="text-slate-400 shrink-0" />
-                              <span>{org.city || '—'}</span>
-                            </div>
-                          </td>
-
-                          {/* Employees Count */}
-                          <td className="py-4 px-4 text-center">
-                            <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 font-extrabold text-xs">
-                              {org.employee_count}
-                            </span>
-                          </td>
-
-                          {/* Students Count */}
-                          <td className="py-4 px-4 text-center">
-                            <span className="px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 font-extrabold text-xs">
-                              {org.student_count}
-                            </span>
-                          </td>
-
-                          {/* Actions */}
-                          <td className="py-4 px-4 text-right">
-                            <div className="flex items-center justify-end gap-1.5">
-                              <button
-                                onClick={() => handleSelectOrganization(org.id)}
-                                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${isCurrentSelected
-                                  ? 'bg-purple-600 text-white shadow-xs'
-                                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                                  }`}
-                              >
-                                {isCurrentSelected ? 'Viewing' : 'Switch View'}
-                              </button>
-                              <button
-                                onClick={() => handleOpenEditCredentials(org)}
-                                className="p-1.5 rounded-xl bg-purple-50 text-purple-600 hover:bg-purple-100 transition-colors"
-                                title="Edit Owner Credentials"
-                              >
-                                <Icon name="key" size={14} />
-                              </button>
-                              <button
-                                onClick={() => handleOpenDeleteModal([org.id])}
-                                className="p-1.5 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors"
-                                title="Delete Organisation"
-                              >
-                                <Icon name="trash-2" size={14} />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
+                            </td>
+                          </tr>
+                        </React.Fragment>
                       );
                     })
                   ) : (
                     <tr>
                       <td colSpan={7} className="py-8 text-center text-slate-400 font-semibold">
-                        No organizations found under this Head Office account.
+                        {dirSearchTerm ? 'No organizations match your search.' : 'No organizations found under this Head Office account.'}
                       </td>
                     </tr>
                   )}

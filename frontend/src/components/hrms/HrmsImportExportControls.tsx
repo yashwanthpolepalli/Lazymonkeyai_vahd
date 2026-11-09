@@ -141,12 +141,11 @@ export function HrmsImportExportControls({
             setImportDropdownOpen(!importDropdownOpen);
             setExportDropdownOpen(false);
           }}
-          className="px-3 py-1.5 rounded-xl text-xs font-extrabold bg-blue-50/80 dark:bg-blue-950/40 hover:bg-blue-100 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer active:scale-[0.98]"
+          className="px-3.5 py-2 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/90 flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer active:scale-[0.98]"
           title={`Import ${type.charAt(0).toUpperCase() + type.slice(1)}`}
         >
-          <Icon name="upload-cloud" size={13} className="text-blue-600 dark:text-blue-400" />
+          <Icon name="upload" size={14} className="text-slate-600" />
           <span>Import</span>
-          <Icon name="chevron-down" size={12} className="text-blue-400" />
         </button>
 
         {importDropdownOpen && (
@@ -211,12 +210,12 @@ export function HrmsImportExportControls({
               setExportDropdownOpen(!exportDropdownOpen);
               setImportDropdownOpen(false);
             }}
-            className="px-3 py-1.5 rounded-xl text-xs font-extrabold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200/90 dark:border-slate-700 flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer active:scale-[0.98]"
+            className="px-3.5 py-2 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/90 flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer active:scale-[0.98]"
             title="Export Records"
           >
-            <Icon name="download" size={13} className="text-slate-500" />
+            <Icon name="download" size={14} className="text-slate-600" />
             <span>Export</span>
-            <Icon name="chevron-down" size={12} className="text-slate-400" />
+            <Icon name="chevron-down" size={13} className="text-slate-400" />
           </button>
 
           {exportDropdownOpen && (

@@ -400,8 +400,8 @@ function CompanyFormModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-950/70 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
-      <div className="bg-white border border-navy-200 rounded-2xl shadow-2xl w-full max-w-3xl my-auto overflow-hidden flex flex-col max-h-[92vh] text-navy-900">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
+      <div className="bg-white border border-slate-200 rounded-2xl shadow-2xl w-full max-w-3xl my-auto overflow-hidden flex flex-col max-h-[92vh] text-slate-900">
         {toastMsg && (
           <div className="bg-brand-600 text-white text-xs py-2 px-4 text-center font-bold animate-fadeIn">
             {toastMsg}
@@ -409,27 +409,27 @@ function CompanyFormModal({
         )}
 
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-navy-100 bg-navy-50/70 shrink-0">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/70 shrink-0">
           <div className="flex items-center gap-3">
             <div className="size-10 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white grid place-items-center shadow-xs">
               <Building2 className="size-5" />
             </div>
             <div>
-              <h2 className="font-extrabold text-base tracking-tight text-navy-900">
+              <h2 className="font-extrabold text-base tracking-tight text-slate-900">
                 {isEdit ? `Edit Organization: ${company?.name}` : "Create New Organization / Legal Entity"}
               </h2>
-              <p className="text-xs text-navy-500">
+              <p className="text-xs text-slate-500">
                 Multi-tenant setup with Multi-GST registrations and dedicated e-Way Bill & e-Invoice credentials.
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="size-8 rounded-lg hover:bg-navy-200/60 text-navy-500 hover:text-navy-900 flex items-center justify-center transition-colors">
+          <button onClick={onClose} className="size-8 rounded-lg hover:bg-slate-200/60 text-slate-500 hover:text-slate-900 flex items-center justify-center transition-colors">
             <X className="size-4" />
           </button>
         </div>
 
         {/* Modal Tabs Bar */}
-        <div className="flex items-center gap-1 px-6 border-b border-navy-100 bg-white shrink-0 overflow-x-auto">
+        <div className="flex items-center gap-1 px-6 border-b border-slate-100 bg-white shrink-0 overflow-x-auto">
           {[
             { id: "general", label: "General Details & GST", icon: Building2 },
             { id: "gst", label: `Additional Branch GSTINs (${gstRegistrations.length})`, icon: Layers },
@@ -445,7 +445,7 @@ function CompanyFormModal({
                 "flex items-center gap-2 py-3 px-4 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap",
                 activeModalTab === id
                   ? "border-brand-600 text-brand-600 bg-brand-50/60"
-                  : "border-transparent text-navy-500 hover:text-navy-900 hover:bg-navy-50"
+                  : "border-transparent text-slate-500 hover:text-slate-900 hover:bg-slate-50"
               )}
             >
               <Icon className="size-3.5" />
@@ -461,75 +461,75 @@ function CompanyFormModal({
             <div className="space-y-4 text-xs">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="font-bold block mb-1 text-navy-800">Trade Name *</label>
+                  <label className="font-bold block mb-1 text-slate-800">Trade Name *</label>
                   <input
                     type="text"
                     required
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
                     placeholder="e.g. Main Campus / Main Branch"
-                    className="w-full px-3 py-2 rounded-xl border border-navy-200 bg-white text-navy-900 focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 focus:outline-none font-medium"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-900 focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 focus:outline-none font-medium"
                   />
                 </div>
                 <div>
-                  <label className="font-bold block mb-1 text-navy-800">Legal Registered Entity Name *</label>
+                  <label className="font-bold block mb-1 text-slate-800">Legal Registered Entity Name *</label>
                   <input
                     type="text"
                     required
                     value={form.legal_name}
                     onChange={(e) => setForm({ ...form, legal_name: e.target.value })}
                     placeholder="e.g. Ravi Enterprises Private Limited"
-                    className="w-full px-3 py-2 rounded-xl border border-navy-200 bg-white text-navy-900 focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 focus:outline-none font-medium"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-900 focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 focus:outline-none font-medium"
                   />
                 </div>
                 <div>
-                  <label className="font-bold block mb-1 text-navy-800">Primary GSTIN (15 Digits)</label>
+                  <label className="font-bold block mb-1 text-slate-800">Primary GSTIN (15 Digits)</label>
                   <input
                     type="text"
                     value={form.gst_number}
                     onChange={handleGeneralGstChange}
                     placeholder="e.g. 36AAGCR1234F1Z5"
-                    className="w-full px-3 py-2 rounded-xl border border-navy-200 bg-white text-navy-900 uppercase font-mono focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 focus:outline-none"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-900 uppercase font-mono focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="font-bold block mb-1 text-navy-800">PAN Number</label>
+                  <label className="font-bold block mb-1 text-slate-800">PAN Number</label>
                   <input
                     type="text"
                     value={form.pan_number}
                     onChange={(e) => setForm({ ...form, pan_number: e.target.value.toUpperCase() })}
                     placeholder="e.g. AAGCR1234F"
-                    className="w-full px-3 py-2 rounded-xl border border-navy-200 bg-white text-navy-900 uppercase font-mono focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 focus:outline-none"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-900 uppercase font-mono focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="font-bold block mb-1 text-navy-800">Email Address</label>
+                  <label className="font-bold block mb-1 text-slate-800">Email Address</label>
                   <input
                     type="email"
                     value={form.email}
                     onChange={(e) => setForm({ ...form, email: e.target.value })}
                     placeholder="e.g. contact@company.com"
-                    className="w-full px-3 py-2 rounded-xl border border-navy-200 bg-white text-navy-900 focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 focus:outline-none"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-900 focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="font-bold block mb-1 text-navy-800">Phone Number</label>
+                  <label className="font-bold block mb-1 text-slate-800">Phone Number</label>
                   <input
                     type="text"
                     value={form.phone}
                     onChange={(e) => setForm({ ...form, phone: e.target.value })}
                     placeholder="e.g. +91 99082 97963"
-                    className="w-full px-3 py-2 rounded-xl border border-navy-200 bg-white text-navy-900 focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 focus:outline-none"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-900 focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 focus:outline-none"
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <label className="font-bold block mb-1 text-navy-800">Registered Address</label>
+                  <label className="font-bold block mb-1 text-slate-800">Registered Address</label>
                   <textarea
                     rows={2}
                     value={form.address}
                     onChange={(e) => setForm({ ...form, address: e.target.value })}
                     placeholder="Shop 4, Hanamkonda Main Road, Warangal, Telangana - 506001"
-                    className="w-full px-3 py-2 rounded-xl border border-navy-200 bg-white text-navy-900 focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 focus:outline-none resize-none"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-900 focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 focus:outline-none resize-none"
                   />
                 </div>
               </div>
@@ -541,8 +541,8 @@ function CompanyFormModal({
             <div className="space-y-4 text-xs">
               <div className="flex items-center justify-between">
                 <div>
-                  <h4 className="font-bold text-sm text-navy-900">Registered Branch GSTINs</h4>
-                  <p className="text-navy-500 text-[11px]">Multi-state branch GST registrations for billing & invoice generation</p>
+                  <h4 className="font-bold text-sm text-slate-900">Registered Branch GSTINs</h4>
+                  <p className="text-slate-500 text-[11px]">Multi-state branch GST registrations for billing & invoice generation</p>
                 </div>
                 <button
                   type="button"
@@ -565,15 +565,15 @@ function CompanyFormModal({
               </div>
 
               {gstRegistrations.length === 0 ? (
-                <div className="p-8 text-center border-2 border-dashed border-navy-200 rounded-xl text-navy-500">
+                <div className="p-8 text-center border-2 border-dashed border-slate-200 rounded-xl text-slate-500">
                   No additional branch GSTINs configured. Primary GSTIN from General tab is used for billing.
                 </div>
               ) : (
                 <div className="space-y-3">
                   {gstRegistrations.map((reg, idx) => (
-                    <div key={reg.id || idx} className="p-4 rounded-xl border border-navy-200 bg-navy-50/50 space-y-3">
+                    <div key={reg.id || idx} className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-3">
                       <div className="flex items-center justify-between">
-                        <span className="font-bold text-xs flex items-center gap-2 text-navy-900">
+                        <span className="font-bold text-xs flex items-center gap-2 text-slate-900">
                           <span>Branch #{idx + 1}</span>
                           {reg.is_primary && (
                             <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[10px]">
@@ -604,7 +604,7 @@ function CompanyFormModal({
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div>
-                          <label className="text-[11px] font-bold block mb-1 text-navy-800">GSTIN</label>
+                          <label className="text-[11px] font-bold block mb-1 text-slate-800">GSTIN</label>
                           <input
                             type="text"
                             value={reg.gstin}
@@ -618,11 +618,11 @@ function CompanyFormModal({
                               }
                               setGstRegistrations(updated);
                             }}
-                            className="w-full px-2.5 py-1.5 rounded-lg border border-navy-200 bg-white font-mono uppercase text-navy-900 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                            className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white font-mono uppercase text-slate-900 focus:outline-none focus:ring-1 focus:ring-brand-500"
                           />
                         </div>
                         <div>
-                          <label className="text-[11px] font-bold block mb-1 text-navy-800">Trade Name</label>
+                          <label className="text-[11px] font-bold block mb-1 text-slate-800">Trade Name</label>
                           <input
                             type="text"
                             value={reg.trade_name}
@@ -631,11 +631,11 @@ function CompanyFormModal({
                               updated[idx].trade_name = e.target.value;
                               setGstRegistrations(updated);
                             }}
-                            className="w-full px-2.5 py-1.5 rounded-lg border border-navy-200 bg-white text-navy-900 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                            className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-900 focus:outline-none focus:ring-1 focus:ring-brand-500"
                           />
                         </div>
                         <div>
-                          <label className="text-[11px] font-bold block mb-1 text-navy-800">State</label>
+                          <label className="text-[11px] font-bold block mb-1 text-slate-800">State</label>
                           <input
                             type="text"
                             value={reg.state_name}
@@ -644,7 +644,7 @@ function CompanyFormModal({
                               updated[idx].state_name = e.target.value;
                               setGstRegistrations(updated);
                             }}
-                            className="w-full px-2.5 py-1.5 rounded-lg border border-navy-200 bg-white text-navy-900 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                            className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-900 focus:outline-none focus:ring-1 focus:ring-brand-500"
                           />
                         </div>
                       </div>
@@ -659,23 +659,23 @@ function CompanyFormModal({
           {activeModalTab === "gsp" && (
             <div className="space-y-4 text-xs">
               {/* Environment Toggle */}
-              <div className="p-4 rounded-xl border border-navy-200 bg-navy-50/70 flex items-center justify-between">
+              <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 flex items-center justify-between">
                 <div>
-                  <h4 className="font-bold text-xs text-navy-900">Gateway Environment</h4>
-                  <p className="text-navy-500 text-[11px]">Switch between live Government Production API and Sandbox testing.</p>
+                  <h4 className="font-bold text-xs text-slate-900">Gateway Environment</h4>
+                  <p className="text-slate-500 text-[11px]">Switch between live Government Production API and Sandbox testing.</p>
                 </div>
-                <div className="flex items-center gap-2 bg-navy-200/50 p-1 rounded-xl">
+                <div className="flex items-center gap-2 bg-slate-200/50 p-1 rounded-xl">
                   <button
                     type="button"
                     onClick={() => setGspCreds({ ...gspCreds, environment: "sandbox" })}
-                    className={cn("px-3 py-1 rounded-lg text-xs font-bold transition-colors", gspCreds.environment === "sandbox" ? "bg-amber-500 text-white shadow-xs" : "text-navy-600")}
+                    className={cn("px-3 py-1 rounded-lg text-xs font-bold transition-colors", gspCreds.environment === "sandbox" ? "bg-amber-500 text-white shadow-xs" : "text-slate-600")}
                   >
                     Sandbox
                   </button>
                   <button
                     type="button"
                     onClick={() => setGspCreds({ ...gspCreds, environment: "production" })}
-                    className={cn("px-3 py-1 rounded-lg text-xs font-bold transition-colors", gspCreds.environment === "production" ? "bg-emerald-600 text-white shadow-xs" : "text-navy-600")}
+                    className={cn("px-3 py-1 rounded-lg text-xs font-bold transition-colors", gspCreds.environment === "production" ? "bg-emerald-600 text-white shadow-xs" : "text-slate-600")}
                   >
                     Live Production
                   </button>
@@ -684,39 +684,39 @@ function CompanyFormModal({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="font-bold block mb-1 text-navy-800">Whitebooks Registered Account Email *</label>
+                  <label className="font-bold block mb-1 text-slate-800">Whitebooks Registered Account Email *</label>
                   <input
                     type="email"
                     value={gspCreds.registered_email}
                     onChange={(e) => setGspCreds({ ...gspCreds, registered_email: e.target.value })}
                     placeholder="email@company.com"
-                    className="w-full px-3 py-2 rounded-xl border border-navy-200 bg-white font-medium text-navy-900 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-medium text-slate-900 focus:outline-none focus:ring-1 focus:ring-brand-500"
                   />
-                  <p className="text-[10px] text-navy-500 mt-1">Must match the account where Production Client ID was generated.</p>
+                  <p className="text-[10px] text-slate-500 mt-1">Must match the account where Production Client ID was generated.</p>
                 </div>
                 <div>
-                  <label className="font-bold block mb-1 text-navy-800">Whitelisted Server IP Address</label>
+                  <label className="font-bold block mb-1 text-slate-800">Whitelisted Server IP Address</label>
                   <input
                     type="text"
                     value={gspCreds.ip_address}
                     onChange={(e) => setGspCreds({ ...gspCreds, ip_address: e.target.value })}
                     placeholder="106.213.64.83"
-                    className="w-full px-3 py-2 rounded-xl border border-navy-200 bg-white font-mono text-navy-900 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-mono text-slate-900 focus:outline-none focus:ring-1 focus:ring-brand-500"
                   />
-                  <p className="text-[10px] text-navy-500 mt-1">Whitelisted in Whitebooks Dashboard IP Access List.</p>
+                  <p className="text-[10px] text-slate-500 mt-1">Whitelisted in Whitebooks Dashboard IP Access List.</p>
                 </div>
               </div>
 
               {/* e-Way Bill API Credentials Card */}
-              <div className="p-4 rounded-xl border border-navy-200 bg-white space-y-3">
+              <div className="p-4 rounded-xl border border-slate-200 bg-white space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="p-1 rounded bg-indigo-50 text-indigo-600">
                       <KeyRound className="size-4" />
                     </span>
                     <div>
-                      <h4 className="font-bold text-xs text-navy-900">e-Way Bill API Credentials</h4>
-                      <p className="text-[10px] text-navy-500">Government ewaybillgst.gov.in GSP Access</p>
+                      <h4 className="font-bold text-xs text-slate-900">e-Way Bill API Credentials</h4>
+                      <p className="text-[10px] text-slate-500">Government ewaybillgst.gov.in GSP Access</p>
                     </div>
                   </div>
                   <button
@@ -731,54 +731,54 @@ function CompanyFormModal({
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[10px] font-bold block mb-0.5 text-navy-800">EWB Client ID</label>
+                    <label className="text-[10px] font-bold block mb-0.5 text-slate-800">EWB Client ID</label>
                     <input
                       type="text"
                       value={gspCreds.ewb?.client_id || ""}
                       onChange={(e) => setGspCreds({ ...gspCreds, ewb: { ...gspCreds.ewb, client_id: e.target.value } })}
-                      className="w-full px-2.5 py-1.5 rounded-lg border border-navy-200 bg-white text-navy-900 focus:outline-none"
+                      className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-900 focus:outline-none"
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold block mb-0.5 text-navy-800">EWB Client Secret</label>
+                    <label className="text-[10px] font-bold block mb-0.5 text-slate-800">EWB Client Secret</label>
                     <input
                       type="password"
                       value={gspCreds.ewb?.client_secret || ""}
                       onChange={(e) => setGspCreds({ ...gspCreds, ewb: { ...gspCreds.ewb, client_secret: e.target.value } })}
-                      className="w-full px-2.5 py-1.5 rounded-lg border border-navy-200 bg-white text-navy-900 focus:outline-none"
+                      className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-900 focus:outline-none"
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold block mb-0.5 text-navy-800">NIC GSP Username</label>
+                    <label className="text-[10px] font-bold block mb-0.5 text-slate-800">NIC GSP Username</label>
                     <input
                       type="text"
                       value={gspCreds.ewb?.username || ""}
                       onChange={(e) => setGspCreds({ ...gspCreds, ewb: { ...gspCreds.ewb, username: e.target.value } })}
-                      className="w-full px-2.5 py-1.5 rounded-lg border border-navy-200 bg-white text-navy-900 focus:outline-none"
+                      className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-900 focus:outline-none"
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold block mb-0.5 text-navy-800">NIC GSP Password</label>
+                    <label className="text-[10px] font-bold block mb-0.5 text-slate-800">NIC GSP Password</label>
                     <input
                       type="password"
                       value={gspCreds.ewb?.password || ""}
                       onChange={(e) => setGspCreds({ ...gspCreds, ewb: { ...gspCreds.ewb, password: e.target.value } })}
-                      className="w-full px-2.5 py-1.5 rounded-lg border border-navy-200 bg-white text-navy-900 focus:outline-none"
+                      className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-900 focus:outline-none"
                     />
                   </div>
                 </div>
               </div>
 
               {/* e-Invoice & IRN Credentials Card */}
-              <div className="p-4 rounded-xl border border-navy-200 bg-white space-y-3">
+              <div className="p-4 rounded-xl border border-slate-200 bg-white space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="p-1 rounded bg-emerald-50 text-emerald-600">
                       <KeyRound className="size-4" />
                     </span>
                     <div>
-                      <h4 className="font-bold text-xs text-navy-900">e-Invoice & IRN Credentials</h4>
-                      <p className="text-[10px] text-navy-500">Government einvoice1.gst.gov.in IRP Access</p>
+                      <h4 className="font-bold text-xs text-slate-900">e-Invoice & IRN Credentials</h4>
+                      <p className="text-[10px] text-slate-500">Government einvoice1.gst.gov.in IRP Access</p>
                     </div>
                   </div>
                   <button
@@ -793,54 +793,54 @@ function CompanyFormModal({
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[10px] font-bold block mb-0.5 text-navy-800">e-Invoice Client ID</label>
+                    <label className="text-[10px] font-bold block mb-0.5 text-slate-800">e-Invoice Client ID</label>
                     <input
                       type="text"
                       value={gspCreds.einv?.client_id || ""}
                       onChange={(e) => setGspCreds({ ...gspCreds, einv: { ...gspCreds.einv, client_id: e.target.value } })}
-                      className="w-full px-2.5 py-1.5 rounded-lg border border-navy-200 bg-white text-navy-900 focus:outline-none"
+                      className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-900 focus:outline-none"
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold block mb-0.5 text-navy-800">e-Invoice Client Secret</label>
+                    <label className="text-[10px] font-bold block mb-0.5 text-slate-800">e-Invoice Client Secret</label>
                     <input
                       type="password"
                       value={gspCreds.einv?.client_secret || ""}
                       onChange={(e) => setGspCreds({ ...gspCreds, einv: { ...gspCreds.einv, client_secret: e.target.value } })}
-                      className="w-full px-2.5 py-1.5 rounded-lg border border-navy-200 bg-white text-navy-900 focus:outline-none"
+                      className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-900 focus:outline-none"
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold block mb-0.5 text-navy-800">IRP API Username</label>
+                    <label className="text-[10px] font-bold block mb-0.5 text-slate-800">IRP API Username</label>
                     <input
                       type="text"
                       value={gspCreds.einv?.username || ""}
                       onChange={(e) => setGspCreds({ ...gspCreds, einv: { ...gspCreds.einv, username: e.target.value } })}
-                      className="w-full px-2.5 py-1.5 rounded-lg border border-navy-200 bg-white text-navy-900 focus:outline-none"
+                      className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-900 focus:outline-none"
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold block mb-0.5 text-navy-800">IRP API Password</label>
+                    <label className="text-[10px] font-bold block mb-0.5 text-slate-800">IRP API Password</label>
                     <input
                       type="password"
                       value={gspCreds.einv?.password || ""}
                       onChange={(e) => setGspCreds({ ...gspCreds, einv: { ...gspCreds.einv, password: e.target.value } })}
-                      className="w-full px-2.5 py-1.5 rounded-lg border border-navy-200 bg-white text-navy-900 focus:outline-none"
+                      className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-900 focus:outline-none"
                     />
                   </div>
                 </div>
               </div>
 
               {/* GST Returns & Filing Credentials */}
-              <div className="p-4 rounded-xl border border-navy-200 bg-white space-y-3">
+              <div className="p-4 rounded-xl border border-slate-200 bg-white space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="p-1 rounded bg-purple-50 text-purple-600">
                       <KeyRound className="size-4" />
                     </span>
                     <div>
-                      <h4 className="font-bold text-xs text-navy-900">GST Returns & Filing Credentials</h4>
-                      <p className="text-[10px] text-navy-500">GSTR-1, GSTR-2B & GSTR-3B GSTN Access</p>
+                      <h4 className="font-bold text-xs text-slate-900">GST Returns & Filing Credentials</h4>
+                      <p className="text-[10px] text-slate-500">GSTR-1, GSTR-2B & GSTR-3B GSTN Access</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -873,33 +873,33 @@ function CompanyFormModal({
             <div className="space-y-4 text-xs">
               {/* 1-Click Provider Quick Presets */}
               <div className="space-y-2">
-                <label className="font-bold block text-navy-600 text-[11px]">1-Click Provider Quick Presets:</label>
+                <label className="font-bold block text-slate-600 text-[11px]">1-Click Provider Quick Presets:</label>
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
                     onClick={() => applyEmailPreset("gmail")}
-                    className="px-3 py-1.5 rounded-xl border border-navy-200 bg-navy-50 hover:bg-navy-100 text-navy-800 font-bold flex items-center gap-1.5 transition-colors"
+                    className="px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-800 font-bold flex items-center gap-1.5 transition-colors"
                   >
                     <span className="size-2 rounded-full bg-red-500" /> Google Workspace / Gmail
                   </button>
                   <button
                     type="button"
                     onClick={() => applyEmailPreset("outlook")}
-                    className="px-3 py-1.5 rounded-xl border border-navy-200 bg-navy-50 hover:bg-navy-100 text-navy-800 font-bold flex items-center gap-1.5 transition-colors"
+                    className="px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-800 font-bold flex items-center gap-1.5 transition-colors"
                   >
                     <span className="size-2 rounded-full bg-blue-500" /> Microsoft 365 / Outlook
                   </button>
                   <button
                     type="button"
                     onClick={() => applyEmailPreset("zoho")}
-                    className="px-3 py-1.5 rounded-xl border border-navy-200 bg-navy-50 hover:bg-navy-100 text-navy-800 font-bold flex items-center gap-1.5 transition-colors"
+                    className="px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-800 font-bold flex items-center gap-1.5 transition-colors"
                   >
                     <span className="size-2 rounded-full bg-emerald-500" /> Zoho Mail
                   </button>
                   <button
                     type="button"
                     onClick={() => applyEmailPreset("ses")}
-                    className="px-3 py-1.5 rounded-xl border border-navy-200 bg-navy-50 hover:bg-navy-100 text-navy-800 font-bold flex items-center gap-1.5 transition-colors"
+                    className="px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-800 font-bold flex items-center gap-1.5 transition-colors"
                   >
                     <span className="size-2 rounded-full bg-amber-500" /> Amazon SES
                   </button>
@@ -908,85 +908,85 @@ function CompanyFormModal({
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="sm:col-span-2">
-                  <label className="font-bold block mb-1 text-navy-800">SMTP Host / Server *</label>
+                  <label className="font-bold block mb-1 text-slate-800">SMTP Host / Server *</label>
                   <input
                     type="text"
                     value={emailSettings.mail_server || ""}
                     onChange={(e) => setEmailSettings({ ...emailSettings, mail_server: e.target.value })}
                     placeholder="e.g. smtp.gmail.com or smtp.office365.com"
-                    className="w-full px-3 py-2 rounded-xl border border-navy-200 bg-white font-mono text-navy-900 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-mono text-slate-900 focus:outline-none focus:ring-1 focus:ring-brand-500"
                   />
                 </div>
                 <div>
-                  <label className="font-bold block mb-1 text-navy-800">SMTP Port *</label>
+                  <label className="font-bold block mb-1 text-slate-800">SMTP Port *</label>
                   <input
                     type="number"
                     value={emailSettings.mail_port || 587}
                     onChange={(e) => setEmailSettings({ ...emailSettings, mail_port: Number(e.target.value) })}
-                    className="w-full px-3 py-2 rounded-xl border border-navy-200 bg-white font-mono text-navy-900 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-mono text-slate-900 focus:outline-none focus:ring-1 focus:ring-brand-500"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="font-bold block mb-1 text-navy-800">SMTP Username / Account *</label>
+                  <label className="font-bold block mb-1 text-slate-800">SMTP Username / Account *</label>
                   <input
                     type="text"
                     value={emailSettings.mail_username || ""}
                     onChange={(e) => setEmailSettings({ ...emailSettings, mail_username: e.target.value })}
                     placeholder="venaticfungus@gmail.com"
-                    className="w-full px-3 py-2 rounded-xl border border-navy-200 bg-white text-navy-900 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-900 focus:outline-none focus:ring-1 focus:ring-brand-500"
                   />
                 </div>
                 <div>
-                  <label className="font-bold block mb-1 text-navy-800">SMTP Password / App Password *</label>
+                  <label className="font-bold block mb-1 text-slate-800">SMTP Password / App Password *</label>
                   <input
                     type="password"
                     value={emailSettings.mail_password || ""}
                     onChange={(e) => setEmailSettings({ ...emailSettings, mail_password: e.target.value })}
                     placeholder="••••••••••••"
-                    className="w-full px-3 py-2 rounded-xl border border-navy-200 bg-white text-navy-900 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-900 focus:outline-none focus:ring-1 focus:ring-brand-500"
                   />
-                  <p className="text-[10px] text-navy-500 mt-1">For Gmail/Google Workspace, generate a 16-character App Password.</p>
+                  <p className="text-[10px] text-slate-500 mt-1">For Gmail/Google Workspace, generate a 16-character App Password.</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="font-bold block mb-1 text-navy-800">Sender Email (From) *</label>
+                  <label className="font-bold block mb-1 text-slate-800">Sender Email (From) *</label>
                   <input
                     type="email"
                     value={emailSettings.mail_from || ""}
                     onChange={(e) => setEmailSettings({ ...emailSettings, mail_from: e.target.value })}
                     placeholder="noreply@yourcompany.com"
-                    className="w-full px-3 py-2 rounded-xl border border-navy-200 bg-white text-navy-900 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-900 focus:outline-none focus:ring-1 focus:ring-brand-500"
                   />
                 </div>
                 <div>
-                  <label className="font-bold block mb-1 text-navy-800">Sender Display Name</label>
+                  <label className="font-bold block mb-1 text-slate-800">Sender Display Name</label>
                   <input
                     type="text"
                     value={emailSettings.sender_name || ""}
                     onChange={(e) => setEmailSettings({ ...emailSettings, sender_name: e.target.value })}
                     placeholder="test warangal"
-                    className="w-full px-3 py-2 rounded-xl border border-navy-200 bg-white text-navy-900 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-900 focus:outline-none focus:ring-1 focus:ring-brand-500"
                   />
                 </div>
                 <div>
-                  <label className="font-bold block mb-1 text-navy-800">Reply-To Email (Optional)</label>
+                  <label className="font-bold block mb-1 text-slate-800">Reply-To Email (Optional)</label>
                   <input
                     type="email"
                     value={emailSettings.reply_to || ""}
                     onChange={(e) => setEmailSettings({ ...emailSettings, reply_to: e.target.value })}
                     placeholder="careers@yourcompany.com"
-                    className="w-full px-3 py-2 rounded-xl border border-navy-200 bg-white text-navy-900 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-900 focus:outline-none focus:ring-1 focus:ring-brand-500"
                   />
                 </div>
               </div>
 
               <div className="flex items-center gap-6 pt-2">
-                <label className="flex items-center gap-2 cursor-pointer font-bold text-navy-800">
+                <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-800">
                   <input
                     type="checkbox"
                     checked={emailSettings.use_tls}
@@ -995,7 +995,7 @@ function CompanyFormModal({
                   />
                   <span>STARTTLS (Standard for Port 587)</span>
                 </label>
-                <label className="flex items-center gap-2 cursor-pointer font-bold text-navy-800">
+                <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-800">
                   <input
                     type="checkbox"
                     checked={emailSettings.use_ssl}
@@ -1007,20 +1007,20 @@ function CompanyFormModal({
               </div>
 
               {/* Test Handshake Section */}
-              <div className="p-4 rounded-xl border border-navy-200 bg-navy-50/60 space-y-3">
+              <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Send className="size-4 text-brand-600" />
                     <div>
-                      <h4 className="font-bold text-xs text-navy-900">Send Test Email & Validate Connection</h4>
-                      <p className="text-[10px] text-navy-500">Verify handshake, TLS credentials, and inbox deliverability</p>
+                      <h4 className="font-bold text-xs text-slate-900">Send Test Email & Validate Connection</h4>
+                      <p className="text-[10px] text-slate-500">Verify handshake, TLS credentials, and inbox deliverability</p>
                     </div>
                   </div>
                   <button
                     type="button"
                     onClick={handleTestEmail}
                     disabled={testingEmail}
-                    className="px-3 py-1.5 rounded-lg border border-navy-200 bg-white hover:bg-navy-100 text-navy-800 font-bold text-xs flex items-center gap-1.5 shadow-2xs"
+                    className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-800 font-bold text-xs flex items-center gap-1.5 shadow-2xs"
                   >
                     {testingEmail ? <Loader2 className="size-3 animate-spin" /> : <Send className="size-3" />}
                     Send Test Email
@@ -1031,7 +1031,7 @@ function CompanyFormModal({
                   value={testEmailRecipient}
                   onChange={(e) => setTestEmailRecipient(e.target.value)}
                   placeholder="Enter email address to receive test message"
-                  className="w-full px-3 py-2 rounded-xl border border-navy-200 bg-white text-navy-900"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-900"
                 />
                 {emailTestResult && (
                   <div className={cn("p-2.5 rounded-lg text-xs font-medium", emailTestResult.success ? "bg-emerald-50 text-emerald-800 border border-emerald-200" : "bg-rose-50 text-rose-800 border border-rose-200")}>
@@ -1052,11 +1052,11 @@ function CompanyFormModal({
                       <Star className="size-4 fill-amber-500" />
                     </div>
                     <div>
-                      <h3 className="font-bold text-sm text-navy-900">Google Business Reviews & QR Automation</h3>
-                      <p className="text-[11px] text-navy-500">Automate 5-star student ratings across Thermal POS Receipts & CRM</p>
+                      <h3 className="font-bold text-sm text-slate-900">Google Business Reviews & QR Automation</h3>
+                      <p className="text-[11px] text-slate-500">Automate 5-star student ratings across Thermal POS Receipts & CRM</p>
                     </div>
                   </div>
-                  <label className="flex items-center gap-2 font-bold cursor-pointer text-navy-800">
+                  <label className="flex items-center gap-2 font-bold cursor-pointer text-slate-800">
                     <input
                       type="checkbox"
                       checked={form.google_review_enabled}
@@ -1070,27 +1070,27 @@ function CompanyFormModal({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
                   <div className="space-y-3">
                     <div>
-                      <label className="font-bold block mb-1 text-navy-800">Google Review Direct Link / Place URL *</label>
+                      <label className="font-bold block mb-1 text-slate-800">Google Review Direct Link / Place URL *</label>
                       <input
                         type="text"
                         value={form.google_review_url}
                         onChange={(e) => setForm({ ...form, google_review_url: e.target.value })}
                         placeholder="https://search.google.com/local/writereview"
-                        className="w-full px-3 py-2 rounded-xl border border-navy-200 bg-white font-mono text-xs focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 focus:outline-none text-navy-900"
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-mono text-xs focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 focus:outline-none text-slate-900"
                       />
-                      <p className="text-[10px] text-navy-500 mt-1">
+                      <p className="text-[10px] text-slate-500 mt-1">
                         Found in your Google Business Profile → "Ask for reviews" → Copy link.
                       </p>
                     </div>
 
                     <div>
-                      <label className="font-bold block mb-1 text-navy-800">Google Place ID (Optional)</label>
+                      <label className="font-bold block mb-1 text-slate-800">Google Place ID (Optional)</label>
                       <input
                         type="text"
                         value={form.google_place_id}
                         onChange={(e) => setForm({ ...form, google_place_id: e.target.value })}
                         placeholder="e.g. ChIJN1t_tDeuEmsRUsoyG83frY4"
-                        className="w-full px-3 py-2 rounded-xl border border-navy-200 bg-white font-mono text-xs focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 focus:outline-none text-navy-900"
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-mono text-xs focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 focus:outline-none text-slate-900"
                       />
                     </div>
 
@@ -1106,9 +1106,9 @@ function CompanyFormModal({
                               setTimeout(() => setCopiedReviewLink(false), 2000);
                             }
                           }}
-                          className="flex-1 py-2 px-3 rounded-xl border border-navy-200 bg-white hover:bg-navy-50 text-navy-700 font-bold flex items-center justify-center gap-1.5 transition-colors shadow-2xs"
+                          className="flex-1 py-2 px-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold flex items-center justify-center gap-1.5 transition-colors shadow-2xs"
                         >
-                          {copiedReviewLink ? <Check className="size-3.5 text-emerald-500" /> : <Copy className="size-3.5 text-navy-500" />}
+                          {copiedReviewLink ? <Check className="size-3.5 text-emerald-500" /> : <Copy className="size-3.5 text-slate-500" />}
                           <span>{copiedReviewLink ? "Copied" : "Copy Link"}</span>
                         </button>
 
@@ -1179,7 +1179,7 @@ function CompanyFormModal({
                   </div>
 
                   {/* QR Preview Box */}
-                  <div className="p-5 rounded-2xl border border-navy-200/80 bg-white shadow-xs flex flex-col items-center justify-center text-center space-y-3">
+                  <div className="p-5 rounded-2xl border border-slate-200/80 bg-white shadow-xs flex flex-col items-center justify-center text-center space-y-3">
                     <div className="flex items-center gap-1 text-amber-500">
                       {[...Array(5)].map((_, i) => (
                         <Star key={i} className="size-4 fill-amber-500" />
@@ -1195,8 +1195,8 @@ function CompanyFormModal({
                       />
                     </div>
                     <div>
-                      <div className="font-bold text-xs text-navy-900">Live POS Bill & Table Tent QR</div>
-                      <div className="text-[10px] text-navy-500 mt-0.5">Auto-printed at bottom of thermal invoices</div>
+                      <div className="font-bold text-xs text-slate-900">Live POS Bill & Table Tent QR</div>
+                      <div className="text-[10px] text-slate-500 mt-0.5">Auto-printed at bottom of thermal invoices</div>
                     </div>
                   </div>
                 </div>
@@ -1205,8 +1205,8 @@ function CompanyFormModal({
           )}
 
           {/* Modal Footer */}
-          <div className="flex items-center justify-between pt-4 border-t border-navy-100 bg-white shrink-0">
-            <span className="text-xs text-navy-500 font-medium">
+          <div className="flex items-center justify-between pt-4 border-t border-slate-100 bg-white shrink-0">
+            <span className="text-xs text-slate-500 font-medium">
               {activeModalTab === "reviews"
                 ? (form.google_review_enabled ? "Google Review QR Enabled" : "Review QR Disabled")
                 : "Organization Settings"}
@@ -1215,7 +1215,7 @@ function CompanyFormModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 rounded-xl border border-navy-200 bg-white hover:bg-navy-50 text-navy-700 font-bold text-xs transition-colors"
+                className="px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs transition-colors"
               >
                 Cancel
               </button>
@@ -1315,14 +1315,14 @@ export function CompanyManagement() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left Column: Organization List */}
         <div className="lg:col-span-4 space-y-3">
-          <div className="flex items-center gap-2 p-2 rounded-xl border border-navy-200 bg-white">
-            <Search className="size-4 text-navy-400 shrink-0 ml-1" />
+          <div className="flex items-center gap-2 p-2 rounded-xl border border-slate-200 bg-white">
+            <Search className="size-4 text-slate-400 shrink-0 ml-1" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by name, GST..."
-              className="w-full bg-transparent text-xs text-navy-900 focus:outline-none placeholder:text-navy-400"
+              className="w-full bg-transparent text-xs text-slate-900 focus:outline-none placeholder:text-slate-400"
             />
             <button
               onClick={loadCompanies}
@@ -1332,18 +1332,18 @@ export function CompanyManagement() {
             </button>
           </div>
 
-          <div className="text-[11px] font-bold text-navy-500 px-1">
+          <div className="text-[11px] font-bold text-slate-500 px-1">
             {companies.length} organization{companies.length === 1 ? "" : "s"}
           </div>
 
           <div className="space-y-2">
             {loading ? (
-              <div className="p-8 text-center text-xs text-navy-500">
+              <div className="p-8 text-center text-xs text-slate-500">
                 <Loader2 className="size-5 animate-spin mx-auto mb-2 text-brand-600" />
                 Loading organizations...
               </div>
             ) : companies.length === 0 ? (
-              <div className="p-6 text-center text-xs text-navy-500 border border-dashed border-navy-200 rounded-xl bg-white">
+              <div className="p-6 text-center text-xs text-slate-500 border border-dashed border-slate-200 rounded-xl bg-white">
                 No organizations found.
               </div>
             ) : (
@@ -1357,26 +1357,26 @@ export function CompanyManagement() {
                       "p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between",
                       isSelected
                         ? "border-brand-600 bg-brand-50/50 shadow-xs"
-                        : "border-navy-200 bg-white hover:bg-navy-50"
+                        : "border-slate-200 bg-white hover:bg-slate-50"
                     )}
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <div className={cn(
                         "size-10 rounded-xl grid place-items-center font-black text-xs shrink-0",
-                        isSelected ? "bg-brand-600 text-white" : "bg-navy-100 text-navy-600"
+                        isSelected ? "bg-brand-600 text-white" : "bg-slate-100 text-slate-600"
                       )}>
                         {comp.name.slice(0, 2).toUpperCase()}
                       </div>
                       <div className="min-w-0">
-                        <h3 className="font-bold text-xs truncate text-navy-900">{comp.name}</h3>
-                        <p className="text-[11px] text-navy-500 truncate">{comp.company_type || "Private Limited"} • {comp.industry || "Retail"}</p>
+                        <h3 className="font-bold text-xs truncate text-slate-900">{comp.name}</h3>
+                        <p className="text-[11px] text-slate-500 truncate">{comp.company_type || "Private Limited"} • {comp.industry || "Retail"}</p>
                         <div className="flex items-center gap-2 mt-1">
                           <span className="size-1.5 rounded-full bg-emerald-500" />
                           <span className="text-[10px] text-emerald-600 font-bold capitalize">{comp.status || "active"}</span>
                         </div>
                       </div>
                     </div>
-                    <ChevronRight className={cn("size-4 shrink-0 transition-transform", isSelected ? "text-brand-600 translate-x-0.5" : "text-navy-400")} />
+                    <ChevronRight className={cn("size-4 shrink-0 transition-transform", isSelected ? "text-brand-600 translate-x-0.5" : "text-slate-400")} />
                   </div>
                 );
               })
@@ -1387,21 +1387,21 @@ export function CompanyManagement() {
         {/* Right Column: Organization Details & Google Review Hub */}
         <div className="lg:col-span-8 space-y-4">
           {activeCompany ? (
-            <div className="border border-navy-200 rounded-2xl bg-white overflow-hidden shadow-xs">
+            <div className="border border-slate-200 rounded-2xl bg-white overflow-hidden shadow-xs">
               {/* Top Banner Info */}
-              <div className="p-5 border-b border-navy-100 bg-navy-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-3.5">
                   <div className="size-12 rounded-2xl bg-gradient-to-tr from-violet-600 to-indigo-600 text-white grid place-items-center font-bold text-base shadow-sm">
                     <Building2 className="size-6" />
                   </div>
                   <div>
-                    <h2 className="font-black text-base text-navy-900">{activeCompany.legal_name || activeCompany.name}</h2>
-                    <div className="flex flex-wrap items-center gap-3 text-xs text-navy-500 mt-0.5">
-                      <span>GSTIN: <strong className="font-mono text-navy-900">{activeCompany.gst_number || "Not Configured"}</strong></span>
+                    <h2 className="font-black text-base text-slate-900">{activeCompany.legal_name || activeCompany.name}</h2>
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 mt-0.5">
+                      <span>GSTIN: <strong className="font-mono text-slate-900">{activeCompany.gst_number || "Not Configured"}</strong></span>
                       <span>•</span>
-                      <span>Email: <strong className="text-navy-900">{activeCompany.email || "—"}</strong></span>
+                      <span>Email: <strong className="text-slate-900">{activeCompany.email || "—"}</strong></span>
                       <span>•</span>
-                      <span>Phone: <strong className="text-navy-900">{activeCompany.phone || "—"}</strong></span>
+                      <span>Phone: <strong className="text-slate-900">{activeCompany.phone || "—"}</strong></span>
                     </div>
                   </div>
                 </div>
@@ -1411,14 +1411,14 @@ export function CompanyManagement() {
                     setModalInitialTab("general");
                     setShowFormModal(true);
                   }}
-                  className="px-3.5 py-1.5 rounded-xl border border-navy-200 bg-white hover:bg-navy-50 font-bold text-xs text-navy-700 flex items-center gap-1.5 shadow-2xs transition-colors self-start sm:self-auto"
+                  className="px-3.5 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 font-bold text-xs text-slate-700 flex items-center gap-1.5 shadow-2xs transition-colors self-start sm:self-auto"
                 >
                   <Edit2 className="size-3.5" /> Edit Org
                 </button>
               </div>
 
               {/* Sub-Tabs Bar */}
-              <div className="flex items-center gap-1 px-4 border-b border-navy-100 bg-white overflow-x-auto">
+              <div className="flex items-center gap-1 px-4 border-b border-slate-100 bg-white overflow-x-auto">
                 {[
                   "Overview",
                   "GST Registrations",
@@ -1437,7 +1437,7 @@ export function CompanyManagement() {
                         "py-3 px-3.5 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap",
                         isActive
                           ? "border-brand-600 text-brand-600 bg-brand-50/50"
-                          : "border-transparent text-navy-500 hover:text-navy-900 hover:bg-navy-50"
+                          : "border-transparent text-slate-500 hover:text-slate-900 hover:bg-slate-50"
                       )}
                     >
                       {tab}
@@ -1464,10 +1464,10 @@ export function CompanyManagement() {
                               POS Bills & CRM Leads
                             </span>
                           </div>
-                          <div className="text-base font-black text-navy-900 mt-0.5">
+                          <div className="text-base font-black text-slate-900 mt-0.5">
                             {activeCompany.google_review_url ? "Active Review Link Configured" : "Review Link Not Set"}
                           </div>
-                          <p className="text-xs text-navy-600 mt-0.5 max-w-2xl">
+                          <p className="text-xs text-slate-600 mt-0.5 max-w-2xl">
                             QR code is automatically stamped at the bottom of thermal receipts and shared with students through WhatsApp CRM after completed orders.
                           </p>
                         </div>
@@ -1489,9 +1489,9 @@ export function CompanyManagement() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       {/* Left 2 Cols: Details & Integration status */}
                       <div className="md:col-span-2 space-y-4">
-                        <div className="p-5 rounded-2xl border border-navy-200 bg-white space-y-4">
-                          <div className="flex items-center justify-between border-b border-navy-100 pb-3">
-                            <h4 className="font-bold text-sm text-navy-900 flex items-center gap-2">
+                        <div className="p-5 rounded-2xl border border-slate-200 bg-white space-y-4">
+                          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                            <h4 className="font-bold text-sm text-slate-900 flex items-center gap-2">
                               <QrCode className="size-4 text-brand-600" />
                               <span>Review URL & Configuration</span>
                             </h4>
@@ -1507,10 +1507,10 @@ export function CompanyManagement() {
 
                           <div className="space-y-3 text-xs">
                             <div>
-                              <span className="text-[10px] text-navy-500 font-semibold block mb-0.5">
+                              <span className="text-[10px] text-slate-500 font-semibold block mb-0.5">
                                 Google Review Direct URL:
                               </span>
-                              <div className="p-2.5 rounded-xl bg-navy-50 border border-navy-200 font-mono text-xs text-navy-800 break-all flex items-center justify-between gap-2">
+                              <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 font-mono text-xs text-slate-800 break-all flex items-center justify-between gap-2">
                                 <span className="truncate">
                                   {activeCompany.google_review_url || "https://search.google.com/local/writereview"}
                                 </span>
@@ -1518,16 +1518,16 @@ export function CompanyManagement() {
                             </div>
 
                             <div>
-                              <span className="text-[10px] text-navy-500 font-semibold block mb-0.5">
+                              <span className="text-[10px] text-slate-500 font-semibold block mb-0.5">
                                 Google Place ID:
                               </span>
-                              <div className="p-2.5 rounded-xl bg-navy-50 border border-navy-200 font-mono text-xs text-navy-800">
+                              <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 font-mono text-xs text-slate-800">
                                 {activeCompany.google_place_id || "Not configured (Optional)"}
                               </div>
                             </div>
                           </div>
 
-                          <div className="pt-2 border-t border-navy-100 flex flex-wrap gap-2">
+                          <div className="pt-2 border-t border-slate-100 flex flex-wrap gap-2">
                             <button
                               type="button"
                               onClick={() => {
@@ -1535,7 +1535,7 @@ export function CompanyManagement() {
                                 navigator.clipboard.writeText(link);
                                 showToast("Google Review Link copied to clipboard!");
                               }}
-                              className="h-8 px-3 rounded-lg border border-navy-200 bg-white hover:bg-navy-50 text-navy-700 font-bold text-xs flex items-center gap-1.5 transition-colors shadow-2xs"
+                              className="h-8 px-3 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition-colors shadow-2xs"
                             >
                               <Copy className="size-3.5" /> Copy Review Link
                             </button>
@@ -1606,7 +1606,7 @@ export function CompanyManagement() {
                       </div>
 
                       {/* Right Col: Live Interactive QR Card */}
-                      <div className="p-5 flex flex-col items-center justify-center text-center space-y-3 bg-white border border-navy-200 rounded-2xl shadow-xs">
+                      <div className="p-5 flex flex-col items-center justify-center text-center space-y-3 bg-white border border-slate-200 rounded-2xl shadow-xs">
                         <div className="flex items-center gap-1 text-amber-500 text-sm font-black">
                           {[...Array(5)].map((_, i) => (
                             <Star key={i} className="size-4 fill-amber-500" />
@@ -1622,8 +1622,8 @@ export function CompanyManagement() {
                           />
                         </div>
                         <div>
-                          <div className="text-xs font-black text-navy-900">Scan with Phone Camera</div>
-                          <div className="text-[10px] text-navy-500 mt-0.5">Direct link to 5-star Google review prompt</div>
+                          <div className="text-xs font-black text-slate-900">Scan with Phone Camera</div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">Direct link to 5-star Google review prompt</div>
                         </div>
                       </div>
                     </div>
@@ -1633,15 +1633,15 @@ export function CompanyManagement() {
                 {/* OVERVIEW TAB */}
                 {activeTab === "Overview" && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                    <div className="p-4 rounded-xl border border-navy-200 bg-navy-50/50 space-y-2">
-                      <div className="text-[11px] font-bold text-navy-500">Entity Details</div>
+                    <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
+                      <div className="text-[11px] font-bold text-slate-500">Entity Details</div>
                       <div><strong>Trade Name:</strong> {activeCompany.name}</div>
                       <div><strong>Legal Name:</strong> {activeCompany.legal_name}</div>
                       <div><strong>Type:</strong> {activeCompany.company_type || "Private Limited"}</div>
                       <div><strong>Industry:</strong> {activeCompany.industry || "Retail"}</div>
                     </div>
-                    <div className="p-4 rounded-xl border border-navy-200 bg-navy-50/50 space-y-2">
-                      <div className="text-[11px] font-bold text-navy-500">Contact & Location</div>
+                    <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
+                      <div className="text-[11px] font-bold text-slate-500">Contact & Location</div>
                       <div><strong>Email:</strong> {activeCompany.email || "—"}</div>
                       <div><strong>Phone:</strong> {activeCompany.phone || "—"}</div>
                       <div><strong>Address:</strong> {activeCompany.address || "—"}</div>
@@ -1652,7 +1652,7 @@ export function CompanyManagement() {
 
                 {/* OTHER TABS */}
                 {activeTab !== "Google Reviews & QR ★ Live" && activeTab !== "Overview" && (
-                  <div className="p-8 text-center text-xs text-navy-500 border border-dashed border-navy-200 rounded-xl bg-white">
+                  <div className="p-8 text-center text-xs text-slate-500 border border-dashed border-slate-200 rounded-xl bg-white">
                     Detailed {activeTab} information configured and synced with database.
                   </div>
                 )}

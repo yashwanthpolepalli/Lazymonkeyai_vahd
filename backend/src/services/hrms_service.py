@@ -2361,7 +2361,9 @@ class HrmsService:
         department: Optional[str] = None,
         district: Optional[str] = None,
         reason: Optional[str] = None,
-        search: Optional[str] = None
+        search: Optional[str] = None,
+        branch_id: Optional[str] = None,
+        ho_id: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         query = db.query(AttendanceCorrection)
 
@@ -2385,10 +2387,42 @@ class HrmsService:
             query = query.filter(AttendanceCorrection.department.ilike(f"%{department.strip()}%"))
 
         if district and district.strip() and district.lower() != "all" and "all district" not in district.lower():
+            clean_d = district.strip()
             query = query.filter(
-                (AttendanceCorrection.district.ilike(f"%{district.strip()}%")) |
-                (AttendanceCorrection.place.ilike(f"%{district.strip()}%"))
+                (AttendanceCorrection.district.ilike(f"%{clean_d}%")) |
+                (AttendanceCorrection.place.ilike(f"%{clean_d}%")) |
+                (AttendanceCorrection.tenant_id == clean_d)
             )
+
+        if branch_id and str(branch_id).lower() not in ["all", "", "none", "undefined", "null"]:
+            b_obj = db.query(vahdBranch).filter(
+                or_(
+                    vahdBranch.id == branch_id,
+                    vahdBranch.branch_name == branch_id,
+                    vahdBranch.vahd_name == branch_id
+                )
+            ).first()
+            branch_conditions = [AttendanceCorrection.tenant_id == branch_id]
+            if b_obj:
+                branch_conditions.append(AttendanceCorrection.tenant_id == b_obj.id)
+                if b_obj.branch_name:
+                    branch_conditions.append(AttendanceCorrection.place.ilike(f"%{b_obj.branch_name}%"))
+                    branch_conditions.append(AttendanceCorrection.district.ilike(f"%{b_obj.branch_name}%"))
+                if b_obj.vahd_name:
+                    branch_conditions.append(AttendanceCorrection.place.ilike(f"%{b_obj.vahd_name}%"))
+                    branch_conditions.append(AttendanceCorrection.district.ilike(f"%{b_obj.vahd_name}%"))
+                if getattr(b_obj, "district", None):
+                    branch_conditions.append(AttendanceCorrection.district.ilike(f"%{b_obj.district}%"))
+                emp_sub = [e[0] for e in db.query(Employee.id).filter(or_(Employee.branch_id == b_obj.id, Employee.vahd_branch.ilike(f"%{b_obj.branch_name}%"))).all()]
+                stu_sub = [s[0] for s in db.query(student.id).filter(or_(student.branch_id == b_obj.id, student.primary_vahd_location.ilike(f"%{b_obj.branch_name}%"))).all()]
+                m_ids = emp_sub + stu_sub
+                if m_ids:
+                    branch_conditions.append(AttendanceCorrection.person_id.in_(m_ids))
+            else:
+                branch_conditions.append(AttendanceCorrection.place.ilike(f"%{branch_id}%"))
+                branch_conditions.append(AttendanceCorrection.district.ilike(f"%{branch_id}%"))
+
+            query = query.filter(or_(*branch_conditions))
 
         if reason and reason.strip() and reason.lower() != "all" and "all reason" not in reason.lower():
             query = query.filter(AttendanceCorrection.reason.ilike(f"%{reason.strip()}%"))
@@ -2433,7 +2467,14 @@ class HrmsService:
         return result
 
     @staticmethod
-    def get_attendance_corrections_stats(db: Session, date_str: Optional[str] = None) -> Dict[str, int]:
+    def get_attendance_corrections_stats(
+        db: Session,
+        date_str: Optional[str] = None,
+        person_type: Optional[str] = None,
+        district: Optional[str] = None,
+        branch_id: Optional[str] = None,
+        ho_id: Optional[str] = None
+    ) -> Dict[str, int]:
         query = db.query(AttendanceCorrection)
         if date_str and date_str.strip():
             try:
@@ -2444,6 +2485,47 @@ class HrmsService:
                 query = query.filter(AttendanceCorrection.date == d_obj)
             except Exception:
                 pass
+
+        if person_type and person_type.strip() and person_type.upper() != "ALL":
+            query = query.filter(AttendanceCorrection.person_type.ilike(person_type.strip()))
+
+        if district and district.strip() and district.lower() != "all" and "all district" not in district.lower():
+            clean_d = district.strip()
+            query = query.filter(
+                (AttendanceCorrection.district.ilike(f"%{clean_d}%")) |
+                (AttendanceCorrection.place.ilike(f"%{clean_d}%")) |
+                (AttendanceCorrection.tenant_id == clean_d)
+            )
+
+        if branch_id and str(branch_id).lower() not in ["all", "", "none", "undefined", "null"]:
+            b_obj = db.query(vahdBranch).filter(
+                or_(
+                    vahdBranch.id == branch_id,
+                    vahdBranch.branch_name == branch_id,
+                    vahdBranch.vahd_name == branch_id
+                )
+            ).first()
+            branch_conditions = [AttendanceCorrection.tenant_id == branch_id]
+            if b_obj:
+                branch_conditions.append(AttendanceCorrection.tenant_id == b_obj.id)
+                if b_obj.branch_name:
+                    branch_conditions.append(AttendanceCorrection.place.ilike(f"%{b_obj.branch_name}%"))
+                    branch_conditions.append(AttendanceCorrection.district.ilike(f"%{b_obj.branch_name}%"))
+                if b_obj.vahd_name:
+                    branch_conditions.append(AttendanceCorrection.place.ilike(f"%{b_obj.vahd_name}%"))
+                    branch_conditions.append(AttendanceCorrection.district.ilike(f"%{b_obj.vahd_name}%"))
+                if getattr(b_obj, "district", None):
+                    branch_conditions.append(AttendanceCorrection.district.ilike(f"%{b_obj.district}%"))
+                emp_sub = [e[0] for e in db.query(Employee.id).filter(or_(Employee.branch_id == b_obj.id, Employee.vahd_branch.ilike(f"%{b_obj.branch_name}%"))).all()]
+                stu_sub = [s[0] for s in db.query(student.id).filter(or_(student.branch_id == b_obj.id, student.primary_vahd_location.ilike(f"%{b_obj.branch_name}%"))).all()]
+                m_ids = emp_sub + stu_sub
+                if m_ids:
+                    branch_conditions.append(AttendanceCorrection.person_id.in_(m_ids))
+            else:
+                branch_conditions.append(AttendanceCorrection.place.ilike(f"%{branch_id}%"))
+                branch_conditions.append(AttendanceCorrection.district.ilike(f"%{branch_id}%"))
+
+            query = query.filter(or_(*branch_conditions))
 
         all_recs = query.all()
         total = len(all_recs)
@@ -2505,6 +2587,7 @@ class HrmsService:
 
         corr = AttendanceCorrection(
             id=f"corr_{uuid.uuid4().hex[:8]}",
+            tenant_id=payload.get("tenant_id") or payload.get("branch_id") or None,
             person_type=str(payload.get("person_type") or "EMPLOYEE").upper(),
             person_id=payload.get("person_id") or None,
             person_name=str(payload.get("person_name") or "").strip(),
@@ -2955,8 +3038,13 @@ class HrmsService:
         }
 
     @staticmethod
-    def get_leaves(db: Session, status: Optional[str] = None) -> List[Dict[str, Any]]:
-        """Returns leave applications enriched with policy metadata, employee gender, and paid/unpaid tags."""
+    def get_leaves(
+        db: Session,
+        status: Optional[str] = None,
+        branch_id: Optional[str] = None,
+        user_type: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """Returns leave applications enriched with policy metadata, employee/student info, and paid/unpaid tags."""
         query = db.query(LeaveRequest)
         if status and status.upper() != "ALL":
             query = query.filter(LeaveRequest.status.ilike(status))
@@ -2965,6 +3053,7 @@ class HrmsService:
         for l in leaves:
             emp = db.query(Employee).filter(Employee.id == l.employee_id).first()
             employee = None
+            stu = None
             if not emp:
                 clean_id = l.employee_id.replace("emp_", "")
                 employee = db.query(employeeProfile).filter(
@@ -2972,12 +3061,58 @@ class HrmsService:
                 ).first()
                 if employee:
                     emp = db.query(Employee).filter(Employee.id == f"emp_{employee.id}").first()
+                else:
+                    stu = db.query(student).filter(
+                        (student.id == l.employee_id) | (student.member_code == l.employee_id)
+                    ).first()
+            else:
+                if emp.designation == "Student" or str(emp.id).startswith("cust_") or str(emp.id).startswith("stu_"):
+                    stu = db.query(student).filter(student.id == emp.id).first()
 
-            emp_name = f"{emp.first_name} {emp.last_name or ''}".strip() if emp else (employee.full_name if employee else "")
-            emp_code = emp.code if emp else (f"TR-{employee.id.replace('tr_', '').upper()}" if employee else "")
-            emp_gender = emp.gender if emp else (employee.gender if employee and employee.gender else "Male")
-            dept = emp.department if emp else (employee.primary_vahd_location if employee and employee.primary_vahd_location else "")
-            designation = emp.designation if emp else (employee.role if employee and employee.role else "")
+            is_student_record = bool(
+                stu or
+                (emp and emp.designation == "Student") or
+                str(l.employee_id).startswith("cust_") or
+                str(l.employee_id).startswith("stu_")
+            )
+            row_user_type = "student" if is_student_record else "employee"
+
+            # Filter by user_type ('student' vs 'employee')
+            if user_type and user_type.lower() != "all":
+                if row_user_type != user_type.lower():
+                    continue
+
+            # Branch isolation filter
+            record_branch = (emp.branch_id if emp else None) or (stu.branch_id if stu else None)
+            if branch_id and branch_id != "all":
+                if record_branch and record_branch != branch_id:
+                    continue
+
+            emp_name = (
+                (stu.full_name if stu and stu.full_name else None) or
+                (f"{emp.first_name or ''} {emp.last_name or ''}".strip() if emp else None) or
+                (employee.full_name if employee and employee.full_name else "")
+            )
+            emp_code = (
+                (stu.member_code if stu and stu.member_code else None) or
+                (emp.code if emp and emp.code else None) or
+                (f"TR-{employee.id.replace('tr_', '').upper()}" if employee else "")
+            )
+            emp_gender = (
+                (stu.gender if stu and stu.gender else None) or
+                (emp.gender if emp and emp.gender else None) or
+                (employee.gender if employee and employee.gender else "")
+            )
+            dept = (
+                (stu.qualification or stu.specialization or "" if stu else None) or
+                (emp.department if emp and emp.department else None) or
+                (employee.primary_vahd_location if employee and employee.primary_vahd_location else "")
+            )
+            designation = (
+                (emp.designation if emp and emp.designation else None) or
+                (employee.role if employee and employee.role else None) or
+                ("Student" if is_student_record else "")
+            )
 
             # Match leave policy for code / paid status
             lt = None
@@ -2997,6 +3132,8 @@ class HrmsService:
                 "employee_gender": emp_gender or "Male",
                 "department": dept or "",
                 "designation": designation or "",
+                "user_type": row_user_type,
+                "is_student": is_student_record,
                 "leave_type_id": l.leave_type_id or (lt.id if lt else ""),
                 "leave_type": l.leave_type or (lt.name if lt else ""),
                 "leave_type_code": lt.code if lt else "",
@@ -3021,31 +3158,56 @@ class HrmsService:
         """Applies for leave with dynamic policy validation & eligibility check."""
         emp_id = str(payload.get("employee_id") or "").strip()
         if not emp_id:
-            raise ValueError("Employee / employee ID is required.")
+            raise ValueError("Employee / student ID is required.")
 
-        # Ensure employee exists or resolve employee
+        # Ensure employee exists or resolve employee / student
         emp = db.query(Employee).filter((Employee.id == emp_id) | (Employee.code == emp_id) | (Employee.email.ilike(emp_id))).first()
         if not emp:
-            clean_tid = emp_id.replace("emp_", "")
-            employee = db.query(employeeProfile).filter((employeeProfile.id == emp_id) | (employeeProfile.id == clean_tid) | (employeeProfile.email.ilike(emp_id))).first()
-            if employee:
-                emp_id = f"emp_{employee.id}"
-                emp = db.query(Employee).filter(Employee.id == emp_id).first()
-                if not emp:
-                    emp = Employee(
-                        id=emp_id,
-                        code=f"TR-{employee.id.replace('tr_', '').upper()}",
-                        first_name=employee.full_name,
-                        email=employee.email,
-                        phone=employee.phone or "",
-                        gender=employee.gender or "Male",
-                        designation=employee.role or employee.specialization or "",
-                        department=employee.primary_vahd_location or "",
-                        status="Active",
-                        salary=float(employee.base_monthly_salary or 0.0)
-                    )
-                    db.add(emp)
-                    db.flush()
+            # Check if applicant is a student
+            stu = db.query(student).filter(
+                (student.id == emp_id) | (student.member_code == emp_id) | (student.email.ilike(emp_id))
+            ).first()
+            if stu:
+                emp_id = stu.id
+                full = (stu.full_name or "").strip()
+                parts = full.split(" ", 1) if full else []
+                emp = Employee(
+                    id=stu.id,
+                    code=stu.member_code or stu.id,
+                    first_name=parts[0] if parts else "",
+                    last_name=parts[1] if len(parts) > 1 else "",
+                    email=stu.email or "",
+                    phone=stu.phone or "",
+                    gender=stu.gender or "",
+                    designation=getattr(stu, "designation", None) or getattr(stu, "qualification", None) or "",
+                    department=stu.qualification or stu.specialization or "",
+                    tenant_id=stu.tenant_id,
+                    branch_id=stu.branch_id,
+                    status=stu.status or "",
+                )
+                db.add(emp)
+                db.flush()
+            else:
+                clean_tid = emp_id.replace("emp_", "")
+                employee = db.query(employeeProfile).filter((employeeProfile.id == emp_id) | (employeeProfile.id == clean_tid) | (employeeProfile.email.ilike(emp_id))).first()
+                if employee:
+                    emp_id = f"emp_{employee.id}"
+                    emp = db.query(Employee).filter(Employee.id == emp_id).first()
+                    if not emp:
+                        emp = Employee(
+                            id=emp_id,
+                            code=f"TR-{employee.id.replace('tr_', '').upper()}",
+                            first_name=employee.full_name,
+                            email=employee.email,
+                            phone=employee.phone or "",
+                            gender=employee.gender or "Male",
+                            designation=employee.role or employee.specialization or "",
+                            department=employee.primary_vahd_location or "",
+                            status="Active",
+                            salary=float(employee.base_monthly_salary or 0.0)
+                        )
+                        db.add(emp)
+                        db.flush()
 
         start_str = payload.get("start_date")
         end_str = payload.get("end_date")

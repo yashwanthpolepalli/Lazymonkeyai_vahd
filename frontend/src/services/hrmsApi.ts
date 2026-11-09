@@ -250,6 +250,9 @@ export interface LeaveItem {
   employee_code: string;
   gender?: string;
   department: string;
+  designation?: string;
+  user_type?: 'student' | 'employee';
+  is_student?: boolean;
   leave_type: string;
   leave_type_id?: string;
   paid_type?: string;
@@ -454,7 +457,13 @@ export const hrmsApi = {
     branch_id?: string;
     ho_id?: string;
   }) => apiClient.get<AttendanceCorrectionItem[]>('/hrms/attendance/corrections', { params }),
-  getAttendanceCorrectionsStats: (params?: { date?: string; branch_id?: string; ho_id?: string }) =>
+  getAttendanceCorrectionsStats: (params?: {
+    date?: string;
+    person_type?: string;
+    district?: string;
+    branch_id?: string;
+    ho_id?: string;
+  }) =>
     apiClient.get<AttendanceCorrectionStats>('/hrms/attendance/corrections/stats', { params }),
   createAttendanceCorrection: (payload: Partial<AttendanceCorrectionItem>) =>
     apiClient.post<{ message: string; id: string }>('/hrms/attendance/corrections', payload),
@@ -477,7 +486,8 @@ export const hrmsApi = {
   }) => apiClient.post<PunchResponse>('/hrms/attendance/punch', payload),
 
   // Leave
-  getLeaves: (status?: string, branch_id?: string) => apiClient.get<LeaveItem[]>('/hrms/leaves', { params: { status, branch_id } }),
+  getLeaves: (status?: string, branch_id?: string, user_type?: string) =>
+    apiClient.get<LeaveItem[]>('/hrms/leaves', { params: { status, branch_id, user_type } }),
   applyLeave: (payload: {
     employee_id: string;
     leave_type?: string;

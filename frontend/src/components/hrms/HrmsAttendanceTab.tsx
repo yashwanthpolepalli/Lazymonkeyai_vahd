@@ -29,11 +29,18 @@ const TIME_OPTIONS: string[] = (() => {
 
 interface HrmsAttendanceTabProps {
   onSuccessToast?: (msg: string) => void;
+  scope?: 'employee' | 'student';
 }
 
-export function HrmsAttendanceTab({ onSuccessToast }: HrmsAttendanceTabProps) {
+export function HrmsAttendanceTab({ onSuccessToast, scope }: HrmsAttendanceTabProps) {
   // Attendance Scope Filter: Employee vs Student
-  const [attendanceScope, setAttendanceScope] = useState<'employee' | 'student'>('employee');
+  const [attendanceScope, setAttendanceScope] = useState<'employee' | 'student'>(scope || 'employee');
+
+  useEffect(() => {
+    if (scope) {
+      setAttendanceScope(scope);
+    }
+  }, [scope]);
 
   // Month & Year state
   const currentDate = new Date();
@@ -249,31 +256,39 @@ export function HrmsAttendanceTab({ onSuccessToast }: HrmsAttendanceTabProps) {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">
-            Daily Attendance
+            {attendanceScope === 'student' ? 'Student Attendance' : 'Daily Attendance'}
           </h1>
           <p className="text-xs text-slate-500 font-medium mt-0.5">
-            Timesheets log summary, interactive monthly calendar matrix, and dynamic administrative punches.
+            {attendanceScope === 'student'
+              ? 'Student timesheets log summary, interactive monthly calendar matrix, and attendance tracking.'
+              : 'Timesheets log summary, interactive monthly calendar matrix, and dynamic administrative punches.'}
           </p>
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">
-          {/* Scroll-down to select Students Attendance vs Employees Attendance */}
+          {/* Scope indicator or selector */}
           <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200/80 shadow-2xs">
             <span className="text-[10px] font-black uppercase text-slate-400 pl-2">
               Scope:
             </span>
-            <select
-              value={attendanceScope}
-              onChange={(e) => {
-                setAttendanceScope(e.target.value as 'employee' | 'student');
-                setSelectedDepartment('ALL');
-                setSearchQuery('');
-              }}
-              className="bg-white text-purple-700 px-3 py-1.5 rounded-lg text-xs font-black border-0 shadow-xs focus:outline-none cursor-pointer hover:bg-purple-50 transition"
-            >
-              <option value="employee">👨‍💼 Employees Attendance</option>
-              <option value="student">🎓 Students Attendance</option>
-            </select>
+            {scope ? (
+              <span className="bg-white text-purple-700 px-3 py-1.5 rounded-lg text-xs font-black shadow-xs">
+                {scope === 'student' ? '🎓 Students Attendance' : '👨‍💼 Employees Attendance'}
+              </span>
+            ) : (
+              <select
+                value={attendanceScope}
+                onChange={(e) => {
+                  setAttendanceScope(e.target.value as 'employee' | 'student');
+                  setSelectedDepartment('ALL');
+                  setSearchQuery('');
+                }}
+                className="bg-white text-purple-700 px-3 py-1.5 rounded-lg text-xs font-black border-0 shadow-xs focus:outline-none cursor-pointer hover:bg-purple-50 transition"
+              >
+                <option value="employee">👨‍💼 Employees Attendance</option>
+                <option value="student">🎓 Students Attendance</option>
+              </select>
+            )}
           </div>
 
           {/* Manual Punch Action Button */}
@@ -305,7 +320,7 @@ export function HrmsAttendanceTab({ onSuccessToast }: HrmsAttendanceTabProps) {
             className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white shadow-md shadow-purple-600/25 transition cursor-pointer"
           >
             <Icon name="plus" size={13} />
-            <span>Manual Punch / Mark Date</span>
+            <span>{attendanceScope === 'student' ? '+ Manual Student Punch / Mark Date' : '+ Manual Punch / Mark Date'}</span>
           </button>
         </div>
       </div>
@@ -488,9 +503,11 @@ export function HrmsAttendanceTab({ onSuccessToast }: HrmsAttendanceTabProps) {
                 <th className="py-3 px-2 text-center w-10 text-purple-700 bg-purple-50/40 border-r border-slate-200">
                   PL
                 </th>
-                <th className="py-3 px-3 text-center min-w-[70px] text-slate-800 bg-slate-100/60 border-r border-slate-200">
-                  Payable
-                </th>
+                {attendanceScope !== 'student' && (
+                  <th className="py-3 px-3 text-center min-w-[70px] text-slate-800 bg-slate-100/60 border-r border-slate-200">
+                    Payable
+                  </th>
+                )}
 
                 {/* Days 1 to 30/31 Header */}
                 {(matrixData?.days_in_month || []).map((d) => (
@@ -513,7 +530,7 @@ export function HrmsAttendanceTab({ onSuccessToast }: HrmsAttendanceTabProps) {
               {loading ? (
                 <tr>
                   <td
-                    colSpan={(matrixData?.days_in_month?.length ?? 30) + 5}
+                    colSpan={(matrixData?.days_in_month?.length ?? 30) + (attendanceScope === 'student' ? 4 : 5)}
                     className="py-12 text-center text-slate-400 font-bold"
                   >
                     Loading attendance matrix...
@@ -522,7 +539,7 @@ export function HrmsAttendanceTab({ onSuccessToast }: HrmsAttendanceTabProps) {
               ) : !matrixData?.employees || matrixData.employees.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={(matrixData?.days_in_month?.length ?? 30) + 5}
+                    colSpan={(matrixData?.days_in_month?.length ?? 30) + (attendanceScope === 'student' ? 4 : 5)}
                     className="py-12 text-center text-slate-400 font-bold"
                   >
                     No {attendanceScope === 'student' ? 'students' : 'employees'} found for this filter.
@@ -558,9 +575,11 @@ export function HrmsAttendanceTab({ onSuccessToast }: HrmsAttendanceTabProps) {
                     <td className="py-2.5 px-2 text-center font-black text-purple-600 bg-purple-50/20 border-r border-slate-200 text-xs">
                       {emp.leave_count}
                     </td>
-                    <td className="py-2.5 px-3 text-center font-black text-slate-900 bg-slate-50/40 border-r border-slate-200 text-xs">
-                      {emp.payable_days}
-                    </td>
+                    {attendanceScope !== 'student' && (
+                      <td className="py-2.5 px-3 text-center font-black text-slate-900 bg-slate-50/40 border-r border-slate-200 text-xs">
+                        {emp.payable_days}
+                      </td>
+                    )}
 
                     {/* Day Cells 1 to 30 */}
                     {(matrixData.days_in_month || []).map((d) => {
@@ -628,7 +647,7 @@ export function HrmsAttendanceTab({ onSuccessToast }: HrmsAttendanceTabProps) {
                   <Icon name="clock" size={17} />
                 </div>
                 <h3 className="text-base font-bold text-slate-900">
-                  Manual Timesheet Punch / Adjustment
+                  {attendanceScope === 'student' ? 'Manual Student Attendance Punch / Adjustment' : 'Manual Timesheet Punch / Adjustment'}
                 </h3>
               </div>
               <button

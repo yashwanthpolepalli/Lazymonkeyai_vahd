@@ -10,9 +10,7 @@ interface TimePickerSelectProps {
   className?: string;
 }
 
-const BASE_HOURS = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
-// Double list so hours scroll seamlessly with 01, 02, 03 following 12, matching the reference UI
-const HOURS = [...BASE_HOURS, ...BASE_HOURS];
+const HOURS = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
 const MINUTES = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
 const PERIODS: ('AM' | 'PM')[] = ['AM', 'PM'];
 
@@ -132,17 +130,17 @@ export function TimePickerSelect({
             className="w-14 h-52 overflow-y-auto border-r border-slate-100 select-none scroll-smooth py-0.5 [&::-webkit-scrollbar]:hidden"
             style={{ scrollbarWidth: 'none' }}
           >
-            {HOURS.map((h, idx) => {
-              const isSelected = h === hour && idx < 12;
+            {HOURS.map((h) => {
+              const isSelected = h === hour;
               return (
                 <div
-                  key={`h-${idx}-${h}`}
+                  key={`h-${h}`}
                   data-selected={isSelected}
                   onClick={() => handleSelectHour(h)}
                   className={cn(
                     'py-2 text-center text-xs transition cursor-pointer select-none',
                     isSelected
-                      ? 'bg-[#0284c7] text-white font-bold'
+                      ? 'bg-blue-600 text-white font-bold'
                       : 'text-slate-700 hover:bg-slate-100 font-medium'
                   )}
                 >
@@ -168,7 +166,7 @@ export function TimePickerSelect({
                   className={cn(
                     'py-2 text-center text-xs transition cursor-pointer select-none',
                     isSelected
-                      ? 'bg-[#0284c7] text-white font-bold'
+                      ? 'bg-blue-600 text-white font-bold'
                       : 'text-slate-700 hover:bg-slate-100 font-medium'
                   )}
                 >
@@ -190,7 +188,7 @@ export function TimePickerSelect({
                   className={cn(
                     'py-2 text-center text-xs transition cursor-pointer select-none',
                     isSelected
-                      ? 'bg-[#0284c7] text-white font-bold'
+                      ? 'bg-blue-600 text-white font-bold'
                       : 'text-slate-700 hover:bg-slate-100 font-medium'
                   )}
                 >

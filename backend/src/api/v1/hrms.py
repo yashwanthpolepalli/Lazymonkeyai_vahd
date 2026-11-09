@@ -206,6 +206,8 @@ def get_attendance_corrections(
     district: Optional[str] = Query(None),
     reason: Optional[str] = Query(None),
     search: Optional[str] = Query(None),
+    branch_id: Optional[str] = Query(None),
+    ho_id: Optional[str] = Query(None),
     db: Session = Depends(get_db)
 ):
     return HrmsService.get_attendance_corrections(
@@ -216,15 +218,28 @@ def get_attendance_corrections(
         department=department,
         district=district,
         reason=reason,
-        search=search
+        search=search,
+        branch_id=branch_id,
+        ho_id=ho_id
     )
 
 @router.get("/attendance/corrections/stats")
 def get_attendance_corrections_stats(
     date: Optional[str] = Query(None),
+    person_type: Optional[str] = Query(None),
+    district: Optional[str] = Query(None),
+    branch_id: Optional[str] = Query(None),
+    ho_id: Optional[str] = Query(None),
     db: Session = Depends(get_db)
 ):
-    return HrmsService.get_attendance_corrections_stats(db, date_str=date)
+    return HrmsService.get_attendance_corrections_stats(
+        db,
+        date_str=date,
+        person_type=person_type,
+        district=district,
+        branch_id=branch_id,
+        ho_id=ho_id
+    )
 
 @router.post("/attendance/corrections")
 def create_attendance_correction(payload: dict, db: Session = Depends(get_db)):
@@ -606,8 +621,13 @@ def verify_staff_face_punch(payload: dict, db: Session = Depends(get_db)):
 # 4. LEAVE ENDPOINTS
 # -------------------------------------------------------------
 @router.get("/leaves")
-def get_leaves(status: Optional[str] = None, db: Session = Depends(get_db)):
-    return HrmsService.get_leaves(db, status=status)
+def get_leaves(
+    status: Optional[str] = None,
+    branch_id: Optional[str] = Query(None),
+    user_type: Optional[str] = Query(None),
+    db: Session = Depends(get_db)
+):
+    return HrmsService.get_leaves(db, status=status, branch_id=branch_id, user_type=user_type)
 
 @router.post("/leaves")
 def apply_leave(payload: dict, db: Session = Depends(get_db)):

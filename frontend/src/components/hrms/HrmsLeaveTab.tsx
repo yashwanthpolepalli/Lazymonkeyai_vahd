@@ -11,16 +11,25 @@ import {
   type EligibleLeaveType,
 } from '@/services/hrmsApi';
 import { cn } from '@/utils/cn';
+import { apiClient } from '@/services/apiClient';
 
 interface HrmsLeaveTabProps {
   onSuccessToast?: (msg: string) => void;
+  scope?: 'employee' | 'student';
 }
 
 type SubTabType = 'applications' | 'policies' | 'balances';
 
-export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
+export function HrmsLeaveTab({ onSuccessToast, scope }: HrmsLeaveTabProps) {
+  const [leaveScope, setLeaveScope] = useState<'employee' | 'student'>(scope || 'employee');
   const [subTab, setSubTab] = useState<SubTabType>('applications');
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (scope) {
+      setLeaveScope(scope);
+    }
+  }, [scope]);
 
   // Org / Branch filter — synced with Topbar
   const [selectedBranch, setSelectedBranch] = useState<string>(() =>
@@ -38,7 +47,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
 
   // Core Data
   const [leaves, setLeaves] = useState<LeaveItem[]>([]);
-  const [employees, setEmployees] = useState<EmployeeItem[]>([]);
+  const [employees, setEmployees] = useState<any[]>([]);
   const [leaveTypes, setLeaveTypes] = useState<LeaveTypeItem[]>([]);
   const [balances, setBalances] = useState<EmployeeLeaveBalanceItem[]>([]);
 
@@ -149,19 +158,54 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
     try {
       const bId = typeof branchId === 'string' ? branchId : (localStorage.getItem('vahd_selected_org_id') || 'all');
       const branchFilter = bId && bId !== 'all' ? bId : undefined;
-      const [leavesRes, empRes, typesRes, balRes] = await Promise.all([
-        hrmsApi.getLeaves(undefined, branchFilter),
-        hrmsApi.getEmployees({ branch_id: branchFilter }),
+      const targetScope = scope || leaveScope;
+
+      let employeesData: EmployeeItem[] = [];
+      if (targetScope === 'student') {
+        try {
+          const stuRes = await apiClient.get<any[]>('/students', {
+            params: branchFilter ? { branch_id: branchFilter } : undefined,
+          });
+          const stuList = Array.isArray(stuRes) ? stuRes : (stuRes as any)?.data || [];
+          employeesData = stuList.map((stu: any) => {
+            const fullName = (stu.full_name || stu.name || '').trim();
+            const parts = fullName ? fullName.split(' ') : [];
+            return {
+              id: stu.id,
+              first_name: parts[0] || '',
+              last_name: parts.slice(1).join(' ') || '',
+              full_name: fullName,
+              code: stu.member_code || stu.roll_number || stu.id || '',
+              department: stu.qualification || stu.specialization || stu.course || stu.stream || '',
+              designation: stu.designation || '',
+              email: stu.email || '',
+              phone: stu.phone || '',
+              gender: stu.gender || '',
+              status: stu.status || '',
+              branch_id: stu.branch_id,
+              joined_date: stu.created_at ? stu.created_at.split('T')[0] : '',
+            };
+          });
+        } catch (e) {
+          console.error('Failed to load students for leave tab:', e);
+        }
+      } else {
+        const empRes = await hrmsApi.getEmployees({ branch_id: branchFilter });
+        employeesData = empRes || [];
+      }
+
+      const [leavesRes, typesRes, balRes] = await Promise.all([
+        hrmsApi.getLeaves(undefined, branchFilter, targetScope),
         hrmsApi.getLeaveTypes(),
         hrmsApi.getLeaveBalances(),
       ]);
       setLeaves(leavesRes || []);
-      setEmployees(empRes || []);
+      setEmployees(employeesData);
       setLeaveTypes(typesRes || []);
       setBalances(balRes || []);
 
-      if (empRes && empRes.length > 0 && !formEmployeeId) {
-        setFormEmployeeId(empRes[0].id);
+      if (employeesData && employeesData.length > 0 && (!formEmployeeId || !employeesData.some((e) => e.id === formEmployeeId))) {
+        setFormEmployeeId(employeesData[0].id);
       }
     } catch (err) {
       console.error('Failed to fetch HRMS leave data:', err);
@@ -172,7 +216,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
 
   useEffect(() => {
     fetchAllData(selectedBranch);
-  }, [selectedBranch]);
+  }, [selectedBranch, leaveScope, scope]);
 
   // Fetch eligible leave types when employee changes in Apply Modal
   useEffect(() => {
@@ -476,18 +520,26 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
   // ─────────────────────────────────────────────────────────────
   // 5. METRICS & FILTERING
   // ─────────────────────────────────────────────────────────────
-  const totalCount = leaves.length;
-  const pendingCount = leaves.filter((l) => l.status === 'Pending').length;
-  const approvedCount = leaves.filter((l) => l.status === 'Approved').length;
+  const targetScope = scope || leaveScope;
+  const scopedLeaves = useMemo(() => {
+    return leaves.filter((l) => {
+      const isStudent = (l as any).user_type === 'student' || (l as any).is_student === true;
+      return targetScope === 'student' ? isStudent : !isStudent;
+    });
+  }, [leaves, targetScope]);
+
+  const totalCount = scopedLeaves.length;
+  const pendingCount = scopedLeaves.filter((l) => l.status === 'Pending').length;
+  const approvedCount = scopedLeaves.filter((l) => l.status === 'Approved').length;
   const todayStr = new Date().toISOString().split('T')[0];
-  const onLeaveTodayCount = leaves.filter((l) => {
+  const onLeaveTodayCount = scopedLeaves.filter((l) => {
     if (l.status !== 'Approved') return false;
     const s = l.start_date ? l.start_date.split('/').reverse().join('-') : '';
     const e = l.end_date ? l.end_date.split('/').reverse().join('-') : '';
     return s && e && todayStr >= s && todayStr <= e;
   }).length;
 
-  const filteredLeaves = leaves.filter((l) => {
+  const filteredLeaves = scopedLeaves.filter((l) => {
     const matchesStatus = statusFilter === 'ALL' || l.status.toLowerCase() === statusFilter.toLowerCase();
     const q = searchQuery.trim().toLowerCase();
     const matchesSearch =
@@ -502,6 +554,10 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
   });
 
   const filteredBalances = balances.filter((b) => {
+    const isStudent = (b as any).user_type === 'student' || (b as any).is_student === true;
+    const matchesScope = targetScope === 'student' ? isStudent : !isStudent;
+    if (!matchesScope) return false;
+
     const q = searchQuery.trim().toLowerCase();
     return (
       !q ||
@@ -527,13 +583,15 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
             </div>
             <div>
               <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-                <span>Leave &amp; Absence Hub</span>
+                <span>{targetScope === 'student' ? 'Student Leave & Absence Hub' : 'Leave & Absence Hub'}</span>
                 <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-purple-100 text-purple-800 uppercase tracking-wider">
-                  Configurable LMS
+                  {targetScope === 'student' ? 'Student LMS' : 'Configurable LMS'}
                 </span>
               </h2>
               <p className="text-xs text-slate-500 font-medium">
-                Enterprise leave policies, dynamic gender-based eligibility (Maternity/Paternity/Casual), and live balance ledgers.
+                {targetScope === 'student'
+                  ? 'Student leave requests, attendance exemptions, and academic leave logs.'
+                  : 'Enterprise leave policies, dynamic gender-based eligibility (Maternity/Paternity/Casual), and live balance ledgers.'}
               </p>
             </div>
           </div>
@@ -545,7 +603,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
             className="px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center gap-2 shadow-sm transition-all shrink-0 cursor-pointer"
           >
             <Icon name="plus" size={15} />
-            <span>Apply Leave / Request</span>
+            <span>{targetScope === 'student' ? '+ Apply Student Leave / Request' : '+ Apply Leave / Request'}</span>
           </button>
 
           <button
@@ -1577,8 +1635,12 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                   <Icon name="calendar" size={20} />
                 </div>
                 <div>
-                  <h3 className="text-lg font-black text-slate-900">Record Leave Application</h3>
-                  <p className="text-xs text-slate-500">Apply leave on behalf of a coach or staff member.</p>
+                  <h3 className="text-lg font-black text-slate-900">
+                    {targetScope === 'student' ? 'Record Student Leave Application' : 'Record Leave Application'}
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    {targetScope === 'student' ? 'Apply leave on behalf of an enrolled student.' : 'Apply leave on behalf of a coach or staff member.'}
+                  </p>
                 </div>
               </div>
               <button
@@ -1598,10 +1660,10 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                     <span>{applyError}</span>
                   </div>
                 )}
-              {/* Employee Selection */}
+              {/* Employee / Student Selection */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  Select employee / Employee <span className="text-rose-500">*</span>
+                  {targetScope === 'student' ? 'Select Student' : 'Select Employee / Staff'} <span className="text-rose-500">*</span>
                 </label>
                 <select
                   value={formEmployeeId}
@@ -1610,7 +1672,7 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                 >
                   {employees.map((emp) => (
                     <option key={emp.id} value={emp.id}>
-                      {emp.first_name} {emp.last_name || ''} ({emp.designation || 'Staff'} • {emp.code})
+                      {emp.first_name} {emp.last_name || ''} {emp.code ? `(${emp.code})` : ''} {emp.designation ? `• ${emp.designation}` : (emp.department ? `• ${emp.department}` : '')}
                     </option>
                   ))}
                 </select>
@@ -1618,9 +1680,9 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                 {/* Selected employee info badge */}
                 {selectedEmployeeObj && (
                   <div className="mt-1.5 flex items-center gap-2 text-[11px] text-slate-500">
-                    <span>Department: <strong>{selectedEmployeeObj.department}</strong></span>
+                    <span>{targetScope === 'student' ? 'Course / Branch' : 'Department'}: <strong>{selectedEmployeeObj.department}</strong></span>
                     <span>•</span>
-                    <span>Joined: <strong>{selectedEmployeeObj.joined_date || 'N/A'}</strong></span>
+                    <span>{targetScope === 'student' ? 'Enrolled' : 'Joined'}: <strong>{selectedEmployeeObj.joined_date || 'N/A'}</strong></span>
                   </div>
                 )}
               </div>

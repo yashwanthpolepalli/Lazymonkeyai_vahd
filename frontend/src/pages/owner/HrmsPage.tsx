@@ -34,15 +34,32 @@ type HrmsCategory =
   | 'Payroll'
   | 'Exit Management';
 
+type StudentCategory = 'Student Directory' | 'Attendance' | 'Leave';
+
 export function HrmsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const rawTab = searchParams.get('tab');
   const rawView = searchParams.get('view');
-  const initialView = rawView === 'students' || rawTab === 'students' || rawTab === 'students' ? 'students' : 'employees';
+  const initialView = rawView === 'students' || rawTab === 'students' ? 'students' : 'employees';
   const initialTab = rawTab === 'employees' || !rawTab ? 'employees' : rawTab;
 
   // View Mode: Students View vs Employees View
   const [viewMode, setViewMode] = useState<'students' | 'employees'>(initialView);
+
+  // Student Categories State
+  const [studentCategory, setStudentCategory] = useState<StudentCategory>(() => {
+    if (initialView === 'students') {
+      if (rawTab === 'leave') return 'Leave';
+      if (['attendance', 'daily_attendance', 'geofence', 'geofence_portal', 'face_recognition', 'gps_attendance', 'corrections'].includes(rawTab || '')) return 'Attendance';
+      return 'Student Directory';
+    }
+    return 'Student Directory';
+  });
+  const [studentSubTab, setStudentSubTab] = useState<string>(() => {
+    return rawTab && ['attendance', 'daily_attendance', 'geofence', 'geofence_portal', 'face_recognition', 'gps_attendance', 'corrections'].includes(rawTab)
+      ? rawTab
+      : 'attendance';
+  });
 
   // State
   const [activeCategory, setActiveCategory] = useState<HrmsCategory>('Employee Management');
@@ -131,6 +148,20 @@ export function HrmsPage() {
     if (rawView === 'students' || rawTab === 'students') {
       if (canViewStudents) setViewMode('students');
     }
+
+    if (viewMode === 'students' || rawView === 'students') {
+      if (rawTab === 'leave') {
+        setStudentCategory('Leave');
+      } else if (
+        ['attendance', 'daily_attendance', 'geofence', 'geofence_portal', 'face_recognition', 'gps_attendance', 'corrections'].includes(rawTab || '')
+      ) {
+        setStudentCategory('Attendance');
+        if (rawTab) setStudentSubTab(rawTab);
+      } else if (rawTab === 'directory' || rawTab === 'students' || !rawTab) {
+        setStudentCategory('Student Directory');
+      }
+    }
+
     if (initialTab) {
       const normalizedTab = initialTab === 'employees'
         ? 'employees'
@@ -150,7 +181,7 @@ export function HrmsPage() {
         setActiveCategory('Exit Management');
       }
     }
-  }, [initialTab, rawView, rawTab]);
+  }, [initialTab, rawView, rawTab, canViewStudents, canViewEmployees, viewMode]);
 
   const switchTab = (cat: HrmsCategory, sub?: string) => {
     setActiveCategory(cat);
@@ -162,6 +193,18 @@ export function HrmsPage() {
     );
     setActiveSubTab(targetSub);
     setSearchParams({ view: 'employees', tab: targetSub });
+  };
+
+  const switchStudentTab = (cat: StudentCategory, sub?: string) => {
+    setStudentCategory(cat);
+    const targetSub = sub || (
+      cat === 'Student Directory' ? 'directory' :
+        cat === 'Attendance' ? (studentSubTab || 'attendance') : 'leave'
+    );
+    if (cat === 'Attendance' && sub) {
+      setStudentSubTab(sub);
+    }
+    setSearchParams({ view: 'students', tab: targetSub });
   };
 
   // Fetch initial data
@@ -223,7 +266,8 @@ export function HrmsPage() {
               type="button"
               onClick={() => {
                 setViewMode('students');
-                setSearchParams({ view: 'students' });
+                const targetTab = studentCategory === 'Attendance' ? (studentSubTab || 'attendance') : studentCategory === 'Leave' ? 'leave' : 'directory';
+                setSearchParams({ view: 'students', tab: targetTab });
               }}
               className={cn(
                 'flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all duration-150 cursor-pointer shadow-2xs',
@@ -241,7 +285,7 @@ export function HrmsPage() {
               type="button"
               onClick={() => {
                 setViewMode('employees');
-                setSearchParams({ view: 'employees' });
+                setSearchParams({ view: 'employees', tab: activeSubTab || 'employees' });
               }}
               className={cn(
                 'flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all duration-150 cursor-pointer shadow-2xs',
@@ -266,7 +310,104 @@ export function HrmsPage() {
       {/* 1. STUDENTS VIEW MODE                                          */}
       {/* ───────────────────────────────────────────────────────────── */}
       {viewMode === 'students' && (
-        <StudentManagementTab />
+        <div className="space-y-3.5">
+          {/* Top Students Category Navigation Bar */}
+          <div className="bg-white border border-slate-200/90 rounded-2xl p-1.5 shadow-2xs overflow-x-auto no-scrollbar">
+            <div className="flex items-center gap-1.5 min-w-max">
+              {[
+                { id: 'Student Directory', label: 'Student Directory', icon: 'users' },
+                { id: 'Attendance', label: 'Attendance', icon: 'clock' },
+                { id: 'Leave', label: 'Leave', icon: 'calendar' },
+              ].map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => switchStudentTab(cat.id as StudentCategory)}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                    studentCategory === cat.id
+                      ? 'bg-purple-50 text-purple-700 border border-purple-200/80 shadow-2xs'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                  }`}
+                >
+                  <Icon name={cat.icon} size={15} className={studentCategory === cat.id ? 'text-purple-600' : 'text-slate-400'} />
+                  <span>{cat.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* VIEW: STUDENT DIRECTORY */}
+          {studentCategory === 'Student Directory' && (
+            <StudentManagementTab />
+          )}
+
+          {/* VIEW: ATTENDANCE (STUDENTS) */}
+          {studentCategory === 'Attendance' && (
+            <div className="space-y-3.5 animate-fade-in">
+              {/* Sub-Pills Navigation for Student Attendance */}
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+                {[
+                  { id: 'attendance', label: 'Daily Attendance', icon: 'calendar-check' },
+                  ...(isHoUser || geofencePortalEnabled
+                    ? [{ id: 'geofence_portal', label: 'Attendance & Geofence Portal', icon: 'sliders' }]
+                    : []),
+                  { id: 'face_recognition', label: 'Face Recognition', icon: 'camera' },
+                  { id: 'gps_attendance', label: 'GPS Attendance', icon: 'map-pin' },
+                  { id: 'corrections', label: 'Attendance Corrections', icon: 'edit-3' },
+                ].map((sub) => {
+                  const isSelected =
+                    studentSubTab === sub.id ||
+                    (sub.id === 'attendance' && studentSubTab === 'daily_attendance') ||
+                    (sub.id === 'geofence_portal' && studentSubTab === 'geofence');
+
+                  return (
+                    <button
+                      key={sub.id}
+                      onClick={() => {
+                        setStudentSubTab(sub.id);
+                        setSearchParams({ view: 'students', tab: sub.id });
+                      }}
+                      className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap shadow-2xs ${
+                        isSelected
+                          ? 'bg-purple-600 text-white shadow-md shadow-purple-600/25 ring-2 ring-purple-300/40'
+                          : 'bg-white hover:bg-slate-50 text-slate-600 border border-slate-200/80'
+                      }`}
+                    >
+                      <Icon name={sub.icon} size={14} />
+                      <span>{sub.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {studentSubTab === 'geofence_portal' || studentSubTab === 'geofence' ? (
+                isHoUser || geofencePortalEnabled ? (
+                  <HrmsGeofencePortal onSuccessToast={triggerToast} />
+                ) : (
+                  <div className="bg-white p-12 rounded-2xl border border-slate-100 shadow-2xs text-center space-y-3">
+                    <div className="w-14 h-14 mx-auto rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center">
+                      <Icon name="lock" size={26} />
+                    </div>
+                    <h3 className="text-base font-extrabold text-slate-900">
+                      Attendance &amp; Geofence Portal Disabled
+                    </h3>
+                    <p className="text-xs text-slate-500 max-w-md mx-auto font-medium">
+                      This page is controlled by Head Office. Access to the Attendance &amp; Geofence Portal is currently disabled for this branch or organization.
+                    </p>
+                  </div>
+                )
+              ) : studentSubTab === 'corrections' || studentSubTab === 'attendance-approve' || studentSubTab === 'approvals' ? (
+                <HrmsAttendanceCorrectionsTab scope="student" onSuccessToast={triggerToast} />
+              ) : (
+                <HrmsAttendanceTab scope="student" onSuccessToast={triggerToast} />
+              )}
+            </div>
+          )}
+
+          {/* VIEW: LEAVE (STUDENTS) */}
+          {studentCategory === 'Leave' && (
+            <HrmsLeaveTab scope="student" onSuccessToast={triggerToast} />
+          )}
+        </div>
       )}
 
       {/* ───────────────────────────────────────────────────────────── */}
@@ -278,7 +419,7 @@ export function HrmsPage() {
           <div className="bg-white border border-slate-200/90 rounded-2xl p-1.5 shadow-2xs overflow-x-auto no-scrollbar">
             <div className="flex items-center gap-1.5 min-w-max">
               {[
-                { id: 'Employee Management', label: 'Employee Management', icon: 'users', permKey: 'hrms_employees' },
+                { id: 'Employee Management', label: 'Employee Directory', icon: 'users', permKey: 'hrms_employees' },
                 { id: 'Attendance', label: 'Attendance', icon: 'clock', permKey: 'hrms_attendance' },
                 { id: 'Leave', label: 'Leave', icon: 'calendar', permKey: 'leave_management' },
                 { id: 'Payroll', label: 'Payroll', icon: 'credit-card', permKey: 'payroll' },
@@ -313,146 +454,9 @@ export function HrmsPage() {
             </div>
           </div>
 
-          {/* Sub-Pills Under Employee Management */}
+          {/* VIEW: EMPLOYEE DIRECTORY */}
           {activeCategory === 'Employee Management' && (
-            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-0.5">
-              {[
-                { id: 'employees', label: 'Employee Directory', icon: 'users', permKey: 'employee_details' },
-                { id: 'departments', label: 'Departments', icon: 'building-2', permKey: 'hrms_departments' },
-                { id: 'designations', label: 'Designations', icon: 'award', permKey: 'hrms_designations' },
-                { id: 'teams', label: 'Teams', icon: 'users-2', permKey: 'hrms_teams' },
-                { id: 'documents', label: 'Documents', icon: 'file-text', permKey: 'hrms_documents' },
-              ].filter((sub) => {
-                if (isHoUser || !user?.permissions || Object.keys(user.permissions).length === 0) return true;
-                const perms = user.permissions;
-                const val = perms[`${sub.permKey}.view`] ?? perms[sub.permKey] ?? perms[`${sub.id}.view`];
-                return val !== undefined ? !!val : true;
-              }).map((sub) => (
-                <button
-                  key={sub.id}
-                  onClick={() => {
-                    setActiveSubTab(sub.id);
-                    setSearchParams({ view: 'employees', tab: sub.id });
-                  }}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-                    activeSubTab === sub.id
-                      ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-orange-500 text-white shadow-md shadow-blue-500/20'
-                      : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/90 shadow-2xs'
-                  }`}
-                >
-                  <Icon name={sub.icon} size={14} className={activeSubTab === sub.id ? 'text-white' : 'text-slate-500'} />
-                  <span>{sub.label}</span>
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* ───────────────────────────────────────────────────────────── */}
-          {/* 2B. VIEW: employeeS DIRECTORY                                  */}
-          {/* ───────────────────────────────────────────────────────────── */}
-          {activeCategory === 'Employee Management' && (activeSubTab === 'employees' || activeSubTab === 'employees') && (
             <HrmsemployeesTab />
-          )}
-
-          {/* ───────────────────────────────────────────────────────────── */}
-          {/* 4. VIEW: DEPARTMENTS                                          */}
-          {/* ───────────────────────────────────────────────────────────── */}
-          {activeCategory === 'Employee Management' && activeSubTab === 'departments' && (
-            <HrmsDepartmentsTab />
-          )}
-
-          {/* ───────────────────────────────────────────────────────────── */}
-          {/* 5. VIEW: DESIGNATIONS                                         */}
-          {/* ───────────────────────────────────────────────────────────── */}
-          {activeCategory === 'Employee Management' && activeSubTab === 'designations' && (
-            <HrmsDesignationsTab />
-          )}
-
-          {/* ───────────────────────────────────────────────────────────── */}
-          {/* 6. VIEW: TEAMS                                                */}
-          {/* ───────────────────────────────────────────────────────────── */}
-          {activeCategory === 'Employee Management' && activeSubTab === 'teams' && (
-            <div className="space-y-5 animate-fade-in">
-              <div>
-                <h2 className="text-xl font-black text-slate-900 tracking-tight">Functional Teams</h2>
-                <p className="text-xs text-slate-500">Operational units collaborating across specialized fitness tracks.</p>
-              </div>
-
-              {teams.length === 0 ? (
-                <div className="card p-12 text-center text-slate-400 bg-white border border-slate-100 rounded-2xl">
-                  No teams created yet.
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {teams.map((team) => (
-                    <div key={team.id} className="card p-5 bg-white border border-slate-100 rounded-2xl shadow-sm space-y-3">
-                      <h4 className="text-sm font-bold text-slate-900">{team.name}</h4>
-                      <p className="text-xs text-slate-500 leading-snug">{team.description || team.department}</p>
-                      {team.lead_name && (
-                        <div className="pt-2 border-t border-slate-50 flex items-center justify-between text-xs">
-                          <span className="text-slate-400">Team Lead:</span>
-                          <span className="font-bold text-purple-700">{team.lead_name}</span>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ───────────────────────────────────────────────────────────── */}
-          {/* 7. VIEW: DOCUMENTS                                            */}
-          {/* ───────────────────────────────────────────────────────────── */}
-          {activeCategory === 'Employee Management' && activeSubTab === 'documents' && (
-            <div className="space-y-5 animate-fade-in">
-              <div>
-                <h2 className="text-xl font-black text-slate-900 tracking-tight">Employee Documents</h2>
-                <p className="text-xs text-slate-500">Verified KYC identity proofs, employee certifications, and contracts.</p>
-              </div>
-
-              <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50/50 text-[11px] font-black uppercase text-slate-500 tracking-wider border-b border-slate-100">
-                    <tr>
-                      <th className="py-3.5 px-4">DOCUMENT TITLE</th>
-                      <th className="py-3.5 px-4">EMPLOYEE</th>
-                      <th className="py-3.5 px-4">TYPE</th>
-                      <th className="py-3.5 px-4">FILE SIZE</th>
-                      <th className="py-3.5 px-4">STATUS</th>
-                      <th className="py-3.5 px-4">UPLOADED DATE</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-50 font-medium text-slate-800">
-                    {documents.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="py-12 text-center text-slate-400 font-bold">
-                          No documents uploaded yet.
-                        </td>
-                      </tr>
-                    ) : (
-                      documents.map((doc) => (
-                        <tr key={doc.id} className="hover:bg-slate-50/40">
-                          <td className="py-3.5 px-4 font-bold text-slate-900 flex items-center gap-2">
-                            <Icon name="file-text" size={15} className="text-purple-600 shrink-0" />
-                            {doc.title}
-                          </td>
-                          <td className="py-3.5 px-4 font-bold text-purple-700">{doc.employee_name || '--'}</td>
-                          <td className="py-3.5 px-4">{doc.doc_type || '--'}</td>
-                          <td className="py-3.5 px-4 font-mono text-slate-500">{doc.file_size || '--'}</td>
-                          <td className="py-3.5 px-4">
-                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
-                              {doc.status}
-                            </span>
-                          </td>
-                          <td className="py-3.5 px-4 font-mono text-slate-500">{doc.uploaded_at || '--'}</td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
           )}
 
           {/* ───────────────────────────────────────────────────────────── */}
@@ -529,11 +533,11 @@ export function HrmsPage() {
                   </div>
                 )
               ) : activeSubTab === 'corrections' || activeSubTab === 'attendance-approve' || activeSubTab === 'approvals' ? (
-                <HrmsAttendanceCorrectionsTab onSuccessToast={triggerToast} />
+                <HrmsAttendanceCorrectionsTab scope="employee" onSuccessToast={triggerToast} />
               ) : activeSubTab === 'shift_attendance' || activeSubTab === 'shifts' || activeSubTab === 'shift_roster' ? (
                 <HrmsShiftRosterTab onSuccessToast={triggerToast} />
               ) : (
-                <HrmsAttendanceTab onSuccessToast={triggerToast} />
+                <HrmsAttendanceTab scope="employee" onSuccessToast={triggerToast} />
               )}
             </div>
           )}
@@ -543,7 +547,7 @@ export function HrmsPage() {
           {/* 9. VIEW: LEAVE MANAGEMENT (Module 3)                          */}
           {/* ───────────────────────────────────────────────────────────── */}
           {activeCategory === 'Leave' && (
-            <HrmsLeaveTab onSuccessToast={triggerToast} />
+            <HrmsLeaveTab scope="employee" onSuccessToast={triggerToast} />
           )}
 
           {/* ───────────────────────────────────────────────────────────── */}

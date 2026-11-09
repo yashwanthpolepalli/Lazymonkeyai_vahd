@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/utils/cn';
+import { apiClient } from '@/services/apiClient';
 import {
   hrmsApi,
   type AttendanceCorrectionItem,
@@ -11,9 +12,10 @@ import { membersApi, type studentView } from '@/services/membersApi';
 
 interface HrmsAttendanceCorrectionsTabProps {
   onSuccessToast?: (msg: string) => void;
+  scope?: 'employee' | 'student';
 }
 
-export function HrmsAttendanceCorrectionsTab({ onSuccessToast }: HrmsAttendanceCorrectionsTabProps) {
+export function HrmsAttendanceCorrectionsTab({ onSuccessToast, scope }: HrmsAttendanceCorrectionsTabProps) {
   // View mode: Grid View vs Row (Table) View
   const [viewMode, setViewMode] = useState<'grid' | 'row'>(() => {
     const saved = localStorage.getItem('vahd_attendance_corrections_view');
@@ -24,11 +26,62 @@ export function HrmsAttendanceCorrectionsTab({ onSuccessToast }: HrmsAttendanceC
   const todayIso = new Date().toISOString().split('T')[0];
   const [dateFilter, setDateFilter] = useState<string>(todayIso);
   const [statusFilter, setStatusFilter] = useState<string>('Pending');
-  const [personTypeFilter, setPersonTypeFilter] = useState<string>('ALL');
+  const [personTypeFilter, setPersonTypeFilter] = useState<string>(() => {
+    if (scope === 'student') return 'STUDENT';
+    if (scope === 'employee') return 'EMPLOYEE';
+    return 'ALL';
+  });
   const [districtFilter, setDistrictFilter] = useState<string>('All');
   const [reasonFilter, setReasonFilter] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [appliedSearch, setAppliedSearch] = useState<string>('');
+
+  // Topbar branch synchronization
+  const [selectedBranch, setSelectedBranch] = useState<string>(() => {
+    return localStorage.getItem('vahd_selected_org_id') || 'all';
+  });
+
+  // Master branches and districts for filter dropdown
+  const [branchesList, setBranchesList] = useState<{ id: string; branch_name: string; district?: string }[]>([]);
+  const [masterDistricts, setMasterDistricts] = useState<string[]>([]);
+
+  // Synchronize scope prop
+  useEffect(() => {
+    if (scope === 'student') {
+      setPersonTypeFilter('STUDENT');
+    } else if (scope === 'employee') {
+      setPersonTypeFilter('EMPLOYEE');
+    }
+  }, [scope]);
+
+  // Synchronize with Topbar organization / branch selector
+  useEffect(() => {
+    const handleOrgChanged = (e: any) => {
+      const orgId = e?.detail?.id ?? localStorage.getItem('vahd_selected_org_id') ?? 'all';
+      setSelectedBranch(orgId);
+    };
+    window.addEventListener('vahd:org_changed', handleOrgChanged);
+    return () => window.removeEventListener('vahd:org_changed', handleOrgChanged);
+  }, []);
+
+  // Fetch branches and master districts so the district/branch filter is always fully populated
+  useEffect(() => {
+    apiClient.get<any[]>('/settings/branches').then((res) => {
+      if (Array.isArray(res)) {
+        setBranchesList(res.map((b) => ({
+          id: b.id,
+          branch_name: b.branch_name || b.vahd_name || b.name || '',
+          district: b.district || b.city || '',
+        })));
+      }
+    }).catch(() => {});
+
+    apiClient.get<any[]>('/settings/master-data?category=districts').then((res) => {
+      if (Array.isArray(res)) {
+        setMasterDistricts(res.map((d) => d.name).filter(Boolean));
+      }
+    }).catch(() => {});
+  }, []);
 
   // Data States
   const [records, setRecords] = useState<AttendanceCorrectionItem[]>([]);
@@ -55,7 +108,7 @@ export function HrmsAttendanceCorrectionsTab({ onSuccessToast }: HrmsAttendanceC
 
   // New correction form state (100% dynamic, zero hardcoded defaults)
   const [newForm, setNewForm] = useState({
-    person_type: 'EMPLOYEE' as 'EMPLOYEE' | 'STUDENT',
+    person_type: (scope === 'student' ? 'STUDENT' : 'EMPLOYEE') as 'EMPLOYEE' | 'STUDENT',
     selected_entity_id: '',
     person_name: '',
     person_code: '',
@@ -89,17 +142,26 @@ export function HrmsAttendanceCorrectionsTab({ onSuccessToast }: HrmsAttendanceC
   const fetchData = async () => {
     setLoading(true);
     try {
+      const effectiveBranchId = selectedBranch !== 'all' ? selectedBranch : undefined;
+      const effectivePersonType = scope === 'student'
+        ? 'STUDENT'
+        : (scope === 'employee' ? 'EMPLOYEE' : (personTypeFilter === 'ALL' ? undefined : personTypeFilter));
+
       const [data, statsData] = await Promise.all([
         hrmsApi.getAttendanceCorrections({
           date: dateFilter || undefined,
           status: statusFilter === 'All' ? undefined : statusFilter,
-          person_type: personTypeFilter === 'ALL' ? undefined : personTypeFilter,
+          person_type: effectivePersonType,
           district: districtFilter === 'All' ? undefined : districtFilter,
           reason: reasonFilter === 'All' ? undefined : reasonFilter,
           search: appliedSearch || undefined,
+          branch_id: effectiveBranchId,
         }),
         hrmsApi.getAttendanceCorrectionsStats({
           date: dateFilter || undefined,
+          person_type: effectivePersonType,
+          district: districtFilter === 'All' ? undefined : districtFilter,
+          branch_id: effectiveBranchId,
         }),
       ]);
 
@@ -116,19 +178,42 @@ export function HrmsAttendanceCorrectionsTab({ onSuccessToast }: HrmsAttendanceC
 
   useEffect(() => {
     fetchData();
-  }, [dateFilter, statusFilter, personTypeFilter, districtFilter, reasonFilter, appliedSearch]);
+  }, [dateFilter, statusFilter, personTypeFilter, districtFilter, reasonFilter, appliedSearch, selectedBranch, scope]);
 
-  // Extract distinct districts and places strictly from real database records
+  // Extract distinct districts and places from database branches, master districts, and correction records
   const distinctDistricts = useMemo(() => {
     const map = new Map<string, string>();
+    // 1. From branches
+    branchesList.forEach((b) => {
+      if (b.branch_name && b.branch_name.trim()) {
+        const val = b.branch_name.trim();
+        if (!map.has(val.toLowerCase())) map.set(val.toLowerCase(), val);
+      }
+      if (b.district && b.district.trim()) {
+        const val = b.district.trim();
+        if (!map.has(val.toLowerCase())) map.set(val.toLowerCase(), val);
+      }
+    });
+    // 2. From master districts
+    masterDistricts.forEach((d) => {
+      if (d && d.trim()) {
+        const val = d.trim();
+        if (!map.has(val.toLowerCase())) map.set(val.toLowerCase(), val);
+      }
+    });
+    // 3. From actual records
     records.forEach((r) => {
-      const trimmed = (r.district || '').trim();
-      if (trimmed && !map.has(trimmed.toLowerCase())) {
-        map.set(trimmed.toLowerCase(), trimmed);
+      const trimmedD = (r.district || '').trim();
+      if (trimmedD && !map.has(trimmedD.toLowerCase())) {
+        map.set(trimmedD.toLowerCase(), trimmedD);
+      }
+      const trimmedP = (r.place || '').trim();
+      if (trimmedP && !map.has(trimmedP.toLowerCase())) {
+        map.set(trimmedP.toLowerCase(), trimmedP);
       }
     });
     return Array.from(map.values()).sort((a, b) => a.localeCompare(b));
-  }, [records]);
+  }, [branchesList, masterDistricts, records]);
 
   // Extract distinct reasons strictly from real database records
   const distinctReasons = useMemo(() => {
@@ -224,11 +309,30 @@ export function HrmsAttendanceCorrectionsTab({ onSuccessToast }: HrmsAttendanceC
   const handleResetFilters = () => {
     setDateFilter(todayIso);
     setStatusFilter('Pending');
-    setPersonTypeFilter('ALL');
+    setPersonTypeFilter(scope === 'student' ? 'STUDENT' : (scope === 'employee' ? 'EMPLOYEE' : 'ALL'));
     setDistrictFilter('All');
     setReasonFilter('All');
     setSearchQuery('');
     setAppliedSearch('');
+  };
+
+  const handleOpenAddModal = () => {
+    setNewForm({
+      person_type: scope === 'student' ? 'STUDENT' : 'EMPLOYEE',
+      selected_entity_id: '',
+      person_name: '',
+      person_code: '',
+      designation: '',
+      department: '',
+      district: '',
+      place: '',
+      date: dateFilter || todayIso,
+      in_time: '',
+      out_time: '',
+      reason: '',
+      reason_details: '',
+    });
+    setShowAddModal(true);
   };
 
   // Handle entity selection in modal
@@ -286,11 +390,14 @@ export function HrmsAttendanceCorrectionsTab({ onSuccessToast }: HrmsAttendanceC
     }
     setLoading(true);
     try {
-      await hrmsApi.createAttendanceCorrection(newForm);
+      await hrmsApi.createAttendanceCorrection({
+        ...newForm,
+        branch_id: selectedBranch !== 'all' ? selectedBranch : undefined,
+      } as any);
       showToast('✓ Attendance correction submitted successfully');
       setShowAddModal(false);
       setNewForm({
-        person_type: 'EMPLOYEE',
+        person_type: scope === 'student' ? 'STUDENT' : 'EMPLOYEE',
         selected_entity_id: '',
         person_name: '',
         person_code: '',
@@ -383,7 +490,7 @@ export function HrmsAttendanceCorrectionsTab({ onSuccessToast }: HrmsAttendanceC
         <div className="flex items-center gap-2.5">
           <button
             type="button"
-            onClick={() => setShowAddModal(true)}
+            onClick={handleOpenAddModal}
             className="px-3.5 py-2 rounded-xl text-xs font-bold bg-white text-slate-700 border border-slate-200 shadow-xs hover:bg-slate-50 flex items-center gap-1.5 transition cursor-pointer"
           >
             <Icon name="plus" size={14} className="text-purple-600" />
@@ -456,7 +563,12 @@ export function HrmsAttendanceCorrectionsTab({ onSuccessToast }: HrmsAttendanceC
       {/* 3. FILTER BAR                                                 */}
       {/* ───────────────────────────────────────────────────────────── */}
       <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 items-end">
+        <div className={cn(
+          "grid gap-3 items-end",
+          scope
+            ? "grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5"
+            : "grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6"
+        )}>
           {/* DATE FILTER */}
           <div>
             <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">
@@ -472,21 +584,23 @@ export function HrmsAttendanceCorrectionsTab({ onSuccessToast }: HrmsAttendanceC
             </div>
           </div>
 
-          {/* SCOPE FILTER (STUDENTS / EMPLOYEES / ALL) */}
-          <div>
-            <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">
-              TYPE / SCOPE
-            </label>
-            <select
-              value={personTypeFilter}
-              onChange={(e) => setPersonTypeFilter(e.target.value)}
-              className="w-full bg-slate-50/70 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 outline-none focus:border-purple-500 focus:bg-white transition cursor-pointer"
-            >
-              <option value="ALL">👥 All (Students &amp; Employees)</option>
-              <option value="EMPLOYEE"> Employees &amp; Staff Only</option>
-              <option value="STUDENT">Students Only</option>
-            </select>
-          </div>
+          {/* SCOPE FILTER (STUDENTS / EMPLOYEES / ALL) - Hidden in student view and employee view */}
+          {!scope && (
+            <div>
+              <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">
+                TYPE / SCOPE
+              </label>
+              <select
+                value={personTypeFilter}
+                onChange={(e) => setPersonTypeFilter(e.target.value)}
+                className="w-full bg-slate-50/70 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 outline-none focus:border-purple-500 focus:bg-white transition cursor-pointer"
+              >
+                <option value="ALL">👥 All (Students &amp; Employees)</option>
+                <option value="EMPLOYEE">👨‍💼 Employees &amp; Staff Only</option>
+                <option value="STUDENT">🎓 Students Only</option>
+              </select>
+            </div>
+          )}
 
           {/* STATUS FILTER */}
           <div>
@@ -798,7 +912,7 @@ export function HrmsAttendanceCorrectionsTab({ onSuccessToast }: HrmsAttendanceC
                     />
                   </th>
                   <th className="py-3 px-3">PERSON</th>
-                  <th className="py-3 px-3">TYPE</th>
+                  {!scope && <th className="py-3 px-3">TYPE</th>}
                   <th className="py-3 px-3">DESIGNATION &amp; CODE</th>
                   <th className="py-3 px-3">DISTRICT &amp; PLACE</th>
                   <th className="py-3 px-3">IN / OUT TIME</th>
@@ -846,16 +960,18 @@ export function HrmsAttendanceCorrectionsTab({ onSuccessToast }: HrmsAttendanceC
                           </div>
                         </div>
                       </td>
-                      <td className="py-3 px-3">
-                        <span className={cn(
-                          "px-2 py-0.5 rounded text-[10px] font-bold border",
-                          rec.person_type === 'STUDENT'
-                            ? "bg-amber-50 text-amber-800 border-amber-200"
-                            : "bg-blue-50 text-blue-800 border-blue-200"
-                        )}>
-                          {rec.person_type === 'STUDENT' ? 'Student' : 'Employee'}
-                        </span>
-                      </td>
+                      {!scope && (
+                        <td className="py-3 px-3">
+                          <span className={cn(
+                            "px-2 py-0.5 rounded text-[10px] font-bold border",
+                            rec.person_type === 'STUDENT'
+                              ? "bg-amber-50 text-amber-800 border-amber-200"
+                              : "bg-blue-50 text-blue-800 border-blue-200"
+                          )}>
+                            {rec.person_type === 'STUDENT' ? 'Student' : 'Employee'}
+                          </span>
+                        </td>
+                      )}
                       <td className="py-3 px-3">
                         <div className="font-semibold text-slate-700">{rec.designation || '--'}</div>
                         <div className="text-[10px] font-mono text-slate-400">{rec.person_code || '--'}</div>
@@ -960,53 +1076,64 @@ export function HrmsAttendanceCorrectionsTab({ onSuccessToast }: HrmsAttendanceC
             </div>
 
             <form onSubmit={handleCreateNewSubmit} className="p-6 space-y-4">
-              {/* Type Switcher */}
-              <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-xl">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setNewForm({
-                      ...newForm,
-                      person_type: 'EMPLOYEE',
-                      selected_entity_id: '',
-                      person_name: '',
-                      person_code: '',
-                      designation: '',
-                      department: '',
-                    });
-                  }}
-                  className={cn(
-                    "flex-1 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer",
-                    newForm.person_type === 'EMPLOYEE'
-                      ? "bg-white text-purple-700 shadow-xs"
-                      : "text-slate-600 hover:text-slate-900"
-                  )}
-                >
-                  👨‍💼 Employee / employee
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setNewForm({
-                      ...newForm,
-                      person_type: 'STUDENT',
-                      selected_entity_id: '',
-                      person_name: '',
-                      person_code: '',
-                      designation: '',
-                      department: '',
-                    });
-                  }}
-                  className={cn(
-                    "flex-1 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer",
-                    newForm.person_type === 'STUDENT'
-                      ? "bg-white text-purple-700 shadow-xs"
-                      : "text-slate-600 hover:text-slate-900"
-                  )}
-                >
-                  🎓 Student
-                </button>
-              </div>
+              {/* Type Switcher / Scoped Badge */}
+              {scope ? (
+                <div className={cn(
+                  "p-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 border",
+                  scope === 'student'
+                    ? "bg-purple-50 text-purple-700 border-purple-200"
+                    : "bg-blue-50 text-blue-700 border-blue-200"
+                )}>
+                  <span>{scope === 'student' ? '🎓 Student Attendance Correction' : '👨‍💼 Employee / Staff Attendance Correction'}</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-xl">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNewForm({
+                        ...newForm,
+                        person_type: 'EMPLOYEE',
+                        selected_entity_id: '',
+                        person_name: '',
+                        person_code: '',
+                        designation: '',
+                        department: '',
+                      });
+                    }}
+                    className={cn(
+                      "flex-1 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer",
+                      newForm.person_type === 'EMPLOYEE'
+                        ? "bg-white text-purple-700 shadow-xs"
+                        : "text-slate-600 hover:text-slate-900"
+                    )}
+                  >
+                    👨‍💼 Employee / Staff
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNewForm({
+                        ...newForm,
+                        person_type: 'STUDENT',
+                        selected_entity_id: '',
+                        person_name: '',
+                        person_code: '',
+                        designation: '',
+                        department: '',
+                      });
+                    }}
+                    className={cn(
+                      "flex-1 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer",
+                      newForm.person_type === 'STUDENT'
+                        ? "bg-white text-purple-700 shadow-xs"
+                        : "text-slate-600 hover:text-slate-900"
+                    )}
+                  >
+                    🎓 Student
+                  </button>
+                </div>
+              )}
 
               {/* Dynamic Quick Selector from Database */}
               <div>

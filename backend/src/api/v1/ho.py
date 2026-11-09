@@ -965,16 +965,6 @@ def _gather_ho_branch_attendance(
             cast(Employee.secondary_branches, String).ilike(f"%{b.id}%"),
             cast(Employee.meta_data, String).ilike(f"%{b.id}%"),
         ]
-        if getattr(b, 'vahd_name', None):
-            b_conds.append(Employee.vahd_branch == b.vahd_name)
-
-        if target_branch_id and str(target_branch_id).lower() not in ["all", "", "none"]:
-            b_conds.extend([
-                Employee.tenant_id == target_branch_id,
-                Employee.branch_id == target_branch_id,
-                cast(Employee.secondary_branches, String).ilike(f"%{target_branch_id}%"),
-                cast(Employee.meta_data, String).ilike(f"%{target_branch_id}%"),
-            ])
 
         emps = db.query(Employee).filter(
             or_(*b_conds),
@@ -1020,14 +1010,6 @@ def _gather_ho_branch_attendance(
             student.tenant_id == b.id,
             student.branch_id == b.id,
         ]
-        if getattr(b, 'vahd_name', None):
-            s_conds.append(student.primary_vahd_location.ilike(f"%{b.vahd_name}%"))
-
-        if target_branch_id and str(target_branch_id).lower() not in ["all", "", "none"]:
-            s_conds.extend([
-                student.tenant_id == target_branch_id,
-                student.branch_id == target_branch_id,
-            ])
 
         students = db.query(student).filter(
             or_(*s_conds),

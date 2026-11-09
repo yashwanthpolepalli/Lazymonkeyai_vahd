@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, Body, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Body, Response, UploadFile, File
 from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 from typing import Optional, List, Dict, Any
@@ -1156,11 +1156,21 @@ def get_holidays(
     year: Optional[int] = Query(None),
     type: Optional[str] = Query(None),
     search: Optional[str] = Query(None),
+    institution_type: Optional[str] = Query(None),
+    branch_id: Optional[str] = Query(None),
     current_user: Optional[User] = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     try:
-        return HrmsService.get_holidays(db, year=year, holiday_type=type, search=search)
+        return HrmsService.get_holidays(
+            db,
+            year=year,
+            holiday_type=type,
+            search=search,
+            institution_type=institution_type,
+            branch_id=branch_id,
+            current_user=current_user
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch holidays: {str(e)}")
 
@@ -1172,11 +1182,31 @@ def save_holiday(
     db: Session = Depends(get_db)
 ):
     try:
-        return HrmsService.save_holiday(db, payload)
+        return HrmsService.save_holiday(db, payload, current_user=current_user)
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to save holiday: {str(e)}")
+
+
+@router.put("/holidays/{holiday_id}")
+def update_holiday(
+    holiday_id: str,
+    payload: dict,
+    current_user: Optional[User] = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    payload["id"] = holiday_id
+    try:
+        return HrmsService.save_holiday(db, payload, current_user=current_user)
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update holiday: {str(e)}")
 
 
 @router.delete("/holidays/{holiday_id}")
@@ -1186,11 +1216,47 @@ def delete_holiday(
     db: Session = Depends(get_db)
 ):
     try:
-        return HrmsService.delete_holiday(db, holiday_id)
+        return HrmsService.delete_holiday(db, holiday_id, current_user=current_user)
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to delete holiday: {str(e)}")
+
+
+@router.get("/holidays/template")
+def download_holiday_template():
+    csv_content = (
+        "Name,Date,Holiday Type,Institution Type,Description\n"
+        "Bhogi,2026-01-14,India holiday,All holidays (any institution),Sankranti Harvest Festival\n"
+        "Sankranti / Pongal,2026-01-15,India holiday,All holidays (any institution),Makar Sankranti\n"
+        "Republic Day,2026-01-26,India holiday,All holidays (any institution),National Holiday\n"
+        "Sunday,2026-01-04,Other holiday,All holidays (any institution),Weekly Rest Day\n"
+        "Second Saturday,2026-01-10,Other holiday,All holidays (any institution),Second Saturday Holiday\n"
+    )
+    return Response(
+        content=csv_content,
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=holidays_template.csv"}
+    )
+
+
+@router.post("/holidays/upload")
+async def upload_holidays_file(
+    file: UploadFile = File(...),
+    current_user: Optional[User] = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    try:
+        content = await file.read()
+        return HrmsService.upload_holidays(db, content, file.filename, current_user=current_user)
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to upload holidays: {str(e)}")
 
 
 @router.post("/holidays/preseed")

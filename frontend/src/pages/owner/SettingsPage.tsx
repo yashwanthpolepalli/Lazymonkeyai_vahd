@@ -11,12 +11,13 @@ import { CoursesPage } from '@/pages/owner/CoursesPage';
 import { CompanyManagement } from '@/components/erp/CompanyManagement';
 import { MasterDataSettings } from '@/components/settings/MasterDataSettings';
 import { OwnerPermissionsTab } from '@/components/settings/OwnerPermissionsTab';
+import { CalendarHolidaysSettings } from '@/components/settings/CalendarHolidaysSettings';
 import { cn } from '@/utils/cn';
 
 export interface SettingCardConfig {
   id: string;
   title: string;
-  type: 'master' | 'courses' | 'reports' | 'erp' | 'general' | 'permissions';
+  type: 'master' | 'courses' | 'reports' | 'erp' | 'general' | 'permissions' | 'calendar';
   categoryKey?: string;
   icon: string;
   iconBg: string;
@@ -145,7 +146,7 @@ export const SETTING_CARDS: SettingCardConfig[] = [
     iconBg: 'bg-indigo-50 text-indigo-600 border-indigo-100',
     iconColor: 'text-indigo-600',
     waveColor: 'text-indigo-200/70',
-    description: 'Technical skills, certifications & student/employee mapping'
+    description: ''
   },
   {
     id: 'qualifications',
@@ -220,6 +221,16 @@ export const SETTING_CARDS: SettingCardConfig[] = [
     waveColor: 'text-sky-200/70',
     description: 'Owner roles & module access'
   },
+  {
+    id: 'calendar',
+    title: 'Calendar',
+    type: 'calendar',
+    icon: 'calendar',
+    iconBg: 'bg-indigo-50 text-indigo-600 border-indigo-100',
+    iconColor: 'text-indigo-600',
+    waveColor: 'text-indigo-200/70',
+    description: 'Holidays by institution type'
+  },
 ];
 
 export function SettingsPage() {
@@ -259,6 +270,9 @@ export function SettingsPage() {
     }
     if (rawTab === 'permission' || rawTab === 'permissions' || rawTab === 'roles-permissions' || rawTab === 'owner-permissions') {
       return 'permissions';
+    }
+    if (rawTab === 'calendar' || rawTab === 'calendar-holidays' || rawTab === 'holidays') {
+      return 'calendar';
     }
     return null;
   };
@@ -1186,6 +1200,13 @@ export function SettingsPage() {
       {/* ───────────────────────────────────────────────────────────────── */}
       {selectedSection === 'permissions' && (
         <OwnerPermissionsTab onBack={() => handleSelectSection(null)} />
+      )}
+
+      {/* ───────────────────────────────────────────────────────────────── */}
+      {/* VIEW 7: CALENDAR & HOLIDAYS MANAGEMENT                            */}
+      {/* ───────────────────────────────────────────────────────────────── */}
+      {selectedSection === 'calendar' && (
+        <CalendarHolidaysSettings onBack={() => handleSelectSection(null)} />
       )}
     </div>
   );

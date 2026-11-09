@@ -79,6 +79,12 @@ function RoleRedirect({ allowed }: { allowed: Role[] }) {
   return <AppLayout />;
 }
 
+function SettingsCalendarRedirect() {
+  const { user } = useAuth();
+  const target = user?.role === 'ho' ? '/ho/settings?tab=calendar' : '/owner/settings?tab=calendar';
+  return <Navigate to={target} replace />;
+}
+
 function AppRoutes() {
   return (
     <Suspense fallback={<PageLoader />}>
@@ -90,6 +96,8 @@ function AppRoutes() {
         <Route path="/download" element={<Navigate to="/login" replace />} />
         <Route path="/privacy" element={<PrivacyPolicyPage />} />
         <Route path="/attendance-approve" element={<Navigate to="/owner/hrms?tab=corrections" replace />} />
+        <Route path="/settings/calendar-holidays" element={<ProtectedRoute><SettingsCalendarRedirect /></ProtectedRoute>} />
+        <Route path="/settings/calendar" element={<ProtectedRoute><SettingsCalendarRedirect /></ProtectedRoute>} />
 
         {/* OWNER ROUTES */}
         <Route path="/owner" element={<ProtectedRoute><RoleRedirect allowed={['owner']} /></ProtectedRoute>}>
@@ -113,6 +121,8 @@ function AppRoutes() {
           <Route path="reports" element={<ReportsPage />} />
           <Route path="multi-branch" element={<MultiBranchPage />} />
           <Route path="erp" element={<Navigate to="/owner/settings?tab=erp" replace />} />
+          <Route path="calendar" element={<Navigate to="/owner/settings?tab=calendar" replace />} />
+          <Route path="calendar-holidays" element={<Navigate to="/owner/settings?tab=calendar" replace />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
 
@@ -127,6 +137,8 @@ function AppRoutes() {
           <Route path="memberships" element={<Navigate to="/ho/settings?tab=courses" replace />} />
           <Route path="courses" element={<Navigate to="/ho/settings?tab=courses" replace />} />
           <Route path="erp" element={<Navigate to="/ho/settings?tab=erp" replace />} />
+          <Route path="calendar" element={<Navigate to="/ho/settings?tab=calendar" replace />} />
+          <Route path="calendar-holidays" element={<Navigate to="/ho/settings?tab=calendar" replace />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
 

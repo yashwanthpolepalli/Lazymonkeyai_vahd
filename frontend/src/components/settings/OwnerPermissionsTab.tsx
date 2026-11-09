@@ -127,6 +127,7 @@ export const PERMISSION_MATRIX_CONFIG: MatrixGroup[] = [
     title: 'Settings · Configurations & Feature Controls',
     rows: [
       { key: 'settings_section', label: 'Settings section (nav)', actions: ['view'] },
+      { key: 'calendar', label: 'Calendar & Holidays', actions: ['view', 'add', 'edit', 'delete', 'import'] },
       { key: 'courses', label: 'Courses & Academic Plans', actions: ['view', 'add', 'edit', 'delete'] },
       { key: 'general', label: 'General Branch / Institution Profile', actions: ['view', 'edit'] },
       { key: 'erp', label: 'ERP & Google Reviews Sync', actions: ['view', 'edit'] },

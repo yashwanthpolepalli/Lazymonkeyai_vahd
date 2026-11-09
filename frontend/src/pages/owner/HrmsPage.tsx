@@ -132,7 +132,11 @@ export function HrmsPage() {
       if (canViewStudents) setViewMode('students');
     }
     if (initialTab) {
-      const normalizedTab = initialTab === 'employees' ? 'employees' : (initialTab === 'biometric' || initialTab === 'biometrics') ? 'attendance' : initialTab;
+      const normalizedTab = initialTab === 'employees'
+        ? 'employees'
+        : (initialTab === 'biometric' || initialTab === 'biometrics' || initialTab === 'attendance_settings' || initialTab === 'work_calendars')
+        ? 'attendance'
+        : initialTab;
       setActiveSubTab(normalizedTab);
       if (['employees', 'departments', 'designations', 'teams', 'documents', 'profile'].includes(initialTab)) {
         setActiveCategory('Employee Management');
@@ -460,7 +464,6 @@ export function HrmsPage() {
               <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
                 {[
                   { id: 'attendance', label: 'Daily Attendance', icon: 'calendar-check', permKey: 'attendance' },
-                  { id: 'attendance_settings', label: 'Work Calendars', icon: 'calendar', permKey: 'attendance_settings' },
                   ...(isHoUser || geofencePortalEnabled
                     ? [{ id: 'geofence_portal', label: 'Attendance & Geofence Portal', icon: 'sliders', permKey: 'geofence_portal' }]
                     : []),
@@ -477,7 +480,6 @@ export function HrmsPage() {
                   const isSelected =
                     activeSubTab === sub.id ||
                     (sub.id === 'attendance' && activeSubTab === 'daily_attendance') ||
-                    (sub.id === 'attendance_settings' && activeSubTab === 'work_calendars') ||
                     (sub.id === 'geofence_portal' && activeSubTab === 'geofence');
 
                   return (
@@ -500,9 +502,7 @@ export function HrmsPage() {
               </div>
 
               {/* Conditional View */}
-              {activeSubTab === 'attendance_settings' || activeSubTab === 'work_calendars' ? (
-                <HrmsWorkCalendarsTab onSuccessToast={triggerToast} />
-              ) : activeSubTab === 'geofence_portal' || activeSubTab === 'geofence' ? (
+              {activeSubTab === 'geofence_portal' || activeSubTab === 'geofence' ? (
                 isHoUser || geofencePortalEnabled ? (
                   <HrmsGeofencePortal onSuccessToast={triggerToast} />
                 ) : (

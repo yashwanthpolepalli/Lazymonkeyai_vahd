@@ -1568,9 +1568,10 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
       {/* 5. MODAL: APPLY LEAVE (DYNAMIC ELIGIBILITY ENGINE)            */}
       {/* ───────────────────────────────────────────────────────────── */}
       {showApplyModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 animate-fade-in">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-slate-100 space-y-5 animate-scale-up">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-3 sm:p-4 animate-fade-in overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-lg w-full shadow-2xl border border-slate-100 animate-scale-up my-auto flex flex-col max-h-[calc(100vh-2rem)] overflow-hidden">
+            {/* Modal Header (Sticky) */}
+            <div className="flex items-center justify-between border-b border-slate-100 p-5 sm:p-6 pb-4 shrink-0 bg-white">
               <div className="flex items-center gap-2.5">
                 <div className="w-10 h-10 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center">
                   <Icon name="calendar" size={20} />
@@ -1588,14 +1589,15 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
               </button>
             </div>
 
-            {applyError && (
-              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold flex items-center gap-2">
-                <Icon name="alert-circle" size={15} />
-                <span>{applyError}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleApplyLeave} className="space-y-4">
+            <form onSubmit={handleApplyLeave} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+              {/* Scrollable Form Body */}
+              <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1">
+                {applyError && (
+                  <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold flex items-center gap-2">
+                    <Icon name="alert-circle" size={15} />
+                    <span>{applyError}</span>
+                  </div>
+                )}
               {/* Employee Selection */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">
@@ -1821,12 +1823,14 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                   </label>
                 )}
               </div>
+            </div>
 
-              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+            {/* Modal Footer (Sticky) */}
+              <div className="flex items-center justify-end gap-2.5 p-4 sm:p-5 pt-3 border-t border-slate-100 bg-slate-50/80 rounded-b-3xl shrink-0">
                 <button
                   type="button"
                   onClick={() => setShowApplyModal(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -1848,9 +1852,10 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
       {/* 6. MODAL: CREATE / EDIT LEAVE POLICY (vahd OWNER)              */}
       {/* ───────────────────────────────────────────────────────────── */}
       {showPolicyModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 animate-fade-in overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-7 shadow-2xl border border-slate-100 space-y-5 animate-scale-up my-8">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-3 sm:p-4 animate-fade-in overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-xl w-full shadow-2xl border border-slate-100 animate-scale-up my-auto flex flex-col max-h-[calc(100vh-2rem)] overflow-hidden">
+            {/* Modal Header (Sticky) */}
+            <div className="flex items-center justify-between border-b border-slate-100 p-5 sm:p-6 pb-4 shrink-0 bg-white">
               <div className="flex items-center gap-2.5">
                 <div className="w-10 h-10 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center">
                   <Icon name="sliders" size={20} />
@@ -1872,14 +1877,14 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
               </button>
             </div>
 
-            {policyError && (
-              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold flex items-center gap-2">
-                <Icon name="alert-circle" size={15} />
-                <span>{policyError}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleSavePolicy} className="space-y-4">
+            <form onSubmit={handleSavePolicy} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+              <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1">
+                {policyError && (
+                  <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold flex items-center gap-2">
+                    <Icon name="alert-circle" size={15} />
+                    <span>{policyError}</span>
+                  </div>
+                )}
               {/* Name, Code & Category */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="sm:col-span-2">
@@ -2172,12 +2177,14 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
                   />
                 </div>
               </div>
+            </div>
 
-              <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100">
+            {/* Modal Footer (Sticky) */}
+              <div className="flex items-center justify-end gap-2.5 p-4 sm:p-5 pt-3 border-t border-slate-100 bg-slate-50/80 rounded-b-3xl shrink-0">
                 <button
                   type="button"
                   onClick={() => setShowPolicyModal(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -2199,8 +2206,8 @@ export function HrmsLeaveTab({ onSuccessToast }: HrmsLeaveTabProps) {
       {/* 7. MODAL: ADJUST LEAVE BALANCE                                */}
       {/* ───────────────────────────────────────────────────────────── */}
       {showBalanceModal && adjustTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 animate-fade-in">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-5 animate-scale-up">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-3 sm:p-4 animate-fade-in overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-5 animate-scale-up my-auto max-h-[calc(100vh-2rem)] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">

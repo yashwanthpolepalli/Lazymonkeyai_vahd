@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -674,8 +675,8 @@ export function MembersPage() {
       />
 
       {/* Renewal Modal */}
-      {renewalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 animate-fade-in overflow-y-auto">
+      {renewalOpen && createPortal(
+        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-[9999] flex items-center justify-center p-3 sm:p-4 animate-fade-in overflow-y-auto">
           <div className="bg-white rounded-3xl p-5 sm:p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto space-y-4 shadow-2xl animate-scale-in border border-slate-100 my-auto">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3 sticky -top-5 sm:-top-6 bg-white/95 backdrop-blur-md z-10 pt-1">
               <div className="flex items-center gap-2">
@@ -997,7 +998,8 @@ export function MembersPage() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

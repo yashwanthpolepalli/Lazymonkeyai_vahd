@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, type FormEvent } from "react";
+import { createPortal } from "react-dom";
 import {
   Building2, Search, Plus, Mail, Phone, MapPin,
   ExternalLink, Edit2, ChevronRight,
@@ -399,8 +400,8 @@ function CompanyFormModal({
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
+  const modalContent = (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
       <div className="bg-white border border-slate-200 rounded-2xl shadow-2xl w-full max-w-3xl my-auto overflow-hidden flex flex-col max-h-[92vh] text-slate-900">
         {toastMsg && (
           <div className="bg-brand-600 text-white text-xs py-2 px-4 text-center font-bold animate-fadeIn">
@@ -1233,6 +1234,8 @@ function CompanyFormModal({
       </div>
     </div>
   );
+
+  return typeof document !== "undefined" ? createPortal(modalContent, document.body) : modalContent;
 }
 
 // ─── Main Company Management & Google Reviews View ────────────────────────────

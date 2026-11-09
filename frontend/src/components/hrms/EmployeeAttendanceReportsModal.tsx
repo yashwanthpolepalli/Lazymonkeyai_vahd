@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Icon } from '@/components/ui/Icon';
 import { apiClient } from '@/services/apiClient';
 
@@ -206,8 +207,8 @@ export function EmployeeAttendanceReportsModal({ isOpen, onClose, branchId }: Pr
     return true;
   });
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+  const modalContent = (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200">
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed top-5 right-5 z-[90] bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-2xl border border-slate-700 text-xs font-bold flex items-center gap-2 animate-in slide-in-from-top-3">
@@ -669,7 +670,7 @@ export function EmployeeAttendanceReportsModal({ isOpen, onClose, branchId }: Pr
 
       {/* Sub-Modal: Day-Wise Punch Breakdown */}
       {selectedDayWiseEmp && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in">
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in">
           <div className="bg-white w-full max-w-3xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[85vh]">
             <div className="p-5 border-b border-slate-100 bg-slate-900 text-white flex items-center justify-between">
               <div>
@@ -748,4 +749,6 @@ export function EmployeeAttendanceReportsModal({ isOpen, onClose, branchId }: Pr
       )}
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent;
 }

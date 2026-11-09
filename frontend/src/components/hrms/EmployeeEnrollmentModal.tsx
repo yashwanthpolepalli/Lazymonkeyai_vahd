@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { Icon } from '@/components/ui/Icon';
 import { apiClient } from '@/services/apiClient';
 import { hrmsApi, DepartmentItem, DesignationItem } from '@/services/hrmsApi';
@@ -1468,8 +1469,8 @@ export function EmployeeEnrollmentModal({
     if (currentTabIndex < tabOrder.length - 1) setActiveTab(tabOrder[currentTabIndex + 1]);
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-slate-950/60 backdrop-blur-xs overflow-y-auto print:p-0 print:bg-white print:static animate-fade-in employee-modal-overlay">
+  const modalContent = (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-5 md:p-6 bg-slate-950/70 backdrop-blur-sm overflow-y-auto print:p-0 print:bg-white print:static animate-fade-in employee-modal-overlay">
 
       {/* Dynamic Print CSS for Page Isolation */}
       <style>{`
@@ -1523,7 +1524,7 @@ export function EmployeeEnrollmentModal({
 
       {/* Camera Live Modal Overlay */}
       {cameraActive && (
-        <div className="fixed inset-0 z-[60] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in no-print">
+        <div className="fixed inset-0 z-[10000] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in no-print">
           <div className="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl p-5 space-y-4 border border-slate-200">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <div className="flex items-center gap-2">
@@ -3045,4 +3046,10 @@ export function EmployeeEnrollmentModal({
 
     </div>
   );
+
+  if (typeof document !== 'undefined') {
+    return createPortal(modalContent, document.body);
+  }
+
+  return modalContent;
 }

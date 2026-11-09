@@ -152,6 +152,10 @@ export function EmployeeEnrollmentModal({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
+  // Active Navigation Tab & Form Helpers
+  const [activeTab, setActiveTab] = useState<'personal' | 'emergency' | 'post' | 'bank' | 'experience' | 'language' | 'all'>('personal');
+  const [sameAsPresent, setSameAsPresent] = useState(false);
+
   // Status & Submit
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -643,6 +647,8 @@ export function EmployeeEnrollmentModal({
       ]);
       setPhotoBase64(null);
     }
+    setActiveTab('personal');
+    setSameAsPresent(false);
     setErrorMsg(null);
     setSuccessMsg(null);
   }, [visible, employeeToEdit]);
@@ -1441,8 +1447,29 @@ export function EmployeeEnrollmentModal({
 
   if (!visible) return null;
 
+  const TABS = [
+    { id: 'personal', label: '1. Personal & KYC', icon: 'user' },
+    { id: 'emergency', label: '2. Emergency', icon: 'phone-call' },
+    { id: 'post', label: '3. Post & Role', icon: 'briefcase' },
+    { id: 'bank', label: '4. Bank & Payroll', icon: 'credit-card' },
+    { id: 'experience', label: '5. Experience & Ref', icon: 'history' },
+    { id: 'language', label: '6. Languages', icon: 'globe' },
+    { id: 'all', label: 'All Sections', icon: 'layers' },
+  ] as const;
+
+  const tabOrder = ['personal', 'emergency', 'post', 'bank', 'experience', 'language'] as const;
+  const currentTabIndex = tabOrder.indexOf(activeTab as any);
+
+  const goToPrevTab = () => {
+    if (currentTabIndex > 0) setActiveTab(tabOrder[currentTabIndex - 1]);
+  };
+
+  const goToNextTab = () => {
+    if (currentTabIndex < tabOrder.length - 1) setActiveTab(tabOrder[currentTabIndex + 1]);
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/80 backdrop-blur-xs overflow-y-auto print:p-0 print:bg-white print:static animate-fade-in employee-modal-overlay">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-slate-950/60 backdrop-blur-xs overflow-y-auto print:p-0 print:bg-white print:static animate-fade-in employee-modal-overlay">
 
       {/* Dynamic Print CSS for Page Isolation */}
       <style>{`
@@ -1494,460 +1521,604 @@ export function EmployeeEnrollmentModal({
         }
       `}</style>
 
-      {/* Modal Dialog Window */}
-      <div className="bg-white text-slate-900 border-2 border-slate-700 rounded-2xl w-full max-w-5xl shadow-2xl overflow-hidden my-auto max-h-[95vh] flex flex-col font-sans print:border-none print:shadow-none print:max-h-none print:w-full print:m-0 employee-modal-card">
-
-        {/* Top Control Bar (Hidden in Print) */}
-        <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white px-5 py-3 flex items-center justify-between shrink-0 no-print border-b border-indigo-800">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center">
-              <Icon name="user-check" size={17} className="text-emerald-400" />
+      {/* Camera Live Modal Overlay */}
+      {cameraActive && (
+        <div className="fixed inset-0 z-[60] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in no-print">
+          <div className="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl p-5 space-y-4 border border-slate-200">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+                  <Icon name="camera" size={16} />
+                </div>
+                <h3 className="font-bold text-sm text-slate-900">Take Passport Photo</h3>
+              </div>
+              <button
+                type="button"
+                onClick={stopCamera}
+                className="w-7 h-7 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 flex items-center justify-center transition cursor-pointer"
+              >
+                <Icon name="x" size={16} />
+              </button>
             </div>
-            <div>
-              <span className="font-black text-sm uppercase tracking-wider block leading-tight">
-                {employeeToEdit ? 'Edit Employee Dossier' : 'Employee Registration & HR Dossier'}
-              </span>
-              <span className="text-[10px] text-blue-200 font-semibold">Official Personal Details Multi-Color Form</span>
+
+            <div className="relative aspect-4/3 rounded-2xl overflow-hidden bg-slate-950 border border-slate-200 shadow-inner">
+              <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+              <div className="absolute inset-0 pointer-events-none border-2 border-dashed border-white/40 m-6 rounded-2xl" />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={stopCamera}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={capturePhoto}
+                className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-blue-600 via-indigo-600 to-orange-500 hover:opacity-95 shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+              >
+                <Icon name="camera" size={14} />
+                <span>Capture Photo</span>
+              </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Main Modal Dialog Window */}
+      <div className="bg-white text-slate-900 rounded-3xl w-full max-w-5xl shadow-2xl border border-slate-200/90 overflow-hidden my-auto max-h-[92vh] flex flex-col font-sans print:border-none print:shadow-none print:max-h-none print:w-full print:m-0 employee-modal-card animate-scale-in">
+
+        {/* ── Top Header ───────────────── */}
+        <div className="bg-white px-5 sm:px-6 py-3.5 border-b border-slate-100 flex items-center justify-between shrink-0 no-print">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-purple-50 text-purple-600 border border-purple-100 flex items-center justify-center shrink-0 shadow-2xs">
+              <Icon name={employeeToEdit ? 'user-check' : 'user-plus'} size={20} className="text-purple-600" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight leading-tight">
+                  {employeeToEdit ? 'Edit Employee Dossier' : 'Employee Registration & Dossier'}
+                </h2>
+                <span className="hidden sm:inline-flex px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-purple-50 text-purple-700 border border-purple-100">
+                  KYC Form
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 font-medium mt-0.5">
+                Official personal records, post details, KYC &amp; biometric setup
+              </p>
+            </div>
+          </div>
+
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={handlePrint}
-              className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-black flex items-center gap-1.5 transition shadow-sm border border-blue-400/40 cursor-pointer"
-              title="Print Official Form (Isolated)"
+              className="px-3.5 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer"
+              title="Print Official Form (Isolated A4)"
             >
-              <Icon name="printer" size={14} />
-              <span>Print Form</span>
+              <Icon name="printer" size={14} className="text-slate-500" />
+              <span className="hidden sm:inline">Print Form</span>
             </button>
             <button
               type="button"
               onClick={() => { stopCamera(); onClose(); }}
-              className="w-8 h-8 rounded-xl bg-white/10 hover:bg-rose-600 text-slate-300 hover:text-white flex items-center justify-center transition border border-white/10 cursor-pointer"
+              className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center transition cursor-pointer"
             >
               <Icon name="x" size={16} />
             </button>
           </div>
         </div>
 
-        {/* Scrollable Form Content / Printable Element */}
-        <form onSubmit={handleSubmit} className="p-4 sm:p-6 overflow-y-auto space-y-4 print:p-0 print:overflow-visible">
+        {/* ── Navigation Tabs Bar ───────────────── */}
+        <div className="bg-slate-50/80 border-b border-slate-100 px-4 sm:px-6 py-2 flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0 no-print">
+          {TABS.map((tab) => {
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id as any)}
+                className={cn(
+                  'px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer',
+                  isActive
+                    ? 'bg-purple-600 text-white shadow-xs'
+                    : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200/80 hover:bg-slate-100/70'
+                )}
+              >
+                <Icon name={tab.icon as any} size={13} className={isActive ? 'text-white' : 'text-purple-600'} />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* ── Scrollable Form Body ───────────────── */}
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6 overflow-y-auto space-y-5 flex-1 bg-[#FAFBFD]/60 print:p-0 print:overflow-visible">
 
           {errorMsg && (
-            <div className="p-3 rounded-xl bg-rose-50 border border-rose-300 text-rose-800 text-xs font-bold flex items-center gap-2 no-print">
-              <Icon name="alert-circle" size={16} className="shrink-0" />
+            <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold flex items-center gap-2 animate-fade-in shadow-2xs no-print">
+              <Icon name="alert-circle" size={16} className="text-rose-600 shrink-0" />
               <span>{errorMsg}</span>
             </div>
           )}
 
           {successMsg && (
-            <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-800 text-xs font-bold flex items-center gap-2 no-print">
-              <Icon name="check-circle" size={16} className="shrink-0" />
+            <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-2 animate-fade-in shadow-2xs no-print">
+              <Icon name="check-circle" size={16} className="text-emerald-600 shrink-0" />
               <span>{successMsg}</span>
             </div>
           )}
 
-          {/* Printable Container Wrapper */}
-          <div id="employee-printable-dossier" className="space-y-3.5">
-
-            {/* Form Top Title */}
-            <div className="text-center pb-2 border-b-2 border-blue-900 flex flex-col items-center">
-              <h1 className="text-lg sm:text-xl font-black tracking-wider text-blue-950 uppercase">
-                PERSONAL DETAILS FORM
-              </h1>
-              <span className="text-[10px] font-bold text-blue-700 tracking-wide uppercase">
-                Official Staff Record & Biometric KYC
-              </span>
-            </div>
-
-            {/* ───────────────────────────────────────────────────────────── */}
-            {/* TOP SECTION: HR CODE & PASSPORT PHOTO                         */}
-            {/* ───────────────────────────────────────────────────────────── */}
-            <div className="border-2 border-blue-900 rounded-xl overflow-hidden bg-white shadow-xs">
-              <div className="grid grid-cols-12 divide-x-2 divide-blue-900">
-
-                {/* Left Column: HR Block & Employee Details Table */}
-                <div className="col-span-8 sm:col-span-9 flex flex-col">
-
-                  {/* Header HR & Code Row */}
-                  <div className="grid grid-cols-2 divide-x-2 divide-blue-900 border-b-2 border-blue-900">
-                    <div className="bg-sky-100 p-2 flex items-center">
-                      <span className="font-black text-xs sm:text-sm text-sky-950 uppercase tracking-tight">
-                        TO BE COMPLETED BY HR
-                      </span>
-                    </div>
-                    <div className="bg-indigo-50 p-2 flex items-center gap-2">
-                      <span className="font-black text-xs sm:text-sm text-indigo-950 whitespace-nowrap">
-                        Employee Code:
-                      </span>
-                      <input
-                        type="text"
-                        value={employeeCode}
-                        onChange={(e) => setEmployeeCode(e.target.value.toUpperCase())}
-                        placeholder="EMP-001"
-                        className="w-full bg-transparent font-black text-xs sm:text-sm text-indigo-700 outline-none uppercase"
-                      />
-                    </div>
+          {/* ══════════════════════════════════════════════════════════════ */}
+          {/* SECTION 1: PERSONAL & KYC DETAILS                           */}
+          {/* ══════════════════════════════════════════════════════════════ */}
+          {(activeTab === 'personal' || activeTab === 'all') && (
+            <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-5 sm:p-6 space-y-5">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 border border-purple-100 flex items-center justify-center shrink-0">
+                    <Icon name="user" size={18} />
                   </div>
-
-                  {/* SECTION 1: EMPLOYEE DETAILS HEADER (Royal Blue Gradient) */}
-                  <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-800 text-white px-3 py-1 font-black text-xs uppercase tracking-wider flex items-center justify-between">
-                    <span>EMPLOYEE DETAILS</span>
-                    <span className="text-[10px] text-blue-200 font-semibold">Section 1</span>
+                  <div>
+                    <h3 className="text-base font-bold text-slate-900 leading-tight">Personal Details &amp; KYC</h3>
+                    <p className="text-xs text-slate-400 font-medium">Section 1 · Official staff identification &amp; KYC record</p>
                   </div>
+                </div>
 
-                  {/* Sub-table within top block */}
-                  <div className="divide-y divide-blue-200 text-xs bg-blue-50/15">
+                <div className="flex items-center gap-2 bg-purple-50/70 border border-purple-100 px-3 py-1.5 rounded-xl self-start sm:self-auto">
+                  <span className="text-[11px] font-bold text-purple-900 whitespace-nowrap">Employee Code:</span>
+                  <input
+                    type="text"
+                    value={employeeCode}
+                    onChange={(e) => setEmployeeCode(e.target.value.toUpperCase())}
+                    placeholder="EMP-001"
+                    className="bg-transparent font-black font-mono text-xs text-purple-700 outline-none uppercase w-24"
+                  />
+                </div>
+              </div>
 
-                    {/* Row 1: Name & Father Name */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-blue-200">
-                      <div className="p-1.5 flex items-center gap-2">
-                        <span className="font-bold text-blue-950 shrink-0">Name: <span className="text-rose-500">*</span></span>
+              <div className="grid grid-cols-12 gap-5">
+                {/* Form Fields Column */}
+                <div className="col-span-12 lg:col-span-9 space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                    {/* Full Name */}
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 mb-1.5 block">Full Name *</label>
+                      <div className="relative">
+                        <Icon name="user" size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                         <input
                           type="text"
                           required
                           value={name}
                           onChange={(e) => setName(e.target.value)}
                           placeholder="Full Name (Required)"
-                          className="w-full bg-transparent outline-none font-bold text-slate-900 px-1 py-0.5 focus:bg-blue-100/50"
+                          className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-purple-500 transition"
                         />
                       </div>
-                      <div className="p-1.5 flex items-center gap-2">
-                        <span className="font-bold text-blue-950 shrink-0">Father Name:</span>
+                    </div>
+
+                    {/* Father Name */}
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 mb-1.5 block">Father Name</label>
+                      <div className="relative">
+                        <Icon name="user" size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                         <input
                           type="text"
                           value={fatherName}
                           onChange={(e) => setFatherName(e.target.value)}
                           placeholder="Father's Name"
-                          className="w-full bg-transparent outline-none text-slate-900 px-1 py-0.5 focus:bg-blue-100/50"
+                          className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-purple-500 transition"
                         />
                       </div>
                     </div>
 
-                    {/* Row 2: Date of Birth & Age */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-blue-200">
-                      <div className="p-1.5 flex items-center gap-2">
-                        <span className="font-bold text-blue-950 shrink-0">Date of Birth:</span>
+                    {/* Date of Birth */}
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 mb-1.5 block">Date of Birth</label>
+                      <div className="relative">
+                        <Icon name="calendar" size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                         <input
                           type="date"
                           value={dob}
                           onChange={(e) => handleDobChange(e.target.value)}
-                          className="w-full bg-transparent outline-none text-slate-900 text-xs px-1 py-0.5 focus:bg-blue-100/50"
-                        />
-                      </div>
-                      <div className="p-1.5 flex items-center gap-2">
-                        <span className="font-bold text-blue-950 shrink-0">Age:</span>
-                        <input
-                          type="text"
-                          value={age}
-                          onChange={(e) => setAge(e.target.value)}
-                          placeholder="Age"
-                          className="w-20 bg-transparent outline-none text-blue-900 font-bold px-1 py-0.5 focus:bg-blue-100/50"
+                          className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-900 focus:outline-none focus:border-purple-500 transition"
                         />
                       </div>
                     </div>
 
-                    {/* Row 3: Area of service & Caste */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-blue-200">
-                      <div className="p-1.5 flex items-center gap-2">
-                        <span className="font-bold text-blue-950 shrink-0">Area of service:</span>
+                    {/* Age */}
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 mb-1.5 block">Age (Years)</label>
+                      <div className="relative">
+                        <Icon name="clock" size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                         <input
-                          type="text"
-                          list="employeeAreaOfServiceList"
-                          value={areaOfService}
-                          onChange={(e) => setAreaOfService(e.target.value)}
-                          placeholder="E.g. Training, Operations, Specialization"
-                          className="w-full bg-transparent outline-none text-slate-900 px-1 py-0.5 focus:bg-blue-100/50"
+                          type="number"
+                          value={age}
+                          onChange={(e) => setAge(e.target.value)}
+                          placeholder="Age"
+                          className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-purple-500 transition"
                         />
                       </div>
-                      <div className="p-1.5 flex items-center gap-2">
-                        <span className="font-bold text-blue-950 shrink-0">Caste:</span>
+                    </div>
+
+                    {/* Gender */}
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 mb-1.5 block">Gender</label>
+                      <div className="relative">
+                        <Icon name="users" size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                        <select
+                          value={gender}
+                          onChange={(e) => setGender(e.target.value as any)}
+                          className="w-full pl-9 pr-8 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-900 focus:outline-none focus:border-purple-500 transition appearance-none cursor-pointer"
+                        >
+                          <option value="">Select Gender</option>
+                          {dynamicGenders.map((g) => (
+                            <option key={g} value={g}>{g}</option>
+                          ))}
+                        </select>
+                        <Icon name="chevron-down" size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                      </div>
+                    </div>
+
+                    {/* Blood Group */}
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 mb-1.5 block">Blood Group</label>
+                      <div className="relative">
+                        <Icon name="heart-pulse" size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-rose-500 pointer-events-none" />
+                        <select
+                          value={bloodGroup}
+                          onChange={(e) => setBloodGroup(e.target.value)}
+                          className="w-full pl-9 pr-8 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-rose-700 focus:outline-none focus:border-purple-500 transition appearance-none cursor-pointer"
+                        >
+                          <option value="">Select Blood Group</option>
+                          {dynamicBloodGroups.map((bg) => (
+                            <option key={bg} value={bg}>{bg}</option>
+                          ))}
+                          {bloodGroup && !dynamicBloodGroups.includes(bloodGroup) && (
+                            <option value={bloodGroup}>{bloodGroup}</option>
+                          )}
+                        </select>
+                        <Icon name="chevron-down" size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                      </div>
+                    </div>
+
+                    {/* Caste / Category */}
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 mb-1.5 block">Caste / Category</label>
+                      <div className="relative">
+                        <Icon name="tag" size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                         <select
                           value={caste}
                           onChange={(e) => setCaste(e.target.value)}
-                          className="w-full bg-transparent outline-none text-slate-900 px-1 py-0.5 focus:bg-blue-100/50 cursor-pointer font-medium"
+                          className="w-full pl-9 pr-8 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-900 focus:outline-none focus:border-purple-500 transition appearance-none cursor-pointer"
                         >
                           <option value="">Select Caste / Category</option>
                           {dynamicCastes.map((c) => (
                             <option key={c.value} value={c.value}>{c.label}</option>
                           ))}
-                          {caste && !dynamicCastes.some((c) => c.value === caste || c.label === caste) && (
-                            <option value={caste}>{caste}</option>
-                          )}
                         </select>
+                        <Icon name="chevron-down" size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                       </div>
                     </div>
 
+                    {/* Religion */}
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 mb-1.5 block">Religion</label>
+                      <div className="relative">
+                        <Icon name="compass" size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input
+                          type="text"
+                          value={religion}
+                          onChange={(e) => setReligion(e.target.value)}
+                          placeholder="Religion"
+                          className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-purple-500 transition"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Marital Status */}
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 mb-1.5 block">Marital Status</label>
+                      <div className="relative">
+                        <Icon name="users" size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                        <select
+                          value={maritalStatus}
+                          onChange={(e) => setMaritalStatus(e.target.value)}
+                          className="w-full pl-9 pr-8 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-900 focus:outline-none focus:border-purple-500 transition appearance-none cursor-pointer"
+                        >
+                          <option value="">Select Marital Status</option>
+                          {MARITAL_STATUS_OPTIONS.map((status) => (
+                            <option key={status} value={status}>{status}</option>
+                          ))}
+                          {maritalStatus && !MARITAL_STATUS_OPTIONS.includes(maritalStatus) && (
+                            <option value={maritalStatus}>{maritalStatus}</option>
+                          )}
+                        </select>
+                        <Icon name="chevron-down" size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                      </div>
+                    </div>
+
+                    {/* Work Experience */}
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 mb-1.5 block">Work Experience (Years)</label>
+                      <div className="relative">
+                        <Icon name="briefcase" size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input
+                          type="text"
+                          value={workExperienceYears}
+                          onChange={(e) => setWorkExperienceYears(e.target.value)}
+                          placeholder="e.g. 5 Years"
+                          className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-purple-500 transition"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Contact No */}
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 mb-1.5 block">Contact No *</label>
+                      <div className="relative">
+                        <Icon name="phone" size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input
+                          type="tel"
+                          required
+                          value={contactNo}
+                          onChange={(e) => setContactNo(e.target.value)}
+                          placeholder="Mobile / Phone Number"
+                          className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-purple-500 transition"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Personal Email ID */}
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 mb-1.5 block">Personal Email ID *</label>
+                      <div className="relative">
+                        <Icon name="mail" size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input
+                          type="email"
+                          required
+                          value={personalEmail}
+                          onChange={(e) => setPersonalEmail(e.target.value)}
+                          placeholder="email@domain.com"
+                          className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-purple-500 transition"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Area of Service */}
+                    <div className="sm:col-span-2 md:col-span-3">
+                      <label className="text-xs font-bold text-slate-700 mb-1.5 block">Area of Service / Specialization</label>
+                      <div className="relative">
+                        <Icon name="layers" size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input
+                          type="text"
+                          list="employeeAreaOfServiceList"
+                          value={areaOfService}
+                          onChange={(e) => setAreaOfService(e.target.value)}
+                          placeholder="E.g. Training, Operations, Administration, Specialization"
+                          className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-purple-500 transition"
+                        />
+                      </div>
+                    </div>
                   </div>
 
+                  {/* Address Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 mb-1.5 block">Present Address</label>
+                      <textarea
+                        rows={2}
+                        value={presentAddress}
+                        onChange={(e) => {
+                          setPresentAddress(e.target.value);
+                          if (sameAsPresent) setPermanentAddress(e.target.value);
+                        }}
+                        placeholder="Door No, Street, Landmark, Village/City, Mandal, District, State, PIN"
+                        className="w-full p-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-purple-500 transition resize-none"
+                      />
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="text-xs font-bold text-slate-700">Permanent Address</label>
+                        <label className="flex items-center gap-1.5 text-[11px] font-bold text-purple-600 hover:text-purple-800 cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={sameAsPresent}
+                            onChange={(e) => {
+                              const checked = e.target.checked;
+                              setSameAsPresent(checked);
+                              if (checked) setPermanentAddress(presentAddress);
+                            }}
+                            className="rounded text-purple-600 border-slate-300 accent-purple-600 cursor-pointer"
+                          />
+                          Same as Present Address
+                        </label>
+                      </div>
+                      <textarea
+                        rows={2}
+                        value={permanentAddress}
+                        onChange={(e) => {
+                          setPermanentAddress(e.target.value);
+                          if (sameAsPresent) setSameAsPresent(false);
+                        }}
+                        placeholder="Door No, Street, Landmark, Village/City, Mandal, District, State, PIN"
+                        className="w-full p-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-purple-500 transition resize-none"
+                      />
+                    </div>
+                  </div>
                 </div>
 
-                {/* Right Column: Passport Photo Box */}
-                <div className="col-span-4 sm:col-span-3 flex flex-col items-center justify-center p-2 bg-gradient-to-b from-sky-50/50 to-blue-50/50 relative min-h-[160px]">
+                {/* Passport Photo Uploader Box */}
+                <div className="col-span-12 lg:col-span-3 flex flex-col items-center justify-center p-4 rounded-2xl border border-slate-200/90 bg-slate-50/60 space-y-3">
                   {photoBase64 ? (
-                    <div className="relative group w-full h-full flex flex-col items-center justify-center">
-                      <img
-                        src={photoBase64}
-                        alt="Passport"
-                        className="w-28 h-36 sm:w-32 sm:h-40 object-cover border-2 border-blue-600 rounded-lg shadow-sm"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setPhotoBase64(null)}
-                        className="absolute top-1 right-1 p-1 bg-rose-600 text-white rounded-md shadow-sm opacity-90 hover:opacity-100 no-print cursor-pointer"
-                        title="Remove Photo"
-                      >
-                        <Icon name="trash-2" size={13} />
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center text-center p-2">
-                      <span className="font-black text-base sm:text-lg text-blue-300 tracking-widest uppercase">
-                        PHOTO
-                      </span>
-                      <span className="text-[10px] text-blue-400 mt-0.5 font-semibold no-print">Passport Size</span>
-
-                      <div className="flex flex-col gap-1.5 mt-2 w-full max-w-[130px] no-print">
+                    <div className="relative group w-32 h-40 sm:w-36 sm:h-44 rounded-2xl overflow-hidden border-2 border-purple-200 shadow-md">
+                      <img src={photoBase64} alt="Passport Preview" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-slate-900/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2">
                         <button
                           type="button"
                           onClick={startCamera}
-                          className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10px] font-bold flex items-center justify-center gap-1 shadow-xs cursor-pointer transition"
+                          className="p-2 rounded-xl bg-white/90 text-slate-800 hover:bg-white shadow-xs cursor-pointer transition"
+                          title="Retake Photo"
                         >
-                          <Icon name="camera" size={12} /> Camera
+                          <Icon name="camera" size={15} />
                         </button>
-                        <label className="px-2 py-1 bg-white hover:bg-blue-50 text-blue-700 border border-blue-300 rounded-lg text-[10px] font-bold text-center cursor-pointer transition">
-                          Upload
-                          <input type="file" accept="image/*" onChange={handleFileUpload} className="hidden" />
-                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setPhotoBase64(null)}
+                          className="p-2 rounded-xl bg-rose-600 text-white hover:bg-rose-700 shadow-xs cursor-pointer transition"
+                          title="Remove Photo"
+                        >
+                          <Icon name="trash-2" size={15} />
+                        </button>
                       </div>
                     </div>
+                  ) : (
+                    <div className="w-32 h-40 sm:w-36 sm:h-44 rounded-2xl border-2 border-dashed border-slate-300 bg-white flex flex-col items-center justify-center text-center p-3 shadow-inner">
+                      <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center mb-1.5 shadow-2xs">
+                        <Icon name="user" size={20} />
+                      </div>
+                      <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">Passport Photo</span>
+                      <span className="text-[10px] text-slate-400 mt-0.5">Formal Staff Picture</span>
+                    </div>
                   )}
-                </div>
 
+                  <div className="flex items-center gap-2 w-full max-w-[180px] no-print">
+                    <button
+                      type="button"
+                      onClick={startCamera}
+                      className="flex-1 py-1.5 px-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition cursor-pointer"
+                    >
+                      <Icon name="camera" size={13} />
+                      <span>Camera</span>
+                    </button>
+                    <label className="flex-1 py-1.5 px-2.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-bold text-center cursor-pointer transition shadow-2xs">
+                      Upload
+                      <input type="file" accept="image/*" onChange={handleFileUpload} className="hidden" />
+                    </label>
+                  </div>
+                </div>
               </div>
-
-              {/* EMPLOYEE DETAILS Continued (Full Width Grid Rows) */}
-              <div className="divide-y divide-blue-200 border-t-2 border-blue-900 text-xs bg-blue-50/15">
-
-                {/* Row 4: Blood Group & Religion */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-blue-200">
-                  <div className="p-1.5 flex items-center gap-2">
-                    <span className="font-bold text-blue-950 shrink-0">Blood Group:</span>
-                    <select
-                      value={bloodGroup}
-                      onChange={(e) => setBloodGroup(e.target.value)}
-                      className="w-full bg-transparent outline-none font-bold text-rose-700 px-1 py-0.5 focus:bg-blue-100/50 cursor-pointer uppercase"
-                    >
-                      <option value="">Select Blood Group</option>
-                      {dynamicBloodGroups.map((bg) => (
-                        <option key={bg} value={bg}>{bg}</option>
-                      ))}
-                      {bloodGroup && !dynamicBloodGroups.includes(bloodGroup) && (
-                        <option value={bloodGroup}>{bloodGroup}</option>
-                      )}
-                    </select>
-                  </div>
-                  <div className="p-1.5 flex items-center gap-2">
-                    <span className="font-bold text-blue-950 shrink-0">Religion:</span>
-                    <input
-                      type="text"
-                      value={religion}
-                      onChange={(e) => setReligion(e.target.value)}
-                      placeholder="Religion"
-                      className="w-full bg-transparent outline-none text-slate-900 px-1 py-0.5 focus:bg-blue-100/50"
-                    />
-                  </div>
-                </div>
-
-                {/* Row 5: Gender & Marital Status */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-blue-200">
-
-                  {/* Gender */}
-                  <div className="p-1.5 flex items-center gap-2">
-                    <span className="font-bold text-blue-950 shrink-0">Gender:</span>
-                    <select
-                      value={gender}
-                      onChange={(e) => setGender(e.target.value as any)}
-                      className="w-full bg-transparent outline-none text-blue-950 font-semibold px-1 py-0.5 focus:bg-blue-100/50 cursor-pointer"
-                    >
-                      <option value="">Select Gender</option>
-                      {dynamicGenders.map((g) => (
-                        <option key={g} value={g}>{g}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Marital Status */}
-                  <div className="p-1.5 flex items-center gap-2">
-                    <span className="font-bold text-blue-950 shrink-0">Marital Status:</span>
-                    <select
-                      value={maritalStatus}
-                      onChange={(e) => setMaritalStatus(e.target.value)}
-                      className="w-full bg-transparent outline-none text-slate-900 font-medium px-1 py-0.5 focus:bg-blue-100/50 cursor-pointer"
-                    >
-                      <option value="">Select Marital Status</option>
-                      {MARITAL_STATUS_OPTIONS.map((status) => (
-                        <option key={status} value={status}>{status}</option>
-                      ))}
-                      {maritalStatus && !MARITAL_STATUS_OPTIONS.includes(maritalStatus) && (
-                        <option value={maritalStatus}>{maritalStatus}</option>
-                      )}
-                    </select>
-                  </div>
-
-                </div>
-
-                {/* Row 6: Work Experience */}
-                <div className="p-1.5 flex items-center gap-2">
-                  <span className="font-bold text-blue-950 shrink-0">Work Experience:</span>
-                  <input
-                    type="text"
-                    value={workExperienceYears}
-                    onChange={(e) => setWorkExperienceYears(e.target.value)}
-                    placeholder="E.g. 5 Years in relevant industry"
-                    className="w-full bg-transparent outline-none text-blue-900 font-semibold px-1 py-0.5 focus:bg-blue-100/50"
-                  />
-                </div>
-
-                {/* Row 7: Contact No & Personal Email ID */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-blue-200">
-                  <div className="p-1.5 flex items-center gap-2">
-                    <span className="font-bold text-blue-950 shrink-0">Contact No:<span className="text-rose-500 ml-0.5">*</span></span>
-                    <input
-                      type="tel"
-                      required
-                      value={contactNo}
-                      onChange={(e) => setContactNo(e.target.value)}
-                      placeholder="Mobile / Phone Number"
-                      className="w-full bg-transparent outline-none font-black text-blue-700 px-1 py-0.5 focus:bg-blue-100/50"
-                    />
-                  </div>
-                  <div className="p-1.5 flex items-center gap-2">
-                    <span className="font-bold text-blue-950 shrink-0">Personal Email ID:<span className="text-rose-500 ml-0.5">*</span></span>
-                    <input
-                      type="text"
-                      value={personalEmail}
-                      onChange={(e) => setPersonalEmail(e.target.value)}
-                      placeholder="email@domain.com"
-                      className="w-full bg-transparent outline-none text-slate-900 px-1 py-0.5 focus:bg-blue-100/50 font-medium"
-                    />
-                  </div>
-                </div>
-
-                {/* Row 8: Present Address & Permanent Address */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-blue-200">
-                  <div className="p-2">
-                    <span className="font-bold text-blue-950 block mb-1">Present Address:</span>
-                    <textarea
-                      rows={2}
-                      value={presentAddress}
-                      onChange={(e) => setPresentAddress(e.target.value)}
-                      placeholder="Door No, Street, Landmark, Village/City, Mandal, District, State, PIN"
-                      className="w-full bg-white/70 outline-none text-slate-900 text-xs p-1.5 focus:bg-white resize-none border border-blue-200 rounded-lg"
-                    />
-                  </div>
-                  <div className="p-2">
-                    <span className="font-bold text-blue-950 block mb-1">Permanent Address:</span>
-                    <textarea
-                      rows={2}
-                      value={permanentAddress}
-                      onChange={(e) => setPermanentAddress(e.target.value)}
-                      placeholder="Door No, Street, Landmark, Village/City, Mandal, District, State, PIN"
-                      className="w-full bg-white/70 outline-none text-slate-900 text-xs p-1.5 focus:bg-white resize-none border border-blue-200 rounded-lg"
-                    />
-                  </div>
-                </div>
-
-              </div>
-
             </div>
+          )}
 
-            {/* ───────────────────────────────────────────────────────────── */}
-            {/* SECTION 2: EMERGENCY CONTACT DETAILS (Amber Gradient)        */}
-            {/* ───────────────────────────────────────────────────────────── */}
-            <div className="border-2 border-amber-600 rounded-xl overflow-hidden bg-white shadow-xs text-xs">
-              <div className="bg-gradient-to-r from-amber-600 via-orange-600 to-amber-700 text-white px-3 py-1 font-black text-xs uppercase tracking-wider flex items-center justify-between">
-                <span>EMERGENCY CONTACT DETAILS</span>
-                <span className="text-[10px] text-amber-100 font-semibold">Section 2</span>
+          {/* ══════════════════════════════════════════════════════════════ */}
+          {/* SECTION 2: EMERGENCY CONTACT DETAILS                         */}
+          {/* ══════════════════════════════════════════════════════════════ */}
+          {(activeTab === 'emergency' || activeTab === 'all') && (
+            <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-5 sm:p-6 space-y-4">
+              <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
+                <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center shrink-0">
+                  <Icon name="phone-call" size={18} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 leading-tight">Emergency Contact Details</h3>
+                  <p className="text-xs text-slate-400 font-medium">Section 2 · Designated emergency contact person &amp; medical notes</p>
+                </div>
               </div>
 
-              <div className="divide-y divide-amber-200 bg-amber-50/15">
-                {/* Row 1: Full Name & Relationship */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-amber-200">
-                  <div className="p-1.5 flex items-center gap-2">
-                    <span className="font-bold text-amber-950 shrink-0">Full Name:</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                {/* Contact Name */}
+                <div>
+                  <label className="text-xs font-bold text-slate-700 mb-1.5 block">Full Name</label>
+                  <div className="relative">
+                    <Icon name="user" size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                     <input
                       type="text"
                       value={emergencyName}
                       onChange={(e) => setEmergencyName(e.target.value)}
                       placeholder="Contact Name"
-                      className="w-full bg-transparent outline-none text-slate-900 px-1 py-0.5 focus:bg-amber-100/50 font-medium"
+                      className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-purple-500 transition"
                     />
                   </div>
-                  <div className="p-1.5 flex items-center gap-2">
-                    <span className="font-bold text-amber-950 shrink-0">Relationship:</span>
+                </div>
+
+                {/* Relationship */}
+                <div>
+                  <label className="text-xs font-bold text-slate-700 mb-1.5 block">Relationship</label>
+                  <div className="relative">
+                    <Icon name="users" size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                     <input
                       type="text"
                       value={emergencyRelationship}
                       onChange={(e) => setEmergencyRelationship(e.target.value)}
                       placeholder="Spouse / Parent / Sibling / Friend"
-                      className="w-full bg-transparent outline-none text-slate-900 px-1 py-0.5 focus:bg-amber-100/50"
+                      className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-purple-500 transition"
                     />
                   </div>
                 </div>
 
-                {/* Row 2: Address & Contact No */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-amber-200">
-                  <div className="p-1.5 flex items-center gap-2">
-                    <span className="font-bold text-amber-950 shrink-0">Address:</span>
-                    <input
-                      type="text"
-                      value={emergencyAddress}
-                      onChange={(e) => setEmergencyAddress(e.target.value)}
-                      placeholder="Address of emergency contact"
-                      className="w-full bg-transparent outline-none text-slate-900 px-1 py-0.5 focus:bg-amber-100/50"
-                    />
-                  </div>
-                  <div className="p-1.5 flex items-center gap-2">
-                    <span className="font-bold text-amber-950 shrink-0">Contact No:</span>
+                {/* Contact No */}
+                <div>
+                  <label className="text-xs font-bold text-slate-700 mb-1.5 block">Contact No</label>
+                  <div className="relative">
+                    <Icon name="phone" size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                     <input
                       type="tel"
                       value={emergencyContactNo}
                       onChange={(e) => setEmergencyContactNo(e.target.value)}
                       placeholder="Phone Number"
-                      className="w-full bg-transparent outline-none font-bold text-amber-900 px-1 py-0.5 focus:bg-amber-100/50"
+                      className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-purple-500 transition"
                     />
                   </div>
                 </div>
 
-                {/* Row 3: Note */}
-                <div className="p-1.5 flex items-center gap-2">
-                  <span className="font-bold text-amber-950 shrink-0">Note:</span>
-                  <input
-                    type="text"
-                    value={emergencyNote}
-                    onChange={(e) => setEmergencyNote(e.target.value)}
-                    placeholder="Special medical conditions / blood donor notes"
-                    className="w-full bg-transparent outline-none text-slate-900 px-1 py-0.5 focus:bg-amber-100/50"
-                  />
+                {/* Address */}
+                <div className="sm:col-span-2">
+                  <label className="text-xs font-bold text-slate-700 mb-1.5 block">Address</label>
+                  <div className="relative">
+                    <Icon name="map-pin" size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="text"
+                      value={emergencyAddress}
+                      onChange={(e) => setEmergencyAddress(e.target.value)}
+                      placeholder="Address of emergency contact"
+                      className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-purple-500 transition"
+                    />
+                  </div>
+                </div>
+
+                {/* Note */}
+                <div>
+                  <label className="text-xs font-bold text-slate-700 mb-1.5 block">Special Note / Medical</label>
+                  <div className="relative">
+                    <Icon name="file-text" size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="text"
+                      value={emergencyNote}
+                      onChange={(e) => setEmergencyNote(e.target.value)}
+                      placeholder="Special medical conditions / blood donor notes"
+                      className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-purple-500 transition"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
+          )}
 
-            {/* ───────────────────────────────────────────────────────────── */}
-            {/* SECTION 3: POST DETAILS (Purple Gradient)                     */}
-            {/* ───────────────────────────────────────────────────────────── */}
-            <div className="border-2 border-purple-700 rounded-xl overflow-hidden bg-white shadow-xs text-xs">
-              <div className="bg-gradient-to-r from-purple-700 via-violet-700 to-purple-800 text-white px-3 py-1 font-black text-xs uppercase tracking-wider flex items-center justify-between">
-                <span>POST DETAILS</span>
-                <span className="text-[10px] text-purple-200 font-semibold">Section 3</span>
+          {/* ══════════════════════════════════════════════════════════════ */}
+          {/* SECTION 3: POST DETAILS                                      */}
+          {/* ══════════════════════════════════════════════════════════════ */}
+          {(activeTab === 'post' || activeTab === 'all') && (
+            <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-5 sm:p-6 space-y-4">
+              <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
+                <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shrink-0">
+                  <Icon name="briefcase" size={18} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 leading-tight">Post &amp; Employment Details</h3>
+                  <p className="text-xs text-slate-400 font-medium">Section 3 · Branch deployment, role designation &amp; compensation</p>
+                </div>
               </div>
 
-              <div className="divide-y divide-purple-200 bg-purple-50/15">
-                {/* Row 1: Location & Department */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-purple-200">
-                  <div className="p-1.5 flex items-center gap-2">
-                    <span className="font-bold text-purple-950 shrink-0">Organisation / Branch:</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                {/* Branch */}
+                <div>
+                  <label className="text-xs font-bold text-slate-700 mb-1.5 block">Organisation / Branch *</label>
+                  <div className="relative">
+                    <Icon name="building" size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                     {branchesList.length > 0 ? (
                       <select
                         value={selectedBranchId || location}
@@ -1957,7 +2128,7 @@ export function EmployeeEnrollmentModal({
                           const found = branchesList.find((b) => b.id === val);
                           setLocation(found ? getOrgBranchLabel(found) : val);
                         }}
-                        className="w-full bg-transparent outline-none text-purple-900 px-1 py-0.5 focus:bg-purple-100/50 font-bold cursor-pointer"
+                        className="w-full pl-9 pr-8 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-900 focus:outline-none focus:border-purple-500 transition appearance-none cursor-pointer"
                       >
                         <option value="">Select Organisation / Branch</option>
                         {branchesList.map((b) => (
@@ -1972,16 +2143,22 @@ export function EmployeeEnrollmentModal({
                         value={location}
                         onChange={(e) => setLocation(e.target.value)}
                         placeholder="Organisation / Branch"
-                        className="w-full bg-transparent outline-none text-purple-900 px-1 py-0.5 focus:bg-purple-100/50 font-bold"
+                        className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-purple-500 transition"
                       />
                     )}
+                    <Icon name="chevron-down" size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                   </div>
-                  <div className="p-1.5 flex items-center gap-2">
-                    <span className="font-bold text-purple-950 shrink-0">Department:</span>
+                </div>
+
+                {/* Department */}
+                <div>
+                  <label className="text-xs font-bold text-slate-700 mb-1.5 block">Department</label>
+                  <div className="relative">
+                    <Icon name="layers" size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                     <select
                       value={department}
                       onChange={(e) => setDepartment(e.target.value)}
-                      className="w-full bg-transparent outline-none text-purple-900 px-1 py-0.5 focus:bg-purple-100/50 font-bold cursor-pointer"
+                      className="w-full pl-9 pr-8 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-900 focus:outline-none focus:border-purple-500 transition appearance-none cursor-pointer"
                     >
                       <option value="">Select Department</option>
                       {departmentsList.map((dept) => (
@@ -1993,367 +2170,15 @@ export function EmployeeEnrollmentModal({
                         <option value={department}>{department}</option>
                       )}
                     </select>
+                    <Icon name="chevron-down" size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                   </div>
                 </div>
 
-                {/* Row 2: Secondary Organisation(s) & Technical Skills Side-by-Side in Same Lane */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-purple-200 border-t border-purple-200 bg-purple-50/20">
-                  {/* Left Column: Secondary Organisation(s) */}
-                  <div className="p-2 relative flex flex-col justify-between">
-                    <div className="flex items-center justify-between gap-1.5 mb-1.5">
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-bold text-purple-950 text-xs">Secondary Organisation(s):</span>
-                        <span className="text-[10px] text-purple-700 bg-purple-200/80 px-2 py-0.5 rounded-full font-bold">
-                          {selectedSecondaryBranches.length} Selected
-                        </span>
-                      </div>
-                      {selectedSecondaryBranches.length > 0 && (
-                        <button
-                          type="button"
-                          onClick={() => setSelectedSecondaryBranches([])}
-                          className="text-[10px] text-purple-600 hover:text-red-600 font-semibold cursor-pointer"
-                        >
-                          Clear
-                        </button>
-                      )}
-                    </div>
-
-                    <div className="relative" ref={secondaryDropdownRef}>
-                      {/* Dropdown Toggle Button */}
-                      <div
-                        onClick={() => setShowSecondaryDropdown((prev) => !prev)}
-                        className="min-h-[34px] w-full bg-white border border-purple-300 rounded-lg px-2.5 py-1.5 cursor-pointer hover:border-purple-500 focus-within:ring-2 focus-within:ring-purple-400/40 transition flex items-center justify-between gap-2 shadow-xs"
-                      >
-                        <div className="flex flex-wrap items-center gap-1 flex-1 overflow-hidden">
-                          {selectedSecondaryBranches.length === 0 ? (
-                            <span className="text-purple-400 font-medium text-xs select-none">
-                              Select secondary organisations...
-                            </span>
-                          ) : (
-                            selectedSecondaryBranches.map((branchName) => (
-                              <span
-                                key={branchName}
-                                className="inline-flex items-center gap-1 bg-purple-100 text-purple-900 border border-purple-300 rounded-md px-1.5 py-0.5 text-[11px] font-semibold shadow-2xs"
-                              >
-                                <span className="truncate max-w-[140px]">{branchName}</span>
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setSelectedSecondaryBranches((prev) => prev.filter((b) => b !== branchName));
-                                  }}
-                                  className="text-purple-600 hover:text-red-600 rounded-full hover:bg-purple-200 p-0.5 leading-none font-bold"
-                                  title="Remove"
-                                >
-                                  ✕
-                                </button>
-                              </span>
-                            ))
-                          )}
-                        </div>
-                        <div className="flex items-center gap-1 text-purple-600 shrink-0">
-                          <span className="text-[10px] uppercase font-bold text-purple-500">
-                            {showSecondaryDropdown ? 'Close' : 'Select'}
-                          </span>
-                          <svg
-                            className={`w-3.5 h-3.5 transition-transform duration-200 ${showSecondaryDropdown ? 'rotate-180' : ''}`}
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                          </svg>
-                        </div>
-                      </div>
-
-                      {/* Dropdown Menu Container */}
-                      {showSecondaryDropdown && (
-                        <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-purple-300 rounded-xl shadow-xl z-50 overflow-hidden text-xs divide-y divide-purple-100">
-                          {/* Search & Actions Bar */}
-                          <div className="p-2 bg-purple-50/70 flex items-center gap-2">
-                            <input
-                              type="text"
-                              value={secondarySearchQuery}
-                              onChange={(e) => setSecondarySearchQuery(e.target.value)}
-                              placeholder="Search organisations..."
-                              className="flex-1 bg-white border border-purple-200 rounded-md px-2.5 py-1 text-xs outline-none focus:border-purple-500 text-purple-950 font-medium placeholder-purple-300"
-                              autoFocus
-                            />
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const allLabels = branchesList
-                                  .filter((b) => b.id !== selectedBranchId)
-                                  .map((b) => getOrgBranchLabel(b));
-                                setSelectedSecondaryBranches(Array.from(new Set(allLabels)));
-                              }}
-                              className="text-[11px] font-bold text-purple-700 hover:text-purple-900 bg-purple-100 hover:bg-purple-200 px-2 py-1 rounded transition"
-                            >
-                              All
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setSelectedSecondaryBranches([])}
-                              className="text-[11px] font-bold text-slate-600 hover:text-red-700 bg-slate-100 hover:bg-red-50 px-2 py-1 rounded transition"
-                            >
-                              Clear
-                            </button>
-                          </div>
-
-                          {/* Scrollable Checkbox List */}
-                          <div className="max-h-56 overflow-y-auto p-1 divide-y divide-purple-50">
-                            {(() => {
-                              const filteredBranches = branchesList.filter((b) => {
-                                if (b.id && selectedBranchId && b.id === selectedBranchId) return false;
-                                const lbl = getOrgBranchLabel(b);
-                                if (!secondarySearchQuery.trim()) return true;
-                                return (
-                                  lbl.toLowerCase().includes(secondarySearchQuery.toLowerCase()) ||
-                                  (b.branch_name && b.branch_name.toLowerCase().includes(secondarySearchQuery.toLowerCase())) ||
-                                  (b.city && b.city.toLowerCase().includes(secondarySearchQuery.toLowerCase()))
-                                );
-                              });
-
-                              if (filteredBranches.length === 0) {
-                                return (
-                                  <div className="p-3 text-center text-purple-400 font-medium">
-                                    No other organisations found
-                                  </div>
-                                );
-                              }
-
-                              return filteredBranches.map((b) => {
-                                const label = getOrgBranchLabel(b);
-                                const isChecked = selectedSecondaryBranches.includes(label);
-                                return (
-                                  <label
-                                    key={b.id || label}
-                                    className={`flex items-center gap-2.5 px-3 py-2 cursor-pointer rounded-md transition select-none ${
-                                      isChecked ? 'bg-purple-100/70 font-bold text-purple-950' : 'hover:bg-purple-50 text-slate-800'
-                                    }`}
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      checked={isChecked}
-                                      onChange={() => {
-                                        setSelectedSecondaryBranches((prev) =>
-                                          prev.includes(label) ? prev.filter((item) => item !== label) : [...prev, label]
-                                        );
-                                      }}
-                                      className="w-4 h-4 text-purple-600 rounded border-purple-300 focus:ring-purple-400 cursor-pointer"
-                                    />
-                                    <div className="flex-1 flex items-center justify-between">
-                                      <span className="text-xs">{label}</span>
-                                      {b.city && (
-                                        <span className="text-[10px] text-purple-500 bg-purple-50 px-1.5 py-0.5 rounded font-normal">
-                                          {b.city}
-                                        </span>
-                                      )}
-                                    </div>
-                                  </label>
-                                );
-                              });
-                            })()}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Right Column: Technical Skills Side-by-Side in Same Lane */}
-                  <div className="p-2 relative flex flex-col justify-between">
-                    <div className="flex items-center justify-between gap-1.5 mb-1.5">
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-bold text-purple-950 text-xs">Technical Skills:</span>
-                        <span className="text-[10px] text-purple-700 bg-purple-200/80 px-2 py-0.5 rounded-full font-bold">
-                          {selectedSkillsArray.length} Selected
-                        </span>
-                      </div>
-                      {selectedSkillsArray.length > 0 && (
-                        <button
-                          type="button"
-                          onClick={() => setTechnicalSkills('')}
-                          className="text-[10px] text-purple-600 hover:text-red-600 font-semibold cursor-pointer"
-                        >
-                          Clear
-                        </button>
-                      )}
-                    </div>
-
-                    <div className="relative" ref={skillsDropdownRef}>
-                      {/* Dropdown Toggle Button */}
-                      <div
-                        onClick={() => setShowSkillsDropdown((prev) => !prev)}
-                        className="min-h-[34px] w-full bg-white border border-purple-300 rounded-lg px-2.5 py-1.5 cursor-pointer hover:border-purple-500 focus-within:ring-2 focus-within:ring-purple-400/40 transition flex items-center justify-between gap-2 shadow-xs"
-                      >
-                        <div className="flex flex-wrap items-center gap-1 flex-1 overflow-hidden">
-                          {selectedSkillsArray.length === 0 ? (
-                            <span className="text-purple-400 font-medium text-xs select-none">
-                              Select or add technical skills...
-                            </span>
-                          ) : (
-                            selectedSkillsArray.map((skillName) => (
-                              <span
-                                key={skillName}
-                                className="inline-flex items-center gap-1 bg-violet-100 text-violet-900 border border-violet-300 rounded-md px-1.5 py-0.5 text-[11px] font-semibold shadow-2xs"
-                              >
-                                <span className="truncate max-w-[140px]">{skillName}</span>
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    removeSkill(skillName);
-                                  }}
-                                  className="text-violet-600 hover:text-red-600 rounded-full hover:bg-violet-200 p-0.5 leading-none font-bold"
-                                  title="Remove"
-                                >
-                                  ✕
-                                </button>
-                              </span>
-                            ))
-                          )}
-                        </div>
-                        <div className="flex items-center gap-1 text-purple-600 shrink-0">
-                          <span className="text-[10px] uppercase font-bold text-purple-500">
-                            {showSkillsDropdown ? 'Close' : 'Select'}
-                          </span>
-                          <svg
-                            className={`w-3.5 h-3.5 transition-transform duration-200 ${showSkillsDropdown ? 'rotate-180' : ''}`}
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                          </svg>
-                        </div>
-                      </div>
-
-                      {/* Dropdown Menu Container */}
-                      {showSkillsDropdown && (
-                        <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-purple-300 rounded-xl shadow-xl z-50 overflow-hidden text-xs divide-y divide-purple-100">
-                          {/* Search & Custom Input Bar */}
-                          <div className="p-2 bg-purple-50/70 space-y-1.5">
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="text"
-                                value={skillSearchQuery}
-                                onChange={(e) => setSkillSearchQuery(e.target.value)}
-                                placeholder="Search technical skills..."
-                                className="flex-1 bg-white border border-purple-200 rounded-md px-2.5 py-1 text-xs outline-none focus:border-purple-500 text-purple-950 font-medium placeholder-purple-300"
-                                autoFocus
-                              />
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const allNames = dynamicSkillsList.map((s) => s.name);
-                                  const merged = Array.from(new Set([...selectedSkillsArray, ...allNames]));
-                                  setTechnicalSkills(merged.join(', '));
-                                }}
-                                className="text-[11px] font-bold text-purple-700 hover:text-purple-900 bg-purple-100 hover:bg-purple-200 px-2 py-1 rounded transition"
-                              >
-                                All
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setTechnicalSkills('')}
-                                className="text-[11px] font-bold text-slate-600 hover:text-red-700 bg-slate-100 hover:bg-red-50 px-2 py-1 rounded transition"
-                              >
-                                Clear
-                              </button>
-                            </div>
-
-                            {/* Add Custom Skill input */}
-                            <div className="flex items-center gap-1.5 pt-0.5">
-                              <input
-                                type="text"
-                                value={customSkillInput}
-                                onChange={(e) => setCustomSkillInput(e.target.value)}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') {
-                                    e.preventDefault();
-                                    addCustomSkill();
-                                  }
-                                }}
-                                placeholder="Type custom skill..."
-                                className="flex-1 bg-white border border-purple-200 rounded-md px-2 py-0.5 text-[11px] outline-none focus:border-purple-500 text-slate-900 placeholder-slate-400"
-                              />
-                              <button
-                                type="button"
-                                onClick={addCustomSkill}
-                                disabled={!customSkillInput.trim()}
-                                className="text-[10px] font-bold bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white px-2 py-1 rounded shadow-2xs cursor-pointer"
-                              >
-                                + Add
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* Scrollable Checkbox List */}
-                          <div className="max-h-56 overflow-y-auto p-1 divide-y divide-purple-50">
-                            {(() => {
-                              const filteredSkills = dynamicSkillsList.filter((s) => {
-                                if (!skillSearchQuery.trim()) return true;
-                                const q = skillSearchQuery.toLowerCase();
-                                return (
-                                  s.name.toLowerCase().includes(q) ||
-                                  (s.code && s.code.toLowerCase().includes(q)) ||
-                                  (s.description && s.description.toLowerCase().includes(q))
-                                );
-                              });
-
-                              if (filteredSkills.length === 0) {
-                                return (
-                                  <div className="p-3 text-center text-purple-400 font-medium">
-                                    {dynamicSkillsList.length === 0 ? 'No skills configured in Settings yet' : 'No matching skills found'}
-                                  </div>
-                                );
-                              }
-
-                              return filteredSkills.map((s) => {
-                                const isChecked = selectedSkillsArray.includes(s.name);
-                                return (
-                                  <label
-                                    key={s.id || s.name}
-                                    className={`flex items-center gap-2.5 px-3 py-2 cursor-pointer rounded-md transition select-none ${
-                                      isChecked ? 'bg-purple-100/70 font-bold text-purple-950' : 'hover:bg-purple-50 text-slate-800'
-                                    }`}
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      checked={isChecked}
-                                      onChange={() => toggleSkill(s.name)}
-                                      className="w-4 h-4 text-purple-600 rounded border-purple-300 focus:ring-purple-400 cursor-pointer"
-                                    />
-                                    <div className="flex-1 flex items-center justify-between gap-1">
-                                      <span className="text-xs">{s.name}</span>
-                                      <div className="flex items-center gap-1 shrink-0">
-                                        {s.code && (
-                                          <span className="text-[9px] font-mono text-purple-600 bg-purple-50 px-1 py-0.2 rounded border border-purple-200">
-                                            {s.code}
-                                          </span>
-                                        )}
-                                        {s.extra_info && s.extra_info !== 'both' && (
-                                          <span className="text-[9px] text-slate-500 bg-slate-100 px-1 py-0.2 rounded font-normal">
-                                            {s.extra_info}
-                                          </span>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </label>
-                                );
-                              });
-                            })()}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Row 2: Job Designation & Joining Date */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-purple-200">
-                  <div className="p-1.5 flex items-center gap-2">
-                    <span className="font-bold text-purple-950 shrink-0">Job Designation:</span>
+                {/* Job Designation */}
+                <div>
+                  <label className="text-xs font-bold text-slate-700 mb-1.5 block">Job Designation</label>
+                  <div className="relative">
+                    <Icon name="briefcase" size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                     <select
                       value={jobDesignation}
                       onChange={(e) => {
@@ -2366,7 +2191,7 @@ export function EmployeeEnrollmentModal({
                           }
                         }
                       }}
-                      className="w-full bg-transparent outline-none font-bold text-slate-900 px-1 py-0.5 focus:bg-purple-100/50 cursor-pointer"
+                      className="w-full pl-9 pr-8 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-900 focus:outline-none focus:border-purple-500 transition appearance-none cursor-pointer"
                     >
                       <option value="">Select Job Designation</option>
                       {(() => {
@@ -2378,7 +2203,7 @@ export function EmployeeEnrollmentModal({
                           <>
                             {listToRender.map((desg) => (
                               <option key={desg.id || desg.title} value={desg.title}>
-                                {desg.title} {desg.department && desg.department !== 'ALL' ? `(${desg.department})` : ''} {desg.level ? `• ${desg.level}` : ''}
+                                {desg.title} {desg.department && desg.department !== 'ALL' ? `(${desg.department})` : ''}
                               </option>
                             ))}
                             {jobDesignation && !listToRender.some((d) => d.title.toLowerCase() === jobDesignation.toLowerCase()) && (
@@ -2388,444 +2213,739 @@ export function EmployeeEnrollmentModal({
                         );
                       })()}
                     </select>
+                    <Icon name="chevron-down" size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                   </div>
-                  <div className="p-1.5 flex items-center gap-2">
-                    <span className="font-bold text-purple-950 shrink-0">Joining Date:</span>
+                </div>
+
+                {/* Secondary Organisations Dropdown */}
+                <div className="sm:col-span-2 md:col-span-1" ref={secondaryDropdownRef}>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-bold text-slate-700">Secondary Organisations</label>
+                    <span className="text-[10px] text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full font-bold">
+                      {selectedSecondaryBranches.length} Selected
+                    </span>
+                  </div>
+
+                  <div className="relative">
+                    <div
+                      onClick={() => setShowSecondaryDropdown((prev) => !prev)}
+                      className="min-h-[38px] w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 cursor-pointer hover:border-purple-400 transition flex items-center justify-between gap-2"
+                    >
+                      <div className="flex flex-wrap items-center gap-1 flex-1 overflow-hidden">
+                        {selectedSecondaryBranches.length === 0 ? (
+                          <span className="text-slate-400 text-xs">Select secondary branches...</span>
+                        ) : (
+                          selectedSecondaryBranches.map((branchName) => (
+                            <span
+                              key={branchName}
+                              className="inline-flex items-center gap-1 bg-purple-50 text-purple-800 border border-purple-200 rounded-md px-1.5 py-0.5 text-[11px] font-semibold"
+                            >
+                              <span className="truncate max-w-[120px]">{branchName}</span>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedSecondaryBranches((prev) => prev.filter((b) => b !== branchName));
+                                }}
+                                className="text-purple-500 hover:text-rose-600 rounded-full"
+                              >
+                                ✕
+                              </button>
+                            </span>
+                          ))
+                        )}
+                      </div>
+                      <Icon name="chevron-down" size={14} className="text-slate-400 shrink-0" />
+                    </div>
+
+                    {showSecondaryDropdown && (
+                      <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden text-xs divide-y divide-slate-100">
+                        <div className="p-2 bg-slate-50 flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={secondarySearchQuery}
+                            onChange={(e) => setSecondarySearchQuery(e.target.value)}
+                            placeholder="Search branches..."
+                            className="flex-1 bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs outline-none focus:border-purple-500"
+                            autoFocus
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const allLabels = branchesList
+                                .filter((b) => b.id !== selectedBranchId)
+                                .map((b) => getOrgBranchLabel(b));
+                              setSelectedSecondaryBranches(Array.from(new Set(allLabels)));
+                            }}
+                            className="text-[11px] font-bold text-purple-700 bg-purple-50 px-2 py-1 rounded-lg"
+                          >
+                            All
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedSecondaryBranches([])}
+                            className="text-[11px] font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded-lg"
+                          >
+                            Clear
+                          </button>
+                        </div>
+
+                        <div className="max-h-48 overflow-y-auto p-1 divide-y divide-slate-50">
+                          {branchesList
+                            .filter((b) => {
+                              if (b.id && selectedBranchId && b.id === selectedBranchId) return false;
+                              const lbl = getOrgBranchLabel(b);
+                              if (!secondarySearchQuery.trim()) return true;
+                              return lbl.toLowerCase().includes(secondarySearchQuery.toLowerCase());
+                            })
+                            .map((b) => {
+                              const label = getOrgBranchLabel(b);
+                              const isChecked = selectedSecondaryBranches.includes(label);
+                              return (
+                                <label
+                                  key={b.id || label}
+                                  className={cn(
+                                    'flex items-center gap-2.5 px-3 py-2 cursor-pointer rounded-lg transition select-none',
+                                    isChecked ? 'bg-purple-50 font-bold text-purple-900' : 'hover:bg-slate-50 text-slate-700'
+                                  )}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={() => {
+                                      setSelectedSecondaryBranches((prev) =>
+                                        prev.includes(label) ? prev.filter((item) => item !== label) : [...prev, label]
+                                      );
+                                    }}
+                                    className="w-4 h-4 text-purple-600 rounded border-slate-300 accent-purple-600"
+                                  />
+                                  <span className="text-xs flex-1">{label}</span>
+                                </label>
+                              );
+                            })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Technical Skills Dropdown */}
+                <div className="sm:col-span-2 md:col-span-2" ref={skillsDropdownRef}>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-bold text-slate-700">Technical Skills</label>
+                    <span className="text-[10px] text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full font-bold">
+                      {selectedSkillsArray.length} Selected
+                    </span>
+                  </div>
+
+                  <div className="relative">
+                    <div
+                      onClick={() => setShowSkillsDropdown((prev) => !prev)}
+                      className="min-h-[38px] w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 cursor-pointer hover:border-purple-400 transition flex items-center justify-between gap-2"
+                    >
+                      <div className="flex flex-wrap items-center gap-1 flex-1 overflow-hidden">
+                        {selectedSkillsArray.length === 0 ? (
+                          <span className="text-slate-400 text-xs">Select or add technical skills...</span>
+                        ) : (
+                          selectedSkillsArray.map((skillName) => (
+                            <span
+                              key={skillName}
+                              className="inline-flex items-center gap-1 bg-purple-50 text-purple-800 border border-purple-200 rounded-md px-1.5 py-0.5 text-[11px] font-semibold"
+                            >
+                              <span className="truncate max-w-[120px]">{skillName}</span>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  removeSkill(skillName);
+                                }}
+                                className="text-purple-500 hover:text-rose-600 rounded-full"
+                              >
+                                ✕
+                              </button>
+                            </span>
+                          ))
+                        )}
+                      </div>
+                      <Icon name="chevron-down" size={14} className="text-slate-400 shrink-0" />
+                    </div>
+
+                    {showSkillsDropdown && (
+                      <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden text-xs divide-y divide-slate-100">
+                        <div className="p-2 bg-slate-50 space-y-1.5">
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={skillSearchQuery}
+                              onChange={(e) => setSkillSearchQuery(e.target.value)}
+                              placeholder="Search skills..."
+                              className="flex-1 bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs outline-none focus:border-purple-500"
+                              autoFocus
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setTechnicalSkills('')}
+                              className="text-[11px] font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded-lg"
+                            >
+                              Clear
+                            </button>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <input
+                              type="text"
+                              value={customSkillInput}
+                              onChange={(e) => setCustomSkillInput(e.target.value)}
+                              placeholder="Add custom skill..."
+                              className="flex-1 bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs outline-none focus:border-purple-500"
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  addCustomSkill();
+                                }
+                              }}
+                            />
+                            <button
+                              type="button"
+                              onClick={addCustomSkill}
+                              className="px-2.5 py-1 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-lg text-[11px]"
+                            >
+                              + Add
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="max-h-48 overflow-y-auto p-1 divide-y divide-slate-50">
+                          {dynamicSkillsList
+                            .filter((s) => {
+                              if (!skillSearchQuery.trim()) return true;
+                              return s.name.toLowerCase().includes(skillSearchQuery.toLowerCase());
+                            })
+                            .map((s) => {
+                              const isChecked = selectedSkillsArray.includes(s.name);
+                              return (
+                                <label
+                                  key={s.id || s.name}
+                                  className={cn(
+                                    'flex items-center gap-2.5 px-3 py-2 cursor-pointer rounded-lg transition select-none',
+                                    isChecked ? 'bg-purple-50 font-bold text-purple-900' : 'hover:bg-slate-50 text-slate-700'
+                                  )}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={() => toggleSkill(s.name)}
+                                    className="w-4 h-4 text-purple-600 rounded border-slate-300 accent-purple-600"
+                                  />
+                                  <span className="text-xs flex-1">{s.name}</span>
+                                </label>
+                              );
+                            })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Joining Date */}
+                <div>
+                  <label className="text-xs font-bold text-slate-700 mb-1.5 block">Joining Date</label>
+                  <div className="relative">
+                    <Icon name="calendar" size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                     <input
                       type="date"
                       value={joiningDate}
                       onChange={(e) => setJoiningDate(e.target.value)}
-                      className="w-full bg-transparent outline-none text-slate-900 text-xs px-1 py-0.5 focus:bg-purple-100/50 font-medium"
+                      className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-900 focus:outline-none focus:border-purple-500 transition"
                     />
                   </div>
                 </div>
 
-                {/* Row 3: Biometric / Machine ID & Role */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-purple-200">
-                  <div className="p-1.5 flex items-center gap-2">
-                    <span className="font-bold text-purple-950 shrink-0">Biometric / Machine ID:</span>
+                {/* Biometric / Machine ID */}
+                <div>
+                  <label className="text-xs font-bold text-slate-700 mb-1.5 block">Biometric / Machine Punch ID</label>
+                  <div className="relative">
+                    <Icon name="fingerprint" size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                     <input
                       type="text"
                       value={companyId}
                       onChange={(e) => setCompanyId(e.target.value)}
-                      placeholder="e.g. Machine Punch ID / Staff ID"
-                      className="w-full bg-transparent outline-none text-slate-900 px-1 py-0.5 focus:bg-purple-100/50"
+                      placeholder="e.g. Punch ID / Staff ID"
+                      className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-purple-500 transition"
                     />
                   </div>
-                  <div className="p-1.5 flex items-center gap-2">
-                    <span className="font-bold text-purple-950 shrink-0">Role:</span>
+                </div>
+
+                {/* Role */}
+                <div>
+                  <label className="text-xs font-bold text-slate-700 mb-1.5 block">Role Access</label>
+                  <div className="relative">
+                    <Icon name="user-check" size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                     <select
                       value={employeeRole}
                       onChange={(e) => setEmployeeRole(e.target.value)}
-                      className="w-full bg-transparent outline-none text-purple-900 font-bold px-1 py-0.5 focus:bg-purple-100/50 cursor-pointer uppercase"
+                      className="w-full pl-9 pr-8 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-900 focus:outline-none focus:border-purple-500 transition appearance-none cursor-pointer uppercase"
                     >
                       {dynamicRoles.map((r) => (
                         <option key={r.value} value={r.value}>
                           {r.label}
                         </option>
                       ))}
-                      {employeeRole && !dynamicRoles.some((r) => r.value === employeeRole) && (
-                        <option value={employeeRole}>{employeeRole}</option>
-                      )}
                     </select>
+                    <Icon name="chevron-down" size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                   </div>
                 </div>
 
-                {/* Row 4: Status & Monthly Salary */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-purple-200">
-                  <div className="p-1.5 flex items-center gap-2">
-                    <span className="font-bold text-purple-950 shrink-0">Employment Status:</span>
+                {/* Employment Status */}
+                <div>
+                  <label className="text-xs font-bold text-slate-700 mb-1.5 block">Employment Status</label>
+                  <div className="relative">
                     <select
                       value={employeeStatus}
                       onChange={(e) => setEmployeeStatus(e.target.value as 'Active' | 'Inactive')}
                       className={cn(
-                        'w-full bg-transparent outline-none font-black px-1.5 py-0.5 rounded cursor-pointer',
-                        employeeStatus === 'Active' ? 'text-emerald-700 bg-emerald-50/50' : 'text-rose-700 bg-rose-50/50'
+                        'w-full px-3 py-2.5 rounded-xl border text-xs font-bold transition appearance-none cursor-pointer',
+                        employeeStatus === 'Active'
+                          ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                          : 'border-rose-200 bg-rose-50 text-rose-700'
                       )}
                     >
                       <option value="Active">Active (Currently Employed)</option>
                       <option value="Inactive">Inactive (Relieved / On Hold)</option>
                     </select>
+                    <Icon name="chevron-down" size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                   </div>
-                  <div className="p-1.5 flex items-center gap-2">
-                    <span className="font-bold text-purple-950 shrink-0">Monthly Salary (₹):</span>
+                </div>
+
+                {/* Monthly Salary */}
+                <div>
+                  <label className="text-xs font-bold text-slate-700 mb-1.5 block">Monthly Gross Salary (₹)</label>
+                  <div className="relative">
+                    <Icon name="indian-rupee" size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-emerald-600" />
                     <input
                       type="number"
                       value={baseSalary}
                       onChange={(e) => setBaseSalary(e.target.value)}
-                      placeholder="Gross Pay"
-                      className="w-full bg-transparent outline-none font-black text-emerald-700 px-1 py-0.5 focus:bg-purple-100/50"
+                      placeholder="e.g. 35000"
+                      className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-black text-emerald-700 placeholder:text-slate-400 focus:outline-none focus:border-purple-500 transition"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ══════════════════════════════════════════════════════════════ */}
+          {/* SECTION 4: BANK DETAILS                                      */}
+          {/* ══════════════════════════════════════════════════════════════ */}
+          {(activeTab === 'bank' || activeTab === 'all') && (
+            <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-5 sm:p-6 space-y-4">
+              <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
+                <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shrink-0">
+                  <Icon name="credit-card" size={18} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 leading-tight">Bank Details &amp; Payroll</h3>
+                  <p className="text-xs text-slate-400 font-medium">Section 4 · Direct salary disbursement &amp; verified KYC banking info</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                {/* Account Holders Name */}
+                <div className="sm:col-span-2">
+                  <label className="text-xs font-bold text-slate-700 mb-1.5 block">Account Holders Name</label>
+                  <div className="relative">
+                    <Icon name="user" size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="text"
+                      value={accountHolderName}
+                      onChange={(e) => setAccountHolderName(e.target.value)}
+                      placeholder="Full name as printed in bank passbook"
+                      className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-purple-500 transition"
                     />
                   </div>
                 </div>
 
-              </div>
-            </div>
-
-            {/* ───────────────────────────────────────────────────────────── */}
-            {/* SECTION 4: BANK DETAILS (Emerald Gradient)                    */}
-            {/* ───────────────────────────────────────────────────────────── */}
-            <div className="border-2 border-emerald-700 rounded-xl overflow-hidden bg-white shadow-xs text-xs">
-              <div className="bg-gradient-to-r from-emerald-700 via-teal-700 to-emerald-800 text-white px-3 py-1 font-black text-xs uppercase tracking-wider flex items-center justify-between">
-                <span>BANK DETAILS - Please ensure that you have a completed and SIGNED form</span>
-                <span className="text-[10px] text-emerald-200 font-semibold">Section 4</span>
-              </div>
-
-              <div className="divide-y divide-emerald-200 bg-emerald-50/15">
-                {/* Row 1: Account Holders Name */}
-                <div className="p-1.5 flex items-center gap-2">
-                  <span className="font-bold text-emerald-950 shrink-0">Account Holders Name:</span>
-                  <input
-                    type="text"
-                    value={accountHolderName}
-                    onChange={(e) => setAccountHolderName(e.target.value)}
-                    placeholder="Full name as printed in bank passbook"
-                    className="w-full bg-transparent outline-none font-bold text-slate-900 px-1 py-0.5 focus:bg-emerald-100/50"
-                  />
-                </div>
-
-                {/* Row 2: Name of Bank & Account Number */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-emerald-200">
-                  <div className="p-1.5 flex items-center gap-2">
-                    <span className="font-bold text-emerald-950 shrink-0">Name of Bank:</span>
+                {/* Name of Bank */}
+                <div>
+                  <label className="text-xs font-bold text-slate-700 mb-1.5 block">Name of Bank</label>
+                  <div className="relative">
+                    <Icon name="building" size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                     <input
                       type="text"
                       value={bankName}
                       onChange={(e) => setBankName(e.target.value)}
-                      placeholder="Bank Name (e.g. SBI, HDFC, ICICI)"
-                      className="w-full bg-transparent outline-none text-slate-900 px-1 py-0.5 focus:bg-emerald-100/50 font-medium"
+                      placeholder="e.g. SBI, HDFC, ICICI"
+                      className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-purple-500 transition"
                     />
                   </div>
-                  <div className="p-1.5 flex items-center gap-2">
-                    <span className="font-bold text-emerald-950 shrink-0">Account Number:</span>
+                </div>
+
+                {/* Account Number */}
+                <div>
+                  <label className="text-xs font-bold text-slate-700 mb-1.5 block">Account Number</label>
+                  <div className="relative">
+                    <Icon name="credit-card" size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                     <input
                       type="text"
                       value={accountNumber}
                       onChange={(e) => setAccountNumber(e.target.value)}
                       placeholder="Account Number"
-                      className="w-full bg-transparent outline-none font-mono font-bold text-emerald-800 px-1 py-0.5 focus:bg-emerald-100/50"
+                      className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-mono font-bold text-emerald-800 placeholder:text-slate-400 focus:outline-none focus:border-purple-500 transition"
                     />
                   </div>
                 </div>
 
-                {/* Row 3: Branch(City) & Bank Account Type */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-emerald-200">
-                  <div className="p-1.5 flex items-center gap-2">
-                    <span className="font-bold text-emerald-950 shrink-0">Branch(City):</span>
+                {/* Branch City */}
+                <div>
+                  <label className="text-xs font-bold text-slate-700 mb-1.5 block">Branch (City)</label>
+                  <div className="relative">
+                    <Icon name="map-pin" size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                     <input
                       type="text"
                       value={bankBranchCity}
                       onChange={(e) => setBankBranchCity(e.target.value)}
                       placeholder="Branch City"
-                      className="w-full bg-transparent outline-none text-slate-900 px-1 py-0.5 focus:bg-emerald-100/50"
+                      className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-purple-500 transition"
                     />
                   </div>
-                  <div className="p-1.5 flex items-center gap-2">
-                    <span className="font-bold text-emerald-950 shrink-0">Bank Account Type:</span>
+                </div>
+
+                {/* Bank Account Type */}
+                <div>
+                  <label className="text-xs font-bold text-slate-700 mb-1.5 block">Bank Account Type</label>
+                  <div className="relative">
                     <select
                       value={bankAccountType}
                       onChange={(e) => setBankAccountType(e.target.value)}
-                      className="w-full bg-transparent outline-none font-bold text-emerald-900 px-1 py-0.5 focus:bg-emerald-100/50"
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-900 focus:outline-none focus:border-purple-500 transition appearance-none cursor-pointer"
                     >
                       <option value="Savings">Savings</option>
                       <option value="Current">Current</option>
                       <option value="Salary">Salary</option>
                     </select>
+                    <Icon name="chevron-down" size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                   </div>
                 </div>
 
-                {/* Row 4: Branch Code (IFSC) No & Pan No */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-emerald-200">
-                  <div className="p-1.5 flex items-center gap-2">
-                    <span className="font-bold text-emerald-950 shrink-0">Branch Code (IFSC) No:</span>
-                    <input
-                      type="text"
-                      value={ifscCode}
-                      onChange={(e) => setIfscCode(e.target.value.toUpperCase())}
-                      placeholder="IFSC Code (e.g. SBIN0001234)"
-                      className="w-full bg-transparent outline-none font-mono uppercase font-bold text-slate-900 px-1 py-0.5 focus:bg-emerald-100/50"
-                    />
-                  </div>
-                  <div className="p-1.5 flex items-center gap-2">
-                    <span className="font-bold text-emerald-950 shrink-0">Pan No:</span>
-                    <input
-                      type="text"
-                      value={panNo}
-                      onChange={(e) => setPanNo(e.target.value.toUpperCase())}
-                      placeholder="PAN (e.g. ABCDE1234F)"
-                      className="w-full bg-transparent outline-none font-mono uppercase font-black text-slate-900 px-1 py-0.5 focus:bg-emerald-100/50"
-                    />
-                  </div>
+                {/* Branch Code (IFSC) */}
+                <div>
+                  <label className="text-xs font-bold text-slate-700 mb-1.5 block">Branch Code (IFSC) No</label>
+                  <input
+                    type="text"
+                    value={ifscCode}
+                    onChange={(e) => setIfscCode(e.target.value.toUpperCase())}
+                    placeholder="e.g. SBIN0001234"
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-mono uppercase font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-purple-500 transition"
+                  />
+                </div>
+
+                {/* PAN No */}
+                <div>
+                  <label className="text-xs font-bold text-slate-700 mb-1.5 block">PAN Card Number</label>
+                  <input
+                    type="text"
+                    value={panNo}
+                    onChange={(e) => setPanNo(e.target.value.toUpperCase())}
+                    placeholder="e.g. ABCDE1234F"
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-mono uppercase font-black text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-purple-500 transition"
+                  />
                 </div>
               </div>
             </div>
+          )}
 
-            {/* ───────────────────────────────────────────────────────────── */}
-            {/* SECTION 5: WORK EXPERIENCE DETAILS (Cyan Gradient)           */}
-            {/* ───────────────────────────────────────────────────────────── */}
-            <div className="border-2 border-cyan-800 rounded-xl overflow-hidden bg-white shadow-xs text-xs">
-              <div className="bg-gradient-to-r from-cyan-800 via-sky-800 to-blue-900 text-white px-3 py-1 font-black text-xs uppercase tracking-wider flex items-center justify-between">
-                <span>WORK EXPERIENCE DETAILS</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] text-cyan-200 font-semibold">Section 5</span>
+          {/* ══════════════════════════════════════════════════════════════ */}
+          {/* SECTION 5: WORK EXPERIENCE & REFERENCES                      */}
+          {/* ══════════════════════════════════════════════════════════════ */}
+          {(activeTab === 'experience' || activeTab === 'all') && (
+            <div className="space-y-5">
+              {/* Work Experience Card */}
+              <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-5 sm:p-6 space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-sky-50 text-sky-600 border border-sky-100 flex items-center justify-center shrink-0">
+                      <Icon name="history" size={18} />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-slate-900 leading-tight">Work Experience History</h3>
+                      <p className="text-xs text-slate-400 font-medium">Section 5 · Past professional tenure, companies &amp; roles</p>
+                    </div>
+                  </div>
+
                   <button
                     type="button"
                     onClick={addExperienceRow}
-                    className="px-2 py-0.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded text-[10px] font-bold flex items-center gap-1 no-print cursor-pointer transition shadow-xs"
+                    className="px-3 py-1.5 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-700 text-xs font-bold border border-sky-200 transition flex items-center gap-1.5 cursor-pointer no-print shadow-2xs"
                   >
-                    <Icon name="plus" size={11} />
+                    <Icon name="plus" size={13} />
                     <span>Add Row</span>
                   </button>
                 </div>
-              </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-cyan-100/80 text-[10px] font-black text-cyan-950 uppercase tracking-tight border-b-2 border-cyan-800 divide-x divide-cyan-300">
-                      <th className="p-1.5 w-1/4">DURATION<br /><span className="font-normal text-[9px] lowercase">(month-year) to (month-year)</span></th>
-                      <th className="p-1.5 w-1/4">COMPANY<br /><span className="font-normal text-[9px] lowercase">(name & place)</span></th>
-                      <th className="p-1.5 w-1/6">DESIG-NATION<br /><span className="font-normal text-[9px] lowercase">(last)</span></th>
-                      <th className="p-1.5 w-1/6">LAST GROSS SALARY</th>
-                      <th className="p-1.5">REASONS FOR LEAVING</th>
-                      <th className="p-1 text-center w-8 no-print">#</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-cyan-200">
-                    {experienceRows.map((row, idx) => (
-                      <tr key={idx} className="divide-x divide-cyan-200 hover:bg-cyan-50/40">
-                        <td className="p-1">
-                          <input
-                            type="text"
-                            value={row.duration}
-                            onChange={(e) => updateExperienceRow(idx, 'duration', e.target.value)}
-                            placeholder="e.g. 06/2021 to 08/2023"
-                            className="w-full bg-transparent outline-none text-slate-900 text-xs px-1"
-                          />
-                        </td>
-                        <td className="p-1">
-                          <input
-                            type="text"
-                            value={row.company}
-                            onChange={(e) => updateExperienceRow(idx, 'company', e.target.value)}
-                            placeholder="Company, City"
-                            className="w-full bg-transparent outline-none text-slate-900 text-xs px-1 font-medium"
-                          />
-                        </td>
-                        <td className="p-1">
-                          <input
-                            type="text"
-                            value={row.designation}
-                            onChange={(e) => updateExperienceRow(idx, 'designation', e.target.value)}
-                            placeholder="Role"
-                            className="w-full bg-transparent outline-none text-slate-900 text-xs px-1"
-                          />
-                        </td>
-                        <td className="p-1">
-                          <input
-                            type="text"
-                            value={row.lastSalary}
-                            onChange={(e) => updateExperienceRow(idx, 'lastSalary', e.target.value)}
-                            placeholder="₹ 30,000"
-                            className="w-full bg-transparent outline-none text-emerald-800 text-xs px-1 font-bold"
-                          />
-                        </td>
-                        <td className="p-1">
-                          <input
-                            type="text"
-                            value={row.reasonForLeaving}
-                            onChange={(e) => updateExperienceRow(idx, 'reasonForLeaving', e.target.value)}
-                            placeholder="Career Advancement"
-                            className="w-full bg-transparent outline-none text-slate-900 text-xs px-1"
-                          />
-                        </td>
-                        <td className="p-1 text-center no-print">
-                          <button
-                            type="button"
-                            onClick={() => removeExperienceRow(idx)}
-                            className="text-slate-400 hover:text-rose-600 p-0.5 cursor-pointer"
-                            title="Delete Row"
-                          >
-                            <Icon name="trash-2" size={13} />
-                          </button>
-                        </td>
+                <div className="overflow-x-auto rounded-xl border border-slate-200">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-slate-50 text-[11px] font-bold text-slate-600 uppercase tracking-wider border-b border-slate-200">
+                        <th className="p-3 w-1/4">Duration</th>
+                        <th className="p-3 w-1/4">Company</th>
+                        <th className="p-3 w-1/5">Designation</th>
+                        <th className="p-3 w-1/6">Last Salary</th>
+                        <th className="p-3">Reason for Leaving</th>
+                        <th className="p-3 text-center w-10 no-print">#</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-medium">
+                      {experienceRows.map((row, idx) => (
+                        <tr key={idx} className="hover:bg-slate-50/60 transition">
+                          <td className="p-2">
+                            <input
+                              type="text"
+                              value={row.duration}
+                              onChange={(e) => updateExperienceRow(idx, 'duration', e.target.value)}
+                              placeholder="e.g. 06/2021 to 08/2023"
+                              className="w-full px-2 py-1.5 rounded-lg border border-slate-200 bg-white text-xs text-slate-900 outline-none focus:border-purple-500"
+                            />
+                          </td>
+                          <td className="p-2">
+                            <input
+                              type="text"
+                              value={row.company}
+                              onChange={(e) => updateExperienceRow(idx, 'company', e.target.value)}
+                              placeholder="Company, City"
+                              className="w-full px-2 py-1.5 rounded-lg border border-slate-200 bg-white text-xs text-slate-900 outline-none focus:border-purple-500 font-semibold"
+                            />
+                          </td>
+                          <td className="p-2">
+                            <input
+                              type="text"
+                              value={row.designation}
+                              onChange={(e) => updateExperienceRow(idx, 'designation', e.target.value)}
+                              placeholder="Role / Title"
+                              className="w-full px-2 py-1.5 rounded-lg border border-slate-200 bg-white text-xs text-slate-900 outline-none focus:border-purple-500"
+                            />
+                          </td>
+                          <td className="p-2">
+                            <input
+                              type="text"
+                              value={row.lastSalary}
+                              onChange={(e) => updateExperienceRow(idx, 'lastSalary', e.target.value)}
+                              placeholder="₹ 30,000"
+                              className="w-full px-2 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-bold text-emerald-700 outline-none focus:border-purple-500"
+                            />
+                          </td>
+                          <td className="p-2">
+                            <input
+                              type="text"
+                              value={row.reasonForLeaving}
+                              onChange={(e) => updateExperienceRow(idx, 'reasonForLeaving', e.target.value)}
+                              placeholder="Career advancement"
+                              className="w-full px-2 py-1.5 rounded-lg border border-slate-200 bg-white text-xs text-slate-900 outline-none focus:border-purple-500"
+                            />
+                          </td>
+                          <td className="p-2 text-center no-print">
+                            <button
+                              type="button"
+                              onClick={() => removeExperienceRow(idx)}
+                              className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                              title="Delete Row"
+                            >
+                              <Icon name="trash-2" size={14} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
 
-            {/* ───────────────────────────────────────────────────────────── */}
-            {/* SECTION 6: REFERENCE CONTACT DETAILS (Rose Gradient)          */}
-            {/* ───────────────────────────────────────────────────────────── */}
-            <div className="border-2 border-rose-700 rounded-xl overflow-hidden bg-white shadow-xs text-xs">
-              <div className="bg-gradient-to-r from-rose-700 via-pink-700 to-rose-800 text-white px-3 py-1 font-black text-xs uppercase tracking-wider flex items-center justify-between">
-                <span>REFERENCE CONTACT DETAILS</span>
-                <span className="text-[10px] text-rose-200 font-semibold">Section 6</span>
-              </div>
+              {/* Reference Contact Card */}
+              <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-5 sm:p-6 space-y-4">
+                <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
+                  <div className="w-9 h-9 rounded-xl bg-rose-50 text-rose-600 border border-rose-100 flex items-center justify-center shrink-0">
+                    <Icon name="users" size={18} />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-slate-900 leading-tight">Reference Contact Details</h3>
+                    <p className="text-xs text-slate-400 font-medium">Section 6 · Professional or personal verification referee</p>
+                  </div>
+                </div>
 
-              <div className="divide-y divide-rose-200 bg-rose-50/15">
-                {/* Row 1: Name & Company */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-rose-200">
-                  <div className="p-1.5 flex items-center gap-2">
-                    <span className="font-bold text-rose-950 shrink-0">Name:</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                  {/* Name */}
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 mb-1.5 block">Referee Name</label>
                     <input
                       type="text"
                       value={refName}
                       onChange={(e) => setRefName(e.target.value)}
                       placeholder="Reference Person"
-                      className="w-full bg-transparent outline-none text-slate-900 px-1 py-0.5 focus:bg-rose-100/50 font-medium"
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-purple-500 transition"
                     />
                   </div>
-                  <div className="p-1.5 flex items-center gap-2">
-                    <span className="font-bold text-rose-950 shrink-0">Company:</span>
+
+                  {/* Company */}
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 mb-1.5 block">Company / Organization</label>
                     <input
                       type="text"
                       value={refCompany}
                       onChange={(e) => setRefCompany(e.target.value)}
                       placeholder="Organization"
-                      className="w-full bg-transparent outline-none text-slate-900 px-1 py-0.5 focus:bg-rose-100/50 font-medium"
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-purple-500 transition"
                     />
                   </div>
-                </div>
 
-                {/* Row 2: Address & Post */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-rose-200">
-                  <div className="p-1.5 flex items-center gap-2">
-                    <span className="font-bold text-rose-950 shrink-0">Address:</span>
-                    <input
-                      type="text"
-                      value={refAddress}
-                      onChange={(e) => setRefAddress(e.target.value)}
-                      placeholder="Location / Address"
-                      className="w-full bg-transparent outline-none text-slate-900 px-1 py-0.5 focus:bg-rose-100/50"
-                    />
-                  </div>
-                  <div className="p-1.5 flex items-center gap-2">
-                    <span className="font-bold text-rose-950 shrink-0">Post:</span>
+                  {/* Post */}
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 mb-1.5 block">Post / Designation</label>
                     <input
                       type="text"
                       value={refPost}
                       onChange={(e) => setRefPost(e.target.value)}
                       placeholder="Designation of referee"
-                      className="w-full bg-transparent outline-none text-slate-900 px-1 py-0.5 focus:bg-rose-100/50"
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-purple-500 transition"
                     />
                   </div>
-                </div>
 
-                {/* Row 3: Telephone Number & Contact No */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-rose-200">
-                  <div className="p-1.5 flex items-center gap-2">
-                    <span className="font-bold text-rose-950 shrink-0">Telephone Number:</span>
-                    <input
-                      type="tel"
-                      value={refTelephone}
-                      onChange={(e) => setRefTelephone(e.target.value)}
-                      placeholder="Landline / Tel"
-                      className="w-full bg-transparent outline-none text-slate-900 px-1 py-0.5 focus:bg-rose-100/50"
-                    />
-                  </div>
-                  <div className="p-1.5 flex items-center gap-2">
-                    <span className="font-bold text-rose-950 shrink-0">Contact No:</span>
+                  {/* Contact No */}
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 mb-1.5 block">Mobile Number</label>
                     <input
                       type="tel"
                       value={refContactNo}
                       onChange={(e) => setRefContactNo(e.target.value)}
                       placeholder="Mobile Number"
-                      className="w-full bg-transparent outline-none font-bold text-rose-900 px-1 py-0.5 focus:bg-rose-100/50"
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-purple-500 transition"
+                    />
+                  </div>
+
+                  {/* Telephone */}
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 mb-1.5 block">Telephone / Landline</label>
+                    <input
+                      type="tel"
+                      value={refTelephone}
+                      onChange={(e) => setRefTelephone(e.target.value)}
+                      placeholder="Landline / Tel"
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-purple-500 transition"
+                    />
+                  </div>
+
+                  {/* Address */}
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 mb-1.5 block">Location / Address</label>
+                    <input
+                      type="text"
+                      value={refAddress}
+                      onChange={(e) => setRefAddress(e.target.value)}
+                      placeholder="Location / Address"
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-purple-500 transition"
                     />
                   </div>
                 </div>
               </div>
             </div>
+          )}
 
-            {/* ───────────────────────────────────────────────────────────── */}
-            {/* SECTION 7: UNDERSTANDING OF LANGUAGE (Indigo Gradient)        */}
-            {/* ───────────────────────────────────────────────────────────── */}
-            <div className="border-2 border-indigo-800 rounded-xl overflow-hidden bg-white shadow-xs text-xs">
-              <div className="bg-gradient-to-r from-indigo-800 via-purple-900 to-slate-900 text-white px-3 py-1 font-black text-xs uppercase tracking-wider flex items-center justify-between">
-                <span>UNDERSTANDING OF LANGUAGE</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] text-indigo-200 font-semibold">Section 7</span>
-                  <button
-                    type="button"
-                    onClick={() => setShowAddLang(!showAddLang)}
-                    className="px-2 py-0.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-[10px] font-bold flex items-center gap-1 no-print cursor-pointer transition shadow-xs"
-                  >
-                    <Icon name="plus" size={11} />
-                    <span>Add Language</span>
-                  </button>
+          {/* ══════════════════════════════════════════════════════════════ */}
+          {/* SECTION 7: UNDERSTANDING OF LANGUAGE                         */}
+          {/* ══════════════════════════════════════════════════════════════ */}
+          {(activeTab === 'language' || activeTab === 'all') && (
+            <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-5 sm:p-6 space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center shrink-0">
+                    <Icon name="globe" size={18} />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-slate-900 leading-tight">Understanding of Language</h3>
+                    <p className="text-xs text-slate-400 font-medium">Section 7 · Multilingual proficiency assessment (Read, Write, Speak)</p>
+                  </div>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowAddLang(!showAddLang)}
+                  className="px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold border border-indigo-200 transition flex items-center gap-1.5 cursor-pointer no-print shadow-2xs"
+                >
+                  <Icon name="plus" size={13} />
+                  <span>Add Language</span>
+                </button>
               </div>
 
               {showAddLang && (
-                <div className="p-2 bg-indigo-50 border-b-2 border-indigo-800 flex items-center gap-2 no-print">
+                <div className="p-3 bg-indigo-50/50 rounded-xl border border-indigo-200/80 flex items-center gap-2 animate-fade-in no-print">
                   <input
                     type="text"
                     value={newLanguageInput}
                     onChange={(e) => setNewLanguageInput(e.target.value)}
-                    placeholder="Enter language name (e.g. Tamil, Kannada, Marathi)..."
-                    className="px-2.5 py-1 bg-white border border-indigo-300 rounded-lg text-xs flex-1 outline-none"
-                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCustomLanguage(); } }}
+                    placeholder="Enter language name (e.g. Tamil, Kannada, Marathi, French)..."
+                    className="px-3 py-1.5 bg-white border border-indigo-200 rounded-xl text-xs flex-1 outline-none focus:border-indigo-500 font-medium"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addCustomLanguage();
+                      }
+                    }}
                   />
                   <button
                     type="button"
                     onClick={addCustomLanguage}
-                    className="px-3 py-1 bg-indigo-800 text-white rounded-lg text-xs font-bold cursor-pointer hover:bg-indigo-900"
+                    className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold cursor-pointer transition shadow-xs"
                   >
                     Add
                   </button>
                 </div>
               )}
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-center border-collapse">
+              <div className="overflow-x-auto rounded-xl border border-slate-200">
+                <table className="w-full text-center border-collapse text-xs">
                   <thead>
-                    <tr className="bg-indigo-100/80 text-[10px] font-black text-indigo-950 uppercase tracking-tight border-b-2 border-indigo-800 divide-x divide-indigo-200">
-                      <th className="p-1.5 text-left w-2/5 pl-3">LANGUANGE</th>
-                      <th className="p-1.5 w-1/5">READ</th>
-                      <th className="p-1.5 w-1/5">WRITE</th>
-                      <th className="p-1.5 w-1/5">SPEAK</th>
-                      <th className="p-1 w-8 no-print">#</th>
+                    <tr className="bg-slate-50 text-[11px] font-bold text-slate-600 uppercase tracking-wider border-b border-slate-200">
+                      <th className="p-3 text-left pl-4 w-2/5">Language</th>
+                      <th className="p-3 w-1/5">Read</th>
+                      <th className="p-3 w-1/5">Write</th>
+                      <th className="p-3 w-1/5">Speak</th>
+                      <th className="p-3 w-12 no-print">#</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-indigo-200 font-bold">
+                  <tbody className="divide-y divide-slate-100 font-bold">
                     {languageList.map((item, idx) => (
-                      <tr key={idx} className="divide-x divide-indigo-200 hover:bg-indigo-50/40">
-                        <td className="p-1.5 text-left text-slate-900 font-black pl-3">
+                      <tr key={idx} className="hover:bg-slate-50/60 transition">
+                        <td className="p-3 text-left pl-4 text-slate-900 font-black">
                           {item.language}
                         </td>
-                        <td className="p-1.5 text-center">
+                        <td className="p-3 text-center">
                           <input
                             type="checkbox"
                             checked={item.read}
                             onChange={() => toggleLanguageSkill(idx, 'read')}
-                            className="w-4 h-4 rounded border-indigo-400 accent-indigo-700 cursor-pointer"
+                            className="w-4 h-4 rounded text-purple-600 border-slate-300 accent-purple-600 cursor-pointer"
                           />
                         </td>
-                        <td className="p-1.5 text-center">
+                        <td className="p-3 text-center">
                           <input
                             type="checkbox"
                             checked={item.write}
                             onChange={() => toggleLanguageSkill(idx, 'write')}
-                            className="w-4 h-4 rounded border-indigo-400 accent-indigo-700 cursor-pointer"
+                            className="w-4 h-4 rounded text-purple-600 border-slate-300 accent-purple-600 cursor-pointer"
                           />
                         </td>
-                        <td className="p-1.5 text-center">
+                        <td className="p-3 text-center">
                           <input
                             type="checkbox"
                             checked={item.speak}
                             onChange={() => toggleLanguageSkill(idx, 'speak')}
-                            className="w-4 h-4 rounded border-indigo-400 accent-indigo-700 cursor-pointer"
+                            className="w-4 h-4 rounded text-purple-600 border-slate-300 accent-purple-600 cursor-pointer"
                           />
                         </td>
-                        <td className="p-1 text-center no-print">
+                        <td className="p-3 text-center no-print">
                           {languageList.length > 1 && (
                             <button
                               type="button"
                               onClick={() => removeLanguage(idx)}
-                              className="text-slate-400 hover:text-rose-600 p-0.5 cursor-pointer"
+                              className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
                             >
                               <Icon name="x" size={13} />
                             </button>
@@ -2837,36 +2957,59 @@ export function EmployeeEnrollmentModal({
                 </table>
               </div>
             </div>
+          )}
 
-          </div>
-
-          {/* Modal Bottom Actions (Hidden in Print) */}
-          <div className="pt-4 border-t border-slate-300 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0 no-print">
-            <div className="flex items-center gap-2 text-slate-600 text-xs font-semibold">
-              <Icon name="shield-check" size={16} className="text-emerald-600" />
-              <span>Official Multi-Color HR Form • Verified Staff KYC & Biometrics</span>
+          {/* ── Sticky Modal Footer ───────────────── */}
+          <div className="pt-4 border-t border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0 no-print">
+            <div className="flex items-center gap-2 text-slate-500 text-xs font-medium">
+              <Icon name="shield-check" size={16} className="text-emerald-500" />
+              <span>Verified Staff KYC &amp; Biometrics Dossier</span>
             </div>
-            <div className="flex items-center gap-3 w-full sm:w-auto">
+
+            <div className="flex items-center gap-2 w-full sm:w-auto">
               <button
                 type="button"
                 onClick={() => { stopCamera(); onClose(); }}
-                className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl border border-slate-400 hover:bg-slate-100 font-bold text-xs transition cursor-pointer"
+                className="px-4 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-700 font-bold text-xs transition cursor-pointer"
               >
                 Cancel
               </button>
+
+              {activeTab !== 'all' && currentTabIndex > 0 && (
+                <button
+                  type="button"
+                  onClick={goToPrevTab}
+                  className="px-4 py-2.5 rounded-xl border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold text-xs transition flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Icon name="arrow-left" size={13} />
+                  <span>Previous</span>
+                </button>
+              )}
+
+              {activeTab !== 'all' && currentTabIndex < tabOrder.length - 1 && (
+                <button
+                  type="button"
+                  onClick={goToNextTab}
+                  className="px-4 py-2.5 rounded-xl border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold text-xs transition flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span>Next Step</span>
+                  <Icon name="arrow-right" size={13} />
+                </button>
+              )}
+
               <button
                 type="submit"
                 disabled={loading}
-                className="flex-1 sm:flex-none px-8 py-2.5 rounded-xl bg-gradient-to-r from-blue-700 via-indigo-700 to-slate-900 hover:from-blue-800 hover:to-black text-white font-black text-xs shadow-lg shadow-indigo-600/20 transition flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+                className="flex-1 sm:flex-none px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-orange-500 hover:opacity-95 text-white font-bold text-xs shadow-md shadow-indigo-600/15 transition flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
               >
                 {loading ? (
                   <>
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     <span>Saving Details...</span>
                   </>
                 ) : (
                   <>
-                    <Icon name="check-circle" size={16} />
+                    <Icon name="check-circle" size={15} />
                     <span>{employeeToEdit ? 'Update Employee Record' : 'Enroll Employee'}</span>
                   </>
                 )}
@@ -2874,7 +3017,7 @@ export function EmployeeEnrollmentModal({
             </div>
           </div>
 
-          {/* Dynamic Master Datalists for Autocomplete (Area of Service, Districts, Mandals, Towns) */}
+          {/* Dynamic Master Datalists for Autocomplete */}
           <datalist id="employeeAreaOfServiceList">
             {masterAreaOfServiceList.map((svc) => (
               <option key={svc} value={svc} />

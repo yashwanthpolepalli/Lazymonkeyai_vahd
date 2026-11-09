@@ -639,33 +639,23 @@ export function HrmsemployeesTab() {
         (b) => b.id === selectedBranch || b.branch_name === selectedBranch || (b as any).vahd_name === selectedBranch
       );
 
+      const tTenantId = (t as any).tenant_id;
       const matchesBranchId = Boolean(
-        t.branch_id && (t.branch_id === selectedBranch || (targetBranch && t.branch_id === targetBranch.id))
+        (t.branch_id && (t.branch_id === selectedBranch || (targetBranch && t.branch_id === targetBranch.id))) ||
+        (tTenantId && (tTenantId === selectedBranch || (targetBranch && tTenantId === targetBranch.id)))
       );
 
-      const targetNames = [
-        selectedBranch.toLowerCase(),
-        targetBranch?.branch_name?.toLowerCase(),
-        (targetBranch as any)?.vahd_name?.toLowerCase(),
-        targetBranch?.name?.toLowerCase(),
-      ].filter(Boolean) as string[];
+      // If branch_id is not set, allow matching strictly by exact institution/organisation name (never location/city)
+      let matchesOrgName = false;
+      if (!t.branch_id && !tTenantId && targetBranch) {
+        const orgName = ((targetBranch as any).vahd_name || targetBranch.name || '').toLowerCase().trim();
+        const tOrg = (t.vahd_branch || (t as any).primary_vahd_location || '').toLowerCase().trim();
+        if (orgName && tOrg && orgName === tOrg) {
+          matchesOrgName = true;
+        }
+      }
 
-      const tNames = [
-        t.vahd_branch?.toLowerCase(),
-        t.branch?.toLowerCase(),
-        t.placeOfWork?.toLowerCase(),
-        (t as any).primary_vahd_location?.toLowerCase(),
-      ].filter(Boolean) as string[];
-
-      const matchesName = targetNames.some((tn) =>
-        tNames.some((en) => en === tn || en.includes(tn) || tn.includes(en))
-      );
-
-      const matchesOwner = Boolean(
-        targetBranch && (targetBranch as any).owner_id && t.owner_id === (targetBranch as any).owner_id
-      );
-
-      if (!matchesBranchId && !matchesName && !matchesOwner) {
+      if (!matchesBranchId && !matchesOrgName) {
         return false;
       }
     }

@@ -87,12 +87,18 @@ def onboard_student(
     from sqlalchemy import or_
     b_ref = data.get("branch_id") or data.get("branch") or data.get("primary_vahd_location")
     if b_ref:
-        b_obj = db.query(vahdBranch).filter(
-            or_(vahdBranch.id == b_ref, vahdBranch.branch_name == b_ref, vahdBranch.vahd_name == b_ref)
-        ).first()
+        b_obj = db.query(vahdBranch).filter(vahdBranch.id == b_ref).first()
+        if not b_obj:
+            b_obj = db.query(vahdBranch).filter(
+                or_(func.lower(vahdBranch.vahd_name) == str(b_ref).lower(), func.lower(vahdBranch.branch_name) == str(b_ref).lower())
+            ).first()
         if b_obj:
             data["branch_id"] = b_obj.id
-            data["primary_vahd_location"] = b_obj.branch_name or b_obj.vahd_name
+            data["tenant_id"] = b_obj.id
+            display_loc = f"{b_obj.vahd_name} - {b_obj.branch_name}" if b_obj.vahd_name and b_obj.branch_name and b_obj.vahd_name.lower() != b_obj.branch_name.lower() else (b_obj.vahd_name or b_obj.branch_name)
+            data["primary_vahd_location"] = display_loc
+            data["organisation_name"] = b_obj.vahd_name
+            data["branch_name"] = b_obj.branch_name
             if not data.get("owner_id") and b_obj.owner_id:
                 data["owner_id"] = b_obj.owner_id
             if not data.get("ho_id") and b_obj.ho_id:

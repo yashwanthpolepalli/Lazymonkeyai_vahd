@@ -221,8 +221,7 @@ class HrmsService:
                 conditions = [Employee.ho_id == ho_target]
                 if ho_branch_ids:
                     conditions.append(Employee.branch_id.in_(ho_branch_ids))
-                if ho_branch_names:
-                    conditions.append(Employee.vahd_branch.in_(ho_branch_names))
+                    conditions.append(Employee.tenant_id.in_(ho_branch_ids))
                 # Also include unassigned or organization-wide enterprise employees
                 conditions.append(Employee.ho_id.is_(None))
                 conditions.append(Employee.ho_id == "")
@@ -234,25 +233,15 @@ class HrmsService:
                         or_(vahdBranch.id == branch_id, vahdBranch.branch_name == branch_id, vahdBranch.vahd_name == branch_id)
                     ).first()
                     b_ids = [branch_id]
-                    b_names = [branch_id]
                     if matched_b:
                         b_ids.append(matched_b.id)
-                        if matched_b.branch_name:
-                            b_names.append(matched_b.branch_name)
-                        if matched_b.vahd_name:
-                            b_names.append(matched_b.vahd_name)
                     b_conds = [
                         Employee.tenant_id.in_(b_ids),
                         Employee.branch_id.in_(b_ids),
                     ]
-                    if b_names:
-                        b_conds.append(Employee.vahd_branch.in_(b_names))
                     for bid in b_ids:
                         b_conds.append(cast(Employee.secondary_branches, String).ilike(f"%{bid}%"))
                         b_conds.append(cast(Employee.meta_data, String).ilike(f"%{bid}%"))
-                    for bn in b_names:
-                        b_conds.append(cast(Employee.secondary_branches, String).ilike(f"%{bn}%"))
-                        b_conds.append(cast(Employee.meta_data, String).ilike(f"%{bn}%"))
                     query = query.filter(or_(*b_conds))
             elif user_role in ["OWNER"]:
                 owner_branches = db.query(vahdBranch).filter(
@@ -261,13 +250,11 @@ class HrmsService:
                         vahdBranch.id == current_user.branch_id
                     )
                 ).all()
-                owner_branch_names = [b.branch_name for b in owner_branches if b.branch_name] + [b.vahd_name for b in owner_branches if b.vahd_name]
                 owner_branch_ids = [b.id for b in owner_branches if b.id]
                 conditions = [Employee.owner_id == current_user.id]
                 if owner_branch_ids:
                     conditions.append(Employee.branch_id.in_(owner_branch_ids))
-                if owner_branch_names:
-                    conditions.append(Employee.vahd_branch.in_(owner_branch_names))
+                    conditions.append(Employee.tenant_id.in_(owner_branch_ids))
                 # Also include unassigned or organization-wide enterprise employees
                 conditions.append(Employee.owner_id.is_(None))
                 conditions.append(Employee.owner_id == "")
@@ -278,25 +265,15 @@ class HrmsService:
                         or_(vahdBranch.id == branch_id, vahdBranch.branch_name == branch_id, vahdBranch.vahd_name == branch_id)
                     ).first()
                     b_ids = [branch_id]
-                    b_names = [branch_id]
                     if matched_b:
                         b_ids.append(matched_b.id)
-                        if matched_b.branch_name:
-                            b_names.append(matched_b.branch_name)
-                        if matched_b.vahd_name:
-                            b_names.append(matched_b.vahd_name)
                     b_conds = [
                         Employee.tenant_id.in_(b_ids),
                         Employee.branch_id.in_(b_ids),
                     ]
-                    if b_names:
-                        b_conds.append(Employee.vahd_branch.in_(b_names))
                     for bid in b_ids:
                         b_conds.append(cast(Employee.secondary_branches, String).ilike(f"%{bid}%"))
                         b_conds.append(cast(Employee.meta_data, String).ilike(f"%{bid}%"))
-                    for bn in b_names:
-                        b_conds.append(cast(Employee.secondary_branches, String).ilike(f"%{bn}%"))
-                        b_conds.append(cast(Employee.meta_data, String).ilike(f"%{bn}%"))
                     query = query.filter(or_(*b_conds))
         elif ho_id:
             query = query.filter(Employee.ho_id == ho_id)
@@ -305,25 +282,15 @@ class HrmsService:
                 or_(vahdBranch.id == branch_id, vahdBranch.branch_name == branch_id, vahdBranch.vahd_name == branch_id)
             ).first()
             b_ids = [branch_id]
-            b_names = [branch_id]
             if matched_b:
                 b_ids.append(matched_b.id)
-                if matched_b.branch_name:
-                    b_names.append(matched_b.branch_name)
-                if matched_b.vahd_name:
-                    b_names.append(matched_b.vahd_name)
             b_conds = [
                 Employee.tenant_id.in_(b_ids),
                 Employee.branch_id.in_(b_ids),
             ]
-            if b_names:
-                b_conds.append(Employee.vahd_branch.in_(b_names))
             for bid in b_ids:
                 b_conds.append(cast(Employee.secondary_branches, String).ilike(f"%{bid}%"))
                 b_conds.append(cast(Employee.meta_data, String).ilike(f"%{bid}%"))
-            for bn in b_names:
-                b_conds.append(cast(Employee.secondary_branches, String).ilike(f"%{bn}%"))
-                b_conds.append(cast(Employee.meta_data, String).ilike(f"%{bn}%"))
             query = query.filter(or_(*b_conds))
 
         if department and department != "All Departments":
@@ -659,6 +626,7 @@ class HrmsService:
                 salary=salary,
                 vahd_branch=vahd_branch,
                 branch_id=branch_id,
+                tenant_id=branch_id,
                 secondary_branches=sec_branches,
                 ho_id=ho_id,
                 owner_id=owner_id,
@@ -698,6 +666,7 @@ class HrmsService:
                 emp.vahd_branch = vahd_branch
             if branch_id:
                 emp.branch_id = branch_id
+                emp.tenant_id = branch_id
             if ho_id:
                 emp.ho_id = ho_id
             if owner_id:
@@ -4450,19 +4419,12 @@ class HrmsService:
                     or_(vahdBranch.id == branch_id, vahdBranch.branch_name == branch_id, vahdBranch.vahd_name == branch_id)
                 ).first()
                 b_ids = [branch_id]
-                b_names = [branch_id]
                 if matched_b:
                     b_ids.append(matched_b.id)
-                    if matched_b.branch_name:
-                        b_names.append(matched_b.branch_name)
-                    if matched_b.vahd_name:
-                        b_names.append(matched_b.vahd_name)
                 b_conds = [
                     student.tenant_id.in_(b_ids),
                     student.branch_id.in_(b_ids),
                 ]
-                if b_names:
-                    b_conds.append(student.primary_vahd_location.in_(b_names))
                 stus_query = stus_query.filter(or_(*b_conds))
             if current_user and (current_user.role or "").strip().upper() == "OWNER":
                 stus_query = stus_query.filter(
@@ -5008,19 +4970,12 @@ class HrmsService:
                     or_(vahdBranch.id == branch_id, vahdBranch.branch_name == branch_id, vahdBranch.vahd_name == branch_id)
                 ).first()
                 b_ids = [branch_id]
-                b_names = [branch_id]
                 if matched_b:
                     b_ids.append(matched_b.id)
-                    if matched_b.branch_name:
-                        b_names.append(matched_b.branch_name)
-                    if matched_b.vahd_name:
-                        b_names.append(matched_b.vahd_name)
                 b_conds = [
                     student.tenant_id.in_(b_ids),
                     student.branch_id.in_(b_ids),
                 ]
-                if b_names:
-                    b_conds.append(student.primary_vahd_location.in_(b_names))
                 stus_query = stus_query.filter(or_(*b_conds))
             if current_user and (current_user.role or "").strip().upper() == "OWNER":
                 stus_query = stus_query.filter(

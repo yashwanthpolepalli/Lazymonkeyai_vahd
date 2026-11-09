@@ -456,45 +456,25 @@ export function StudentManagementTab() {
       );
 
       const sBranchId = s.branch_id || meta.branch_id;
+      const sTenantId = (s as any).tenant_id || meta.tenant_id;
       const sHoId = s.ho_id || meta.ho_id;
-      const sOwnerId = s.owner_id || meta.owner_id;
 
       const matchesBranchId = Boolean(
-        sBranchId && (sBranchId === selectedBranch || (targetBranch && sBranchId === targetBranch.id))
+        (sBranchId && (sBranchId === selectedBranch || (targetBranch && sBranchId === targetBranch.id))) ||
+        (sTenantId && (sTenantId === selectedBranch || (targetBranch && sTenantId === targetBranch.id)))
       );
 
-      const matchesHoId = Boolean(
-        sHoId && (
-          sHoId === selectedBranch ||
-          (targetBranch && (sHoId === targetBranch.id || sHoId === (targetBranch as any).ho_id))
-        )
-      );
+      // If branch_id is not set, allow matching strictly by exact institution/organisation name (never location/city)
+      let matchesOrgName = false;
+      if (!sBranchId && !sTenantId && targetBranch) {
+        const orgName = ((targetBranch as any).vahd_name || targetBranch.name || '').toLowerCase().trim();
+        const sOrg = ((s as any).organisation || meta.organisation_name || meta.vahd_name || '').toLowerCase().trim();
+        if (orgName && sOrg && orgName === sOrg) {
+          matchesOrgName = true;
+        }
+      }
 
-      const targetNames = [
-        selectedBranch.toLowerCase(),
-        targetBranch?.branch_name?.toLowerCase(),
-        (targetBranch as any)?.vahd_name?.toLowerCase(),
-        targetBranch?.name?.toLowerCase(),
-      ].filter(Boolean) as string[];
-
-      const sNames = [
-        s.branch?.toLowerCase(),
-        (s as any).primary_vahd_location?.toLowerCase(),
-        meta.branch?.toLowerCase(),
-        meta.vahd_branch?.toLowerCase(),
-        (s as any).organisation?.toLowerCase(),
-        meta.organisation_name?.toLowerCase(),
-      ].filter(Boolean) as string[];
-
-      const matchesName = targetNames.some((tn) =>
-        sNames.some((sn) => sn === tn || sn.includes(tn) || tn.includes(sn))
-      );
-
-      const matchesOwner = Boolean(
-        targetBranch && (targetBranch as any).owner_id && (sOwnerId === (targetBranch as any).owner_id || sHoId === targetBranch.id)
-      );
-
-      matchesBranch = Boolean(matchesBranchId || matchesHoId || matchesName || matchesOwner);
+      matchesBranch = Boolean(matchesBranchId || matchesOrgName);
     }
 
     if (selectedSubBranch && selectedSubBranch !== 'all') {

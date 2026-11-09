@@ -41,7 +41,13 @@ class DashboardService:
 
         cust_query = db.query(student).filter(student.id == student_id)
         if branch_id:
-            cust_query = cust_query.filter(student.primary_vahd_location.ilike(f"%{branch_id}%"))
+            cust_query = cust_query.filter(
+                or_(
+                    student.tenant_id == branch_id,
+                    student.branch_id == branch_id,
+                    student.primary_vahd_location == branch_id
+                )
+            )
         cust = cust_query.first()
 
         if not cust:
@@ -134,11 +140,14 @@ class DashboardService:
         if branch_id:
             cust_query = cust_query.filter(
                 or_(
+                    student.tenant_id == branch_id,
                     student.branch_id == branch_id,
-                    student.primary_vahd_location.ilike(f"%{branch_id}%")
+                    student.primary_vahd_location == branch_id
                 )
             )
-            log_query = log_query.filter(BiometricLog.location.ilike(f"%{branch_id}%"))
+            log_query = log_query.filter(
+                or_(BiometricLog.location == branch_id, BiometricLog.location.ilike(f"%{branch_id}%"))
+            )
 
         # Real Occupancy Calculation: Active students whose LATEST log today is CHECK_IN without EXIT
         recent_logs_subquery = (
@@ -504,7 +513,13 @@ class DashboardService:
         if employee_id:
             cust_query = cust_query.filter(student.employee_id == employee_id)
         if branch_id:
-            cust_query = cust_query.filter(student.primary_vahd_location.ilike(f"%{branch_id}%"))
+            cust_query = cust_query.filter(
+                or_(
+                    student.tenant_id == branch_id,
+                    student.branch_id == branch_id,
+                    student.primary_vahd_location == branch_id
+                )
+            )
             
         assigned_students = cust_query.all()
         total_clients = len(assigned_students)

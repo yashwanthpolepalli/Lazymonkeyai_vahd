@@ -418,9 +418,10 @@ class SuperAdminService:
         branch_cust_ids = [
             c.id for c in db.query(student.id).filter(
                 or_(
+                    student.tenant_id == branch.id,
                     student.branch_id == branch.id,
                     student.owner_id == branch.owner_id,
-                    student.primary_vahd_location.ilike(f"%{branch.branch_name}%")
+                    student.primary_vahd_location == branch.branch_name
                 )
             ).all()
         ]

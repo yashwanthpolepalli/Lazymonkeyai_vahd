@@ -54,7 +54,7 @@ def create_employee(
     b_ref = payload.get("branch_id") or payload.get("vahd_branch")
     if b_ref:
         b_obj = db.query(vahdBranch).filter(
-            or_(vahdBranch.id == b_ref, vahdBranch.branch_name.ilike(f"%{b_ref}%"))
+            or_(vahdBranch.id == b_ref, vahdBranch.branch_name == b_ref, vahdBranch.vahd_name == b_ref)
         ).first()
         if b_obj:
             payload["branch_id"] = b_obj.id

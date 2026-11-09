@@ -59,8 +59,9 @@ class SettingsService:
         result = []
         for b in branches:
             member_count = db.query(student).filter(
-                (student.branch_id == b.id) | 
-                (student.primary_vahd_location.ilike(f"%{b.branch_name}%"))
+                (student.tenant_id == b.id) |
+                (student.branch_id == b.id) |
+                (student.primary_vahd_location == b.branch_name)
             ).count()
             device_count = db.query(BiometricDevice).filter(BiometricDevice.location.ilike(f"%{b.branch_name}%")).count()
 

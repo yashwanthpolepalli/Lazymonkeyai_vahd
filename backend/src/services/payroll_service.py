@@ -65,7 +65,8 @@ class PayrollService:
                 if branch_id and branch_id != "All":
                     query = query.filter(
                         or_(
-                            employeeProfile.primary_vahd_location.ilike(f"%{branch_id}%"),
+                            employeeProfile.tenant_id == branch_id,
+                            employeeProfile.primary_vahd_location == branch_id,
                             employeeProfile.user_id.in_(
                                 db.query(User.id).filter(User.branch_id == branch_id)
                             )
@@ -129,7 +130,15 @@ class PayrollService:
                         )
                     )
             elif branch_id and str(branch_id).lower() not in ["all", ""]:
-                query = query.filter(employeeProfile.primary_vahd_location.ilike(f"%{branch_id}%"))
+                query = query.filter(
+                    or_(
+                        employeeProfile.tenant_id == branch_id,
+                        employeeProfile.primary_vahd_location == branch_id,
+                        employeeProfile.user_id.in_(
+                            db.query(User.id).filter(User.branch_id == branch_id)
+                        )
+                    )
+                )
 
         employees = query.order_by(employeeProfile.created_at.desc()).all()
 

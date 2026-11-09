@@ -88,7 +88,7 @@ def onboard_student(
     b_ref = data.get("branch_id") or data.get("branch") or data.get("primary_vahd_location")
     if b_ref:
         b_obj = db.query(vahdBranch).filter(
-            or_(vahdBranch.id == b_ref, vahdBranch.branch_name.ilike(f"%{b_ref}%"))
+            or_(vahdBranch.id == b_ref, vahdBranch.branch_name == b_ref, vahdBranch.vahd_name == b_ref)
         ).first()
         if b_obj:
             data["branch_id"] = b_obj.id

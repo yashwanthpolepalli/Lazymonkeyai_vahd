@@ -115,7 +115,11 @@ class HrmsService:
             b = None
             if t.primary_vahd_location:
                 b = db.query(vahdBranch).filter(
-                    or_(vahdBranch.id == t.primary_vahd_location, vahdBranch.branch_name.ilike(f"%{t.primary_vahd_location}%"))
+                    or_(
+                        vahdBranch.id == t.primary_vahd_location,
+                        vahdBranch.branch_name == t.primary_vahd_location,
+                        vahdBranch.vahd_name == t.primary_vahd_location
+                    )
                 ).first()
 
             t_branch_id = (u.branch_id if u and u.branch_id else None) or (b.id if b else None)
@@ -237,9 +241,12 @@ class HrmsService:
                             b_names.append(matched_b.branch_name)
                         if matched_b.vahd_name:
                             b_names.append(matched_b.vahd_name)
-                    b_conds = [Employee.branch_id.in_(b_ids)]
-                    for bn in b_names:
-                        b_conds.append(Employee.vahd_branch.ilike(f"%{bn}%"))
+                    b_conds = [
+                        Employee.tenant_id.in_(b_ids),
+                        Employee.branch_id.in_(b_ids),
+                    ]
+                    if b_names:
+                        b_conds.append(Employee.vahd_branch.in_(b_names))
                     for bid in b_ids:
                         b_conds.append(cast(Employee.secondary_branches, String).ilike(f"%{bid}%"))
                         b_conds.append(cast(Employee.meta_data, String).ilike(f"%{bid}%"))
@@ -278,9 +285,12 @@ class HrmsService:
                             b_names.append(matched_b.branch_name)
                         if matched_b.vahd_name:
                             b_names.append(matched_b.vahd_name)
-                    b_conds = [Employee.branch_id.in_(b_ids)]
-                    for bn in b_names:
-                        b_conds.append(Employee.vahd_branch.ilike(f"%{bn}%"))
+                    b_conds = [
+                        Employee.tenant_id.in_(b_ids),
+                        Employee.branch_id.in_(b_ids),
+                    ]
+                    if b_names:
+                        b_conds.append(Employee.vahd_branch.in_(b_names))
                     for bid in b_ids:
                         b_conds.append(cast(Employee.secondary_branches, String).ilike(f"%{bid}%"))
                         b_conds.append(cast(Employee.meta_data, String).ilike(f"%{bid}%"))
@@ -302,9 +312,12 @@ class HrmsService:
                     b_names.append(matched_b.branch_name)
                 if matched_b.vahd_name:
                     b_names.append(matched_b.vahd_name)
-            b_conds = [Employee.branch_id.in_(b_ids)]
-            for bn in b_names:
-                b_conds.append(Employee.vahd_branch.ilike(f"%{bn}%"))
+            b_conds = [
+                Employee.tenant_id.in_(b_ids),
+                Employee.branch_id.in_(b_ids),
+            ]
+            if b_names:
+                b_conds.append(Employee.vahd_branch.in_(b_names))
             for bid in b_ids:
                 b_conds.append(cast(Employee.secondary_branches, String).ilike(f"%{bid}%"))
                 b_conds.append(cast(Employee.meta_data, String).ilike(f"%{bid}%"))
@@ -546,7 +559,7 @@ class HrmsService:
 
         if vahd_branch and not branch_id:
             matched_b = db.query(vahdBranch).filter(
-                or_(vahdBranch.id == vahd_branch, vahdBranch.branch_name.ilike(f"%{vahd_branch}%"))
+                or_(vahdBranch.id == vahd_branch, vahdBranch.branch_name == vahd_branch, vahdBranch.vahd_name == vahd_branch)
             ).first()
             if matched_b:
                 branch_id = matched_b.id
@@ -1952,13 +1965,13 @@ class HrmsService:
         scheme = None
         if branch:
             scheme = db.query(GeofenceScheme).filter(
-                GeofenceScheme.branch_name.ilike(f"%{branch}%"),
+                GeofenceScheme.branch_name == branch,
                 GeofenceScheme.is_active == True,
                 GeofenceScheme.latitude.isnot(None)
             ).first()
             if not scheme:
                 scheme = db.query(GeofenceScheme).filter(
-                    GeofenceScheme.branch_name.ilike(f"%{branch}%"),
+                    GeofenceScheme.branch_name == branch,
                     GeofenceScheme.is_active == True
                 ).first()
 
@@ -4444,9 +4457,12 @@ class HrmsService:
                         b_names.append(matched_b.branch_name)
                     if matched_b.vahd_name:
                         b_names.append(matched_b.vahd_name)
-                b_conds = [student.branch_id.in_(b_ids)]
-                for bn in b_names:
-                    b_conds.append(student.primary_vahd_location.ilike(f"%{bn}%"))
+                b_conds = [
+                    student.tenant_id.in_(b_ids),
+                    student.branch_id.in_(b_ids),
+                ]
+                if b_names:
+                    b_conds.append(student.primary_vahd_location.in_(b_names))
                 stus_query = stus_query.filter(or_(*b_conds))
             if current_user and (current_user.role or "").strip().upper() == "OWNER":
                 stus_query = stus_query.filter(
@@ -4999,9 +5015,12 @@ class HrmsService:
                         b_names.append(matched_b.branch_name)
                     if matched_b.vahd_name:
                         b_names.append(matched_b.vahd_name)
-                b_conds = [student.branch_id.in_(b_ids)]
-                for bn in b_names:
-                    b_conds.append(student.primary_vahd_location.ilike(f"%{bn}%"))
+                b_conds = [
+                    student.tenant_id.in_(b_ids),
+                    student.branch_id.in_(b_ids),
+                ]
+                if b_names:
+                    b_conds.append(student.primary_vahd_location.in_(b_names))
                 stus_query = stus_query.filter(or_(*b_conds))
             if current_user and (current_user.role or "").strip().upper() == "OWNER":
                 stus_query = stus_query.filter(
@@ -5027,7 +5046,7 @@ class HrmsService:
                     or_(
                         student.specialization.ilike(f"%{department}%"),
                         student.qualification.ilike(f"%{department}%"),
-                        student.primary_vahd_location.ilike(f"%{department}%")
+                        student.primary_vahd_location == department
                     )
                 )
             student_records = stus_query.all()

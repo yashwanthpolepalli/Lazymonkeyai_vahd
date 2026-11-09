@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { Icon } from '@/components/ui/Icon';
 import { apiClient } from '@/services/apiClient';
 import { cn } from '@/utils/cn';
@@ -224,8 +225,8 @@ export function WhatsAppAttendanceReportsModal({ isOpen, onClose }: Props) {
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-900/80 backdrop-blur-sm animate-fade-in">
+  const modalContent = (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
       <div className="relative w-full max-w-7xl max-h-[94vh] bg-white rounded-2xl shadow-2xl flex flex-col border border-slate-200 overflow-hidden">
 
         {/* Toast Notification */}
@@ -838,4 +839,6 @@ export function WhatsAppAttendanceReportsModal({ isOpen, onClose }: Props) {
       />
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent;
 }

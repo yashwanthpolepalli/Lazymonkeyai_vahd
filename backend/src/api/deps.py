@@ -1,4 +1,5 @@
-from typing import Optional, Generator, List
+from typing import Optional, Generator, Dict, List, Tuple
+import time
 from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import or_
@@ -15,6 +16,9 @@ from src.models.user import User
 from src.utils.security import verify_token
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)
+
+# Short in-memory cache to prevent redundant branch queries during rapid parallel requests
+_BRANCH_CACHE: Dict[str, Tuple[float, list]] = {}
 
 def resolve_tenant_scope(user: Optional[User], db: Session) -> Optional[list]:
     """
@@ -40,11 +44,20 @@ def resolve_tenant_scope(user: Optional[User], db: Session) -> Optional[list]:
     from src.models.settings import Branch
 
     def branch_ids_under(ho_ctx: str, uid: str) -> list:
+        now = time.time()
+        cache_key = f"{ho_ctx}:{uid}"
+        if cache_key in _BRANCH_CACHE:
+            expiry, ids = _BRANCH_CACHE[cache_key]
+            if now < expiry:
+                return ids
+
         rows = db.query(Branch).filter(
             or_(Branch.ho_id == ho_ctx, Branch.owner_id == uid),
             Branch.is_active == True,
         ).all()
-        return [b.id for b in rows if b.id]
+        res = [b.id for b in rows if b.id]
+        _BRANCH_CACHE[cache_key] = (now + 30.0, res)
+        return res
 
     # HO role: scope = every active branch under their HO (canonical tenant = branch id)
     if role in ("HEAD_OFFICE", "HO"):

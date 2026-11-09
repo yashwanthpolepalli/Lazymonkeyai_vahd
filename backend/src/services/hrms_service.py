@@ -1520,72 +1520,73 @@ class HrmsService:
 
         result = []
         recorded_emp_ids = set()
+
+        # Pre-build in-memory lookup maps to eliminate O(N) query flood on PostgreSQL pool
+        all_emps = db.query(Employee).all()
+        emp_map = {}
+        for e in all_emps:
+            if e.id:
+                emp_map[str(e.id).strip().lower()] = e
+                emp_map[str(e.id).replace("emp_", "").strip().lower()] = e
+            if e.code:
+                c_str = str(e.code).strip().lower()
+                emp_map[c_str] = e
+                clean_c = c_str.replace("emp-", "").strip()
+                emp_map[clean_c] = e
+                emp_map[f"emp-{clean_c}"] = e
+                num_only = "".join(filter(str.isdigit, clean_c))
+                if num_only:
+                    emp_map[num_only] = e
+                    emp_map[num_only.zfill(4)] = e
+            if e.email:
+                emp_map[str(e.email).strip().lower()] = e
+
+        from src.models.student import student as StudentModel
+        all_stus = db.query(StudentModel).all()
+        stu_map = {}
+        for s in all_stus:
+            if s.id:
+                stu_map[str(s.id).strip().lower()] = s
+                stu_map[str(s.id).replace("cust_", "").strip().lower()] = s
+            if s.user_id:
+                stu_map[str(s.user_id).strip().lower()] = s
+            if s.member_code:
+                stu_map[str(s.member_code).strip().lower()] = s
+            if s.email:
+                stu_map[str(s.email).strip().lower()] = s
+
+        def find_emp(identifier: str):
+            if not identifier:
+                return None
+            k = str(identifier).strip().lower()
+            if k in emp_map:
+                return emp_map[k]
+            clean_k = k.replace("emp-", "").replace("emp_", "").strip()
+            if clean_k in emp_map:
+                return emp_map[clean_k]
+            num_k = "".join(filter(str.isdigit, clean_k))
+            if num_k and num_k in emp_map:
+                return emp_map[num_k]
+            if num_k and num_k.zfill(4) in emp_map:
+                return emp_map[num_k.zfill(4)]
+            return None
+
+        def find_stu(identifier: str):
+            if not identifier:
+                return None
+            k = str(identifier).strip().lower()
+            if k in stu_map:
+                return stu_map[k]
+            clean_k = k.replace("cust_", "").strip()
+            if clean_k in stu_map:
+                return stu_map[clean_k]
+            return None
+
         for l in logs:
             clean_lid = str(l.employee_id or '').strip()
             clean_num = clean_lid.replace("EMP-", "").strip()
-            emp = db.query(Employee).filter(
-                or_(
-                    Employee.id == clean_lid,
-                    Employee.code == clean_lid,
-                    Employee.id == f"emp_{clean_lid}",
-                    Employee.code == f"EMP-{clean_lid}",
-                    Employee.code == f"EMP-{clean_num.zfill(4)}",
-                    Employee.code == clean_num.zfill(4),
-                    Employee.code == clean_num,
-                    Employee.email.ilike(clean_lid)
-                )
-            ).first()
-
-            if not emp:
-                t_prof = db.query(employeeProfile).filter(
-                    or_(
-                        employeeProfile.id == clean_lid,
-                        employeeProfile.id == clean_lid.replace("emp_", ""),
-                        employeeProfile.user_id == clean_lid,
-                        employeeProfile.email.ilike(clean_lid)
-                    )
-                ).first()
-                if t_prof:
-                    emp = db.query(Employee).filter(
-                        or_(
-                            Employee.email.ilike(t_prof.email),
-                            Employee.id == f"emp_{t_prof.id}",
-                            Employee.id == t_prof.id
-                        )
-                    ).first()
-
-            if not emp:
-                t_usr = db.query(User).filter(User.id == clean_lid).first()
-                if t_usr:
-                    emp = db.query(Employee).filter(
-                        or_(
-                            Employee.email.ilike(t_usr.email),
-                            Employee.id == f"emp_{t_usr.id}",
-                            Employee.id == t_usr.id
-                        )
-                    ).first()
-
-            stu = None
-            if not emp:
-                from src.models.student import student as StudentModel
-                stu = db.query(StudentModel).filter(
-                    or_(
-                        StudentModel.id == clean_lid,
-                        StudentModel.user_id == clean_lid,
-                        StudentModel.member_code == clean_lid,
-                        StudentModel.id == f"cust_{clean_lid}",
-                        StudentModel.email.ilike(clean_lid)
-                    )
-                ).first()
-                if not stu:
-                    t_usr = db.query(User).filter(User.id == clean_lid).first()
-                    if t_usr:
-                        stu = db.query(StudentModel).filter(
-                            or_(
-                                StudentModel.email.ilike(t_usr.email),
-                                StudentModel.user_id == t_usr.id
-                            )
-                        ).first()
+            emp = find_emp(clean_lid) or find_emp(clean_num)
+            stu = find_stu(clean_lid) if not emp else None
 
             if branch_id and str(branch_id).lower() not in ["all", "", "none", "undefined", "null"]:
                 emp_br_id = getattr(emp, "branch_id", None) if emp else (getattr(stu, "branch_id", None) if stu else None)
@@ -1801,49 +1802,9 @@ class HrmsService:
             ):
                 continue
 
-            # Lookup real Employee record by id, code, or user_id/email
-            emp = db.query(Employee).filter(
-                or_(
-                    Employee.id == emp_id,
-                    Employee.code == emp_id,
-                    Employee.id == f"emp_{emp_id}",
-                    Employee.email.ilike(emp_id),
-                    Employee.email.ilike(meta_email) if meta_email else False
-                )
-            ).first()
-
-            if not emp:
-                t_usr = db.query(User).filter(User.id == emp_id).first()
-                if t_usr:
-                    emp = db.query(Employee).filter(
-                        or_(
-                            Employee.email.ilike(t_usr.email),
-                            Employee.id == f"emp_{t_usr.id}"
-                        )
-                    ).first()
-
-            stu = None
-            if not emp:
-                from src.models.student import student as StudentModel
-                stu = db.query(StudentModel).filter(
-                    or_(
-                        StudentModel.id == emp_id,
-                        StudentModel.user_id == emp_id,
-                        StudentModel.member_code == emp_id,
-                        StudentModel.id == f"cust_{emp_id}",
-                        StudentModel.email.ilike(emp_id),
-                        StudentModel.email.ilike(meta_email) if meta_email else False
-                    )
-                ).first()
-                if not stu:
-                    t_usr = db.query(User).filter(User.id == emp_id).first()
-                    if t_usr:
-                        stu = db.query(StudentModel).filter(
-                            or_(
-                                StudentModel.email.ilike(t_usr.email),
-                                StudentModel.user_id == t_usr.id
-                            )
-                        ).first()
+            # Lookup real Employee or Student record in-memory
+            emp = find_emp(emp_id) or (find_emp(meta_code) if meta_code else None) or (find_emp(meta_email) if meta_email else None)
+            stu = find_stu(emp_id) or (find_stu(meta_email) if meta_email else None) if not emp else None
 
             if branch_id and str(branch_id).lower() not in ["all", "", "none", "undefined", "null"]:
                 emp_br_id = getattr(emp, "branch_id", None) if emp else (getattr(stu, "branch_id", None) if stu else None)

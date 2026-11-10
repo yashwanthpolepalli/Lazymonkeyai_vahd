@@ -880,25 +880,16 @@ class EmployeeAttendanceReportService:
                 or_(vahdBranch.id == branch_id, vahdBranch.branch_name == branch_id, vahdBranch.vahd_name == branch_id)
             ).first()
             b_ids = [branch_id]
-            b_names = [branch_id]
             if matched_b:
                 b_ids.append(matched_b.id)
-                if matched_b.branch_name:
-                    b_names.append(matched_b.branch_name)
-                if matched_b.vahd_name:
-                    b_names.append(matched_b.vahd_name)
 
             b_conds = [
                 Employee.tenant_id.in_(b_ids),
                 Employee.branch_id.in_(b_ids),
-                cast(Employee.secondary_branches, String).ilike(f"%{branch_id}%"),
-                cast(Employee.meta_data, String).ilike(f"%{branch_id}%")
             ]
-            if b_names:
-                b_conds.append(Employee.vahd_branch.in_(b_names))
-            for bn in b_names:
-                b_conds.append(cast(Employee.secondary_branches, String).ilike(f"%{bn}%"))
-                b_conds.append(cast(Employee.meta_data, String).ilike(f"%{bn}%"))
+            for bid in b_ids:
+                b_conds.append(cast(Employee.secondary_branches, String).ilike(f"%{bid}%"))
+                b_conds.append(cast(Employee.meta_data, String).ilike(f"%{bid}%"))
             query = query.filter(or_(*b_conds))
         elif owner_id:
             query = query.filter(Employee.owner_id == owner_id)
@@ -983,25 +974,16 @@ class EmployeeAttendanceReportService:
                 or_(vahdBranch.id == branch_id, vahdBranch.branch_name == branch_id, vahdBranch.vahd_name == branch_id)
             ).first()
             b_ids = [branch_id]
-            b_names = [branch_id]
             if matched_b:
                 b_ids.append(matched_b.id)
-                if matched_b.branch_name:
-                    b_names.append(matched_b.branch_name)
-                if matched_b.vahd_name:
-                    b_names.append(matched_b.vahd_name)
 
             b_conds = [
                 Employee.tenant_id.in_(b_ids),
                 Employee.branch_id.in_(b_ids),
-                cast(Employee.secondary_branches, String).ilike(f"%{branch_id}%"),
-                cast(Employee.meta_data, String).ilike(f"%{branch_id}%")
             ]
-            if b_names:
-                b_conds.append(Employee.vahd_branch.in_(b_names))
-            for bn in b_names:
-                b_conds.append(cast(Employee.secondary_branches, String).ilike(f"%{bn}%"))
-                b_conds.append(cast(Employee.meta_data, String).ilike(f"%{bn}%"))
+            for bid in b_ids:
+                b_conds.append(cast(Employee.secondary_branches, String).ilike(f"%{bid}%"))
+                b_conds.append(cast(Employee.meta_data, String).ilike(f"%{bid}%"))
             query = query.filter(or_(*b_conds))
         elif owner_id:
             query = query.filter(Employee.owner_id == owner_id)

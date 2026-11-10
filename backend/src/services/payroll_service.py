@@ -11,7 +11,7 @@ from src.models.user import User
 from src.utils.security import hash_password
 from src.utils.email import generate_enrollment_password, send_enrollment_email
 
-from sqlalchemy import or_
+from sqlalchemy import or_, func
 
 class PayrollService:
 
@@ -27,8 +27,15 @@ class PayrollService:
         """
         from src.models.hrms import EmployeeAttendance, Employee
         from src.models.settings import Branch as vahdBranch
+        from src.services.hrms_service import HrmsService
+
+        try:
+            HrmsService.sync_employees_to_employees(db)
+        except Exception:
+            db.rollback()
 
         query = db.query(employeeProfile).filter(employeeProfile.is_active == True)
+        emp_recs = None
 
         if current_user:
             u_role = (current_user.role or "").strip().upper()
@@ -54,8 +61,8 @@ class PayrollService:
                 conditions = []
                 if user_ids_for_owner:
                     conditions.append(employeeProfile.user_id.in_(user_ids_for_owner))
-                if owner_b_names:
-                    conditions.append(employeeProfile.primary_vahd_location.in_(owner_b_names))
+                if owner_b_ids:
+                    conditions.append(employeeProfile.tenant_id.in_(owner_b_ids))
 
                 if conditions:
                     query = query.filter(or_(*conditions))
@@ -63,12 +70,26 @@ class PayrollService:
                     query = query.filter(employeeProfile.id == "__none__")
 
                 if branch_id and branch_id != "All":
+                    matched_b = db.query(vahdBranch).filter(
+                        or_(vahdBranch.id == branch_id, vahdBranch.branch_name == branch_id, vahdBranch.vahd_name == branch_id)
+                    ).first()
+                    b_ids = [branch_id]
+                    if matched_b:
+                        b_ids.append(matched_b.id)
+
+                    emp_recs = db.query(Employee).filter(
+                        or_(Employee.branch_id.in_(b_ids), Employee.tenant_id.in_(b_ids))
+                    ).all()
+                    emp_tr_ids = [e.id.replace("emp_", "") for e in emp_recs] + [e.id for e in emp_recs]
+                    emp_emails = [e.email.lower().strip() for e in emp_recs if e.email]
+
                     query = query.filter(
                         or_(
-                            employeeProfile.tenant_id == branch_id,
-                            employeeProfile.primary_vahd_location == branch_id,
+                            employeeProfile.tenant_id.in_(b_ids),
+                            employeeProfile.id.in_(emp_tr_ids),
+                            employeeProfile.email.in_(emp_emails),
                             employeeProfile.user_id.in_(
-                                db.query(User.id).filter(User.branch_id == branch_id)
+                                db.query(User.id).filter(User.branch_id.in_(b_ids))
                             )
                         )
                     )
@@ -78,7 +99,6 @@ class PayrollService:
                     or_(vahdBranch.ho_id == ho_target, vahdBranch.owner_id == current_user.id)
                 ).all()
                 ho_b_ids = [b.id for b in ho_branches if b.id]
-                ho_b_names = [b.branch_name for b in ho_branches if b.branch_name] + [b.vahd_name for b in ho_branches if b.vahd_name]
 
                 user_ids_for_ho = [
                     u.id for u in db.query(User.id).filter(
@@ -92,8 +112,8 @@ class PayrollService:
                 conditions = []
                 if user_ids_for_ho:
                     conditions.append(employeeProfile.user_id.in_(user_ids_for_ho))
-                if ho_b_names:
-                    conditions.append(employeeProfile.primary_vahd_location.in_(ho_b_names))
+                if ho_b_ids:
+                    conditions.append(employeeProfile.tenant_id.in_(ho_b_ids))
 
                 if conditions:
                     query = query.filter(or_(*conditions))
@@ -105,23 +125,18 @@ class PayrollService:
                         or_(vahdBranch.id == branch_id, vahdBranch.branch_name == branch_id, vahdBranch.vahd_name == branch_id)
                     ).first()
                     b_ids = [branch_id]
-                    b_names = [branch_id]
                     if matched_b:
                         b_ids.append(matched_b.id)
-                        if matched_b.branch_name:
-                            b_names.append(matched_b.branch_name)
-                        if matched_b.vahd_name:
-                            b_names.append(matched_b.vahd_name)
 
                     emp_recs = db.query(Employee).filter(
-                        or_(Employee.branch_id.in_(b_ids), Employee.vahd_branch.in_(b_names))
+                        or_(Employee.branch_id.in_(b_ids), Employee.tenant_id.in_(b_ids))
                     ).all()
                     emp_tr_ids = [e.id.replace("emp_", "") for e in emp_recs] + [e.id for e in emp_recs]
-                    emp_emails = [e.email for e in emp_recs if e.email]
+                    emp_emails = [e.email.lower().strip() for e in emp_recs if e.email]
 
                     query = query.filter(
                         or_(
-                            employeeProfile.primary_vahd_location.in_(b_names),
+                            employeeProfile.tenant_id.in_(b_ids),
                             employeeProfile.id.in_(emp_tr_ids),
                             employeeProfile.email.in_(emp_emails),
                             employeeProfile.user_id.in_(
@@ -130,17 +145,59 @@ class PayrollService:
                         )
                     )
             elif branch_id and str(branch_id).lower() not in ["all", ""]:
+                matched_b = db.query(vahdBranch).filter(
+                    or_(vahdBranch.id == branch_id, vahdBranch.branch_name == branch_id, vahdBranch.vahd_name == branch_id)
+                ).first()
+                b_ids = [branch_id]
+                if matched_b:
+                    b_ids.append(matched_b.id)
+
+                emp_recs = db.query(Employee).filter(
+                    or_(Employee.branch_id.in_(b_ids), Employee.tenant_id.in_(b_ids))
+                ).all()
+                emp_tr_ids = [e.id.replace("emp_", "") for e in emp_recs] + [e.id for e in emp_recs]
+                emp_emails = [e.email.lower().strip() for e in emp_recs if e.email]
+
                 query = query.filter(
                     or_(
-                        employeeProfile.tenant_id == branch_id,
-                        employeeProfile.primary_vahd_location == branch_id,
+                        employeeProfile.tenant_id.in_(b_ids),
+                        employeeProfile.id.in_(emp_tr_ids),
+                        employeeProfile.email.in_(emp_emails),
                         employeeProfile.user_id.in_(
-                            db.query(User.id).filter(User.branch_id == branch_id)
+                            db.query(User.id).filter(User.branch_id.in_(b_ids))
                         )
                     )
                 )
 
         employees = query.order_by(employeeProfile.created_at.desc()).all()
+
+        if emp_recs:
+            found_ids = {t.id for t in employees} | {f"emp_{t.id}" for t in employees}
+            found_emails = {t.email.lower().strip() for t in employees if t.email}
+
+            for emp in emp_recs:
+                emp_ep_id = emp.id.replace("emp_", "")
+                emp_mail = (emp.email or "").lower().strip()
+                if emp_ep_id not in found_ids and emp.id not in found_ids and (not emp_mail or emp_mail not in found_emails):
+                    t_obj = employeeProfile(
+                        id=emp_ep_id if emp_ep_id.startswith("tr_") else f"tr_{emp_ep_id}",
+                        tenant_id=emp.branch_id or emp.tenant_id,
+                        user_id=getattr(emp, "user_id", None),
+                        full_name=f"{emp.first_name or ''} {emp.last_name or ''}".strip(),
+                        email=emp.email or "",
+                        phone=emp.phone or "",
+                        gender=emp.gender or "",
+                        role=str(getattr(emp, "role", None) or (emp.meta_data.get("post_details", {}).get("role") if isinstance(emp.meta_data, dict) else None) or "EMPLOYEE").upper(),
+                        specialization=emp.designation or emp.department or "",
+                        primary_vahd_location=emp.vahd_branch or "",
+                        base_monthly_salary=float(emp.salary or 0.0),
+                        is_active=(str(emp.status or "").strip().lower() == "active") if emp.status else True,
+                        created_at=emp.created_at if hasattr(emp, "created_at") and emp.created_at else now_ist_naive()
+                    )
+                    employees.append(t_obj)
+                    found_ids.add(t_obj.id)
+                    if t_obj.email:
+                        found_emails.add(t_obj.email.lower().strip())
 
         today_start = today_ist_start()
         today_end = today_ist_end()
@@ -158,9 +215,14 @@ class PayrollService:
 
         for t in employees:
             t_user = db.query(User).filter(User.id == t.user_id).first() if t.user_id else None
-            t_emp = db.query(Employee).filter((Employee.id == f"emp_{t.id}") | (Employee.email == t.email)).first()
+            t_emp = db.query(Employee).filter(
+                (Employee.id == f"emp_{t.id}") |
+                (Employee.id == t.id) |
+                (Employee.email == t.email) |
+                (func.lower(Employee.email) == func.lower(t.email) if t.email else False)
+            ).first()
 
-            branch_id_val = getattr(t_emp, "branch_id", None) or getattr(t_user, "branch_id", None)
+            branch_id_val = getattr(t_emp, "branch_id", None) or getattr(t_user, "branch_id", None) or getattr(t, "tenant_id", None)
             owner_id_val = getattr(t_emp, "owner_id", None) or getattr(t_user, "owner_id", None)
             ho_id_val = getattr(t_emp, "ho_id", None) or getattr(t_user, "ho_id", None)
             vahd_branch_val = getattr(t_emp, "vahd_branch", None) or t.primary_vahd_location or ""
@@ -541,27 +603,52 @@ class PayrollService:
     @staticmethod
     def delete_employee(db: Session, employee_id: str) -> bool:
         """
-        Deletes or deactivates a employee profile from PostgreSQL database.
+        Deletes a employee profile and matching HRMS employee record from PostgreSQL database.
         """
-        employee = db.query(employeeProfile).filter(employeeProfile.id == employee_id).first()
-        if not employee:
-            raise ValueError(f"employee '{employee_id}' not found.")
-        
+        clean_id = str(employee_id).strip()
+        tr_id = clean_id.replace("emp_", "")
+        emp_id = f"emp_{tr_id}" if not clean_id.startswith("emp_") else clean_id
+
+        # 1. Find and delete employeeProfile
+        ep = db.query(employeeProfile).filter(
+            or_(
+                employeeProfile.id == clean_id,
+                employeeProfile.id == tr_id,
+                (employeeProfile.id == f"tr_{tr_id}" if not tr_id.startswith("tr_") else False)
+            )
+        ).first()
+
+        # 2. Find and delete HRMS Employee
+        from src.models.hrms import Employee
+        emp = db.query(Employee).filter(
+            or_(
+                Employee.id == clean_id,
+                Employee.id == emp_id,
+                Employee.id == tr_id,
+                (func.lower(Employee.email) == func.lower(ep.email) if ep and ep.email else False)
+            )
+        ).first()
+
+        if not ep and emp and emp.email:
+            ep = db.query(employeeProfile).filter(
+                func.lower(employeeProfile.email) == func.lower(emp.email)
+            ).first()
+
+        if not ep and not emp:
+            raise ValueError(f"Employee '{employee_id}' not found.")
+
         # Clean up related payroll invoices
-        try:
-            db.query(PayrollInvoice).filter(PayrollInvoice.employee_id == employee.id).delete(synchronize_session=False)
-        except Exception:
-            pass
+        if ep:
+            try:
+                db.query(PayrollInvoice).filter(PayrollInvoice.employee_id == ep.id).delete(synchronize_session=False)
+            except Exception:
+                pass
+            db.delete(ep)
 
-        db.delete(employee)
+        if emp:
+            db.delete(emp)
+
         db.commit()
-
-        try:
-            from src.services.hrms_service import HrmsService
-            HrmsService.sync_employees_to_employees(db)
-        except Exception:
-            pass
-
         return True
 
     @staticmethod

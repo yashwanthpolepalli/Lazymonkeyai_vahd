@@ -1145,8 +1145,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
     const filteredStudents = studentsList.filter((s: any) => {
       const matchBranch = !selectedBranch || selectedBranch === 'all' ||
         s.branch_id === selectedBranch ||
-        (s.branch_name && s.branch_name.toLowerCase() === selectedBranch.toLowerCase()) ||
-        allBranchesList.some((b) => b.id === selectedBranch && (b.branch_name === s.branch_name || b.vahd_name === s.branch_name));
+        allBranchesList.some((b) => b.id === selectedBranch && (b.id === s.branch_id || (b.vahd_name && b.vahd_name === s.branch_name)));
       const matchSearch =
         !searchTableQuery.trim() ||
         (s.student_name || '').toLowerCase().includes(searchTableQuery.toLowerCase()) ||
@@ -1534,8 +1533,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
     const filteredEmployees = employeesList.filter((emp: any) => {
       const matchBranch = !selectedBranch || selectedBranch === 'all' ||
         emp.branch_id === selectedBranch ||
-        (emp.branch_name && emp.branch_name.toLowerCase() === selectedBranch.toLowerCase()) ||
-        allBranchesList.some((b) => b.id === selectedBranch && (b.branch_name === emp.branch_name || b.vahd_name === emp.branch_name));
+        allBranchesList.some((b) => b.id === selectedBranch && (b.id === emp.branch_id || (b.vahd_name && b.vahd_name === emp.branch_name)));
       const matchSearch =
         !searchTableQuery.trim() ||
         (emp.employee_name || '').toLowerCase().includes(searchTableQuery.toLowerCase()) ||

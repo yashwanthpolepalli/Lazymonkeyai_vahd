@@ -387,16 +387,25 @@ class studentService:
                 # Super Admin can view all or filter by query parameters
                 if owner_id and str(owner_id).lower() not in ["all", "", "none", "undefined", "null"]:
                     query = query.filter(student.owner_id == owner_id)
-                if branch_id and str(branch_id).lower() not in ["all", "", "none", "undefined", "null"]:
-                    query = query.filter(student.branch_id == branch_id)
-                if branch and str(branch).lower() not in ["all", "", "none", "undefined", "null"]:
-                    query = query.filter(
+                effective_branch = branch_id or branch
+                if effective_branch and str(effective_branch).lower() not in ["all", "", "none", "undefined", "null"]:
+                    target_b = str(effective_branch).strip()
+                    matched_b = db.query(vahdBranch).filter(
                         or_(
-                            student.tenant_id == branch,
-                            student.branch_id == branch,
-                            student.primary_vahd_location == branch
+                            vahdBranch.id == target_b,
+                            func.lower(vahdBranch.vahd_name) == target_b.lower()
                         )
-                    )
+                    ).first()
+                    b_ids = [target_b]
+                    if matched_b:
+                        b_ids.append(matched_b.id)
+                    b_conds = [
+                        student.tenant_id.in_(b_ids),
+                        student.branch_id.in_(b_ids),
+                    ]
+                    if matched_b and matched_b.vahd_name:
+                        b_conds.append(student.primary_vahd_location.ilike(f"%{matched_b.vahd_name}%"))
+                    query = query.filter(or_(*b_conds))
             elif user_role in ["HEAD_OFFICE", "HO"]:
                 # Head Office can view all students across organizations under their Head Office
                 possible_ho_ids = [x for x in [current_user.ho_id, current_user.id] if x]
@@ -428,29 +437,27 @@ class studentService:
 
                 query = query.filter(or_(*conditions))
 
-                # Sub-filter by specific organisation if selected by HO
+                # Sub-filter by specific organisation if selected by HO (Strict Organization Isolation)
                 if branch_id or branch:
-                    target_b = branch_id or branch
-                    if str(target_b).lower() not in ["all", "", "none", "undefined", "null"]:
+                    target_b = str(branch_id or branch).strip()
+                    if target_b.lower() not in ["all", "", "none", "undefined", "null"]:
                         matched_b = db.query(vahdBranch).filter(
-                            or_(vahdBranch.id == target_b, vahdBranch.branch_name == target_b, vahdBranch.vahd_name == target_b)
+                            or_(
+                                vahdBranch.id == target_b,
+                                func.lower(vahdBranch.vahd_name) == target_b.lower()
+                            )
                         ).first()
                         b_filter_ids = [target_b]
-                        b_filter_names = [target_b]
                         if matched_b:
                             b_filter_ids.append(matched_b.id)
-                            if matched_b.branch_name:
-                                b_filter_names.append(matched_b.branch_name)
-                            if matched_b.vahd_name:
-                                b_filter_names.append(matched_b.vahd_name)
 
                         conds = [
                             student.tenant_id.in_(b_filter_ids),
                             student.branch_id.in_(b_filter_ids),
-                            student.ho_id == target_b
                         ]
-                        if b_filter_names:
-                            conds.append(student.primary_vahd_location.in_(b_filter_names))
+                        # Only match org name (vahd_name), NEVER branch_name (city/location) to prevent cross-leakage
+                        if matched_b and matched_b.vahd_name:
+                            conds.append(student.primary_vahd_location.ilike(f"%{matched_b.vahd_name}%"))
                         query = query.filter(or_(*conds))
             elif user_role in ["OWNER"]:
                 # vahd Owner views students strictly belonging to their owner_id or owned branches
@@ -471,28 +478,26 @@ class studentService:
 
                 query = query.filter(or_(*conditions))
 
-                # Branch specific sub-filter if selected by owner
+                # Branch specific sub-filter if selected by owner (Strict Organization Isolation)
                 if branch_id or branch:
-                    target_b = branch_id or branch
-                    if str(target_b).lower() not in ["all", "", "none", "undefined", "null"]:
+                    target_b = str(branch_id or branch).strip()
+                    if target_b.lower() not in ["all", "", "none", "undefined", "null"]:
                         matched_b = db.query(vahdBranch).filter(
-                            or_(vahdBranch.id == target_b, vahdBranch.branch_name == target_b, vahdBranch.vahd_name == target_b)
+                            or_(
+                                vahdBranch.id == target_b,
+                                func.lower(vahdBranch.vahd_name) == target_b.lower()
+                            )
                         ).first()
                         b_filter_ids = [target_b]
-                        b_filter_names = [target_b]
                         if matched_b:
                             b_filter_ids.append(matched_b.id)
-                            if matched_b.branch_name:
-                                b_filter_names.append(matched_b.branch_name)
-                            if matched_b.vahd_name:
-                                b_filter_names.append(matched_b.vahd_name)
 
                         conds = [
                             student.tenant_id.in_(b_filter_ids),
                             student.branch_id.in_(b_filter_ids)
                         ]
-                        if b_filter_names:
-                            conds.append(student.primary_vahd_location.in_(b_filter_names))
+                        if matched_b and matched_b.vahd_name:
+                            conds.append(student.primary_vahd_location.ilike(f"%{matched_b.vahd_name}%"))
                         query = query.filter(or_(*conds))
             elif user_role in ["employee", "COACH", "STAFF", "MANAGER"]:
                 # Staff/employee scoped to their assigned students or branch
@@ -673,32 +678,45 @@ class studentService:
 
         from sqlalchemy import func
         user = db.query(User).filter(func.lower(User.email) == clean_email).first()
-        # Resolve Branch & vahd Owner
+        # Resolve Branch & vahd Owner strictly by Branch ID (Highest Priority)
         from src.models.settings import Branch as vahdBranch
         owner_hint = data.get("owner_id")
-        branch_ref = (data.get("branch_id") or data.get("branch") or data.get("primary_vahd_location") or data.get("branch_name") or data.get("location") or "").strip()
+        explicit_branch_id = data.get("branch_id")
+        branch_ref = (explicit_branch_id or data.get("branch") or data.get("primary_vahd_location") or data.get("branch_name") or data.get("location") or "").strip()
         matched_branch = None
-        if branch_ref:
+
+        if explicit_branch_id:
+            matched_branch = db.query(vahdBranch).filter(vahdBranch.id == explicit_branch_id).first()
+
+        if not matched_branch and branch_ref:
             if owner_hint:
                 matched_branch = db.query(vahdBranch).filter(
                     vahdBranch.owner_id == owner_hint,
                     or_(
                         vahdBranch.id == branch_ref,
-                        vahdBranch.branch_name == branch_ref,
-                        vahdBranch.vahd_name == branch_ref
+                        func.lower(vahdBranch.vahd_name) == branch_ref.lower(),
+                        func.lower(vahdBranch.branch_name) == branch_ref.lower()
                     )
                 ).first()
             if not matched_branch:
+                # Match by exact ID or organisation name (vahd_name)
                 matched_branch = db.query(vahdBranch).filter(
                     or_(
                         vahdBranch.id == branch_ref,
-                        vahdBranch.branch_name == branch_ref,
-                        vahdBranch.vahd_name == branch_ref
+                        func.lower(vahdBranch.vahd_name) == branch_ref.lower()
                     )
                 ).first()
+            if not matched_branch:
+                # Fallback match by branch location
+                matched_branch = db.query(vahdBranch).filter(
+                    func.lower(vahdBranch.branch_name) == branch_ref.lower()
+                ).first()
 
-        resolved_branch_id = data.get("branch_id") or (matched_branch.id if matched_branch else None)
-        resolved_branch_name = (matched_branch.branch_name if matched_branch else branch_ref) or None
+        resolved_branch_id = (matched_branch.id if matched_branch else None) or data.get("branch_id") or None
+        resolved_org_name = (matched_branch.vahd_name if matched_branch else data.get("organisation_name")) or ""
+        resolved_branch_name = (matched_branch.branch_name if matched_branch else branch_ref) or ""
+        display_location = f"{resolved_org_name} - {resolved_branch_name}" if (resolved_org_name and resolved_branch_name and resolved_org_name.lower() != resolved_branch_name.lower()) else (resolved_org_name or resolved_branch_name or "")
+
         resolved_owner_id = data.get("owner_id") or (matched_branch.owner_id if matched_branch else None)
         resolved_ho_id = data.get("ho_id") or (matched_branch.ho_id if matched_branch else None)
 
@@ -711,6 +729,10 @@ class studentService:
                     resolved_owner_id = b_lookup.owner_id
                 if not resolved_branch_name:
                     resolved_branch_name = b_lookup.branch_name or b_lookup.vahd_name
+                if not resolved_org_name:
+                    resolved_org_name = b_lookup.vahd_name or b_lookup.branch_name
+                if not display_location:
+                    display_location = f"{b_lookup.vahd_name} - {b_lookup.branch_name}" if b_lookup.vahd_name and b_lookup.branch_name and b_lookup.vahd_name.lower() != b_lookup.branch_name.lower() else (b_lookup.vahd_name or b_lookup.branch_name)
 
         if not resolved_branch_id:
             if resolved_owner_id:
@@ -936,10 +958,13 @@ class studentService:
                 cust.specialization = specialization
             if meta_data_payload:
                 cust.meta_data = meta_data_payload
-            if resolved_branch_name:
+            if display_location:
+                cust.primary_vahd_location = display_location
+            elif resolved_branch_name:
                 cust.primary_vahd_location = resolved_branch_name
             if resolved_branch_id:
                 cust.branch_id = resolved_branch_id
+                cust.tenant_id = resolved_branch_id
             if resolved_owner_id:
                 cust.owner_id = resolved_owner_id
             if resolved_ho_id:
@@ -960,8 +985,9 @@ class studentService:
                 meta_data=meta_data_payload,
                 owner_id=resolved_owner_id,
                 branch_id=resolved_branch_id,
+                tenant_id=resolved_branch_id,
                 ho_id=resolved_ho_id,
-                primary_vahd_location=resolved_branch_name,
+                primary_vahd_location=display_location or resolved_org_name or resolved_branch_name,
                 status=data.get("status", "ACTIVE")
             )
             db.add(cust)

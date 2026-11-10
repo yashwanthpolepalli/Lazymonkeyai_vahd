@@ -5,6 +5,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
 export interface RequestOptions extends RequestInit {
   params?: Record<string, string | number | boolean | undefined | null>;
   timeout?: number;
+  responseType?: 'json' | 'blob' | 'text';
 }
 
 async function request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
@@ -64,6 +65,12 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
       throw new ApiError(errorMessage, response.status);
     }
 
+    if (options.responseType === 'blob') {
+      return (await response.blob()) as unknown as T;
+    }
+    if (options.responseType === 'text') {
+      return (await response.text()) as unknown as T;
+    }
     return (await response.json()) as T;
   } catch (error) {
     if (error instanceof ApiError) {

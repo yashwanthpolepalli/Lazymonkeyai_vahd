@@ -256,6 +256,9 @@ export interface LeaveItem {
   employee_code: string;
   gender?: string;
   department: string;
+  designation?: string;
+  user_type?: 'student' | 'employee';
+  is_student?: boolean;
   leave_type: string;
   leave_type_id?: string;
   paid_type?: string;
@@ -460,7 +463,13 @@ export const hrmsApi = {
     branch_id?: string;
     ho_id?: string;
   }) => apiClient.get<AttendanceCorrectionItem[]>('/hrms/attendance/corrections', { params }),
-  getAttendanceCorrectionsStats: (params?: { date?: string; branch_id?: string; ho_id?: string }) =>
+  getAttendanceCorrectionsStats: (params?: {
+    date?: string;
+    person_type?: string;
+    district?: string;
+    branch_id?: string;
+    ho_id?: string;
+  }) =>
     apiClient.get<AttendanceCorrectionStats>('/hrms/attendance/corrections/stats', { params }),
   createAttendanceCorrection: (payload: Partial<AttendanceCorrectionItem>) =>
     apiClient.post<{ message: string; id: string }>('/hrms/attendance/corrections', payload),
@@ -483,7 +492,8 @@ export const hrmsApi = {
   }) => apiClient.post<PunchResponse>('/hrms/attendance/punch', payload),
 
   // Leave
-  getLeaves: (status?: string, branch_id?: string) => apiClient.get<LeaveItem[]>('/hrms/leaves', { params: { status, branch_id } }),
+  getLeaves: (status?: string, branch_id?: string, user_type?: string) =>
+    apiClient.get<LeaveItem[]>('/hrms/leaves', { params: { status, branch_id, user_type } }),
   applyLeave: (payload: {
     employee_id: string;
     leave_type?: string;
@@ -655,12 +665,20 @@ export const hrmsApi = {
     apiClient.post<{ status: string; message: string; updated_count: number }>('/hrms/shifts/assign', payload),
 
   // Company Holidays & Work Calendar Schemes
-  getHolidays: (params?: { year?: number; type?: string; search?: string }) =>
+  getHolidays: (params?: { year?: number; type?: string; search?: string; institution_type?: string; branch_id?: string }) =>
     apiClient.get<CompanyHolidayItem[]>('/hrms/holidays', { params }),
   saveHoliday: (payload: Partial<CompanyHolidayItem>) =>
     apiClient.post<CompanyHolidayItem>('/hrms/holidays', payload),
+  updateHoliday: (holidayId: string, payload: Partial<CompanyHolidayItem>) =>
+    apiClient.put<CompanyHolidayItem>(`/hrms/holidays/${holidayId}`, payload),
   deleteHoliday: (holidayId: string) =>
     apiClient.delete<{ message: string; id: string }>(`/hrms/holidays/${holidayId}`),
+  uploadHolidays: (formData: FormData) =>
+    apiClient.post<{ success: boolean; message: string; inserted_count: number; updated_count: number }>('/hrms/holidays/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+  downloadHolidayTemplate: () =>
+    apiClient.get('/hrms/holidays/template', { responseType: 'blob' }),
   preseedHolidays: (year?: number) =>
     apiClient.post<{ status: string; message: string; inserted_count: number }>('/hrms/holidays/preseed', { year }),
 
@@ -745,6 +763,10 @@ export interface CompanyHolidayItem {
   day_name?: string;
   year?: number;
   holiday_type?: string;
+  raw_holiday_type?: string;
+  institution_type?: string;
+  branch_id?: string;
+  ho_id?: string;
   description?: string;
   is_optional?: boolean;
 }

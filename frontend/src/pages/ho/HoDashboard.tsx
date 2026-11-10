@@ -140,7 +140,6 @@ export const HoDashboard: React.FC = () => {
   const [loadingRep, setLoadingRep] = useState(false);
   const [branchActiveTab, setBranchActiveTab] = useState<Record<string, 'employees' | 'students'>>({});
   const [dirSearchTerm, setDirSearchTerm] = useState('');
-  const [showBulkDropdown, setShowBulkDropdown] = useState(false);
 
   // Fetch Dashboard data from Backend API
   const fetchDashboardData = async (orgId?: string) => {
@@ -708,53 +707,6 @@ export const HoDashboard: React.FC = () => {
                 >
                   <Icon name="filter" size={13} />
                 </button>
-
-                {/* Bulk Actions Dropdown */}
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setShowBulkDropdown(!showBulkDropdown)}
-                    className="px-3 py-1.5 rounded-xl border border-slate-200/90 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
-                  >
-                    <span>Bulk Actions</span>
-                    <Icon name="chevron-down" size={12} className="text-slate-500" />
-                  </button>
-                  {showBulkDropdown && (
-                    <div className="absolute right-0 top-9 w-48 bg-white rounded-xl p-1.5 shadow-xl border border-slate-200 z-30 text-xs animate-in fade-in">
-                      <button
-                        onClick={() => {
-                          handleToggleSelectAll();
-                          setShowBulkDropdown(false);
-                        }}
-                        className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-slate-50 text-slate-700 font-medium cursor-pointer"
-                      >
-                        {selectedOrgIds.length === (data?.organizations?.length || 0) ? 'Deselect All' : 'Select All'}
-                      </button>
-                      {selectedOrgIds.length > 0 && (
-                        <button
-                          onClick={() => {
-                            setShowBulkDropdown(false);
-                            handleOpenDeleteModal(selectedOrgIds);
-                          }}
-                          className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-rose-50 text-rose-600 font-bold cursor-pointer"
-                        >
-                          Delete Selected ({selectedOrgIds.length})
-                        </button>
-                      )}
-                      {selectedOwnerIds.length > 0 && (
-                        <button
-                          onClick={() => {
-                            setShowBulkDropdown(false);
-                            handleOpenDeleteOwnersModal();
-                          }}
-                          className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-rose-50 text-rose-600 font-bold cursor-pointer"
-                        >
-                          Delete Selected Owners ({selectedOwnerIds.length})
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
 
                 {/* + Add Institution / Branch Button */}
                 <button

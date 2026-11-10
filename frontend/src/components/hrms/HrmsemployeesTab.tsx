@@ -3,6 +3,7 @@ import { Icon } from '@/components/ui/Icon';
 import { Badge } from '@/components/ui/Badge';
 import { api, apiClient } from '@/services/api';
 import { employeesApi } from '@/services/employeesApi';
+import { hrmsApi } from '@/services/hrmsApi';
 import { payrollApi, type PayrollInvoice } from '@/services/payrollApi';
 import type { Member } from '@/types';
 import type { employee } from '@/types/employee';
@@ -160,7 +161,7 @@ interface employeeRowData {
 export function HrmsemployeesTab() {
   const [members, setMembers] = useState<Member[]>([]);
   const [employees, setemployees] = useState<Array<Partial<employee> & { email?: string; full_name?: string; specialty?: string; base_monthly_salary?: number; pt_session_rate?: number; is_active?: boolean; created_at?: string; assigned_students_count?: number }>>([]);
-  const [branchesList, setBranchesList] = useState<Array<{ id: string; branch_name: string; name?: string; vahd_name?: string }>>([]);
+  const [branchesList, setBranchesList] = useState<Array<{ id: string; branch_name: string; name?: string; vahd_name?: string; city?: string }>>([]);
   const [selectedBranch, setSelectedBranch] = useState<string>(() => {
     return localStorage.getItem('vahd_selected_org_id') || 'all';
   });
@@ -406,12 +407,46 @@ export function HrmsemployeesTab() {
     Promise.all([
       api.students.list(branchParams).catch(() => []),
       employeesApi.list(branchParams).catch(() => []),
+      hrmsApi.getEmployees(branchParams).catch(() => []),
       apiClient.get<any[]>('/vahd/branches').catch(() => []),
     ])
-      .then(([mList, tList, bList]) => {
+      .then(([mList, tList, hList, bList]) => {
         setMembers(mList || []);
-        setemployees(Array.isArray(tList) ? tList : []);
         if (Array.isArray(bList)) setBranchesList(bList);
+
+        const combinedMap = new Map<string, any>();
+        (Array.isArray(tList) ? tList : []).forEach((item: any) => {
+          const key = (item.email || item.id || '').toLowerCase().trim();
+          if (key) combinedMap.set(key, item);
+        });
+
+        (Array.isArray(hList) ? hList : []).forEach((hItem: any) => {
+          const key = (hItem.email || hItem.id || '').toLowerCase().trim();
+          const cleanId = (hItem.id || '').replace(/^emp_/, '').toLowerCase().trim();
+          const existing = combinedMap.get(key) || (cleanId ? combinedMap.get(cleanId) : undefined);
+          if (existing) {
+            Object.assign(existing, {
+              ...hItem,
+              ...existing,
+              branch_id: existing.branch_id || hItem.branch_id,
+              vahd_branch: existing.vahd_branch || hItem.vahd_branch,
+              department: existing.department || hItem.department,
+              designation: existing.designation || hItem.designation,
+              code: existing.code || hItem.code,
+              meta_data: hItem.meta_data || existing.meta_data,
+            });
+          } else {
+            combinedMap.set(key || cleanId, {
+              ...hItem,
+              full_name: hItem.full_name || `${hItem.first_name || ''} ${hItem.last_name || ''}`.trim(),
+              name: hItem.full_name || `${hItem.first_name || ''} ${hItem.last_name || ''}`.trim(),
+              base_monthly_salary: hItem.salary ?? 0,
+              is_active: (hItem.status || 'Active').toLowerCase() === 'active',
+            });
+          }
+        });
+
+        setemployees(Array.from(combinedMap.values()));
       })
       .finally(() => {
         setLoading(false);
@@ -427,7 +462,10 @@ export function HrmsemployeesTab() {
       return;
     }
     try {
-      await employeesApi.delete(employeeId);
+      await Promise.allSettled([
+        employeesApi.delete(employeeId),
+        hrmsApi.deleteEmployee(employeeId),
+      ]);
       fetchemployeesData();
     } catch (err) {
       console.error('Failed to delete employee:', err);
@@ -442,7 +480,10 @@ export function HrmsemployeesTab() {
       return;
     }
     try {
-      await Promise.all(selectedemployeeIds.map((id) => employeesApi.delete(id)));
+      await Promise.allSettled([
+        ...selectedemployeeIds.map((id) => employeesApi.delete(id)),
+        ...selectedemployeeIds.map((id) => hrmsApi.deleteEmployee(id)),
+      ]);
       setSelectedemployeeIds([]);
       fetchemployeesData();
     } catch (err) {
@@ -468,17 +509,15 @@ export function HrmsemployeesTab() {
     const empNo = (t as any).employee_code || (t as any).emp_no || (t as any).code || '';
     const designation = (t as any).job_designation || (t as any).designation || specialization || '';
     const role = (t as any).role || department || '';
-    const matchedBranch = branchesList.find(b =>
-      b.id === (t as any).branch_id ||
-      (b.branch_name && (t as any).vahd_branch && b.branch_name.toLowerCase() === String((t as any).vahd_branch).toLowerCase()) ||
-      ((b as any).vahd_name && (t as any).vahd_branch && String((b as any).vahd_name).toLowerCase() === String((t as any).vahd_branch).toLowerCase())
-    );
-    const branchId = (t as any).branch_id || matchedBranch?.id || '';
-    const vahdBranch = (t as any).vahd_branch || (t as any).primary_vahd_location || matchedBranch?.branch_name || '';
+    const empBranchId = (t as any).branch_id || (t as any).tenant_id || '';
+    const matchedBranch = branchesList.find(b => b.id === empBranchId) ||
+      branchesList.find(b => (b as any).vahd_name && (t as any).vahd_name && String((b as any).vahd_name).toLowerCase() === String((t as any).vahd_name).toLowerCase());
+    const branchId = empBranchId || matchedBranch?.id || '';
+    const vahdBranch = matchedBranch?.vahd_name || (t as any).organisation || (t as any).vahd_name || '';
     const ownerId = (t as any).owner_id || (matchedBranch as any)?.owner_id || '';
     const hoId = (t as any).ho_id || (matchedBranch as any)?.ho_id || '';
-    const district = (t as any).district || (t as any).location || (t as any).city || (matchedBranch as any)?.city || '';
-    const placeOfWork = vahdBranch || (t as any).branch_name || (t as any).organisation || (t as any).organisation_name || (t as any).place_of_work || (t as any).work_location || (t as any).branch || matchedBranch?.branch_name || (matchedBranch as any)?.vahd_name || matchedBranch?.name || (branchesList.length === 1 ? branchesList[0].branch_name : '—');
+    const district = matchedBranch?.branch_name || matchedBranch?.city || (t as any).district || (t as any).location || (t as any).city || '—';
+    const placeOfWork = matchedBranch?.vahd_name || (t as any).organisation || (t as any).organisation_name || (t as any).place_of_work || (branchesList.length === 1 ? (branchesList[0] as any).vahd_name || branchesList[0].branch_name : '—');
 
     const assignedMembers = members.filter(
       (m) =>
@@ -636,36 +675,31 @@ export function HrmsemployeesTab() {
     const isAll = !selectedBranch || selectedBranch.toLowerCase() === 'all';
     if (!isAll) {
       const targetBranch = branchesList.find(
-        (b) => b.id === selectedBranch || b.branch_name === selectedBranch || (b as any).vahd_name === selectedBranch
+        (b) =>
+          b.id === selectedBranch ||
+          b.branch_name?.toLowerCase() === selectedBranch.toLowerCase() ||
+          (b as any).vahd_name?.toLowerCase() === selectedBranch.toLowerCase() ||
+          `${(b as any).vahd_name} - ${b.branch_name}`.toLowerCase() === selectedBranch.toLowerCase() ||
+          `${b.branch_name} - ${(b as any).vahd_name}`.toLowerCase() === selectedBranch.toLowerCase()
       );
 
-      const matchesBranchId = Boolean(
-        t.branch_id && (t.branch_id === selectedBranch || (targetBranch && t.branch_id === targetBranch.id))
-      );
+      const branchKeys = [selectedBranch.toLowerCase()];
+      if (targetBranch) {
+        branchKeys.push(targetBranch.id.toLowerCase());
+        if (targetBranch.branch_name) branchKeys.push(targetBranch.branch_name.toLowerCase());
+        if ((targetBranch as any).vahd_name) branchKeys.push(String((targetBranch as any).vahd_name).toLowerCase());
+      }
 
-      const targetNames = [
-        selectedBranch.toLowerCase(),
-        targetBranch?.branch_name?.toLowerCase(),
-        (targetBranch as any)?.vahd_name?.toLowerCase(),
-        targetBranch?.name?.toLowerCase(),
-      ].filter(Boolean) as string[];
+      const tBranchId = (t.branch_id || '').toLowerCase();
+      const tTenantId = String((t as any).tenant_id || '').toLowerCase();
+      const tVahdBranch = (t.vahd_branch || (t as any).primary_vahd_location || '').toLowerCase();
 
-      const tNames = [
-        t.vahd_branch?.toLowerCase(),
-        t.branch?.toLowerCase(),
-        t.placeOfWork?.toLowerCase(),
-        (t as any).primary_vahd_location?.toLowerCase(),
-      ].filter(Boolean) as string[];
+      const matchesBranch =
+        (tBranchId && branchKeys.includes(tBranchId)) ||
+        (tTenantId && branchKeys.includes(tTenantId)) ||
+        (tVahdBranch && branchKeys.includes(tVahdBranch));
 
-      const matchesName = targetNames.some((tn) =>
-        tNames.some((en) => en === tn || en.includes(tn) || tn.includes(en))
-      );
-
-      const matchesOwner = Boolean(
-        targetBranch && (targetBranch as any).owner_id && t.owner_id === (targetBranch as any).owner_id
-      );
-
-      if (!matchesBranchId && !matchesName && !matchesOwner) {
+      if (!matchesBranch) {
         return false;
       }
     }

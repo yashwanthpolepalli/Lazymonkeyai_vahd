@@ -567,6 +567,9 @@ class CompanyHoliday(Base):
     id = Column(String, primary_key=True, default=lambda: f"hol_{uuid.uuid4().hex[:8]}")
     tenant_id = Column(String, nullable=True, index=True)
     calendar_id = Column(String, nullable=True)
+    branch_id = Column(String, nullable=True, index=True)
+    ho_id = Column(String, nullable=True, index=True)
+    institution_type = Column(String, nullable=True, default="All")
     name = Column(String, nullable=False)
     date = Column(Date, nullable=False, index=True)
     year = Column(Integer, nullable=False, index=True)
@@ -574,6 +577,7 @@ class CompanyHoliday(Base):
     description = Column(String, nullable=True)
     is_optional = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
 

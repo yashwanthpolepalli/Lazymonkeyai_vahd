@@ -128,7 +128,7 @@ interface StudentItem {
 export function StudentManagementTab() {
   const [students, setStudents] = useState<StudentItem[]>([]);
   const [availableCourses, setAvailableCourses] = useState<string[]>([]);
-  const [branchesList, setBranchesList] = useState<Array<{ id: string; branch_name: string; name?: string; vahd_name?: string }>>([]);
+  const [branchesList, setBranchesList] = useState<Array<{ id: string; branch_name: string; name?: string; vahd_name?: string; city?: string }>>([]);
   const [selectedBranch, setSelectedBranch] = useState<string>(() => {
     return localStorage.getItem('vahd_selected_org_id') || 'all';
   });
@@ -456,45 +456,25 @@ export function StudentManagementTab() {
       );
 
       const sBranchId = s.branch_id || meta.branch_id;
+      const sTenantId = (s as any).tenant_id || meta.tenant_id;
       const sHoId = s.ho_id || meta.ho_id;
-      const sOwnerId = s.owner_id || meta.owner_id;
 
       const matchesBranchId = Boolean(
-        sBranchId && (sBranchId === selectedBranch || (targetBranch && sBranchId === targetBranch.id))
+        (sBranchId && (sBranchId === selectedBranch || (targetBranch && sBranchId === targetBranch.id))) ||
+        (sTenantId && (sTenantId === selectedBranch || (targetBranch && sTenantId === targetBranch.id)))
       );
 
-      const matchesHoId = Boolean(
-        sHoId && (
-          sHoId === selectedBranch ||
-          (targetBranch && (sHoId === targetBranch.id || sHoId === (targetBranch as any).ho_id))
-        )
-      );
+      // If branch_id is not set, allow matching strictly by exact institution/organisation name (never location/city)
+      let matchesOrgName = false;
+      if (!sBranchId && !sTenantId && targetBranch) {
+        const orgName = ((targetBranch as any).vahd_name || targetBranch.name || '').toLowerCase().trim();
+        const sOrg = ((s as any).organisation || meta.organisation_name || meta.vahd_name || '').toLowerCase().trim();
+        if (orgName && sOrg && orgName === sOrg) {
+          matchesOrgName = true;
+        }
+      }
 
-      const targetNames = [
-        selectedBranch.toLowerCase(),
-        targetBranch?.branch_name?.toLowerCase(),
-        (targetBranch as any)?.vahd_name?.toLowerCase(),
-        targetBranch?.name?.toLowerCase(),
-      ].filter(Boolean) as string[];
-
-      const sNames = [
-        s.branch?.toLowerCase(),
-        (s as any).primary_vahd_location?.toLowerCase(),
-        meta.branch?.toLowerCase(),
-        meta.vahd_branch?.toLowerCase(),
-        (s as any).organisation?.toLowerCase(),
-        meta.organisation_name?.toLowerCase(),
-      ].filter(Boolean) as string[];
-
-      const matchesName = targetNames.some((tn) =>
-        sNames.some((sn) => sn === tn || sn.includes(tn) || tn.includes(sn))
-      );
-
-      const matchesOwner = Boolean(
-        targetBranch && (targetBranch as any).owner_id && (sOwnerId === (targetBranch as any).owner_id || sHoId === targetBranch.id)
-      );
-
-      matchesBranch = Boolean(matchesBranchId || matchesHoId || matchesName || matchesOwner);
+      matchesBranch = Boolean(matchesBranchId || matchesOrgName);
     }
 
     if (selectedSubBranch && selectedSubBranch !== 'all') {
@@ -984,8 +964,9 @@ export function StudentManagementTab() {
                   const sCourse = getStudentCourse(s);
                   const sMedium = getStudentMedium(s);
                   const sRole = meta.batch || meta.category || 'Student';
-                  const sDistrict = meta.district || meta.city || meta.permanent_address?.district || '—';
-                  const sPlaceOfWork = meta.organisation_name || meta.branch_name || s.branch || meta.campus || meta.place_of_work || (branchesList.find(b => b.id === s.branch_id || b.id === meta.branch_id)?.branch_name) || (branchesList.length === 1 ? branchesList[0].branch_name : '—');
+                  const matchedBranch = branchesList.find(b => b.id === s.branch_id || b.id === (s as any).tenant_id || b.id === meta.branch_id);
+                  const sDistrict = matchedBranch?.branch_name || matchedBranch?.city || meta.district || meta.city || meta.permanent_address?.district || '—';
+                  const sPlaceOfWork = matchedBranch?.vahd_name || meta.organisation_name || (branchesList.length === 1 ? (branchesList[0] as any).vahd_name || branchesList[0].branch_name : '—');
                   const isSelected = selectedIds.has(s.id);
                   const studentNo = s.member_code || s.code || `STU-${String(idx + 1).padStart(3, '0')}`;
 

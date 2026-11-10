@@ -20,7 +20,7 @@ from src.models.hrms import Employee, EmployeeAttendance, Department, LeaveReque
 from src.models.biometric import BiometricLog
 from src.models.membership import Membership
 from src.models.super_admin import PlatformAuditLog
-from src.api.deps import get_current_user
+from src.api.deps import get_current_user, current_tenant_scope
 from src.utils.security import hash_password
 from src.utils.timezone import now_ist_naive, IST
 from src.utils.email import send_enrollment_email
@@ -50,6 +50,11 @@ def get_ho_organizations(
 
     if is_super:
         branches = db.query(vahdBranch).filter(vahdBranch.is_active == True).all()
+        # A super admin can still narrow the directory to the org selected
+        # in the ribbon (X-Tenant-Id) — never widen beyond it.
+        scope = current_tenant_scope()
+        if scope:
+            branches = [b for b in branches if b.id in scope]
     else:
         # STRICT TENANT SCOPE: an HO with no branches yet sees an empty
         # directory — never the whole system. (The old fallback to ALL active
@@ -62,6 +67,11 @@ def get_ho_organizations(
             ),
             vahdBranch.is_active == True
         ).all()
+        # Ribbon "switch organization" narrows the directory to the active
+        # org so switching Prime→Nexus no longer shows Prime's institutions.
+        scope = current_tenant_scope()
+        if scope:
+            branches = [b for b in branches if b.id in scope]
 
     result = []
     for b in branches:
@@ -100,27 +110,24 @@ def get_ho_organizations(
         ]
         owner_ids = [o.id for o in branch_owners]
 
-        # Employee count
+        # Employee count strictly for this branch/organisation
         employee_count = db.query(Employee).filter(
             or_(
                 Employee.tenant_id == b.id,
                 Employee.branch_id == b.id,
-                Employee.vahd_branch == b.branch_name,
-                Employee.vahd_branch == b.vahd_name if b.vahd_name else False,
+                (Employee.vahd_branch == b.vahd_name if b.vahd_name else False) & Employee.branch_id.is_(None),
                 cast(Employee.secondary_branches, String).ilike(f"%{b.id}%"),
-                cast(Employee.meta_data, String).ilike(f"%{b.id}%"),
                 Employee.owner_id.in_(owner_ids) if owner_ids else False
             ),
             or_(func.upper(Employee.status) == "ACTIVE", Employee.status == "ACTIVE", Employee.status == "Active", Employee.status.is_(None))
         ).count()
 
-        # Student count
+        # Student count strictly for this branch/organisation
         student_count = db.query(student).filter(
             or_(
                 student.tenant_id == b.id,
                 student.branch_id == b.id,
-                student.primary_vahd_location == b.branch_name,
-                student.primary_vahd_location == b.vahd_name if b.vahd_name else False,
+                (student.primary_vahd_location.ilike(f"%{b.vahd_name}%") if b.vahd_name else False) & student.branch_id.is_(None),
                 student.owner_id.in_(owner_ids) if owner_ids else False
             ),
             or_(func.upper(student.status) == "ACTIVE", student.status == "ACTIVE", student.status == "Active", student.status.is_(None))
@@ -582,6 +589,13 @@ def get_ho_dashboard(
         or_(vahdBranch.ho_id == ho_id, vahdBranch.owner_id == current_user.id),
         vahdBranch.is_active == True
     ).all()
+    # The ribbon "switch organization" narrows the dashboard to the active
+    # org (via the X-Tenant-Id scope) — without this, an HO user who picks
+    # "Nexus" would still see Prime's metrics because the query aggregates
+    # every branch under the HO.
+    _scope = current_tenant_scope()
+    if _scope:
+        all_branches = [b for b in all_branches if b.id in _scope]
 
     branch_map = {b.id: b for b in all_branches}
     all_branch_ids = list(branch_map.keys())
@@ -614,8 +628,7 @@ def get_ho_dashboard(
             or_(
                 Employee.tenant_id == target_branch.id,
                 Employee.branch_id == target_branch.id,
-                Employee.vahd_branch == target_branch.branch_name,
-                Employee.vahd_branch == target_branch.vahd_name if target_branch.vahd_name else False,
+                (Employee.vahd_branch == target_branch.vahd_name if target_branch.vahd_name else False) & Employee.branch_id.is_(None),
                 Employee.owner_id == target_branch.owner_id if target_branch.owner_id else False
             )
         )
@@ -623,15 +636,23 @@ def get_ho_dashboard(
         branch_names = [b.branch_name for b in all_branches if b.branch_name]
         vahd_names = [b.vahd_name for b in all_branches if b.vahd_name]
         owner_ids = [b.owner_id for b in all_branches if b.owner_id]
-        emp_query = emp_query.filter(
-            or_(
-                Employee.ho_id == ho_id,
-                Employee.branch_id.in_(active_branch_ids),
-                Employee.vahd_branch.in_(branch_names),
-                Employee.vahd_branch.in_(vahd_names),
-                Employee.owner_id.in_(owner_ids)
-            )
-        )
+        emp_conds = [
+            Employee.branch_id.in_(active_branch_ids) if active_branch_ids else False,
+            Employee.vahd_branch.in_(branch_names) if branch_names else False,
+            Employee.vahd_branch.in_(vahd_names) if vahd_names else False,
+            Employee.owner_id.in_(owner_ids) if owner_ids else False,
+        ]
+        # Cross-HO `ho_id` fallback is only valid in the "all orgs" view. When
+        # the ribbon has narrowed the scope to a single organization, including
+        # `Employee.ho_id == ho_id` would re-pull every sibling org's people
+        # (Prime + Nexus share an ho_id) — that is exactly the mix-up to avoid.
+        if not _scope:
+            emp_conds.append(Employee.ho_id == ho_id)
+        emp_conds = [c for c in emp_conds if c is not False]
+        if emp_conds:
+            emp_query = emp_query.filter(or_(*emp_conds))
+        else:
+            emp_query = emp_query.filter(Employee.id.is_(None))
     total_employees = emp_query.count()
 
     # Department breakdown
@@ -655,8 +676,7 @@ def get_ho_dashboard(
             or_(
                 student.tenant_id == target_branch.id,
                 student.branch_id == target_branch.id,
-                student.primary_vahd_location == target_branch.branch_name,
-                student.primary_vahd_location == target_branch.vahd_name if target_branch.vahd_name else False,
+                (student.primary_vahd_location.ilike(f"%{target_branch.vahd_name}%") if target_branch.vahd_name else False) & student.branch_id.is_(None),
                 student.owner_id == target_branch.owner_id if target_branch.owner_id else False
             )
         )
@@ -664,15 +684,19 @@ def get_ho_dashboard(
         branch_names = [b.branch_name for b in all_branches if b.branch_name]
         vahd_names = [b.vahd_name for b in all_branches if b.vahd_name]
         owner_ids = [b.owner_id for b in all_branches if b.owner_id]
-        stud_query = stud_query.filter(
-            or_(
-                student.ho_id == ho_id,
-                student.branch_id.in_(active_branch_ids),
-                student.primary_vahd_location.in_(branch_names),
-                student.primary_vahd_location.in_(vahd_names),
-                student.owner_id.in_(owner_ids)
-            )
-        )
+        stud_conds = [
+            student.branch_id.in_(active_branch_ids) if active_branch_ids else False,
+            student.primary_vahd_location.in_(branch_names) if branch_names else False,
+            student.primary_vahd_location.in_(vahd_names) if vahd_names else False,
+            student.owner_id.in_(owner_ids) if owner_ids else False,
+        ]
+        if not _scope:
+            stud_conds.append(student.ho_id == ho_id)
+        stud_conds = [c for c in stud_conds if c is not False]
+        if stud_conds:
+            stud_query = stud_query.filter(or_(*stud_conds))
+        else:
+            stud_query = stud_query.filter(student.id.is_(None))
     total_students = stud_query.count()
 
     # 5. Today's Attendance Punches
@@ -686,12 +710,32 @@ def get_ho_dashboard(
             )
         )
     else:
-        punch_query = punch_query.filter(
-            or_(
-                BiometricLog.device_id.in_(active_branch_ids),
-                func.cast(BiometricLog.meta_data, String).ilike(f"%{ho_id}%")
+        branch_names = [b.branch_name for b in all_branches if b.branch_name]
+        # Narrowed ribbon selection: match punches to the in-scope branches only.
+        # Unnarrowed "all orgs": the ho_id fallback is safe because the scope
+        # resolver already widened it to every branch under this HO.
+        punch_conds = [
+            BiometricLog.device_id.in_(active_branch_ids) if active_branch_ids else False,
+            BiometricLog.tenant_id.in_(active_branch_ids) if active_branch_ids else False,
+        ]
+        if branch_names:
+            punch_conds.append(
+                func.cast(BiometricLog.meta_data, String).ilike(f"%{branch_names[0]}%") if len(branch_names) == 1 else False
             )
-        )
+        if _scope:
+            punch_conds = [c for c in punch_conds if c is not False]
+            if punch_conds:
+                punch_query = punch_query.filter(or_(*punch_conds))
+            else:
+                punch_query = punch_query.filter(BiometricLog.id.is_(None))
+        else:
+            punch_conds = [
+                c for c in [
+                    BiometricLog.device_id.in_(active_branch_ids) if active_branch_ids else False,
+                    func.cast(BiometricLog.meta_data, String).ilike(f"%{ho_id}%"),
+                ] if c is not False
+            ]
+            punch_query = punch_query.filter(or_(*punch_conds))
     today_punches = punch_query.count()
 
     # 6. Recent Biometric / Attendance Activities (latest 10)
@@ -779,8 +823,7 @@ def get_ho_dashboard(
             or_(
                 Employee.tenant_id == b.id,
                 Employee.branch_id == b.id,
-                Employee.vahd_branch == b.branch_name,
-                Employee.vahd_branch == b.vahd_name if b.vahd_name else False,
+                (Employee.vahd_branch == b.vahd_name if b.vahd_name else False) & Employee.branch_id.is_(None),
                 Employee.owner_id.in_(b_owner_ids) if b_owner_ids else False
             ),
             emp_status_filter
@@ -789,8 +832,7 @@ def get_ho_dashboard(
             or_(
                 student.tenant_id == b.id,
                 student.branch_id == b.id,
-                student.primary_vahd_location == b.branch_name,
-                student.primary_vahd_location == b.vahd_name if b.vahd_name else False,
+                (student.primary_vahd_location.ilike(f"%{b.vahd_name}%") if b.vahd_name else False) & student.branch_id.is_(None),
                 student.owner_id.in_(b_owner_ids) if b_owner_ids else False
             ),
             stud_status_filter
@@ -907,6 +949,10 @@ def _gather_ho_branch_attendance(
         b_query = b_query.filter(
             or_(vahdBranch.ho_id == ho_id, vahdBranch.owner_id == ho_id)
         )
+    # Ribbon-selected organization narrows the report/excel/pdf branch set.
+    _scope = current_tenant_scope()
+    if _scope:
+        b_query = b_query.filter(vahdBranch.id.in_(_scope))
     is_scoped = bool(ho_id and ho_id != "ho_default")
     branches = b_query.all()
     if not branches and not is_scoped:
@@ -972,21 +1018,9 @@ def _gather_ho_branch_attendance(
         b_conds = [
             Employee.tenant_id == b.id,
             Employee.branch_id == b.id,
-            Employee.vahd_branch == b.branch_name,
             cast(Employee.secondary_branches, String).ilike(f"%{b.id}%"),
             cast(Employee.meta_data, String).ilike(f"%{b.id}%"),
         ]
-        if getattr(b, 'vahd_name', None):
-            b_conds.append(Employee.vahd_branch == b.vahd_name)
-
-        if target_branch_id and str(target_branch_id).lower() not in ["all", "", "none"]:
-            b_conds.extend([
-                Employee.tenant_id == target_branch_id,
-                Employee.branch_id == target_branch_id,
-                Employee.vahd_branch == target_branch_id,
-                cast(Employee.secondary_branches, String).ilike(f"%{target_branch_id}%"),
-                cast(Employee.meta_data, String).ilike(f"%{target_branch_id}%"),
-            ])
 
         emps = db.query(Employee).filter(
             or_(*b_conds),
@@ -1037,17 +1071,7 @@ def _gather_ho_branch_attendance(
         s_conds = [
             student.tenant_id == b.id,
             student.branch_id == b.id,
-            student.primary_vahd_location == b.branch_name,
         ]
-        if getattr(b, 'vahd_name', None):
-            s_conds.append(student.primary_vahd_location == b.vahd_name)
-
-        if target_branch_id and str(target_branch_id).lower() not in ["all", "", "none"]:
-            s_conds.extend([
-                student.tenant_id == target_branch_id,
-                student.branch_id == target_branch_id,
-                student.primary_vahd_location == target_branch_id
-            ])
 
         students = db.query(student).filter(
             or_(*s_conds),
@@ -1609,13 +1633,12 @@ def get_ho_organisations_matrix(
     for b in branches:
         org_display_name = b.vahd_name or b.branch_name or "Organization"
 
-        # 1. Employees in this branch
+        # 1. Employees strictly in this branch
         emps = db.query(Employee).filter(
             or_(
                 Employee.tenant_id == b.id,
                 Employee.branch_id == b.id,
-                Employee.vahd_branch == b.branch_name,
-                Employee.vahd_branch == b.vahd_name if b.vahd_name else False,
+                (Employee.vahd_branch == b.vahd_name if b.vahd_name else False) & Employee.branch_id.is_(None),
                 cast(Employee.secondary_branches, String).ilike(f"%{b.id}%"),
                 cast(Employee.meta_data, String).ilike(f"%{b.id}%")
             ),
@@ -1721,15 +1744,13 @@ def get_ho_organisations_matrix(
 
         emp_absent = max(0, total_emp - emp_present - emp_leave)
 
-        # 2. Students in this branch
+        # 2. Students strictly in this branch
         students = db.query(student).filter(
             or_(
                 student.tenant_id == b.id,
                 student.branch_id == b.id,
-                student.primary_vahd_location == b.branch_name,
-                student.primary_vahd_location == b.vahd_name if b.vahd_name else False,
+                (student.primary_vahd_location.ilike(f"%{b.vahd_name}%") if b.vahd_name else False) & student.branch_id.is_(None),
                 student.owner_id == b.owner_id if b.owner_id else False,
-                student.ho_id == b.ho_id if b.ho_id else False
             ),
             or_(func.upper(student.status) == "ACTIVE", student.status == "ACTIVE", student.status == "Active", student.status.is_(None))
         ).all()

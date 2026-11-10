@@ -113,18 +113,23 @@ class HrmsService:
                 u = db.query(User).filter(func.lower(User.email) == t.email.strip().lower()).first()
 
             b = None
-            if t.primary_vahd_location:
+            # Priority 1: Use tenant_id directly (most precise - it's the branch UUID)
+            if t.tenant_id:
+                b = db.query(vahdBranch).filter(vahdBranch.id == t.tenant_id).first()
+            # Priority 2: Use primary_vahd_location but only match by vahd_name (unique display name)
+            # NEVER match by branch_name alone - multiple branches can share same branch_name (e.g. 'bng')
+            if not b and t.primary_vahd_location:
                 b = db.query(vahdBranch).filter(
                     or_(
                         vahdBranch.id == t.primary_vahd_location,
-                        vahdBranch.branch_name == t.primary_vahd_location,
                         vahdBranch.vahd_name == t.primary_vahd_location
                     )
                 ).first()
 
-            t_branch_id = (u.branch_id if u and u.branch_id else None) or (b.id if b else None)
-            t_owner_id = (u.owner_id if u and u.owner_id else None) or (b.owner_id if b else None)
-            t_ho_id = (u.ho_id if u and u.ho_id else None) or (b.ho_id if b else None)
+            # Priority: tenant_id from employeeProfile > user.branch_id > branch lookup
+            t_branch_id = (b.id if b else None) or (u.branch_id if u and u.branch_id else None)
+            t_owner_id = (b.owner_id if b else None) or (u.owner_id if u and u.owner_id else None)
+            t_ho_id = (b.ho_id if b else None) or (u.ho_id if u and u.ho_id else None)
 
             existing_emp = db.query(Employee).filter(
                 (Employee.email.ilike(t.email)) | (Employee.id == f"emp_{t.id}")
@@ -187,6 +192,78 @@ class HrmsService:
                 )
                 db.add(new_emp)
 
+        # 3. Two-way synchronization: Upsert each HRMS Employee into employeeProfile
+        all_hrms_emps = db.query(Employee).all()
+        for emp in all_hrms_emps:
+            clean_email = (emp.email or "").strip().lower()
+            if not clean_email and not emp.id:
+                continue
+
+            tr_id = emp.id.replace("emp_", "")
+            existing_ep = db.query(employeeProfile).filter(
+                or_(
+                    employeeProfile.id == tr_id,
+                    employeeProfile.id == emp.id,
+                    (func.lower(employeeProfile.email) == clean_email if clean_email else False)
+                )
+            ).first()
+
+            matched_u = db.query(User).filter(func.lower(User.email) == clean_email).first() if clean_email else None
+            user_id_val = matched_u.id if matched_u else None
+
+            # Determine branch name and id
+            b_obj = None
+            if emp.branch_id:
+                b_obj = db.query(vahdBranch).filter(vahdBranch.id == emp.branch_id).first()
+            if not b_obj and emp.vahd_branch:
+                b_obj = db.query(vahdBranch).filter(
+                    or_(vahdBranch.branch_name == emp.vahd_branch, vahdBranch.vahd_name == emp.vahd_branch)
+                ).first()
+
+            loc = emp.vahd_branch or (b_obj.branch_name if b_obj else "") or (b_obj.vahd_name if b_obj else "")
+            tenant = emp.branch_id or (b_obj.id if b_obj else None) or emp.tenant_id
+
+            if not existing_ep:
+                # Extract any bank details from meta_data if present
+                meta = emp.meta_data or {}
+                bank_info = meta.get("bank_details") if isinstance(meta, dict) else {}
+                bank_acc = bank_info.get("account_number") or ""
+                bank_ifsc = bank_info.get("ifsc_code") or ""
+
+                emp_role = str(getattr(emp, "role", None) or (emp.meta_data.get("post_details", {}).get("role") if isinstance(emp.meta_data, dict) else None) or "EMPLOYEE").upper()
+                emp_spec = emp.designation or emp.department or ""
+                emp_active = (str(emp.status or "").strip().lower() == "active") if emp.status else True
+
+                new_ep = employeeProfile(
+                    id=tr_id if tr_id.startswith("tr_") else f"tr_{tr_id}",
+                    tenant_id=tenant,
+                    user_id=user_id_val,
+                    full_name=f"{emp.first_name or ''} {emp.last_name or ''}".strip(),
+                    email=clean_email,
+                    phone=emp.phone or "",
+                    gender=emp.gender or "",
+                    role=emp_role,
+                    specialization=emp_spec,
+                    primary_vahd_location=loc,
+                    base_monthly_salary=float(emp.salary or 0.0),
+                    bank_account_no=bank_acc,
+                    bank_ifsc=bank_ifsc,
+                    is_active=emp_active,
+                    created_at=emp.created_at if hasattr(emp, "created_at") and emp.created_at else datetime.now(IST).replace(tzinfo=None)
+                )
+                db.add(new_ep)
+            else:
+                if tenant and not existing_ep.tenant_id:
+                    existing_ep.tenant_id = tenant
+                if loc and not existing_ep.primary_vahd_location:
+                    existing_ep.primary_vahd_location = loc
+                if emp.phone and not existing_ep.phone:
+                    existing_ep.phone = emp.phone
+                if emp.gender and not existing_ep.gender:
+                    existing_ep.gender = emp.gender
+                if user_id_val and not existing_ep.user_id:
+                    existing_ep.user_id = user_id_val
+
         db.commit()
 
     @staticmethod
@@ -221,8 +298,7 @@ class HrmsService:
                 conditions = [Employee.ho_id == ho_target]
                 if ho_branch_ids:
                     conditions.append(Employee.branch_id.in_(ho_branch_ids))
-                if ho_branch_names:
-                    conditions.append(Employee.vahd_branch.in_(ho_branch_names))
+                    conditions.append(Employee.tenant_id.in_(ho_branch_ids))
                 # Also include unassigned or organization-wide enterprise employees
                 conditions.append(Employee.ho_id.is_(None))
                 conditions.append(Employee.ho_id == "")
@@ -234,25 +310,15 @@ class HrmsService:
                         or_(vahdBranch.id == branch_id, vahdBranch.branch_name == branch_id, vahdBranch.vahd_name == branch_id)
                     ).first()
                     b_ids = [branch_id]
-                    b_names = [branch_id]
                     if matched_b:
                         b_ids.append(matched_b.id)
-                        if matched_b.branch_name:
-                            b_names.append(matched_b.branch_name)
-                        if matched_b.vahd_name:
-                            b_names.append(matched_b.vahd_name)
                     b_conds = [
                         Employee.tenant_id.in_(b_ids),
                         Employee.branch_id.in_(b_ids),
                     ]
-                    if b_names:
-                        b_conds.append(Employee.vahd_branch.in_(b_names))
                     for bid in b_ids:
                         b_conds.append(cast(Employee.secondary_branches, String).ilike(f"%{bid}%"))
                         b_conds.append(cast(Employee.meta_data, String).ilike(f"%{bid}%"))
-                    for bn in b_names:
-                        b_conds.append(cast(Employee.secondary_branches, String).ilike(f"%{bn}%"))
-                        b_conds.append(cast(Employee.meta_data, String).ilike(f"%{bn}%"))
                     query = query.filter(or_(*b_conds))
             elif user_role in ["OWNER"]:
                 owner_branches = db.query(vahdBranch).filter(
@@ -261,13 +327,11 @@ class HrmsService:
                         vahdBranch.id == current_user.branch_id
                     )
                 ).all()
-                owner_branch_names = [b.branch_name for b in owner_branches if b.branch_name] + [b.vahd_name for b in owner_branches if b.vahd_name]
                 owner_branch_ids = [b.id for b in owner_branches if b.id]
                 conditions = [Employee.owner_id == current_user.id]
                 if owner_branch_ids:
                     conditions.append(Employee.branch_id.in_(owner_branch_ids))
-                if owner_branch_names:
-                    conditions.append(Employee.vahd_branch.in_(owner_branch_names))
+                    conditions.append(Employee.tenant_id.in_(owner_branch_ids))
                 # Also include unassigned or organization-wide enterprise employees
                 conditions.append(Employee.owner_id.is_(None))
                 conditions.append(Employee.owner_id == "")
@@ -278,25 +342,15 @@ class HrmsService:
                         or_(vahdBranch.id == branch_id, vahdBranch.branch_name == branch_id, vahdBranch.vahd_name == branch_id)
                     ).first()
                     b_ids = [branch_id]
-                    b_names = [branch_id]
                     if matched_b:
                         b_ids.append(matched_b.id)
-                        if matched_b.branch_name:
-                            b_names.append(matched_b.branch_name)
-                        if matched_b.vahd_name:
-                            b_names.append(matched_b.vahd_name)
                     b_conds = [
                         Employee.tenant_id.in_(b_ids),
                         Employee.branch_id.in_(b_ids),
                     ]
-                    if b_names:
-                        b_conds.append(Employee.vahd_branch.in_(b_names))
                     for bid in b_ids:
                         b_conds.append(cast(Employee.secondary_branches, String).ilike(f"%{bid}%"))
                         b_conds.append(cast(Employee.meta_data, String).ilike(f"%{bid}%"))
-                    for bn in b_names:
-                        b_conds.append(cast(Employee.secondary_branches, String).ilike(f"%{bn}%"))
-                        b_conds.append(cast(Employee.meta_data, String).ilike(f"%{bn}%"))
                     query = query.filter(or_(*b_conds))
         elif ho_id:
             query = query.filter(Employee.ho_id == ho_id)
@@ -305,25 +359,15 @@ class HrmsService:
                 or_(vahdBranch.id == branch_id, vahdBranch.branch_name == branch_id, vahdBranch.vahd_name == branch_id)
             ).first()
             b_ids = [branch_id]
-            b_names = [branch_id]
             if matched_b:
                 b_ids.append(matched_b.id)
-                if matched_b.branch_name:
-                    b_names.append(matched_b.branch_name)
-                if matched_b.vahd_name:
-                    b_names.append(matched_b.vahd_name)
             b_conds = [
                 Employee.tenant_id.in_(b_ids),
                 Employee.branch_id.in_(b_ids),
             ]
-            if b_names:
-                b_conds.append(Employee.vahd_branch.in_(b_names))
             for bid in b_ids:
                 b_conds.append(cast(Employee.secondary_branches, String).ilike(f"%{bid}%"))
                 b_conds.append(cast(Employee.meta_data, String).ilike(f"%{bid}%"))
-            for bn in b_names:
-                b_conds.append(cast(Employee.secondary_branches, String).ilike(f"%{bn}%"))
-                b_conds.append(cast(Employee.meta_data, String).ilike(f"%{bn}%"))
             query = query.filter(or_(*b_conds))
 
         if department and department != "All Departments":
@@ -683,6 +727,7 @@ class HrmsService:
                 salary=salary,
                 vahd_branch=vahd_branch,
                 branch_id=branch_id,
+                tenant_id=branch_id,
                 secondary_branches=sec_branches,
                 ho_id=ho_id,
                 owner_id=owner_id,
@@ -722,6 +767,7 @@ class HrmsService:
                 emp.vahd_branch = vahd_branch
             if branch_id:
                 emp.branch_id = branch_id
+                emp.tenant_id = branch_id
             if ho_id:
                 emp.ho_id = ho_id
             if owner_id:
@@ -796,18 +842,40 @@ class HrmsService:
 
     @staticmethod
     def delete_employee(db: Session, emp_id: str) -> bool:
-        emp = db.query(Employee).filter(Employee.id == emp_id).first()
-        if not emp:
+        clean_id = str(emp_id).strip()
+        tr_id = clean_id.replace("emp_", "")
+        emp_id_with_prefix = f"emp_{tr_id}" if not clean_id.startswith("emp_") else clean_id
+
+        emp = db.query(Employee).filter(
+            or_(
+                Employee.id == clean_id,
+                Employee.id == emp_id_with_prefix,
+                Employee.id == tr_id
+            )
+        ).first()
+
+        ep = db.query(employeeProfile).filter(
+            or_(
+                employeeProfile.id == clean_id,
+                employeeProfile.id == tr_id,
+                (employeeProfile.id == f"tr_{tr_id}" if not tr_id.startswith("tr_") else False),
+                (func.lower(employeeProfile.email) == func.lower(emp.email) if emp and emp.email else False)
+            )
+        ).first()
+
+        if not emp and not ep:
             return False
 
-        employee_id = emp_id.replace("emp_", "")
-        employee = db.query(employeeProfile).filter(
-            (employeeProfile.id == employee_id) | (employeeProfile.email == emp.email)
-        ).first()
-        if employee:
-            db.delete(employee)
+        if ep:
+            try:
+                db.query(PayrollInvoice).filter(PayrollInvoice.employee_id == ep.id).delete(synchronize_session=False)
+            except Exception:
+                pass
+            db.delete(ep)
 
-        db.delete(emp)
+        if emp:
+            db.delete(emp)
+
         db.commit()
         return True
 
@@ -2437,7 +2505,9 @@ class HrmsService:
         department: Optional[str] = None,
         district: Optional[str] = None,
         reason: Optional[str] = None,
-        search: Optional[str] = None
+        search: Optional[str] = None,
+        branch_id: Optional[str] = None,
+        ho_id: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         query = db.query(AttendanceCorrection)
 
@@ -2461,10 +2531,42 @@ class HrmsService:
             query = query.filter(AttendanceCorrection.department.ilike(f"%{department.strip()}%"))
 
         if district and district.strip() and district.lower() != "all" and "all district" not in district.lower():
+            clean_d = district.strip()
             query = query.filter(
-                (AttendanceCorrection.district.ilike(f"%{district.strip()}%")) |
-                (AttendanceCorrection.place.ilike(f"%{district.strip()}%"))
+                (AttendanceCorrection.district.ilike(f"%{clean_d}%")) |
+                (AttendanceCorrection.place.ilike(f"%{clean_d}%")) |
+                (AttendanceCorrection.tenant_id == clean_d)
             )
+
+        if branch_id and str(branch_id).lower() not in ["all", "", "none", "undefined", "null"]:
+            b_obj = db.query(vahdBranch).filter(
+                or_(
+                    vahdBranch.id == branch_id,
+                    vahdBranch.branch_name == branch_id,
+                    vahdBranch.vahd_name == branch_id
+                )
+            ).first()
+            branch_conditions = [AttendanceCorrection.tenant_id == branch_id]
+            if b_obj:
+                branch_conditions.append(AttendanceCorrection.tenant_id == b_obj.id)
+                if b_obj.branch_name:
+                    branch_conditions.append(AttendanceCorrection.place.ilike(f"%{b_obj.branch_name}%"))
+                    branch_conditions.append(AttendanceCorrection.district.ilike(f"%{b_obj.branch_name}%"))
+                if b_obj.vahd_name:
+                    branch_conditions.append(AttendanceCorrection.place.ilike(f"%{b_obj.vahd_name}%"))
+                    branch_conditions.append(AttendanceCorrection.district.ilike(f"%{b_obj.vahd_name}%"))
+                if getattr(b_obj, "district", None):
+                    branch_conditions.append(AttendanceCorrection.district.ilike(f"%{b_obj.district}%"))
+                emp_sub = [e[0] for e in db.query(Employee.id).filter(or_(Employee.branch_id == b_obj.id, Employee.vahd_branch.ilike(f"%{b_obj.branch_name}%"))).all()]
+                stu_sub = [s[0] for s in db.query(student.id).filter(or_(student.branch_id == b_obj.id, student.primary_vahd_location.ilike(f"%{b_obj.branch_name}%"))).all()]
+                m_ids = emp_sub + stu_sub
+                if m_ids:
+                    branch_conditions.append(AttendanceCorrection.person_id.in_(m_ids))
+            else:
+                branch_conditions.append(AttendanceCorrection.place.ilike(f"%{branch_id}%"))
+                branch_conditions.append(AttendanceCorrection.district.ilike(f"%{branch_id}%"))
+
+            query = query.filter(or_(*branch_conditions))
 
         if reason and reason.strip() and reason.lower() != "all" and "all reason" not in reason.lower():
             query = query.filter(AttendanceCorrection.reason.ilike(f"%{reason.strip()}%"))
@@ -2509,7 +2611,14 @@ class HrmsService:
         return result
 
     @staticmethod
-    def get_attendance_corrections_stats(db: Session, date_str: Optional[str] = None) -> Dict[str, int]:
+    def get_attendance_corrections_stats(
+        db: Session,
+        date_str: Optional[str] = None,
+        person_type: Optional[str] = None,
+        district: Optional[str] = None,
+        branch_id: Optional[str] = None,
+        ho_id: Optional[str] = None
+    ) -> Dict[str, int]:
         query = db.query(AttendanceCorrection)
         if date_str and date_str.strip():
             try:
@@ -2520,6 +2629,47 @@ class HrmsService:
                 query = query.filter(AttendanceCorrection.date == d_obj)
             except Exception:
                 pass
+
+        if person_type and person_type.strip() and person_type.upper() != "ALL":
+            query = query.filter(AttendanceCorrection.person_type.ilike(person_type.strip()))
+
+        if district and district.strip() and district.lower() != "all" and "all district" not in district.lower():
+            clean_d = district.strip()
+            query = query.filter(
+                (AttendanceCorrection.district.ilike(f"%{clean_d}%")) |
+                (AttendanceCorrection.place.ilike(f"%{clean_d}%")) |
+                (AttendanceCorrection.tenant_id == clean_d)
+            )
+
+        if branch_id and str(branch_id).lower() not in ["all", "", "none", "undefined", "null"]:
+            b_obj = db.query(vahdBranch).filter(
+                or_(
+                    vahdBranch.id == branch_id,
+                    vahdBranch.branch_name == branch_id,
+                    vahdBranch.vahd_name == branch_id
+                )
+            ).first()
+            branch_conditions = [AttendanceCorrection.tenant_id == branch_id]
+            if b_obj:
+                branch_conditions.append(AttendanceCorrection.tenant_id == b_obj.id)
+                if b_obj.branch_name:
+                    branch_conditions.append(AttendanceCorrection.place.ilike(f"%{b_obj.branch_name}%"))
+                    branch_conditions.append(AttendanceCorrection.district.ilike(f"%{b_obj.branch_name}%"))
+                if b_obj.vahd_name:
+                    branch_conditions.append(AttendanceCorrection.place.ilike(f"%{b_obj.vahd_name}%"))
+                    branch_conditions.append(AttendanceCorrection.district.ilike(f"%{b_obj.vahd_name}%"))
+                if getattr(b_obj, "district", None):
+                    branch_conditions.append(AttendanceCorrection.district.ilike(f"%{b_obj.district}%"))
+                emp_sub = [e[0] for e in db.query(Employee.id).filter(or_(Employee.branch_id == b_obj.id, Employee.vahd_branch.ilike(f"%{b_obj.branch_name}%"))).all()]
+                stu_sub = [s[0] for s in db.query(student.id).filter(or_(student.branch_id == b_obj.id, student.primary_vahd_location.ilike(f"%{b_obj.branch_name}%"))).all()]
+                m_ids = emp_sub + stu_sub
+                if m_ids:
+                    branch_conditions.append(AttendanceCorrection.person_id.in_(m_ids))
+            else:
+                branch_conditions.append(AttendanceCorrection.place.ilike(f"%{branch_id}%"))
+                branch_conditions.append(AttendanceCorrection.district.ilike(f"%{branch_id}%"))
+
+            query = query.filter(or_(*branch_conditions))
 
         all_recs = query.all()
         total = len(all_recs)
@@ -2581,6 +2731,7 @@ class HrmsService:
 
         corr = AttendanceCorrection(
             id=f"corr_{uuid.uuid4().hex[:8]}",
+            tenant_id=payload.get("tenant_id") or payload.get("branch_id") or None,
             person_type=str(payload.get("person_type") or "EMPLOYEE").upper(),
             person_id=payload.get("person_id") or None,
             person_name=str(payload.get("person_name") or "").strip(),
@@ -3031,8 +3182,13 @@ class HrmsService:
         }
 
     @staticmethod
-    def get_leaves(db: Session, status: Optional[str] = None) -> List[Dict[str, Any]]:
-        """Returns leave applications enriched with policy metadata, employee gender, and paid/unpaid tags."""
+    def get_leaves(
+        db: Session,
+        status: Optional[str] = None,
+        branch_id: Optional[str] = None,
+        user_type: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """Returns leave applications enriched with policy metadata, employee/student info, and paid/unpaid tags."""
         query = db.query(LeaveRequest)
         if status and status.upper() != "ALL":
             query = query.filter(LeaveRequest.status.ilike(status))
@@ -3041,6 +3197,7 @@ class HrmsService:
         for l in leaves:
             emp = db.query(Employee).filter(Employee.id == l.employee_id).first()
             employee = None
+            stu = None
             if not emp:
                 clean_id = l.employee_id.replace("emp_", "")
                 employee = db.query(employeeProfile).filter(
@@ -3048,12 +3205,58 @@ class HrmsService:
                 ).first()
                 if employee:
                     emp = db.query(Employee).filter(Employee.id == f"emp_{employee.id}").first()
+                else:
+                    stu = db.query(student).filter(
+                        (student.id == l.employee_id) | (student.member_code == l.employee_id)
+                    ).first()
+            else:
+                if emp.designation == "Student" or str(emp.id).startswith("cust_") or str(emp.id).startswith("stu_"):
+                    stu = db.query(student).filter(student.id == emp.id).first()
 
-            emp_name = f"{emp.first_name} {emp.last_name or ''}".strip() if emp else (employee.full_name if employee else "")
-            emp_code = emp.code if emp else (f"TR-{employee.id.replace('tr_', '').upper()}" if employee else "")
-            emp_gender = emp.gender if emp else (employee.gender if employee and employee.gender else "Male")
-            dept = emp.department if emp else (employee.primary_vahd_location if employee and employee.primary_vahd_location else "")
-            designation = emp.designation if emp else (employee.role if employee and employee.role else "")
+            is_student_record = bool(
+                stu or
+                (emp and emp.designation == "Student") or
+                str(l.employee_id).startswith("cust_") or
+                str(l.employee_id).startswith("stu_")
+            )
+            row_user_type = "student" if is_student_record else "employee"
+
+            # Filter by user_type ('student' vs 'employee')
+            if user_type and user_type.lower() != "all":
+                if row_user_type != user_type.lower():
+                    continue
+
+            # Branch isolation filter
+            record_branch = (emp.branch_id if emp else None) or (stu.branch_id if stu else None)
+            if branch_id and branch_id != "all":
+                if record_branch and record_branch != branch_id:
+                    continue
+
+            emp_name = (
+                (stu.full_name if stu and stu.full_name else None) or
+                (f"{emp.first_name or ''} {emp.last_name or ''}".strip() if emp else None) or
+                (employee.full_name if employee and employee.full_name else "")
+            )
+            emp_code = (
+                (stu.member_code if stu and stu.member_code else None) or
+                (emp.code if emp and emp.code else None) or
+                (f"TR-{employee.id.replace('tr_', '').upper()}" if employee else "")
+            )
+            emp_gender = (
+                (stu.gender if stu and stu.gender else None) or
+                (emp.gender if emp and emp.gender else None) or
+                (employee.gender if employee and employee.gender else "")
+            )
+            dept = (
+                (stu.qualification or stu.specialization or "" if stu else None) or
+                (emp.department if emp and emp.department else None) or
+                (employee.primary_vahd_location if employee and employee.primary_vahd_location else "")
+            )
+            designation = (
+                (emp.designation if emp and emp.designation else None) or
+                (employee.role if employee and employee.role else None) or
+                ("Student" if is_student_record else "")
+            )
 
             # Match leave policy for code / paid status
             lt = None
@@ -3073,6 +3276,8 @@ class HrmsService:
                 "employee_gender": emp_gender or "Male",
                 "department": dept or "",
                 "designation": designation or "",
+                "user_type": row_user_type,
+                "is_student": is_student_record,
                 "leave_type_id": l.leave_type_id or (lt.id if lt else ""),
                 "leave_type": l.leave_type or (lt.name if lt else ""),
                 "leave_type_code": lt.code if lt else "",
@@ -3097,31 +3302,56 @@ class HrmsService:
         """Applies for leave with dynamic policy validation & eligibility check."""
         emp_id = str(payload.get("employee_id") or "").strip()
         if not emp_id:
-            raise ValueError("Employee / employee ID is required.")
+            raise ValueError("Employee / student ID is required.")
 
-        # Ensure employee exists or resolve employee
+        # Ensure employee exists or resolve employee / student
         emp = db.query(Employee).filter((Employee.id == emp_id) | (Employee.code == emp_id) | (Employee.email.ilike(emp_id))).first()
         if not emp:
-            clean_tid = emp_id.replace("emp_", "")
-            employee = db.query(employeeProfile).filter((employeeProfile.id == emp_id) | (employeeProfile.id == clean_tid) | (employeeProfile.email.ilike(emp_id))).first()
-            if employee:
-                emp_id = f"emp_{employee.id}"
-                emp = db.query(Employee).filter(Employee.id == emp_id).first()
-                if not emp:
-                    emp = Employee(
-                        id=emp_id,
-                        code=f"TR-{employee.id.replace('tr_', '').upper()}",
-                        first_name=employee.full_name,
-                        email=employee.email,
-                        phone=employee.phone or "",
-                        gender=employee.gender or "Male",
-                        designation=employee.role or employee.specialization or "",
-                        department=employee.primary_vahd_location or "",
-                        status="Active",
-                        salary=float(employee.base_monthly_salary or 0.0)
-                    )
-                    db.add(emp)
-                    db.flush()
+            # Check if applicant is a student
+            stu = db.query(student).filter(
+                (student.id == emp_id) | (student.member_code == emp_id) | (student.email.ilike(emp_id))
+            ).first()
+            if stu:
+                emp_id = stu.id
+                full = (stu.full_name or "").strip()
+                parts = full.split(" ", 1) if full else []
+                emp = Employee(
+                    id=stu.id,
+                    code=stu.member_code or stu.id,
+                    first_name=parts[0] if parts else "",
+                    last_name=parts[1] if len(parts) > 1 else "",
+                    email=stu.email or "",
+                    phone=stu.phone or "",
+                    gender=stu.gender or "",
+                    designation=getattr(stu, "designation", None) or getattr(stu, "qualification", None) or "",
+                    department=stu.qualification or stu.specialization or "",
+                    tenant_id=stu.tenant_id,
+                    branch_id=stu.branch_id,
+                    status=stu.status or "",
+                )
+                db.add(emp)
+                db.flush()
+            else:
+                clean_tid = emp_id.replace("emp_", "")
+                employee = db.query(employeeProfile).filter((employeeProfile.id == emp_id) | (employeeProfile.id == clean_tid) | (employeeProfile.email.ilike(emp_id))).first()
+                if employee:
+                    emp_id = f"emp_{employee.id}"
+                    emp = db.query(Employee).filter(Employee.id == emp_id).first()
+                    if not emp:
+                        emp = Employee(
+                            id=emp_id,
+                            code=f"TR-{employee.id.replace('tr_', '').upper()}",
+                            first_name=employee.full_name,
+                            email=employee.email,
+                            phone=employee.phone or "",
+                            gender=employee.gender or "Male",
+                            designation=employee.role or employee.specialization or "",
+                            department=employee.primary_vahd_location or "",
+                            status="Active",
+                            salary=float(employee.base_monthly_salary or 0.0)
+                        )
+                        db.add(emp)
+                        db.flush()
 
         start_str = payload.get("start_date")
         end_str = payload.get("end_date")
@@ -4257,15 +4487,48 @@ class HrmsService:
         db: Session,
         year: Optional[int] = None,
         holiday_type: Optional[str] = None,
-        search: Optional[str] = None
+        search: Optional[str] = None,
+        institution_type: Optional[str] = None,
+        branch_id: Optional[str] = None,
+        ho_id: Optional[str] = None,
+        current_user: Any = None
     ) -> List[Dict[str, Any]]:
         query = db.query(CompanyHoliday)
         if year:
+            existing_count = query.filter(CompanyHoliday.year == year).count()
+            if existing_count == 0:
+                try:
+                    HrmsService.preseed_holidays(db, int(year))
+                except Exception as seed_err:
+                    print(f"[Calendar] Preseed warning: {seed_err}")
             query = query.filter(CompanyHoliday.year == year)
         if holiday_type and holiday_type.upper() != "ALL":
-            query = query.filter(CompanyHoliday.holiday_type.ilike(f"%{holiday_type}%"))
+            query = query.filter(CompanyHoliday.holiday_type.ilike(f"%{holiday_type.strip()}%"))
         if search:
             query = query.filter(CompanyHoliday.name.ilike(f"%{search.strip()}%"))
+
+        if institution_type and institution_type.strip() and institution_type.strip().lower() not in ["all", "all holidays (any institution)"]:
+            inst_clean = institution_type.strip()
+            query = query.filter(
+                or_(
+                    CompanyHoliday.institution_type == inst_clean,
+                    CompanyHoliday.branch_id == inst_clean,
+                    CompanyHoliday.institution_type == "All",
+                    CompanyHoliday.institution_type == "All holidays (any institution)",
+                    CompanyHoliday.institution_type.is_(None)
+                )
+            )
+        elif branch_id:
+            query = query.filter(
+                or_(
+                    CompanyHoliday.branch_id == branch_id,
+                    CompanyHoliday.branch_id.is_(None),
+                    CompanyHoliday.institution_type == "All",
+                    CompanyHoliday.institution_type == "All holidays (any institution)",
+                    CompanyHoliday.institution_type.is_(None)
+                )
+            )
+
         holidays = query.order_by(CompanyHoliday.date.asc()).all()
         return [
             {
@@ -4275,7 +4538,11 @@ class HrmsService:
                 "formatted_date": h.date.strftime("%d %b, %Y"),
                 "day_name": h.date.strftime("%A"),
                 "year": h.year,
-                "holiday_type": h.holiday_type or "",
+                "holiday_type": "India holiday" if (h.holiday_type and any(k in (h.holiday_type or "").lower() for k in ["india", "national", "festival", "gazetted"])) else ("Other holiday" if (h.holiday_type and any(k in (h.holiday_type or "").lower() for k in ["other", "weekend", "sunday", "saturday"])) else (h.holiday_type or "India holiday")),
+                "raw_holiday_type": h.holiday_type or "India holiday",
+                "institution_type": h.institution_type or "All holidays (any institution)",
+                "branch_id": h.branch_id,
+                "ho_id": h.ho_id,
                 "description": h.description or "",
                 "is_optional": bool(h.is_optional)
             }
@@ -4283,7 +4550,15 @@ class HrmsService:
         ]
 
     @staticmethod
-    def save_holiday(db: Session, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def save_holiday(db: Session, payload: Dict[str, Any], current_user: Any = None) -> Dict[str, Any]:
+        # Permission check for Owner
+        if current_user and getattr(current_user, "role", "").lower() == "owner":
+            perms = getattr(current_user, "permissions", None) or {}
+            is_new = not bool(payload.get("id"))
+            perm_key = "calendar.add" if is_new else "calendar.edit"
+            if perms.get(perm_key) is False or perms.get("calendar.view") is False:
+                raise PermissionError("You do not have permission to add or modify calendar holidays. Please contact Head Office.")
+
         name = (payload.get("name") or "").strip()
         date_str = (payload.get("date") or "").strip()
         if not name or not date_str:
@@ -4293,6 +4568,18 @@ class HrmsService:
         year = int(payload.get("year") or d_obj.year)
 
         hol_id = payload.get("id")
+        institution_type = (payload.get("institution_type") or "All holidays (any institution)").strip()
+        branch_id = payload.get("branch_id")
+        if not branch_id and institution_type not in ["All", "All holidays (any institution)"]:
+            branch_match = db.query(vahdBranch).filter(
+                or_(vahdBranch.id == institution_type, vahdBranch.branch_name == institution_type, vahdBranch.vahd_name == institution_type)
+            ).first()
+            if branch_match:
+                branch_id = branch_match.id
+
+        ho_id = payload.get("ho_id") or (getattr(current_user, "ho_id", None) if current_user else None)
+        h_type = (payload.get("holiday_type") or "Other holiday").strip()
+
         hol = None
         if hol_id:
             hol = db.query(CompanyHoliday).filter(CompanyHoliday.id == hol_id).first()
@@ -4302,7 +4589,10 @@ class HrmsService:
                 name=name,
                 date=d_obj,
                 year=year,
-                holiday_type=payload.get("holiday_type") or "",
+                holiday_type=h_type,
+                institution_type=institution_type,
+                branch_id=branch_id,
+                ho_id=ho_id,
                 description=payload.get("description") or "",
                 is_optional=bool(payload.get("is_optional", False))
             )
@@ -4311,12 +4601,17 @@ class HrmsService:
             hol.name = name
             hol.date = d_obj
             hol.year = year
-            if "holiday_type" in payload:
-                hol.holiday_type = payload["holiday_type"]
+            hol.holiday_type = h_type
+            hol.institution_type = institution_type
+            if branch_id is not None:
+                hol.branch_id = branch_id
+            if ho_id is not None:
+                hol.ho_id = ho_id
             if "description" in payload:
                 hol.description = payload["description"]
             if "is_optional" in payload:
                 hol.is_optional = bool(payload["is_optional"])
+            hol.updated_at = datetime.utcnow()
         db.commit()
         db.refresh(hol)
         return {
@@ -4324,65 +4619,212 @@ class HrmsService:
             "name": hol.name,
             "date": hol.date.strftime("%Y-%m-%d"),
             "formatted_date": hol.date.strftime("%d %b, %Y"),
+            "day_name": hol.date.strftime("%A"),
             "year": hol.year,
             "holiday_type": hol.holiday_type,
+            "institution_type": hol.institution_type,
+            "branch_id": hol.branch_id,
+            "ho_id": hol.ho_id,
             "description": hol.description,
             "is_optional": hol.is_optional
         }
 
     @staticmethod
-    def delete_holiday(db: Session, holiday_id: str) -> Dict[str, Any]:
+    def delete_holiday(db: Session, holiday_id: str, current_user: Any = None) -> Dict[str, Any]:
+        # Permission check for Owner
+        if current_user and getattr(current_user, "role", "").lower() == "owner":
+            perms = getattr(current_user, "permissions", None) or {}
+            if perms.get("calendar.delete") is False or perms.get("calendar.view") is False:
+                raise PermissionError("You do not have permission to delete calendar holidays. Please contact Head Office.")
+
         hol = db.query(CompanyHoliday).filter(CompanyHoliday.id == holiday_id).first()
         if not hol:
             raise ValueError("Holiday not found")
         db.delete(hol)
         db.commit()
-        return {"message": "Holiday deleted successfully", "id": holiday_id}
+        return {"success": True, "message": f"Holiday '{hol.name}' deleted successfully", "id": holiday_id}
 
     @staticmethod
-    def preseed_holidays(db: Session, target_year: int = 2026) -> Dict[str, Any]:
-        seed_data = {
-            2026: [
-                ("New Year's Day", "2026-01-01", "National", None),
-                ("Republic Day", "2026-01-26", "National", None),
-                ("Maha Shivratri", "2026-02-15", "Festival", None),
-                ("Holi", "2026-03-04", "Festival", None),
-                ("Eid ul-Fitr", "2026-03-21", "Festival", None),
-                ("Good Friday", "2026-04-03", "Public", None),
-                ("Dr. B.R. Ambedkar Jayanti", "2026-04-14", "National", None),
-                ("May Day / Labour Day", "2026-05-01", "Public", None),
-                ("Bakrid / Eid al-Adha", "2026-05-27", "Festival", None),
-                ("Muharram", "2026-06-26", "Festival", None),
-                ("Independence Day", "2026-08-15", "National", None),
-                ("Ganesh Chaturthi", "2026-09-07", "Festival", None),
-                ("Gandhi Jayanti", "2026-10-02", "National", None),
-                ("Dussehra (Vijayadashami)", "2026-10-20", "Festival", None),
-                ("Diwali (Deepavali)", "2026-11-08", "Festival", None),
-                ("Guru Nanak Jayanti", "2026-11-24", "Festival", None),
-                ("Christmas Day", "2026-12-25", "National", None),
-            ],
-            2027: [
-                ("New Year's Day", "2027-01-01", "National", None),
-                ("Republic Day", "2027-01-26", "National", None),
-                ("Holi", "2027-03-22", "Festival", None),
-                ("Eid ul-Fitr", "2027-03-10", "Festival", None),
-                ("Good Friday", "2027-03-26", "Public", None),
-                ("Dr. B.R. Ambedkar Jayanti", "2027-04-14", "National", None),
-                ("May Day / Labour Day", "2027-05-01", "Public", None),
-                ("Independence Day", "2027-08-15", "National", None),
-                ("Gandhi Jayanti", "2027-10-02", "National", None),
-                ("Dussehra", "2027-10-10", "Festival", None),
-                ("Diwali", "2027-10-29", "Festival", None),
-                ("Christmas Day", "2027-12-25", "National", None),
-            ]
-        }
-        items = seed_data.get(target_year, seed_data[2026])
-        inserted = 0
-        for name, d_str, h_type, desc in items:
-            d_obj = datetime.strptime(d_str, "%Y-%m-%d").date()
+    def upload_holidays(db: Session, file_content: bytes, filename: str, current_user: Any = None) -> Dict[str, Any]:
+        # Permission check for Owner
+        if current_user and getattr(current_user, "role", "").lower() == "owner":
+            perms = getattr(current_user, "permissions", None) or {}
+            if perms.get("calendar.import") is False or perms.get("calendar.add") is False:
+                raise PermissionError("You do not have permission to upload calendar holidays. Please contact Head Office.")
+
+        import io
+        import csv
+
+        records = []
+        fn_lower = (filename or "").lower()
+
+        if fn_lower.endswith(".csv"):
+            text_stream = io.StringIO(file_content.decode("utf-8", errors="replace"))
+            reader = csv.DictReader(text_stream)
+            for row in reader:
+                records.append(row)
+        elif fn_lower.endswith((".xlsx", ".xls")):
+            import openpyxl
+            wb = openpyxl.load_workbook(io.BytesIO(file_content), data_only=True)
+            ws = wb.active
+            rows = list(ws.iter_rows(values_only=True))
+            if rows:
+                headers = [str(h or "").strip().lower() for h in rows[0]]
+                for r in rows[1:]:
+                    if any(r):
+                        row_dict = {}
+                        for i, h in enumerate(headers):
+                            if i < len(r):
+                                val = r[i]
+                                if isinstance(val, (datetime, date)):
+                                    val = val.strftime("%Y-%m-%d")
+                                row_dict[h] = str(val or "").strip()
+                        records.append(row_dict)
+        else:
+            raise ValueError("Unsupported file format. Please upload a .csv or .xlsx file.")
+
+        inserted_count = 0
+        updated_count = 0
+
+        for r in records:
+            name = (
+                r.get("name") or r.get("holiday name") or r.get("holiday_name") or
+                r.get("title") or r.get("holiday") or ""
+            ).strip()
+            date_raw = (
+                r.get("date") or r.get("holiday date") or r.get("holiday_date") or ""
+            ).strip()
+            if not name or not date_raw:
+                continue
+
+            # Parse date flexibly
+            d_obj = None
+            for fmt in ["%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%m/%d/%Y", "%Y/%m/%d", "%d.%m.%Y"]:
+                try:
+                    d_obj = datetime.strptime(date_raw, fmt).date()
+                    break
+                except Exception:
+                    pass
+
+            if not d_obj:
+                continue
+
+            h_type = (
+                r.get("holiday_type") or r.get("holiday type") or r.get("type") or "Holiday"
+            ).strip() or "Holiday"
+
+            inst_type = (
+                r.get("institution_type") or r.get("institution type") or r.get("institution") or
+                r.get("branch") or r.get("organization") or "All holidays (any institution)"
+            ).strip()
+            desc = (r.get("description") or "").strip()
+
             existing = db.query(CompanyHoliday).filter(
                 (CompanyHoliday.name == name) & (CompanyHoliday.date == d_obj)
             ).first()
+
+            if not existing:
+                hol = CompanyHoliday(
+                    id=f"hol_{uuid.uuid4().hex[:8]}",
+                    name=name,
+                    date=d_obj,
+                    year=d_obj.year,
+                    holiday_type=h_type,
+                    institution_type=inst_type,
+                    description=desc,
+                    is_optional=False
+                )
+                db.add(hol)
+                inserted_count += 1
+            else:
+                existing.holiday_type = h_type
+                existing.institution_type = inst_type
+                if desc:
+                    existing.description = desc
+                existing.updated_at = datetime.utcnow()
+                updated_count += 1
+
+        db.commit()
+        return {
+            "success": True,
+            "message": f"Successfully processed {len(records)} records ({inserted_count} added, {updated_count} updated).",
+            "inserted_count": inserted_count,
+            "updated_count": updated_count
+        }
+
+    @staticmethod
+    def preseed_holidays(db: Session, target_year: int = 2026) -> Dict[str, Any]:
+        import calendar as py_cal
+
+        # 1. Canonical Indian National, Festival, and Regional Public Holidays
+        india_holidays = [
+            ("New Year's Day", f"{target_year}-01-01", "India holiday", "Public Holiday"),
+            ("Bhogi", f"{target_year}-01-14", "India holiday", "Sankranti Harvest Festival"),
+            ("Sankranti / Pongal", f"{target_year}-01-15", "India holiday", "Makar Sankranti Festival"),
+            ("Kanuma", f"{target_year}-01-16", "India holiday", "Cattle Festival"),
+            ("Republic Day", f"{target_year}-01-26", "India holiday", "National Holiday"),
+            ("Maha Shivratri", f"{target_year}-02-15", "India holiday", "Religious Festival"),
+            ("Holi", f"{target_year}-03-04", "India holiday", "Festival of Colors"),
+            ("Ugadi / Gudi Padwa", f"{target_year}-03-19", "India holiday", "Telugu New Year"),
+            ("Eid ul-Fitr (Ramzan)", f"{target_year}-03-21", "India holiday", "Islamic Festival"),
+            ("Sri Rama Navami", f"{target_year}-03-28", "India holiday", "Religious Festival"),
+            ("Good Friday", f"{target_year}-04-03", "India holiday", "Christian Holiday"),
+            ("Dr. B.R. Ambedkar Jayanti", f"{target_year}-04-14", "India holiday", "National Holiday"),
+            ("May Day / Labour Day", f"{target_year}-05-01", "India holiday", "International Workers' Day"),
+            ("Bakrid / Eid al-Adha", f"{target_year}-05-27", "India holiday", "Islamic Festival"),
+            ("Muharram", f"{target_year}-06-26", "India holiday", "Islamic New Year"),
+            ("Bonalu", f"{target_year}-07-20", "India holiday", "Telangana Regional Festival"),
+            ("Independence Day", f"{target_year}-08-15", "India holiday", "National Holiday"),
+            ("Milad-un-Nabi", f"{target_year}-08-26", "India holiday", "Prophet's Birthday"),
+            ("Sri Krishna Janmashtami", f"{target_year}-09-04", "India holiday", "Religious Festival"),
+            ("Ganesh Chaturthi / Vinayaka Chavithi", f"{target_year}-09-07", "India holiday", "Vinayaka Chavithi"),
+            ("Bathukamma", f"{target_year}-09-28", "India holiday", "Floral Festival of Telangana"),
+            ("Mahatma Gandhi Jayanti", f"{target_year}-10-02", "India holiday", "National Holiday"),
+            ("Dussehra / Vijayadashami", f"{target_year}-10-20", "India holiday", "Vijayadashami Festival"),
+            ("Diwali / Deepavali", f"{target_year}-11-08", "India holiday", "Festival of Lights"),
+            ("Guru Nanak Jayanti", f"{target_year}-11-24", "India holiday", "Sikh Festival"),
+            ("Christmas Day", f"{target_year}-12-25", "India holiday", "National Public Holiday"),
+        ]
+
+        # 2. All Sundays of the Year (Categorized as 'Other holiday')
+        weekend_holidays = []
+        for month in range(1, 13):
+            month_cal = py_cal.monthcalendar(target_year, month)
+            # Find Second Saturday: 6th column (index 5)
+            sats = [w[5] for w in month_cal if w[5] != 0]
+            if len(sats) >= 2:
+                sec_sat_day = sats[1]
+                weekend_holidays.append((
+                    "Second Saturday",
+                    f"{target_year}-{month:02d}-{sec_sat_day:02d}",
+                    "Other holiday",
+                    "Second Saturday Official Holiday"
+                ))
+
+            # Find all Sundays: 7th column (index 6)
+            for w in month_cal:
+                if w[6] != 0:
+                    sun_day = w[6]
+                    weekend_holidays.append((
+                        "Sunday",
+                        f"{target_year}-{month:02d}-{sun_day:02d}",
+                        "Other holiday",
+                        "Weekly Rest Day"
+                    ))
+
+        all_items = india_holidays + weekend_holidays
+        inserted = 0
+
+        for name, d_str, h_type, desc in all_items:
+            try:
+                d_obj = datetime.strptime(d_str, "%Y-%m-%d").date()
+            except Exception:
+                continue
+
+            existing = db.query(CompanyHoliday).filter(
+                (CompanyHoliday.name == name) & (CompanyHoliday.date == d_obj)
+            ).first()
+
             if not existing:
                 db.add(CompanyHoliday(
                     id=f"hol_{uuid.uuid4().hex[:8]}",
@@ -4390,13 +4832,16 @@ class HrmsService:
                     date=d_obj,
                     year=target_year,
                     holiday_type=h_type,
+                    institution_type="All holidays (any institution)",
                     description=desc,
                     is_optional=False
                 ))
                 inserted += 1
             else:
                 existing.holiday_type = h_type
-                existing.description = None
+                if not existing.institution_type:
+                    existing.institution_type = "All holidays (any institution)"
+
         db.commit()
         return {
             "status": "success",
@@ -4456,19 +4901,12 @@ class HrmsService:
                     or_(vahdBranch.id == branch_id, vahdBranch.branch_name == branch_id, vahdBranch.vahd_name == branch_id)
                 ).first()
                 b_ids = [branch_id]
-                b_names = [branch_id]
                 if matched_b:
                     b_ids.append(matched_b.id)
-                    if matched_b.branch_name:
-                        b_names.append(matched_b.branch_name)
-                    if matched_b.vahd_name:
-                        b_names.append(matched_b.vahd_name)
                 b_conds = [
                     student.tenant_id.in_(b_ids),
                     student.branch_id.in_(b_ids),
                 ]
-                if b_names:
-                    b_conds.append(student.primary_vahd_location.in_(b_names))
                 stus_query = stus_query.filter(or_(*b_conds))
             if current_user and (current_user.role or "").strip().upper() == "OWNER":
                 stus_query = stus_query.filter(
@@ -5014,19 +5452,12 @@ class HrmsService:
                     or_(vahdBranch.id == branch_id, vahdBranch.branch_name == branch_id, vahdBranch.vahd_name == branch_id)
                 ).first()
                 b_ids = [branch_id]
-                b_names = [branch_id]
                 if matched_b:
                     b_ids.append(matched_b.id)
-                    if matched_b.branch_name:
-                        b_names.append(matched_b.branch_name)
-                    if matched_b.vahd_name:
-                        b_names.append(matched_b.vahd_name)
                 b_conds = [
                     student.tenant_id.in_(b_ids),
                     student.branch_id.in_(b_ids),
                 ]
-                if b_names:
-                    b_conds.append(student.primary_vahd_location.in_(b_names))
                 stus_query = stus_query.filter(or_(*b_conds))
             if current_user and (current_user.role or "").strip().upper() == "OWNER":
                 stus_query = stus_query.filter(

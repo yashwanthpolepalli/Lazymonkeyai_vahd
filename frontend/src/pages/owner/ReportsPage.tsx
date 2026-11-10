@@ -263,6 +263,15 @@ const hrmsAnalyticsCards: ReportCardConfig[] = [
   },
 ];
 
+export interface BranchItem {
+  id: string;
+  branch_name: string;
+  vahd_name?: string;
+  name?: string;
+  city?: string;
+  district?: string;
+}
+
 export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
   // Navigation & Active Sub-view
   const [selectedReport, setSelectedReport] = useState<ReportType | null>(null);
@@ -322,7 +331,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
   const [selectedBranch, setSelectedBranch] = useState<string>(() => {
     return localStorage.getItem('vahd_selected_org_id') || 'all';
   });
-  const [allBranchesList, setAllBranchesList] = useState<Array<{ id: string; branch_name: string; vahd_name?: string; city?: string; district?: string }>>([]);
+  const [allBranchesList, setAllBranchesList] = useState<BranchItem[]>([]);
 
   // Synchronize with Topbar organization / branch switcher
   useEffect(() => {
@@ -346,6 +355,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
               id: br.id,
               branch_name: br.branch_name || br.name || '',
               vahd_name: br.vahd_name || br.name || '',
+              name: br.name || br.vahd_name || br.branch_name || '',
               city: br.city || br.district || '',
               district: br.district || br.city || '',
             }))
@@ -361,6 +371,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
               id: br.branch_id,
               branch_name: br.branch_name,
               vahd_name: br.vahd_name,
+              name: br.name || br.vahd_name || br.branch_name || '',
               city: br.city || br.district || '',
               district: br.district || br.city || '',
             }))
@@ -390,6 +401,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
             id: br.branch_id,
             branch_name: br.branch_name,
             vahd_name: br.vahd_name,
+            name: br.name || br.vahd_name || br.branch_name || '',
           }))
         );
       }
@@ -3158,13 +3170,15 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
     };
 
     // Filtered branches for Abstract view
-    let abstractBranchRows = allBranchesList.length > 0
+    let abstractBranchRows: BranchItem[] = allBranchesList.length > 0
       ? allBranchesList
       : dynamicDistricts.map((d) => ({
           id: d.name,
           branch_name: d.district || '',
           vahd_name: d.name,
-          city: d.district || ''
+          name: d.name,
+          city: d.district || '',
+          district: d.district || ''
         }));
 
     if (selectedDistrict !== 'All Districts') {

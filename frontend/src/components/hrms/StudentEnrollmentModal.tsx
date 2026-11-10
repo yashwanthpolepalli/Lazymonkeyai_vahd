@@ -937,7 +937,7 @@ export function StudentEnrollmentModal({
       specialization: specialization.trim() || undefined,
       meta_data: {
         admission_type: 'DEGREE_ADMISSION',
-        college_name: collegeName.toUpperCase().trim(),
+        college_name: (collegeName.trim() && collegeName.trim().toUpperCase() !== 'VAHD' ? collegeName.toUpperCase().trim() : (resolvedLocation || 'gitam')),
         affiliation: affiliation.trim(),
         college_logo: collegeLogo || undefined,
         academic_year: academicYear,

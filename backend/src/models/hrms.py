@@ -100,7 +100,7 @@ class EmployeeAttendance(Base):
     id = Column(String, primary_key=True, default=lambda: f"att_{uuid.uuid4().hex[:8]}")
     tenant_id = Column(String, nullable=True, index=True)
     employee_id = Column(String, nullable=False, index=True)
-    date = Column(Date, nullable=True)
+    date = Column(Date, nullable=True, index=True)
     check_in = Column(String, nullable=True)
     check_out = Column(String, nullable=True)
     check_in_location = Column(String, nullable=True)

@@ -11,7 +11,7 @@ class BiometricLog(Base):
     tenant_id = Column(String, nullable=True, index=True)
     student_id = Column(String, ForeignKey("students.id"), index=True, nullable=True)
     user_role = Column(String, default="student")  # student, employee, OWNER, MANAGER, STAFF
-    timestamp = Column(DateTime, default=now_ist_naive)
+    timestamp = Column(DateTime, default=now_ist_naive, index=True)
     event_type = Column(String, nullable=False)  # FACE_SCAN, FINGERPRINT, RFID_CARD, PASSWORD
     device_type = Column(String, nullable=True)
     device_id = Column(String, nullable=False)

@@ -613,7 +613,7 @@ export function StudentManagementTab() {
           </div>
           <div className="text-2xl font-black text-slate-900 mt-2">{totalStudents}</div>
           <div className="text-[11px] font-semibold text-emerald-600 mt-0.5 truncate">
-            {localStorage.getItem('ssdc_college_name') || 'Enrolled Students'}
+            Enrolled Students
           </div>
         </div>
 
@@ -882,7 +882,7 @@ export function StudentManagementTab() {
       {loading ? (
         <div className="card p-12 text-center text-slate-400 bg-white border border-slate-200/90 rounded-2xl">
           <div className="w-8 h-8 border-2 border-blue-600/30 border-t-blue-600 rounded-full animate-spin mx-auto mb-2" />
-          <span>Loading Sri Sai Degree College Student Directory...</span>
+          <span>Loading Student Directory...</span>
         </div>
       ) : filteredStudents.length === 0 ? (
         <div className="card p-12 text-center bg-white border border-slate-200/90 rounded-2xl space-y-3">
@@ -1561,10 +1561,10 @@ export function StudentManagementTab() {
                 )}
                 <div>
                   <h3 className="font-black text-sm uppercase">
-                    {selectedStudentForView.meta_data?.college_name || localStorage.getItem('ssdc_college_name') || 'SRI SAI DEGREE COLLEGE - BOBBILI'}
+                    {selectedStudentForView.meta_data?.college_name || localStorage.getItem('ssdc_college_name') || 'Institute / Campus'}
                   </h3>
                   <p className="text-[10px] text-blue-200 font-semibold">
-                    ({selectedStudentForView.meta_data?.affiliation || localStorage.getItem('ssdc_affiliation') || 'Affiliated to ANDHRA UNIVERSITY'}) • Student Admission Application Dossier
+                    ({selectedStudentForView.meta_data?.affiliation || localStorage.getItem('ssdc_affiliation') || 'Affiliated Institution'}) • Student Admission Application Dossier
                   </p>
                 </div>
               </div>

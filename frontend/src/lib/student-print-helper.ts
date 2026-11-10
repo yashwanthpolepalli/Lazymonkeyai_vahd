@@ -60,8 +60,8 @@ export function printStudentAdmissionForm(data: StudentPrintData) {
       ? `<span style="display:inline-block;width:13px;height:13px;background-color:#1d4ed8;color:#ffffff;border-radius:2px;font-size:10px;line-height:13px;text-align:center;font-weight:bold;margin-right:4px;">✓</span>`
       : `<span style="display:inline-block;width:13px;height:13px;border:1.5px solid #64748b;border-radius:2px;margin-right:4px;vertical-align:middle;"></span>`;
 
-  const collegeName = data.collegeName || localStorage.getItem('ssdc_college_name') || 'SRI SAI DEGREE COLLEGE - BOBBILI';
-  const affiliation = data.affiliation || localStorage.getItem('ssdc_affiliation') || 'Affiliated to ANDHRA UNIVERSITY';
+  const collegeName = data.collegeName || localStorage.getItem('ssdc_college_name') || 'Institute / Campus';
+  const affiliation = data.affiliation || localStorage.getItem('ssdc_affiliation') || '';
   const collegeLogo = data.collegeLogo || localStorage.getItem('ssdc_college_logo') || null;
 
   // Format Aadhar digits

@@ -8,9 +8,10 @@ from pydantic_settings import BaseSettings
 ENV_FILE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
 load_dotenv(ENV_FILE_PATH)
 
-def is_port_open(host: str, port: int, timeout: float = 0.8) -> bool:
+def is_port_open(host: str, port: int, timeout: float = 0.2) -> bool:
     try:
-        with socket.create_connection((host, port), timeout=timeout):
+        target_host = "127.0.0.1" if host in ["localhost", "127.0.0.1"] else host
+        with socket.create_connection((target_host, port), timeout=timeout):
             return True
     except (socket.timeout, ConnectionRefusedError, OSError):
         return False

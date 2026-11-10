@@ -62,7 +62,7 @@ export function Topbar() {
     // Polling from backend API for live notifications (with single flight guard and 5s timeout)
     let isPolling = false;
     const pollBackendLive = async () => {
-      if (isPolling) return;
+      if (document.hidden || isPolling) return;
       isPolling = true;
       try {
         const live = await apiClient.get<any[]>('/system/notifications/live', { timeout: 5000 }).catch(() => []);
@@ -86,17 +86,35 @@ export function Topbar() {
     pollBackendLive();
     window.addEventListener('vahd:new_lead', handleNewLeadEvent);
     window.addEventListener('storage', handleStorageChange);
-    const pollInterval = setInterval(pollBackendLive, 15000);
+    const liveNotificationPollTimer = setInterval(pollBackendLive, 30000);
+
+    const handleVisibility = () => {
+      if (!document.hidden) pollBackendLive();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
 
     return () => {
       window.removeEventListener('vahd:new_lead', handleNewLeadEvent);
       window.removeEventListener('storage', handleStorageChange);
-      clearInterval(pollInterval);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      clearInterval(liveNotificationPollTimer);
     };
   }, []);
 
   useEffect(() => {
     const fetchOrgs = async () => {
+      if (!user?.role) return;
+      const cacheKey = `vahd_topbar_orgs_${user.role}_${user.id || ''}`;
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setTopbarOrgs(parsed);
+          }
+        } catch (_e) { }
+      }
+
       try {
         if (user?.role === 'super_admin') {
           const res = await apiClient.get<any[]>('/superadmin/vahds');
@@ -116,6 +134,7 @@ export function Topbar() {
               }
             }
             setTopbarOrgs(unique);
+            sessionStorage.setItem(cacheKey, JSON.stringify(unique));
           }
         } else if (user?.role === 'ho') {
           const res = await apiClient.get<any>('/ho/organizations');
@@ -134,6 +153,7 @@ export function Topbar() {
               }
             }
             setTopbarOrgs(unique);
+            sessionStorage.setItem(cacheKey, JSON.stringify(unique));
           }
         } else if (user?.role === 'owner') {
           const res = await apiClient.get<any[]>('/settings/branches');
@@ -152,6 +172,7 @@ export function Topbar() {
               }
             }
             setTopbarOrgs(unique);
+            sessionStorage.setItem(cacheKey, JSON.stringify(unique));
           }
         }
       } catch (e) { }

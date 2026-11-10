@@ -1119,7 +1119,7 @@ export function StudentEnrollmentModal({
                     type="text"
                     value={collegeName}
                     onChange={(e) => setCollegeName(e.target.value)}
-                    placeholder="e.g. SRI SAI DEGREE COLLEGE - BOBBILI"
+                    placeholder="e.g. MAIN CAMPUS / INSTITUTION"
                     className="w-full px-3 py-1.5 bg-white/15 border border-white/30 rounded-xl text-xs font-black uppercase text-white placeholder:text-white/60 focus:outline-none focus:ring-2 focus:ring-white/40"
                   />
                 </div>

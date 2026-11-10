@@ -196,19 +196,25 @@ class DashboardService:
         entrance_count = len([l for l in today_logs if "entrance" in (getattr(l, "location", None) or l.device_name or "").lower() or "gate" in (getattr(l, "location", None) or l.device_name or "").lower()])
         group_class_count = len([l for l in today_logs if "group" in (getattr(l, "location", None) or l.device_name or "").lower() or "class" in (getattr(l, "location", None) or l.device_name or "").lower()])
 
-        all_students = cust_query.all()
-
         thirty_days_later = now + datetime.timedelta(days=30)
-        expiring_memberships = mem_query.filter(
-            Membership.expiry_date >= now,
-            Membership.expiry_date <= thirty_days_later,
-            Membership.status == "ACTIVE"
-        ).all()
-        expiring_soon_count = len(expiring_memberships)
+        expiring_soon_count: int = (
+            mem_query.filter(
+                Membership.expiry_date >= now,
+                Membership.expiry_date <= thirty_days_later,
+                Membership.status == "ACTIVE"
+            ).count()
+        )
 
-        due_memberships = mem_query.filter(Membership.due_amount > 0).all()
-        outstanding_dues = float(sum(m.due_amount for m in due_memberships))
-        due_members_count = len(due_memberships)
+        due_stats = (
+            db.query(
+                func.coalesce(func.sum(Membership.due_amount), 0.0),
+                func.count(Membership.id)
+            )
+            .filter(Membership.due_amount > 0)
+            .first()
+        )
+        outstanding_dues: float = float(due_stats[0]) if due_stats else 0.0
+        due_members_count: int = int(due_stats[1]) if due_stats else 0
 
         # Optimized Bulk Attendance Risk Aggregation (Single SQL Query instead of N+1)
         thirty_days_ago = now - datetime.timedelta(days=30)
@@ -223,12 +229,13 @@ class DashboardService:
         )
         student_days_map = {row[0]: row[1] for row in log_counts_query if row[0]}
 
+        all_students = cust_query.with_entities(student.id, student.created_at).all()
         at_risk_count = 0
         attention_risk_count = 0
         healthy_count = 0
 
-        for c in all_students:
-            days_attended = student_days_map.get(c.id, 0)
+        for c_id, c_created_at in all_students:
+            days_attended = student_days_map.get(c_id, 0)
             if days_attended == 0:
                 at_risk_count += 1
             elif days_attended < 5:
@@ -250,6 +257,57 @@ class DashboardService:
             .limit(25)
             .all()
         )
+
+        # Collect IDs for bulk lookup (eliminating N+1 queries)
+        cids_to_fetch = set()
+        uids_to_fetch = set()
+        for log in recent_logs:
+            meta = log.meta_data or {}
+            uid = meta.get("user_id") or meta.get("employee_id")
+            cid = log.student_id or meta.get("student_id")
+            if cid:
+                cids_to_fetch.add(str(cid))
+                cids_to_fetch.add(f"cust_{cid}")
+            if uid:
+                uids_to_fetch.add(str(uid))
+                uids_to_fetch.add(f"emp_{uid}")
+                uids_to_fetch.add(f"cust_{uid}")
+
+        students_map = {}
+        all_lookup_ids = cids_to_fetch | uids_to_fetch
+        if all_lookup_ids:
+            st_list = db.query(student).filter(
+                or_(student.id.in_(all_lookup_ids), student.user_id.in_(all_lookup_ids))
+            ).all()
+            for s in st_list:
+                students_map[s.id] = s
+                if s.user_id:
+                    students_map[s.user_id] = s
+
+        memberships_map = {}
+        if students_map:
+            mems = db.query(Membership).filter(
+                Membership.student_id.in_(list(students_map.keys())),
+                Membership.status == "ACTIVE"
+            ).all()
+            for m in mems:
+                if m.student_id not in memberships_map:
+                    memberships_map[m.student_id] = m
+
+        users_map = {}
+        if uids_to_fetch:
+            u_list = db.query(User).filter(User.id.in_(uids_to_fetch)).all()
+            users_map = {u.id: u for u in u_list}
+
+        employees_map = {}
+        if uids_to_fetch:
+            emp_list = db.query(Employee).filter(
+                or_(Employee.id.in_(uids_to_fetch), Employee.code.in_(uids_to_fetch))
+            ).all()
+            for e in emp_list:
+                employees_map[e.id] = e
+                if e.code:
+                    employees_map[e.code] = e
 
         recent_checkins = []
         for log in recent_logs:
@@ -285,16 +343,12 @@ class DashboardService:
             resolved_role = "EMPLOYEE" if is_employee else "STUDENT"
             cust = None
 
-            # 1. Resolve Student (student)
+            # 1. Resolve Student (student) via in-memory map
             if not is_employee:
                 if cid:
-                    cust = db.query(student).filter(
-                        (student.id == cid) | (student.id == f"cust_{cid}")
-                    ).first()
+                    cust = students_map.get(str(cid)) or students_map.get(f"cust_{cid}")
                 if not cust and uid:
-                    cust = db.query(student).filter(
-                        (student.user_id == uid) | (student.id == uid)
-                    ).first()
+                    cust = students_map.get(str(uid))
 
                 cust_name = (
                     (cust.full_name if cust and cust.full_name else None)
@@ -309,10 +363,7 @@ class DashboardService:
                 due_amount = None
                 attendance_rate = None
                 if cust:
-                    member_mem = db.query(Membership).filter(
-                        Membership.student_id == cust.id,
-                        Membership.status == "ACTIVE"
-                    ).first()
+                    member_mem = memberships_map.get(cust.id)
                     if member_mem and member_mem.expiry_date:
                         days_remaining = max(0, (member_mem.expiry_date - now).days)
                     due_amount = float(member_mem.due_amount) if member_mem and member_mem.due_amount else 0.0
@@ -321,39 +372,17 @@ class DashboardService:
                     window_d = max(1, min(30, (now - (cust.created_at or thirty_days_ago)).days or 1))
                     attendance_rate = int((days_attended / float(window_d)) * 100)
 
-            # 2. Resolve Employee / Staff / employee
+            # 2. Resolve Employee / Staff / employee via in-memory map
             else:
-                user_obj = None
-                if uid:
-                    user_obj = db.query(User).filter(User.id == uid).first()
-
-                emp_filters = []
-                if user_obj:
-                    if user_obj.email:
-                        emp_filters.append(Employee.email.ilike(user_obj.email.strip()))
-                    emp_filters.append(Employee.id == f"emp_{user_obj.id}")
-                if uid:
-                    emp_filters.append(Employee.id == uid)
-                    emp_filters.append(Employee.code == uid)
-                    emp_filters.append(Employee.id == f"emp_{uid}")
-
-                emp_obj = db.query(Employee).filter(or_(*emp_filters)).first() if emp_filters else None
-
-                employee_filters = []
-                if user_obj:
-                    employee_filters.append(employeeProfile.user_id == user_obj.id)
-                    if user_obj.email:
-                        employee_filters.append(employeeProfile.email.ilike(user_obj.email.strip()))
-                if uid:
-                    employee_filters.append(employeeProfile.id == uid)
-                    employee_filters.append(employeeProfile.user_id == uid)
-
-                employee_obj = db.query(employeeProfile).filter(or_(*employee_filters)).first() if employee_filters else None
+                user_obj = users_map.get(str(uid)) if uid else None
+                emp_obj = (
+                    employees_map.get(str(uid))
+                    or (employees_map.get(f"emp_{uid}") if uid else None)
+                    or (employees_map.get(f"emp_{user_obj.id}") if user_obj else None)
+                )
 
                 if emp_obj and (emp_obj.first_name or emp_obj.last_name):
                     cust_name = f"{emp_obj.first_name} {emp_obj.last_name or ''}".strip()
-                elif employee_obj and employee_obj.full_name:
-                    cust_name = employee_obj.full_name
                 elif user_obj and (getattr(user_obj, "full_name", None) or getattr(user_obj, "name", None)):
                     cust_name = getattr(user_obj, "full_name", None) or getattr(user_obj, "name", None)
                 elif meta.get("user_name") and meta.get("user_name") != "Staff Member":

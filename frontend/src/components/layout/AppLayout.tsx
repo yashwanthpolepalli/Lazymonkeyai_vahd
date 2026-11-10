@@ -11,7 +11,7 @@ export function AppLayout() {
         <Sidebar />
         <main className="flex-1 p-0 pb-20 lg:pb-6 w-full min-w-0 overflow-y-auto overflow-x-hidden relative">
           {/* Ambient Flowing Wave Graphic smoothly blended across all portal pages */}
-          <div className="absolute right-0 top-0 w-full max-w-[850px] h-[190px] pointer-events-none select-none -z-10 overflow-hidden">
+          <div className="absolute right-0 top-0 w-full max-w-[950px] h-[220px] pointer-events-none select-none z-0 overflow-hidden">
             <img
               src="/dashboard-banner-bg.png"
               alt=""
@@ -20,7 +20,7 @@ export function AppLayout() {
           </div>
 
           {/* Page Content */}
-          <div className="relative w-full">
+          <div className="relative z-0 w-full">
             <Outlet />
           </div>
         </main>

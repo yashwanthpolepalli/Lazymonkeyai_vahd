@@ -24,10 +24,13 @@ export interface EmployeeItem {
   district?: string;
   city?: string;
   branch_id?: string;
+  tenant_id?: string;
   branch_name?: string;
   vahd_name?: string;
   organization_name?: string;
   institute_name?: string;
+  face_registered?: boolean;
+  meta_data?: Record<string, any>;
   created_at?: string;
 }
 

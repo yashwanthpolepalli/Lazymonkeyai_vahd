@@ -207,18 +207,32 @@ class StudentAttendanceReportService:
         course_name = meta.get("course") or "Degree Program"
         medium_name = meta.get("medium") or ""
         
-        # Resolve real candidate institute/college name from meta_data, branch institution, or location
-        inst_candidate = (
-            meta.get("college_name")
+        # Resolve real candidate institute/college name from student's branch/organization
+        br_id = getattr(student, "branch_id", None) or getattr(student, "tenant_id", None)
+        br_obj = db.query(vahdBranch).filter(vahdBranch.id == br_id).first() if br_id else None
+        if not br_obj and student.primary_vahd_location:
+            br_obj = db.query(vahdBranch).filter(
+                or_(
+                    vahdBranch.vahd_name == student.primary_vahd_location,
+                    vahdBranch.branch_name == student.primary_vahd_location
+                )
+            ).first()
+
+        branch_org = (
+            getattr(br_obj, "vahd_name", None)
+            or getattr(br_obj, "name", None)
+            or (br_obj.branch_name if br_obj else None)
+        )
+        meta_inst = (
+            meta.get("organisation_name")
+            or meta.get("college_name")
             or meta.get("institute_name")
             or meta.get("institution_name")
         )
-        if not inst_candidate and getattr(student, "branch_id", None):
-            br_obj = db.query(vahdBranch).filter(vahdBranch.id == student.branch_id).first()
-            if br_obj:
-                inst_candidate = getattr(br_obj, "vahd_name", None) or getattr(br_obj, "name", None) or br_obj.branch_name
+        if meta_inst and str(meta_inst).strip().upper() in ["VAHD", "VAHD HIGHER EDUCATION ACADEMY", "VAHD ACADEMIC PLATFORM", "MAIN INSTITUTE"]:
+            meta_inst = None
 
-        college_name = inst_candidate or student.primary_vahd_location or "VAHD Higher Education Academy"
+        college_name = branch_org or meta_inst or student.primary_vahd_location or "Organisation"
 
         # Resolve sequential roll code (stu0001, stu0002...)
         roll_number = getattr(student, "member_code", None)
@@ -262,8 +276,9 @@ class StudentAttendanceReportService:
         output = io.StringIO()
         writer = csv.writer(output)
 
-        writer.writerow(["# VAHD STUDENT OFFICIAL MONTHLY ATTENDANCE REPORT"])
-        writer.writerow(["Institution", report.get("college_name", "VAHD Academic Platform")])
+        org_title = (report.get("college_name") or report.get("institute_name") or "OFFICIAL").upper()
+        writer.writerow([f"# {org_title} STUDENT MONTHLY ATTENDANCE REPORT"])
+        writer.writerow(["Organisation", report.get("college_name", "Organisation")])
         writer.writerow(["Student Name", report.get("student_name", "")])
         writer.writerow(["Student ID / Roll No", report.get("student_id", "")])
         writer.writerow(["Degree / Program", report.get("course", "")])
@@ -293,7 +308,7 @@ class StudentAttendanceReportService:
     @staticmethod
     def generate_student_attendance_html_printable(report: Dict[str, Any]) -> str:
         """Generates dynamic, printable A4 official attendance sheet with day-wise matrix."""
-        college = report.get("college_name", "VAHD Higher Education Academy").upper()
+        college = (report.get("college_name") or report.get("institute_name") or "ORGANISATION").upper()
         name = report.get("student_name", "").upper()
         s_id = report.get("student_id", "")
         roll_no = report.get("roll_number", s_id)
@@ -408,7 +423,7 @@ class StudentAttendanceReportService:
     @staticmethod
     def build_parent_whatsapp_message(report: Dict[str, Any]) -> str:
         """Constructs an official, formatted WhatsApp attendance report for parents with day-wise highlights."""
-        college = report.get("college_name", "VAHD Academic Platform").upper()
+        college = (report.get("college_name") or report.get("institute_name") or "ORGANISATION").upper()
         name = report.get("student_name", "Student").upper()
         s_id = report.get("roll_number") or report.get("student_id", "N/A")
         parent_ph = report.get("parent_phone", "")
@@ -708,15 +723,12 @@ class StudentAttendanceReportService:
 
             total_pct_sum += rep.get("attendance_percentage", 0.0)
 
-            branch_obj = branches_dict.get(s.branch_id)
+            branch_obj = branches_dict.get(s.branch_id) or branches_dict.get(s.tenant_id)
             branch_label = branch_obj.branch_name if branch_obj else (s.primary_vahd_location or "Main Campus")
-            vahd_label = branch_obj.vahd_name if branch_obj else ""
-            inst_label = (
-                rep.get("institute_name")
-                or rep.get("college_name")
-                or vahd_label
-                or branch_label
-            )
+            vahd_label = (branch_obj.vahd_name if branch_obj and branch_obj.vahd_name else (branch_obj.name if branch_obj else "")) or ""
+            inst_label = vahd_label or rep.get("institute_name") or rep.get("college_name") or branch_label or "Organisation"
+            if str(inst_label).strip().upper() in ["VAHD", "VAHD HIGHER EDUCATION ACADEMY", "VAHD ACADEMIC PLATFORM", "MAIN INSTITUTE"]:
+                inst_label = vahd_label or branch_label or "Organisation"
 
             student_reports.append({
                 "student_id": s.id,

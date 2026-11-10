@@ -263,6 +263,15 @@ const hrmsAnalyticsCards: ReportCardConfig[] = [
   },
 ];
 
+export interface BranchItem {
+  id: string;
+  branch_name: string;
+  vahd_name?: string;
+  name?: string;
+  city?: string;
+  district?: string;
+}
+
 export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
   // Navigation & Active Sub-view
   const [selectedReport, setSelectedReport] = useState<ReportType | null>(null);
@@ -289,7 +298,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
   const [selectedDistrict, setSelectedDistrict] = useState('All Districts');
   const filterDistrict = filterInstitute;
   const setFilterDistrict = setFilterInstitute;
-  const [filterPlace, setFilterPlace] = useState('All Places');
+  const [filterPlace, setFilterPlace] = useState('All Branches');
   const [filterDate, setFilterDate] = useState(() => getTodayDateStr());
   const [filterFromDate, setFilterFromDate] = useState(() => {
     const d = new Date();
@@ -305,7 +314,9 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
   const [filterStatus, setFilterStatus] = useState('All');
   const [filterInstType, setFilterInstType] = useState('All Types');
   const [searchTableQuery, setSearchTableQuery] = useState('');
-  const [rangeTabMode, setRangeTabMode] = useState<'Report' | 'Detail' | 'Abstract' | 'Employees' | 'Students'>('Report');
+  const [rangeTabMode, setRangeTabMode] = useState<'Report' | 'Detail' | 'Abstract'>('Report');
+  const [attendanceMatrix, setAttendanceMatrix] = useState<any>(null);
+  const [rangeMetric, setRangeMetric] = useState<'Present' | 'Absent'>('Present');
 
   // Monthly Attendance State for Students, Employees & Multi-Branch
   const [targetYear, setTargetYear] = useState<number>(new Date().getFullYear());
@@ -320,7 +331,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
   const [selectedBranch, setSelectedBranch] = useState<string>(() => {
     return localStorage.getItem('vahd_selected_org_id') || 'all';
   });
-  const [allBranchesList, setAllBranchesList] = useState<Array<{ id: string; branch_name: string; vahd_name?: string; city?: string; district?: string }>>([]);
+  const [allBranchesList, setAllBranchesList] = useState<BranchItem[]>([]);
 
   // Synchronize with Topbar organization / branch switcher
   useEffect(() => {
@@ -335,22 +346,40 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
 
   // Fetch full list of campus organizations and branches for the branch selector
   useEffect(() => {
-    apiClient
-      .get<any>(`/ho/attendance-reports/branches?year=${targetYear}&month=${targetMonth}`)
-      .then((res) => {
+    const loadBranches = async () => {
+      try {
+        const vBranches = await apiClient.get<any[]>('/vahd/branches').catch(() => []);
+        if (Array.isArray(vBranches) && vBranches.length > 0) {
+          setAllBranchesList(
+            vBranches.map((br: any) => ({
+              id: br.id,
+              branch_name: br.branch_name || br.name || '',
+              vahd_name: br.vahd_name || br.name || '',
+              name: br.name || br.vahd_name || br.branch_name || '',
+              city: br.city || br.district || '',
+              district: br.district || br.city || '',
+            }))
+          );
+          return;
+        }
+      } catch {}
+      try {
+        const res = await apiClient.get<any>(`/ho/attendance-reports/branches?year=${targetYear}&month=${targetMonth}`);
         if (res?.branches && Array.isArray(res.branches)) {
           setAllBranchesList(
             res.branches.map((br: any) => ({
               id: br.branch_id,
               branch_name: br.branch_name,
               vahd_name: br.vahd_name,
+              name: br.name || br.vahd_name || br.branch_name || '',
               city: br.city || br.district || '',
               district: br.district || br.city || '',
             }))
           );
         }
-      })
-      .catch(() => { });
+      } catch {}
+    };
+    loadBranches();
   }, [targetYear, targetMonth]);
 
   const fetchMonthlyOverviews = async (y = targetYear, m = targetMonth, b = selectedBranch) => {
@@ -372,6 +401,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
             id: br.branch_id,
             branch_name: br.branch_name,
             vahd_name: br.vahd_name,
+            name: br.name || br.vahd_name || br.branch_name || '',
           }))
         );
       }
@@ -406,6 +436,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
       setEmployees(Array.isArray(empRes) ? empRes : []);
       setDepartments(Array.isArray(deptRes) ? deptRes : []);
       setStudents(Array.isArray(stuRes) ? stuRes : []);
+      if (matrixRes) setAttendanceMatrix(matrixRes);
 
       const combinedAtt = Array.isArray(attRes) ? [...attRes] : [];
       // Merge verified punches from monthly matrix if any are missing or have status mismatch
@@ -502,9 +533,26 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
     fetchData(filterDate);
   }, [filterDate, selectedBranch]);
 
+  // Load matrix whenever date range changes for Range Attendance view
+  useEffect(() => {
+    if (filterFromDate) {
+      const parts = filterFromDate.split('-');
+      const y = parseInt(parts[0], 10);
+      const m = parseInt(parts[1], 10);
+      if (y && m) {
+        const branchIdParam = selectedBranch && selectedBranch !== 'all' ? selectedBranch : undefined;
+        hrmsApi.getAttendanceMatrix({ year: y, month: m, user_type: 'all', branch_id: branchIdParam })
+          .then((res) => {
+            if (res) setAttendanceMatrix(res);
+          })
+          .catch(() => {});
+      }
+    }
+  }, [filterFromDate, filterToDate, selectedBranch]);
+
   // Dynamic institute rollup computed live from employee and student attendance records
   const dynamicDistricts = useMemo(() => {
-    if (employees.length === 0 && attendance.length === 0 && students.length === 0) {
+    if (employees.length === 0 && attendance.length === 0 && students.length === 0 && allBranchesList.length === 0) {
       return [];
     }
 
@@ -519,6 +567,8 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
       leave: number;
       od: number;
       district: string;
+      branchName?: string;
+      branchId?: string;
     }>();
 
     // Map attendance records by employee
@@ -529,53 +579,34 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
       if (att.employee_name) attMap.set(att.employee_name.toLowerCase(), att);
     });
 
-    let activeOrgInst = '';
-    try {
-      const stored = localStorage.getItem('vahd_user');
-      if (stored) {
-        const u = JSON.parse(stored);
-        activeOrgInst = u?.vahd_name || u?.branch_name || u?.vahdName || u?.branchName || '';
-      }
-    } catch {}
-
-    employees.forEach((emp) => {
-      const branchObj = allBranchesList.find((b) => b.id === emp.branch_id || b.branch_name === emp.vahd_branch || b.vahd_name === emp.vahd_branch);
-      const dName = emp.institute_name || emp.organization_name || branchObj?.vahd_name || branchObj?.branch_name || emp.vahd_branch || (allBranchesList[0]?.vahd_name || allBranchesList[0]?.branch_name) || activeOrgInst || 'Main Institute';
-      const empDist = emp.district || branchObj?.district || branchObj?.city || (allBranchesList.find((b) => b.city)?.city) || 'Hyderabad';
-      const empPlace = emp.department || branchObj?.branch_name || emp.vahd_branch || '—';
+    // Pre-populate distGroups with all registered organizations & branches so 0-count organizations are always displayed
+    allBranchesList.forEach((b) => {
+      const orgKey = b.vahd_name || b.name || b.branch_name;
+      if (!orgKey || orgKey.toUpperCase() === 'VAHD') return;
+      const bDist = b.district || b.city || b.branch_name || '—';
+      const bBranch = b.branch_name || b.city || '—';
 
       // District Filter
       if (selectedDistrict !== 'All Districts') {
-        const matchDist = empDist.toLowerCase() === selectedDistrict.toLowerCase() ||
-          dName.toLowerCase().includes(selectedDistrict.toLowerCase());
+        const matchDist = bDist.toLowerCase() === selectedDistrict.toLowerCase() ||
+          orgKey.toLowerCase().includes(selectedDistrict.toLowerCase());
         if (!matchDist) return;
       }
 
       // Institute Filter
       if (filterInstitute !== 'All Institutes' && filterInstitute !== 'All Districts') {
-        if (dName.toLowerCase() !== filterInstitute.toLowerCase()) return;
-      }
-
-      // Place of Working Filter
-      if (filterPlace !== 'All Places') {
-        if (empPlace.toLowerCase() !== filterPlace.toLowerCase()) return;
-      }
-
-      // Institution Type Filter
-      if (filterInstType !== 'All Types') {
-        const fullCheck = `${dName} ${empPlace} ${emp.vahd_branch || ''}`.toUpperCase();
-        if (!fullCheck.includes(filterInstType.toUpperCase())) return;
+        if (orgKey.toLowerCase() !== filterInstitute.toLowerCase()) return;
       }
 
       // Search Filter
       if (searchTableQuery.trim()) {
         const q = searchTableQuery.toLowerCase();
-        const fullStr = `${dName} ${empDist} ${empPlace} ${emp.first_name || ''} ${emp.last_name || ''} ${emp.code || ''}`.toLowerCase();
+        const fullStr = `${orgKey} ${bDist} ${bBranch}`.toLowerCase();
         if (!fullStr.includes(q)) return;
       }
 
-      if (!distGroups.has(dName)) {
-        distGroups.set(dName, {
+      if (!distGroups.has(orgKey)) {
+        distGroups.set(orgKey, {
           total: 0,
           registered: 0,
           attended: 0,
@@ -585,44 +616,112 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
           absent: 0,
           leave: 0,
           od: 0,
-          district: empDist
+          district: bBranch || bDist,
+          branchName: bBranch,
+          branchId: b.id,
         });
-      }
-      const st = distGroups.get(dName)!;
-      st.total += 1;
-      st.registered += 1;
-
-      const att = attMap.get(emp.id?.toLowerCase()) || (emp.code ? attMap.get(emp.code.toLowerCase()) : undefined);
-      if (att) {
-        const s = (att.status || '').toLowerCase();
-        if (s === 'present') {
-          st.attended += 1;
-        } else if (s === 'late') {
-          st.attended += 1;
-          st.late += 1;
-        } else if (s === 'leave') {
-          st.leave += 1;
-        } else if (s === 'on duty' || s === 'od') {
-          st.od += 1;
-        } else {
-          st.absent += 1;
-        }
-
-        if (att.check_in && att.check_in !== '--:--' && (!att.check_out || att.check_out === '--:--')) {
-          st.notOut += 1;
-        }
-      } else {
-        st.absent += 1;
       }
     });
 
-    // Also include students if employee list is empty
-    if (employees.length === 0 && students.length > 0) {
+    if (dailyAttendeeType === 'all' || dailyAttendeeType === 'employees') {
+      employees.forEach((emp) => {
+        const branchObj = allBranchesList.find((b) => b.id === emp.branch_id || b.id === emp.tenant_id) ||
+          (emp.organization_name ? allBranchesList.find((b) => b.vahd_name?.toLowerCase() === emp.organization_name?.toLowerCase()) : undefined);
+        const dName = branchObj?.vahd_name || branchObj?.name || emp.organization_name || emp.institute_name || branchObj?.branch_name || emp.vahd_branch || '—';
+        const empDist = emp.district || branchObj?.district || branchObj?.city || '—';
+        const empPlace = branchObj?.branch_name || (branchObj as any)?.city || emp.vahd_branch || '—';
+
+        // District Filter
+        if (selectedDistrict !== 'All Districts') {
+          const matchDist = empDist.toLowerCase() === selectedDistrict.toLowerCase() ||
+            dName.toLowerCase().includes(selectedDistrict.toLowerCase());
+          if (!matchDist) return;
+        }
+
+        // Institute Filter
+        if (filterInstitute !== 'All Institutes' && filterInstitute !== 'All Districts') {
+          if (dName.toLowerCase() !== filterInstitute.toLowerCase()) return;
+        }
+
+        // Branch Filter
+        if (filterPlace !== 'All Branches' && filterPlace !== 'All Places') {
+          if (empPlace.toLowerCase() !== filterPlace.toLowerCase()) return;
+        }
+
+        // Institution Type Filter
+        if (filterInstType !== 'All Types') {
+          const fullCheck = `${dName} ${empPlace} ${emp.vahd_branch || ''}`.toUpperCase();
+          if (!fullCheck.includes(filterInstType.toUpperCase())) return;
+        }
+
+        // Search Filter
+        if (searchTableQuery.trim()) {
+          const q = searchTableQuery.toLowerCase();
+          const fullStr = `${dName} ${empDist} ${empPlace} ${emp.first_name || ''} ${emp.last_name || ''} ${emp.code || ''}`.toLowerCase();
+          if (!fullStr.includes(q)) return;
+        }
+
+        if (!distGroups.has(dName)) {
+          distGroups.set(dName, {
+            total: 0,
+            registered: 0,
+            attended: 0,
+            late: 0,
+            early: 0,
+            notOut: 0,
+            absent: 0,
+            leave: 0,
+            od: 0,
+            district: empDist
+          });
+        }
+        const st = distGroups.get(dName)!;
+        st.total += 1;
+
+        // Register count increments ONLY for users with face registration completed
+        const isFaceReg = Boolean(
+          emp.face_registered ||
+          emp.avatar ||
+          emp.meta_data?.face_registered ||
+          emp.meta_data?.avatar ||
+          emp.meta_data?.photo
+        );
+        if (isFaceReg) {
+          st.registered += 1;
+        }
+
+        const att = attMap.get(emp.id?.toLowerCase()) || (emp.code ? attMap.get(emp.code.toLowerCase()) : undefined);
+        if (att) {
+          const s = (att.status || '').toLowerCase();
+          if (s === 'present') {
+            st.attended += 1;
+          } else if (s === 'late') {
+            st.attended += 1;
+            st.late += 1;
+          } else if (s === 'leave') {
+            st.leave += 1;
+          } else if (s === 'on duty' || s === 'od') {
+            st.od += 1;
+          } else {
+            st.absent += 1;
+          }
+
+          if (att.check_in && att.check_in !== '--:--' && (!att.check_out || att.check_out === '--:--')) {
+            st.notOut += 1;
+          }
+        } else {
+          st.absent += 1;
+        }
+      });
+    }
+
+    // Process students when scope includes students
+    if (dailyAttendeeType === 'all' || dailyAttendeeType === 'students') {
       students.forEach((s) => {
         const meta = s.meta_data || {};
-        const branchObj = allBranchesList.find((b) => b.id === s.branch_id);
-        const dName = s.institute_name || meta.college_name || meta.institute_name || branchObj?.vahd_name || branchObj?.branch_name || s.primary_vahd_location || (allBranchesList[0]?.vahd_name || allBranchesList[0]?.branch_name) || activeOrgInst || 'Main Institute';
-        const stuDist = s.district || meta.district || branchObj?.district || branchObj?.city || 'Hyderabad';
+        const branchObj = allBranchesList.find((b) => b.id === s.branch_id || b.id === s.tenant_id);
+        const dName = branchObj?.vahd_name || branchObj?.name || (meta.organisation_name && meta.organisation_name !== 'VAHD' ? meta.organisation_name : '') || (s.institute_name && s.institute_name !== 'VAHD' ? s.institute_name : '') || (meta.college_name && meta.college_name !== 'VAHD' ? meta.college_name : '') || branchObj?.branch_name || s.primary_vahd_location || '—';
+        const stuDist = s.district || meta.district || branchObj?.district || branchObj?.city || '—';
         const stuPlace = s.course || branchObj?.branch_name || s.primary_vahd_location || '—';
 
         if (selectedDistrict !== 'All Districts') {
@@ -635,7 +734,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
           if (dName.toLowerCase() !== filterInstitute.toLowerCase()) return;
         }
 
-        if (filterPlace !== 'All Places') {
+        if (filterPlace !== 'All Branches' && filterPlace !== 'All Places') {
           if (stuPlace.toLowerCase() !== filterPlace.toLowerCase()) return;
         }
 
@@ -661,7 +760,19 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
         }
         const st = distGroups.get(dName)!;
         st.total += 1;
-        st.registered += 1;
+
+        // Register count increments ONLY for students with face registration completed
+        const isFaceReg = Boolean(
+          s.face_registered ||
+          s.face_image ||
+          s.profile_image ||
+          meta.face_registered ||
+          meta.face_image
+        );
+        if (isFaceReg) {
+          st.registered += 1;
+        }
+
         if (s.is_present || s.isPresentToday || s.today_status === 'Present') {
           st.attended += 1;
         } else {
@@ -674,7 +785,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
       name,
       ...stats
     }));
-  }, [employees, attendance, students, allBranchesList, selectedDistrict, filterInstitute, filterPlace, filterInstType, searchTableQuery]);
+  }, [employees, attendance, students, allBranchesList, selectedDistrict, filterInstitute, filterPlace, filterInstType, searchTableQuery, dailyAttendeeType]);
 
   // Built dynamic employee daily rows from live database records
   interface AttendanceRowItem {
@@ -735,15 +846,6 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
 
     const recordedEmpIds = new Set<string>();
 
-    let activeOrgInst = '';
-    try {
-      const stored = localStorage.getItem('vahd_user');
-      if (stored) {
-        const u = JSON.parse(stored);
-        activeOrgInst = u?.vahd_name || u?.branch_name || u?.vahdName || u?.branchName || '';
-      }
-    } catch {}
-
     const cleanLocation = (rawLoc?: string | null): string => {
       if (!rawLoc || rawLoc === '—' || rawLoc === '--:--') return '—';
       const cleaned = rawLoc
@@ -798,10 +900,11 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
         status = emp.status;
       }
 
-      const branchObj = allBranchesList.find((b) => b.id === emp.branch_id || b.branch_name === emp.vahd_branch || b.vahd_name === emp.vahd_branch);
-      const branchOrDept = emp.department || branchObj?.branch_name || emp.vahd_branch || '—';
-      const dist = emp.institute_name || emp.organization_name || branchObj?.vahd_name || branchObj?.branch_name || emp.vahd_branch || (allBranchesList[0]?.vahd_name || allBranchesList[0]?.branch_name) || activeOrgInst || 'Main Institute';
-      const empDist = emp.district || branchObj?.district || branchObj?.city || (allBranchesList.find((b) => b.city)?.city) || 'Hyderabad';
+      const branchObj = allBranchesList.find((b) => b.id === emp.branch_id || b.id === emp.tenant_id) ||
+        (emp.organization_name ? allBranchesList.find((b) => b.vahd_name?.toLowerCase() === emp.organization_name?.toLowerCase()) : undefined);
+      const branchName = branchObj?.branch_name || (branchObj as any)?.city || emp.vahd_branch || emp.branch_name || '—';
+      const dist = branchObj?.vahd_name || branchObj?.name || (emp.organization_name && emp.organization_name !== 'VAHD' ? emp.organization_name : '') || (emp.institute_name && emp.institute_name !== 'VAHD' ? emp.institute_name : '') || branchObj?.branch_name || emp.vahd_branch || '—';
+      const empDist = emp.district || branchObj?.district || branchObj?.city || '—';
 
       // Dynamic check-in location from DB (strictly '—' if user has not checked in)
       let inLoc = '—';
@@ -834,7 +937,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
         name: fullName,
         id: empId,
         desg: emp.designation || '—',
-        place: branchOrDept,
+        place: branchName,
         dist: dist,
         district: empDist,
         in: inTime,
@@ -905,10 +1008,11 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
       }
 
       const meta = s.meta_data || {};
-      const branchObj = allBranchesList.find((b) => b.id === s.branch_id);
-      const branchOrDept = s.course || branchObj?.branch_name || s.primary_vahd_location || '—';
-      const dist = s.institute_name || meta.college_name || meta.institute_name || branchObj?.vahd_name || branchObj?.branch_name || s.primary_vahd_location || (allBranchesList[0]?.vahd_name || allBranchesList[0]?.branch_name) || activeOrgInst || 'Main Institute';
-      const stuDist = s.district || meta.district || branchObj?.district || branchObj?.city || 'Hyderabad';
+      const branchObj = allBranchesList.find((b) => b.id === s.branch_id || b.id === s.tenant_id) ||
+        (s.primary_vahd_location ? allBranchesList.find((b) => b.vahd_name && s.primary_vahd_location.toLowerCase().includes(b.vahd_name.toLowerCase())) : undefined);
+      const branchName = branchObj?.branch_name || (branchObj as any)?.city || (s.primary_vahd_location && s.primary_vahd_location.includes(' - ') ? s.primary_vahd_location.split(' - ')[1].trim() : s.primary_vahd_location) || s.branch_name || '—';
+      const dist = branchObj?.vahd_name || branchObj?.name || (meta.organisation_name && meta.organisation_name !== 'VAHD' ? meta.organisation_name : '') || (s.institute_name && s.institute_name !== 'VAHD' ? s.institute_name : '') || (meta.college_name && meta.college_name !== 'VAHD' ? meta.college_name : '') || branchObj?.branch_name || s.primary_vahd_location || '—';
+      const stuDist = s.district || meta.district || branchObj?.district || branchObj?.city || '—';
 
       let inLoc = '—';
       if (hasInPunch) {
@@ -939,7 +1043,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
         name: fullName,
         id: studentRoll,
         desg: s.course || s.specialization || s.qualification || 'Student',
-        place: branchOrDept,
+        place: branchName,
         dist: dist,
         district: stuDist,
         in: inTime,
@@ -989,9 +1093,9 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
           }
         }
 
-        const defaultPlace = att.department || '—';
-        const extraDist = (att as any).institute_name || (att as any).vahd_name || (att as any).branch_name || activeOrgInst || (allBranchesList[0]?.vahd_name || allBranchesList[0]?.branch_name) || 'Main Institute';
-        const extraDistrict = (att as any).district || (att as any).city || (allBranchesList.find((b) => b.city)?.city) || 'Hyderabad';
+        const defaultPlace = (att as any).branch_name || (att as any).city || att.department || '—';
+        const extraDist = (att as any).vahd_name || ((att as any).institute_name && (att as any).institute_name !== 'VAHD' ? (att as any).institute_name : '') || (att as any).branch_name || '—';
+        const extraDistrict = (att as any).district || (att as any).city || '—';
 
         return {
           attendee_type: 'employee',
@@ -1044,9 +1148,23 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
         (r.dist && r.dist.toLowerCase().includes(selectedDistrict.toLowerCase()))
       );
     }
-    const list = Array.from(new Set(rows.map((r) => r.dist).filter((d) => d && d !== '—')));
+    const fromRows = rows.map((r) => r.dist).filter((d) => d && d !== '—');
+    const fromBranches = allBranchesList
+      .filter((b) => {
+        if (selectedDistrict === 'All Districts') return true;
+        const bDist = b.district || b.city || '';
+        const bName = b.vahd_name || b.name || b.branch_name;
+        return (
+          bDist.toLowerCase() === selectedDistrict.toLowerCase() ||
+          bName.toLowerCase().includes(selectedDistrict.toLowerCase())
+        );
+      })
+      .map((b) => b.vahd_name || b.name || b.branch_name)
+      .filter((d): d is string => !!d && d.trim() !== '');
+
+    const list = Array.from(new Set([...fromRows, ...fromBranches]));
     return ['All Institutes', ...list];
-  }, [employeeAttendanceRows, selectedDistrict]);
+  }, [employeeAttendanceRows, allBranchesList, selectedDistrict]);
 
   const dynamicDistrictsList = availableInstitutesList;
 
@@ -1062,7 +1180,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
       rows = rows.filter((r) => r.dist.toLowerCase() === filterInstitute.toLowerCase());
     }
     const list = Array.from(new Set(rows.map((r) => r.place).filter((p) => p && p !== '—')));
-    return ['All Places', ...list];
+    return ['All Branches', ...list];
   }, [employeeAttendanceRows, selectedDistrict, filterInstitute]);
 
   // Filtered rows for Daily Attendance Report
@@ -1076,7 +1194,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
         filterInstitute === 'All Institutes' ||
         filterInstitute === 'All Districts' ||
         r.dist.toLowerCase() === filterInstitute.toLowerCase();
-      const matchPlace = filterPlace === 'All Places' || r.place.toLowerCase() === filterPlace.toLowerCase();
+      const matchPlace = filterPlace === 'All Branches' || filterPlace === 'All Places' || r.place.toLowerCase() === filterPlace.toLowerCase();
       const st = (r.status || '').toLowerCase();
       const fst = (filterStatus || '').toLowerCase();
       const matchStatus =
@@ -1322,18 +1440,22 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                   handleExportCSV(
                     `Student_Attendance_${targetYear}_${targetMonth}`,
                     ['#', 'INSTITUTE NAME', 'ROLL NO', 'STUDENT NAME', 'DEGREE / COURSE', 'REGISTERED MOBILE', 'WORKING DAYS', 'PRESENT', 'ABSENT', 'ATTENDANCE %'],
-                    filteredStudents.map((s: any, idx: number) => [
-                      idx + 1,
-                      s.college_name || s.institute_name || s.vahd_name || s.branch_name || '--',
-                      s.roll_number || s.member_code || s.student_number || s.code || (s.student_id?.startsWith('cust_') ? `stu${s.student_id.slice(-4)}` : s.student_id),
-                      s.student_name,
-                      s.degree || '--',
-                      s.parent_phone || '--',
-                      s.total_working_days,
-                      s.days_present,
-                      s.days_absent,
-                      `${s.attendance_percentage}%`
-                    ])
+                    filteredStudents.map((s: any, idx: number) => {
+                      const sBranch = allBranchesList.find((b: any) => b.id === s.branch_id || b.id === s.tenant_id);
+                      const sOrg = (sBranch as any)?.vahd_name || (sBranch as any)?.name || (s.organisation_name && s.organisation_name !== 'VAHD' ? s.organisation_name : '') || (s.vahd_name && s.vahd_name !== 'VAHD' ? s.vahd_name : '') || (s.college_name && s.college_name !== 'VAHD' ? s.college_name : '') || (s.institute_name && s.institute_name !== 'VAHD' ? s.institute_name : '') || sBranch?.branch_name || s.branch_name || '—';
+                      return [
+                        idx + 1,
+                        sOrg,
+                        s.roll_number || s.member_code || s.student_number || s.code || (s.student_id?.startsWith('cust_') ? `stu${s.student_id.slice(-4)}` : s.student_id),
+                        s.student_name,
+                        s.degree || '--',
+                        s.parent_phone || '--',
+                        s.total_working_days,
+                        s.days_present,
+                        s.days_absent,
+                        `${s.attendance_percentage}%`
+                      ];
+                    })
                   )
                 }
                 className="px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 flex items-center gap-1.5 shadow-2xs transition cursor-pointer"
@@ -1433,62 +1555,55 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                   <th className="py-2.5 px-3 text-center">Working</th>
                   <th className="py-2.5 px-3 text-center">Present</th>
                   <th className="py-2.5 px-3 text-center">Absent</th>
-                  <th className="py-2.5 px-3 text-center">Score %</th>
-                  <th className="py-2.5 px-3">Institute Name</th>
+                  <th className="py-2.5 px-3">Organisation</th>
                   <th className="py-2.5 px-3 text-right">Statements &amp; Downloads</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-700">
                 {loadingMonthly ? (
                   <tr>
-                    <td colSpan={10} className="py-12 text-center text-slate-400 font-semibold">
+                    <td colSpan={9} className="py-12 text-center text-slate-400 font-semibold">
                       Loading student attendance records...
                     </td>
                   </tr>
                 ) : filteredStudents.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="py-12 text-center text-slate-400 font-semibold">
+                    <td colSpan={9} className="py-12 text-center text-slate-400 font-semibold">
                       No students found matching your filters.
                     </td>
                   </tr>
                 ) : (
                   filteredStudents.map((s: any) => {
                     const pct = s.attendance_percentage ?? 0;
+                    const studentBranch = allBranchesList.find((b: any) => b.id === s.branch_id || b.id === s.tenant_id);
+                    const orgName = (studentBranch as any)?.vahd_name || (studentBranch as any)?.name || (s.organisation_name && s.organisation_name !== 'VAHD' ? s.organisation_name : '') || (s.vahd_name && s.vahd_name !== 'VAHD' ? s.vahd_name : '') || (s.college_name && s.college_name !== 'VAHD' ? s.college_name : '') || (s.institute_name && s.institute_name !== 'VAHD' ? s.institute_name : '') || studentBranch?.branch_name || s.branch_name || '—';
+                    const branchCity = studentBranch?.branch_name || (studentBranch as any)?.city || s.branch_name || '';
+
                     return (
                       <tr key={s.student_id} className="hover:bg-slate-50/80 transition-colors">
                         <td className="py-3 px-3 font-mono font-bold text-slate-900">{s.roll_number || s.member_code || s.student_number || s.code || (s.student_id?.startsWith('cust_') ? `stu${s.student_id.slice(-4)}` : s.student_id)}</td>
                         <td className="py-3 px-3 font-extrabold text-slate-900">
                           <div>{s.student_name}</div>
-                          <div className="text-[10px] text-slate-500 font-medium flex items-center gap-1 mt-0.5">
-                            <span className="px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 border border-slate-200">
-                              🏫 {s.branch_name || s.college_name || ''}
-                            </span>
-                          </div>
+                          {branchCity ? (
+                            <div className="text-[10px] text-slate-500 font-medium flex items-center gap-1 mt-0.5">
+                              <span className="px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                                🏫 {branchCity}
+                              </span>
+                            </div>
+                          ) : null}
                         </td>
                         <td className="py-3 px-3 text-slate-600">{s.degree || '--'}</td>
                         <td className="py-3 px-3 font-mono font-bold text-blue-700">{s.parent_phone || '--'}</td>
                         <td className="py-3 px-3 text-center font-bold text-slate-800">{s.total_working_days}</td>
                         <td className="py-3 px-3 text-center font-bold text-emerald-600 bg-emerald-50/30">{s.days_present}</td>
                         <td className="py-3 px-3 text-center font-bold text-rose-600 bg-rose-50/30">{s.days_absent}</td>
-                        <td className="py-3 px-3 text-center">
-                          <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${pct >= 75
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : pct >= 60
-                                ? 'bg-amber-100 text-amber-800'
-                                : 'bg-rose-100 text-rose-800'
-                              }`}
-                          >
-                            {pct}%
-                          </span>
-                        </td>
                         <td className="py-3 px-3 text-[11px] font-bold text-slate-800">
                           <div className="flex items-center gap-1.5">
                             <span className="w-5 h-5 rounded-md bg-purple-50 text-purple-700 border border-purple-200 flex items-center justify-center shrink-0 text-[10px]">
                               🏛️
                             </span>
-                            <span className="truncate max-w-[200px]" title={s.college_name || s.institute_name || s.vahd_name || s.branch_name}>
-                              {s.college_name || s.institute_name || s.vahd_name || s.branch_name || '--'}
+                            <span className="truncate max-w-[200px]" title={orgName}>
+                              {orgName}
                             </span>
                           </div>
                         </td>
@@ -1825,14 +1940,13 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                 <tr>
                   <th className="py-2.5 px-3">Emp Code</th>
                   <th className="py-2.5 px-3">Employee Name</th>
-                  <th className="py-2.5 px-3">Institute / Organisation</th>
+                  <th className="py-2.5 px-3">Organisation</th>
                   <th className="py-2.5 px-3">Designation &amp; Dept</th>
                   <th className="py-2.5 px-3">Email &amp; Mobile</th>
                   <th className="py-2.5 px-3 text-center">Working</th>
                   <th className="py-2.5 px-3 text-center">Present</th>
                   <th className="py-2.5 px-3 text-center">Absent</th>
                   <th className="py-2.5 px-3 text-center">Leaves</th>
-                  <th className="py-2.5 px-3 text-center">Score %</th>
                   <th className="py-2.5 px-3 text-center">Status</th>
                   <th className="py-2.5 px-3 text-right">Statements &amp; Downloads</th>
                 </tr>
@@ -1840,37 +1954,43 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
               <tbody className="divide-y divide-slate-100 text-slate-700">
                 {loadingMonthly ? (
                   <tr>
-                    <td colSpan={12} className="py-12 text-center text-slate-400 font-semibold">
+                    <td colSpan={11} className="py-12 text-center text-slate-400 font-semibold">
                       Loading employee attendance records...
                     </td>
                   </tr>
                 ) : filteredEmployees.length === 0 ? (
                   <tr>
-                    <td colSpan={12} className="py-12 text-center text-slate-400 font-semibold">
+                    <td colSpan={11} className="py-12 text-center text-slate-400 font-semibold">
                       No employees found matching your filters.
                     </td>
                   </tr>
                 ) : (
                   filteredEmployees.map((emp: any) => {
                     const pct = emp.attendance_percentage ?? 0;
+                    const empBranch = allBranchesList.find((b: any) => b.id === emp.branch_id || b.id === emp.tenant_id);
+                    const orgName = (empBranch as any)?.vahd_name || (empBranch as any)?.name || (emp.organization_name && emp.organization_name !== 'VAHD' ? emp.organization_name : '') || (emp.institute_name && emp.institute_name !== 'VAHD' ? emp.institute_name : '') || empBranch?.branch_name || emp.branch_name || '—';
+                    const branchCity = empBranch?.branch_name || (empBranch as any)?.city || emp.branch_name || emp.vahd_branch || '';
+
                     return (
                       <tr key={emp.employee_id} className="hover:bg-slate-50/80 transition-colors">
                         <td className="py-3 px-3 font-mono font-bold text-slate-900">{emp.employee_code}</td>
                         <td className="py-3 px-3 font-extrabold text-slate-900">
                           <div>{emp.employee_name}</div>
-                          <div className="text-[10px] text-slate-500 font-medium flex items-center gap-1 mt-0.5">
-                            <span className="px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 border border-slate-200">
-                              🏫 {emp.branch_name || emp.vahd_branch || 'Main Branch'}
-                            </span>
-                          </div>
+                          {branchCity ? (
+                            <div className="text-[10px] text-slate-500 font-medium flex items-center gap-1 mt-0.5">
+                              <span className="px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                                🏫 {branchCity}
+                              </span>
+                            </div>
+                          ) : null}
                         </td>
                         <td className="py-3 px-3 text-[11px] font-bold text-slate-800">
                           <div className="flex items-center gap-1.5">
                             <span className="w-5 h-5 rounded-md bg-purple-50 text-purple-700 border border-purple-200 flex items-center justify-center shrink-0 text-[10px]">
                               🏛️
                             </span>
-                            <span className="truncate max-w-[190px]" title={emp.organization_name || emp.institute_name || emp.vahd_name || emp.branch_name || emp.vahd_branch}>
-                              {emp.organization_name || emp.institute_name || emp.vahd_name || emp.branch_name || emp.vahd_branch || '--'}
+                            <span className="truncate max-w-[190px]" title={orgName}>
+                              {orgName}
                             </span>
                           </div>
                         </td>
@@ -1886,18 +2006,6 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                         <td className="py-3 px-3 text-center font-bold text-emerald-600 bg-emerald-50/30">{emp.days_present}</td>
                         <td className="py-3 px-3 text-center font-bold text-rose-600 bg-rose-50/30">{emp.days_absent}</td>
                         <td className="py-3 px-3 text-center font-bold text-purple-600">{emp.days_leave}</td>
-                        <td className="py-3 px-3 text-center">
-                          <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${pct >= 75
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : pct >= 60
-                                ? 'bg-amber-100 text-amber-800'
-                                : 'bg-rose-100 text-rose-800'
-                              }`}
-                          >
-                            {pct}%
-                          </span>
-                        </td>
                         <td className="py-3 px-3 text-center">
                           {pct >= 75 ? (
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
@@ -2255,7 +2363,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold text-slate-600 mb-1">Place of Working</label>
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">Branch</label>
               <select
                 value={filterPlace}
                 onChange={(e) => setFilterPlace(e.target.value)}
@@ -2557,7 +2665,19 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
 
         {/* Filters */}
         <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-sm space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-2.5 text-xs">
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">Category / Role</label>
+              <select
+                value={dailyAttendeeType}
+                onChange={(e) => setDailyAttendeeType(e.target.value as any)}
+                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
+              >
+                <option value="all">All (Staff & Students)</option>
+                <option value="employees">Employees</option>
+                <option value="students">Students</option>
+              </select>
+            </div>
             <div>
               <label className="block text-[11px] font-bold text-slate-600 mb-1">Institution Type</label>
               <select
@@ -2606,7 +2726,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold text-slate-600 mb-1">Place of Working</label>
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">Branch</label>
               <select
                 value={filterPlace}
                 onChange={(e) => setFilterPlace(e.target.value)}
@@ -2803,7 +2923,19 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
 
         {/* Filters */}
         <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-sm space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-2.5 text-xs">
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">Scope / Category</label>
+              <select
+                value={dailyAttendeeType}
+                onChange={(e) => setDailyAttendeeType(e.target.value as any)}
+                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
+              >
+                <option value="all">All (Staff & Students)</option>
+                <option value="employees">Employees</option>
+                <option value="students">Students</option>
+              </select>
+            </div>
             <div>
               <label className="block text-[11px] font-bold text-slate-600 mb-1">District</label>
               <select
@@ -2921,7 +3053,9 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                 <tr>
                   <th className="py-3 px-4">NO.</th>
                   <th className="py-3 px-4">INSTITUTE NAME</th>
-                  <th className="py-3 px-4 text-center">TOTAL NO. OF EMPLOYEES</th>
+                  <th className="py-3 px-4 text-center">
+                    {dailyAttendeeType === 'employees' ? 'TOTAL NO. OF EMPLOYEES' : dailyAttendeeType === 'students' ? 'TOTAL NO. OF STUDENTS' : 'TOTAL STAFF & STUDENTS'}
+                  </th>
                   <th className="py-3 px-4 text-center">USERS REGISTERED</th>
                   <th className="py-3 px-4 text-center text-emerald-700">MARKED ATTENDANCE</th>
                 </tr>
@@ -2970,10 +3104,212 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
   // ─────────────────────────────────────────────────────────────────────────────
 
   const renderRangeAttendanceView = () => {
+    // Generate day-by-day dates across the selected date range
+    const dateRangeColumns = (() => {
+      const dates: { dateStr: string; label: string; day: number; month: number; year: number }[] = [];
+      try {
+        const start = new Date(filterFromDate);
+        const end = new Date(filterToDate);
+        if (isNaN(start.getTime()) || isNaN(end.getTime()) || start > end) return dates;
+        const cur = new Date(start);
+        while (cur <= end && dates.length <= 62) {
+          const y = cur.getFullYear();
+          const m = String(cur.getMonth() + 1).padStart(2, '0');
+          const d = String(cur.getDate()).padStart(2, '0');
+          const dateStr = `${y}-${m}-${d}`;
+          const label = `${d}/${m}`;
+          dates.push({ dateStr, label, day: cur.getDate(), month: cur.getMonth() + 1, year: y });
+          cur.setDate(cur.getDate() + 1);
+        }
+      } catch (e) {}
+      return dates;
+    })();
+
+    // Helper: Determine if person is Present or Absent on date
+    const getPersonDayStatus = (personRow: AttendanceRowItem, dateInfo: { day: number; dateStr: string }) => {
+      if (attendanceMatrix?.employees && Array.isArray(attendanceMatrix.employees)) {
+        const pCleanCode = (personRow.id || '').replace(/\D/g, '');
+        const pCleanId = (personRow.id || '').toLowerCase().replace(/^(emp_|cust_)/, '');
+        const pName = (personRow.name || '').toLowerCase().trim();
+
+        const mEmp = attendanceMatrix.employees.find((m: any) => {
+          const mCleanCode = (m.code || '').replace(/\D/g, '');
+          const mCleanId = (m.id || '').toLowerCase().replace(/^(emp_|cust_)/, '');
+          const mName = (m.name || '').toLowerCase().trim();
+          return (
+            (m.id && personRow.id && m.id.toLowerCase() === personRow.id.toLowerCase()) ||
+            (pCleanCode && mCleanCode && pCleanCode === mCleanCode) ||
+            (pCleanId && mCleanId && pCleanId === mCleanId) ||
+            (pName && mName && (pName === mName || pName.includes(mName) || mName.includes(pName)))
+          );
+        });
+
+        if (mEmp && mEmp.days) {
+          const dInfo = mEmp.days[dateInfo.day] || mEmp.days[String(dateInfo.day)];
+          if (dInfo) {
+            const isPres =
+              dInfo.code === 'P' ||
+              dInfo.code === 'HD' ||
+              dInfo.status === 'Present' ||
+              dInfo.status_label === 'Present' ||
+              (dInfo.check_in && dInfo.check_in !== '--:--' && dInfo.check_in !== '-');
+            return isPres ? 'P' : 'A';
+          }
+        }
+      }
+
+      if (dateInfo.dateStr === filterDate) {
+        const isPres =
+          personRow.status === 'Present' ||
+          personRow.status === 'Late' ||
+          (personRow.in && personRow.in !== '—' && personRow.in !== '--:--');
+        return isPres ? 'P' : 'A';
+      }
+
+      return 'A';
+    };
+
+    // Filtered branches for Abstract view
+    let abstractBranchRows: BranchItem[] = allBranchesList.length > 0
+      ? allBranchesList
+      : dynamicDistricts.map((d) => ({
+          id: d.name,
+          branch_name: d.district || '',
+          vahd_name: d.name,
+          name: d.name,
+          city: d.district || '',
+          district: d.district || ''
+        }));
+
+    if (selectedDistrict !== 'All Districts') {
+      abstractBranchRows = abstractBranchRows.filter((b) => {
+        const dist = b.district || b.city || b.branch_name || '';
+        const name = b.vahd_name || b.name || b.branch_name;
+        return dist.toLowerCase() === selectedDistrict.toLowerCase() || name.toLowerCase().includes(selectedDistrict.toLowerCase());
+      });
+    }
+
+    if (filterInstitute !== 'All Institutes' && filterInstitute !== 'All Districts') {
+      abstractBranchRows = abstractBranchRows.filter((b) => {
+        const name = b.vahd_name || b.name || b.branch_name;
+        return name.toLowerCase() === filterInstitute.toLowerCase();
+      });
+    }
+
+    if (searchTableQuery.trim()) {
+      const q = searchTableQuery.toLowerCase();
+      abstractBranchRows = abstractBranchRows.filter((b) => {
+        const name = (b.vahd_name || b.name || b.branch_name || '').toLowerCase();
+        const branch = (b.branch_name || b.city || '').toLowerCase();
+        return name.includes(q) || branch.includes(q);
+      });
+    }
+
+    // Helper: Compute organisation day count (Present or Absent)
+    const getOrgDayCount = (branchObj: { id: string; branch_name: string; vahd_name?: string; name?: string; city?: string }, dateInfo: { day: number; dateStr: string }, wantAbsent = false) => {
+      const orgKey = (branchObj.vahd_name || branchObj.name || branchObj.branch_name || '').toLowerCase();
+      const branchName = (branchObj.branch_name || branchObj.city || '').toLowerCase();
+
+      const bEmployees = employees.filter((e) => {
+        const bId = e.branch_id;
+        const vBranch = (e.vahd_branch || '').toLowerCase();
+        const inst = (e.institute_name || e.organization_name || '').toLowerCase();
+        return (
+          bId === branchObj.id ||
+          (orgKey && vBranch === orgKey) ||
+          (branchName && vBranch === branchName) ||
+          (orgKey && inst === orgKey)
+        );
+      });
+
+      const bStudents = students.filter((s) => {
+        const meta = s.meta_data || {};
+        const loc = (s.primary_vahd_location || '').toLowerCase();
+        const inst = (s.institute_name || meta.college_name || '').toLowerCase();
+        return (
+          s.branch_id === branchObj.id ||
+          s.tenant_id === branchObj.id ||
+          (orgKey && loc.includes(orgKey)) ||
+          (orgKey && inst === orgKey)
+        );
+      });
+
+      const members: Array<{ id: string; code?: string; name?: string; is_present?: boolean }> = [];
+      if (dailyAttendeeType === 'all' || dailyAttendeeType === 'employees') {
+        bEmployees.forEach((e) => {
+          members.push({
+            id: e.id,
+            code: e.code,
+            name: `${e.first_name || ''} ${e.last_name || ''}`.trim() || e.first_name || 'Staff'
+          });
+        });
+      }
+      if (dailyAttendeeType === 'all' || dailyAttendeeType === 'students') {
+        bStudents.forEach((s) => {
+          members.push({
+            id: s.id,
+            code: s.member_code || s.roll_number,
+            name: s.full_name || 'Student',
+            is_present: s.is_present || s.isPresentToday || s.today_status === 'Present'
+          });
+        });
+      }
+
+      if (members.length === 0) return 0;
+
+      let presCount = 0;
+      let absCount = 0;
+
+      members.forEach((m) => {
+        let isPres = false;
+        if (attendanceMatrix?.employees && Array.isArray(attendanceMatrix.employees)) {
+          const mCleanCode = (m.code || '').replace(/\D/g, '');
+          const mCleanId = (m.id || '').toLowerCase().replace(/^(emp_|cust_)/, '');
+          const mName = (m.name || '').toLowerCase().trim();
+
+          const matrixRow = attendanceMatrix.employees.find((me: any) => {
+            const meCleanCode = (me.code || '').replace(/\D/g, '');
+            const meCleanId = (me.id || '').toLowerCase().replace(/^(emp_|cust_)/, '');
+            const meName = (me.name || '').toLowerCase().trim();
+            return (
+              (me.id && m.id && me.id.toLowerCase() === m.id.toLowerCase()) ||
+              (mCleanCode && meCleanCode && mCleanCode === meCleanCode) ||
+              (mCleanId && meCleanId && mCleanId === meCleanId) ||
+              (mName && meName && (mName === meName || mName.includes(meName) || meName.includes(mName)))
+            );
+          });
+
+          if (matrixRow && matrixRow.days) {
+            const dInfo = matrixRow.days[dateInfo.day] || matrixRow.days[String(dateInfo.day)];
+            if (dInfo) {
+              isPres =
+                dInfo.code === 'P' ||
+                dInfo.code === 'HD' ||
+                dInfo.status === 'Present' ||
+                dInfo.status_label === 'Present' ||
+                (dInfo.check_in && dInfo.check_in !== '--:--' && dInfo.check_in !== '-');
+            }
+          }
+        }
+
+        if (!isPres && dateInfo.dateStr === filterDate) {
+          if (m.is_present) isPres = true;
+        }
+
+        if (isPres) {
+          presCount += 1;
+        } else {
+          absCount += 1;
+        }
+      });
+
+      return wantAbsent ? absCount : presCount;
+    };
+
     const rangeDisplayRows =
-      rangeTabMode === 'Employees'
+      dailyAttendeeType === 'employees'
         ? filteredDailyAttendance.filter((r) => r.attendee_type === 'employee')
-        : rangeTabMode === 'Students'
+        : dailyAttendeeType === 'students'
         ? filteredDailyAttendance.filter((r) => r.attendee_type === 'student')
         : filteredDailyAttendance;
 
@@ -3010,7 +3346,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
 
         {/* Filter Toolbar with Range Tabs */}
         <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-sm space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-2.5 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5 text-xs">
             <div>
               <label className="block text-[11px] font-bold text-slate-600 mb-1">From Date</label>
               <input
@@ -3030,19 +3366,45 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
               />
             </div>
             <div>
-              <label className="block text-[11px] font-bold text-slate-600 mb-1">District</label>
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">Scope / Category</label>
               <select
-                value={selectedDistrict}
-                onChange={(e) => setSelectedDistrict(e.target.value)}
+                value={dailyAttendeeType}
+                onChange={(e) => setDailyAttendeeType(e.target.value as any)}
                 className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
               >
-                {availableDistrictsList.map((d) => (
-                  <option key={d} value={d}>
-                    {d}
-                  </option>
-                ))}
+                <option value="all">All (Staff & Students)</option>
+                <option value="employees">Employees Only</option>
+                <option value="students">Students Only</option>
               </select>
             </div>
+            {rangeTabMode === 'Abstract' ? (
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">Attendance Metric</label>
+                <select
+                  value={rangeMetric}
+                  onChange={(e) => setRangeMetric(e.target.value as any)}
+                  className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
+                >
+                  <option value="Present">Present Count</option>
+                  <option value="Absent">Absent Count</option>
+                </select>
+              </div>
+            ) : (
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">District</label>
+                <select
+                  value={selectedDistrict}
+                  onChange={(e) => setSelectedDistrict(e.target.value)}
+                  className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
+                >
+                  {availableDistrictsList.map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div>
               <label className="block text-[11px] font-bold text-slate-600 mb-1">Institute / Campus</label>
               <select
@@ -3072,7 +3434,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 border-t border-slate-100">
             {/* Range Tab Switcher */}
             <div className="bg-slate-50 p-1 rounded-xl flex items-center border border-slate-200/90 text-xs gap-1 overflow-x-auto max-w-full">
-              {(['Report', 'Detail', 'Abstract', 'Employees', 'Students'] as const).map((tab) => (
+              {(['Report', 'Detail', 'Abstract'] as const).map((tab) => (
                 <button
                   key={tab}
                   type="button"
@@ -3084,8 +3446,6 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
                   )}
                 >
-                  {tab === 'Employees' && <span>👤</span>}
-                  {tab === 'Students' && <span>🎓</span>}
                   <span>{tab}</span>
                 </button>
               ))}
@@ -3117,31 +3477,33 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                   if (rangeTabMode === 'Abstract') {
                     handleExportCSV(
                       `Range_Attendance_Abstract_${filterFromDate}_to_${filterToDate}`,
-                      ['#', 'INSTITUTE NAME', 'TOTAL STAFF & STUDENTS', 'REGISTERED', 'ATTENDED ON TIME', 'LATE COUNT', 'EARLY LEAVING', 'NOT LOGGED OUT', 'ABSENT', 'LEAVE', 'OD'],
-                      dynamicDistricts.map((d, i) => [i + 1, d.name, d.total, d.registered, d.attended, d.late, d.early, d.notOut, d.absent, d.leave, d.od])
+                      ['ORGANISATION & BRANCH', ...dateRangeColumns.map((d) => d.label)],
+                      abstractBranchRows.map((br) => {
+                        const orgName = br.vahd_name || br.name || br.branch_name;
+                        const branchName = br.branch_name || br.city || '—';
+                        return [
+                          `${orgName} - ${branchName}`,
+                          ...dateRangeColumns.map((d) => getOrgDayCount(br, d, rangeMetric === 'Absent'))
+                        ];
+                      })
                     );
                   } else if (rangeTabMode === 'Detail') {
                     handleExportCSV(
                       `Range_Attendance_Detail_${filterFromDate}_to_${filterToDate}`,
-                      ['#', 'ID / ROLL NO', 'NAME', 'TYPE', 'INSTITUTE NAME', 'CAMPUS / DEPT', 'DATE', 'CHECK-IN TIME', 'CHECK-IN LOCATION', 'CHECK-OUT TIME', 'CHECK-OUT LOCATION', 'STATUS'],
-                      rows.map((r, i) => [i + 1, r.id, r.name, r.attendee_type === 'student' ? 'Student' : 'Employee', r.dist, r.place, filterDate, r.in, r.in_loc, r.out, r.out_loc, r.status])
-                    );
-                  } else if (rangeTabMode === 'Employees') {
-                    handleExportCSV(
-                      `Range_Attendance_Employees_${filterFromDate}_to_${filterToDate}`,
-                      ['#', 'EMPLOYEE NO', 'NAME', 'INSTITUTE NAME', 'PLACE OF WORKING', 'PRESENT', 'LATE', 'ABSENT', 'LEAVE', 'TOTAL', 'ATTENDANCE %'],
-                      rows.map((r, i) => [i + 1, r.id, r.name, r.dist, r.place, r.status === 'Present' ? 1 : 0, r.status === 'Late' ? 1 : 0, r.status === 'Absent' ? 1 : 0, r.status === 'Leave' ? 1 : 0, 1, r.status === 'Absent' ? '0%' : '100%'])
-                    );
-                  } else if (rangeTabMode === 'Students') {
-                    handleExportCSV(
-                      `Range_Attendance_Students_${filterFromDate}_to_${filterToDate}`,
-                      ['#', 'ROLL NO', 'STUDENT NAME', 'INSTITUTE NAME', 'COURSE / PROGRAM', 'CAMPUS / DEPT', 'PRESENT', 'LATE', 'ABSENT', 'LEAVE', 'TOTAL', 'ATTENDANCE %'],
-                      rows.map((r, i) => [i + 1, r.id, r.name, r.dist, r.desg, r.place, r.status === 'Present' ? 1 : 0, r.status === 'Late' ? 1 : 0, r.status === 'Absent' ? 1 : 0, r.status === 'Leave' ? 1 : 0, 1, r.status === 'Absent' ? '0%' : '100%'])
+                      ['#', 'EMPLOYEE NO', 'NAME', 'DISTRICT', 'BRANCH', ...dateRangeColumns.map((d) => d.label)],
+                      rows.map((r, i) => [
+                        i + 1,
+                        r.id,
+                        r.name,
+                        r.district || r.dist,
+                        r.place,
+                        ...dateRangeColumns.map((d) => getPersonDayStatus(r, d))
+                      ])
                     );
                   } else {
                     handleExportCSV(
                       `Range_Attendance_Report_${filterFromDate}_to_${filterToDate}`,
-                      ['#', 'ID / ROLL NO', 'NAME', 'TYPE', 'INSTITUTE NAME', 'PLACE OF WORKING', 'PRESENT', 'LATE', 'ABSENT', 'LEAVE', 'TOTAL', 'ATTENDANCE %'],
+                      ['#', 'ID / ROLL NO', 'NAME', 'TYPE', 'INSTITUTE NAME', 'BRANCH', 'PRESENT', 'LATE', 'ABSENT', 'LEAVE', 'TOTAL', 'ATTENDANCE %'],
                       rows.map((r, i) => [i + 1, r.id, r.name, r.attendee_type === 'student' ? 'Student' : 'Employee', r.dist, r.place, r.status === 'Present' ? 1 : 0, r.status === 'Late' ? 1 : 0, r.status === 'Absent' ? 1 : 0, r.status === 'Leave' ? 1 : 0, 1, r.status === 'Absent' ? '0%' : '100%'])
                     );
                   }
@@ -3168,18 +3530,14 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
           <div className="p-3.5 border-b border-slate-200/90 bg-slate-50/60 flex items-center justify-between">
             <div className="text-xs font-extrabold text-slate-900 flex items-center gap-2">
               <span>
-                {rangeTabMode === 'Employees'
-                  ? 'Report — Employee Attendance Totals'
-                  : rangeTabMode === 'Students'
-                  ? 'Report — Student Attendance Totals'
-                  : rangeTabMode === 'Detail'
-                  ? 'Detail — Shift Logs & Punch Activity'
+                {rangeTabMode === 'Detail'
+                  ? `Detail — ${dailyAttendeeType === 'students' ? 'Student' : dailyAttendeeType === 'employees' ? 'Employee' : 'Personnel'} × Day`
                   : rangeTabMode === 'Abstract'
-                  ? 'Abstract — Institute Rollup Summary'
+                  ? 'Abstract — District × Day'
                   : 'Report — Consolidated Attendance Totals'}, {filterFromDate} to {filterToDate}
               </span>
               <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-[11px] font-mono">
-                {rangeTabMode === 'Abstract' ? dynamicDistricts.length : rangeDisplayRows.length} records
+                {rangeTabMode === 'Abstract' ? abstractBranchRows.length : rangeDisplayRows.length} records
               </span>
             </div>
           </div>
@@ -3189,57 +3547,46 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-50/80 text-slate-500 font-extrabold uppercase text-[10px] tracking-wider border-b border-slate-200/90">
                   <tr>
-                    <th className="py-3 px-3.5">#</th>
-                    <th className="py-3 px-3.5">INSTITUTE NAME</th>
-                    <th className="py-3 px-3.5 text-center">TOTAL STAFF &amp; STUDENTS</th>
-                    <th className="py-3 px-3.5 text-center">REGISTERED</th>
-                    <th className="py-3 px-3.5 text-center text-emerald-700">ATTENDED ON TIME</th>
-                    <th className="py-3 px-3.5 text-center text-amber-700">LATE COUNT</th>
-                    <th className="py-3 px-3.5 text-center text-indigo-700">EARLY LEAVING</th>
-                    <th className="py-3 px-3.5 text-center text-orange-700">NOT LOGGED OUT</th>
-                    <th className="py-3 px-3.5 text-center text-rose-700">ABSENT</th>
-                    <th className="py-3 px-3.5 text-center text-purple-700">LEAVE</th>
-                    <th className="py-3 px-3.5 text-center text-sky-700">OD</th>
+                    <th className="py-3 px-3.5 whitespace-nowrap">ORGANISATION &amp; BRANCH</th>
+                    {dateRangeColumns.map((d) => (
+                      <th key={d.dateStr} className="py-3 px-2 text-center text-[10px] font-mono tracking-tight whitespace-nowrap">
+                        {d.label}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-bold">
-                  {dynamicDistricts.length === 0 ? (
+                  {abstractBranchRows.length === 0 ? (
                     <tr>
-                      <td colSpan={11} className="py-12 text-center text-slate-400 font-medium">
-                        No institute rollup records found.
+                      <td colSpan={dateRangeColumns.length + 1} className="py-12 text-center text-slate-400 font-medium">
+                        No organisation records found.
                       </td>
                     </tr>
                   ) : (
-                    dynamicDistricts.map((row, idx) => (
-                      <tr key={idx} className="hover:bg-purple-50/20 transition-colors">
-                        <td className="py-3 px-3.5 text-slate-400 font-medium">{idx + 1}</td>
-                        <td className="py-3 px-3.5 font-extrabold text-slate-900">
-                          <div className="flex items-center gap-1.5">
-                            <span className="w-5 h-5 rounded-md bg-purple-50 text-purple-700 border border-purple-200 flex items-center justify-center shrink-0 text-[10px]">
-                              🏛️
-                            </span>
-                            <div>
-                              <div>{row.name}</div>
-                              {row.district && row.district !== '—' && (
-                                <div className="text-[10px] text-slate-400 font-semibold flex items-center gap-0.5">
-                                  <span>📍</span>
-                                  <span>{row.district}</span>
-                                </div>
-                              )}
+                    abstractBranchRows.map((br, idx) => {
+                      const orgName = br.vahd_name || br.name || br.branch_name;
+                      const branchName = br.branch_name || br.city || '—';
+                      return (
+                        <tr key={idx} className="hover:bg-purple-50/20 transition-colors">
+                          <td className="py-3 px-3.5 font-extrabold text-slate-900 whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <span className="w-5 h-5 rounded-md bg-purple-50 text-purple-700 border border-purple-200 flex items-center justify-center shrink-0 text-[10px]">
+                                🏛️
+                              </span>
+                              <span className="font-bold text-slate-800">{orgName} - {branchName}</span>
                             </div>
-                          </div>
-                        </td>
-                        <td className="py-3 px-3.5 text-center font-mono">{row.total}</td>
-                        <td className="py-3 px-3.5 text-center font-mono text-slate-700">{row.registered}</td>
-                        <td className="py-3 px-3.5 text-center font-mono text-emerald-700 bg-emerald-50/40">{row.attended}</td>
-                        <td className="py-3 px-3.5 text-center font-mono text-amber-700 bg-amber-50/40">{row.late}</td>
-                        <td className="py-3 px-3.5 text-center font-mono text-indigo-700">{row.early}</td>
-                        <td className="py-3 px-3.5 text-center font-mono text-orange-700">{row.notOut}</td>
-                        <td className="py-3 px-3.5 text-center font-mono text-rose-700 bg-rose-50/40">{row.absent}</td>
-                        <td className="py-3 px-3.5 text-center font-mono text-purple-700">{row.leave}</td>
-                        <td className="py-3 px-3.5 text-center font-mono text-sky-700">{row.od}</td>
-                      </tr>
-                    ))
+                          </td>
+                          {dateRangeColumns.map((d) => {
+                            const count = getOrgDayCount(br, d, rangeMetric === 'Absent');
+                            return (
+                              <td key={d.dateStr} className="py-3 px-2 text-center font-mono font-bold text-slate-800">
+                                {count}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
@@ -3248,22 +3595,21 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                 <thead className="bg-slate-50/80 text-slate-500 font-extrabold uppercase text-[10px] tracking-wider border-b border-slate-200/90">
                   <tr>
                     <th className="py-3 px-3.5">#</th>
-                    <th className="py-3 px-3.5">ID / ROLL NO</th>
-                    <th className="py-3 px-3.5">NAME</th>
-                    <th className="py-3 px-3.5">TYPE</th>
-                    <th className="py-3 px-3.5">INSTITUTE NAME</th>
-                    <th className="py-3 px-3.5">CAMPUS / DEPT</th>
-                    <th className="py-3 px-3.5">CHECK-IN TIME</th>
-                    <th className="py-3 px-3.5">CHECK-IN LOCATION</th>
-                    <th className="py-3 px-3.5">CHECK-OUT TIME</th>
-                    <th className="py-3 px-3.5">CHECK-OUT LOCATION</th>
-                    <th className="py-3 px-3.5 text-center">STATUS</th>
+                    <th className="py-3 px-3.5 whitespace-nowrap">EMPLOYEE NO</th>
+                    <th className="py-3 px-3.5 whitespace-nowrap">NAME</th>
+                    <th className="py-3 px-3.5 whitespace-nowrap">DISTRICT</th>
+                    <th className="py-3 px-3.5 whitespace-nowrap">BRANCH</th>
+                    {dateRangeColumns.map((d) => (
+                      <th key={d.dateStr} className="py-3 px-2 text-center text-[10px] font-mono whitespace-nowrap">
+                        {d.label}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-medium">
                   {rangeDisplayRows.length === 0 ? (
                     <tr>
-                      <td colSpan={11} className="py-12 text-center text-slate-400 font-medium">
+                      <td colSpan={dateRangeColumns.length + 5} className="py-12 text-center text-slate-400 font-medium">
                         No detail attendance records found.
                       </td>
                     </tr>
@@ -3271,193 +3617,26 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                     rangeDisplayRows.map((row, idx) => (
                       <tr key={idx} className="hover:bg-purple-50/20 transition-colors">
                         <td className="py-3 px-3.5 text-slate-400 font-bold">{idx + 1}</td>
-                        <td className="py-3 px-3.5 font-mono text-slate-700 font-bold">{row.id}</td>
-                        <td className="py-3 px-3.5 font-extrabold text-slate-900">{row.name}</td>
-                        <td className="py-3 px-3.5">
-                          <span
-                            className={cn(
-                              'px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border',
-                              row.attendee_type === 'student'
-                                ? 'bg-blue-50 text-blue-700 border-blue-200'
-                                : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                            )}
-                          >
-                            {row.attendee_type === 'student' ? 'Student' : 'Employee'}
-                          </span>
-                        </td>
-                        <td className="py-3 px-3.5 text-slate-700 font-bold">
-                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-purple-50 text-purple-900 border border-purple-200 text-xs font-bold">
-                            <span>🏛️</span>
-                            <span>{row.dist}</span>
-                          </span>
-                        </td>
-                        <td className="py-3 px-3.5 text-slate-600">{row.place}</td>
-                        <td className="py-3 px-3.5 font-mono text-slate-900 font-bold">{row.in}</td>
-                        <td className="py-3 px-3.5 text-slate-600">{row.in_loc}</td>
-                        <td className="py-3 px-3.5 font-mono text-slate-900">{row.out}</td>
-                        <td className="py-3 px-3.5 text-slate-600">{row.out_loc}</td>
-                        <td className="py-3 px-3.5 text-center">
-                          <span
-                            className={cn(
-                              'px-2.5 py-0.5 rounded-full text-[10px] font-black font-mono border',
-                              row.status === 'Absent'
-                                ? 'bg-rose-50 text-rose-700 border-rose-200'
-                                : row.status === 'Late'
-                                ? 'bg-amber-50 text-amber-700 border-amber-200'
-                                : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                            )}
-                          >
-                            {row.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            ) : rangeTabMode === 'Students' ? (
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50/80 text-slate-500 font-extrabold uppercase text-[10px] tracking-wider border-b border-slate-200/90">
-                  <tr>
-                    <th className="py-3 px-3.5">#</th>
-                    <th className="py-3 px-3.5">ROLL NO / ID</th>
-                    <th className="py-3 px-3.5">STUDENT NAME</th>
-                    <th className="py-3 px-3.5">INSTITUTE NAME</th>
-                    <th className="py-3 px-3.5">COURSE / PROGRAM</th>
-                    <th className="py-3 px-3.5">CAMPUS / DEPT</th>
-                    <th className="py-3 px-3.5 text-center text-emerald-700">PRESENT</th>
-                    <th className="py-3 px-3.5 text-center text-amber-700">LATE</th>
-                    <th className="py-3 px-3.5 text-center text-rose-700">ABSENT</th>
-                    <th className="py-3 px-3.5 text-center text-purple-700">LEAVE</th>
-                    <th className="py-3 px-3.5 text-center">TOTAL</th>
-                    <th className="py-3 px-3.5 text-center">ATTENDANCE %</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 font-medium">
-                  {rangeDisplayRows.length === 0 ? (
-                    <tr>
-                      <td colSpan={12} className="py-12 text-center text-slate-400 font-medium">
-                        No student range attendance records found.
-                      </td>
-                    </tr>
-                  ) : (
-                    rangeDisplayRows.map((row, idx) => (
-                      <tr key={idx} className="hover:bg-purple-50/20 transition-colors">
-                        <td className="py-3 px-3.5 text-slate-400 font-bold">{idx + 1}</td>
-                        <td className="py-3 px-3.5 font-mono text-blue-700 font-bold">{row.id}</td>
-                        <td className="py-3 px-3.5 font-extrabold text-slate-900">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-xs">🎓</span>
-                            <span>{row.name}</span>
-                          </div>
-                        </td>
-                        <td className="py-3 px-3.5 text-slate-700 font-bold">
-                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-purple-50 text-purple-900 border border-purple-200 text-xs font-bold">
-                            <span>🏛️</span>
-                            <span>{row.dist}</span>
-                          </span>
-                        </td>
-                        <td className="py-3 px-3.5 text-slate-600 font-medium">{row.desg}</td>
-                        <td className="py-3 px-3.5 text-slate-600">{row.place}</td>
-                        <td className="py-3 px-3.5 text-center font-mono font-bold text-emerald-700 bg-emerald-50/30">
-                          {row.status === 'Present' ? 1 : 0}
-                        </td>
-                        <td className="py-3 px-3.5 text-center font-mono font-bold text-amber-700 bg-amber-50/30">
-                          {row.status === 'Late' ? 1 : 0}
-                        </td>
-                        <td className="py-3 px-3.5 text-center font-mono font-bold text-rose-700 bg-rose-50/30">
-                          {row.status === 'Absent' ? 1 : 0}
-                        </td>
-                        <td className="py-3 px-3.5 text-center font-mono font-bold text-purple-700">
-                          {row.status === 'Leave' ? 1 : 0}
-                        </td>
-                        <td className="py-3 px-3.5 text-center font-mono font-bold text-slate-900">1</td>
-                        <td className="py-3 px-3.5 text-center">
-                          <span
-                            className={cn(
-                              'px-2.5 py-0.5 rounded-full text-[10px] font-black font-mono border',
-                              row.status === 'Absent'
-                                ? 'bg-rose-50 text-rose-700 border-rose-200'
-                                : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                            )}
-                          >
-                            {row.status === 'Absent' ? '0%' : '100%'}
-                          </span>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            ) : rangeTabMode === 'Employees' ? (
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50/80 text-slate-500 font-extrabold uppercase text-[10px] tracking-wider border-b border-slate-200/90">
-                  <tr>
-                    <th className="py-3 px-3.5">#</th>
-                    <th className="py-3 px-3.5">EMPLOYEE NO</th>
-                    <th className="py-3 px-3.5">NAME</th>
-                    <th className="py-3 px-3.5">INSTITUTE NAME</th>
-                    <th className="py-3 px-3.5">DESIGNATION</th>
-                    <th className="py-3 px-3.5">PLACE OF WORKING</th>
-                    <th className="py-3 px-3.5 text-center text-emerald-700">PRESENT</th>
-                    <th className="py-3 px-3.5 text-center text-amber-700">LATE</th>
-                    <th className="py-3 px-3.5 text-center text-rose-700">ABSENT</th>
-                    <th className="py-3 px-3.5 text-center text-purple-700">LEAVE</th>
-                    <th className="py-3 px-3.5 text-center">TOTAL</th>
-                    <th className="py-3 px-3.5 text-center">ATTENDANCE %</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 font-medium">
-                  {rangeDisplayRows.length === 0 ? (
-                    <tr>
-                      <td colSpan={12} className="py-12 text-center text-slate-400 font-medium">
-                        No employee range attendance records found.
-                      </td>
-                    </tr>
-                  ) : (
-                    rangeDisplayRows.map((row, idx) => (
-                      <tr key={idx} className="hover:bg-purple-50/20 transition-colors">
-                        <td className="py-3 px-3.5 text-slate-400 font-bold">{idx + 1}</td>
-                        <td className="py-3 px-3.5 font-mono text-slate-700 font-bold">{row.id}</td>
-                        <td className="py-3 px-3.5 font-extrabold text-slate-900">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-xs">👤</span>
-                            <span>{row.name}</span>
-                          </div>
-                        </td>
-                        <td className="py-3 px-3.5 text-slate-700 font-bold">
-                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-purple-50 text-purple-900 border border-purple-200 text-xs font-bold">
-                            <span>🏛️</span>
-                            <span>{row.dist}</span>
-                          </span>
-                        </td>
-                        <td className="py-3 px-3.5 text-slate-600 font-medium">{row.desg}</td>
-                        <td className="py-3 px-3.5 text-slate-600">{row.place}</td>
-                        <td className="py-3 px-3.5 text-center font-mono font-bold text-emerald-700 bg-emerald-50/30">
-                          {row.status === 'Present' ? 1 : 0}
-                        </td>
-                        <td className="py-3 px-3.5 text-center font-mono font-bold text-amber-700 bg-amber-50/30">
-                          {row.status === 'Late' ? 1 : 0}
-                        </td>
-                        <td className="py-3 px-3.5 text-center font-mono font-bold text-rose-700 bg-rose-50/30">
-                          {row.status === 'Absent' ? 1 : 0}
-                        </td>
-                        <td className="py-3 px-3.5 text-center font-mono font-bold text-purple-700">
-                          {row.status === 'Leave' ? 1 : 0}
-                        </td>
-                        <td className="py-3 px-3.5 text-center font-mono font-bold text-slate-900">1</td>
-                        <td className="py-3 px-3.5 text-center">
-                          <span
-                            className={cn(
-                              'px-2.5 py-0.5 rounded-full text-[10px] font-black font-mono border',
-                              row.status === 'Absent'
-                                ? 'bg-rose-50 text-rose-700 border-rose-200'
-                                : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                            )}
-                          >
-                            {row.status === 'Absent' ? '0%' : '100%'}
-                          </span>
-                        </td>
+                        <td className="py-3 px-3.5 font-mono text-slate-700 font-bold whitespace-nowrap">{row.id}</td>
+                        <td className="py-3 px-3.5 font-extrabold text-slate-900 whitespace-nowrap">{row.name}</td>
+                        <td className="py-3 px-3.5 text-slate-600 whitespace-nowrap">{row.district || row.dist}</td>
+                        <td className="py-3 px-3.5 text-slate-600 whitespace-nowrap">{row.place}</td>
+                        {dateRangeColumns.map((d) => {
+                          const stCode = getPersonDayStatus(row, d);
+                          return (
+                            <td key={d.dateStr} className="py-3 px-2 text-center">
+                              {stCode === 'P' ? (
+                                <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 font-bold text-[10px]">
+                                  P
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-slate-100 text-slate-500 font-bold text-[10px]">
+                                  A
+                                </span>
+                              )}
+                            </td>
+                          );
+                        })}
                       </tr>
                     ))
                   )}
@@ -3473,7 +3652,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                     <th className="py-3 px-3.5">NAME</th>
                     <th className="py-3 px-3.5">TYPE</th>
                     <th className="py-3 px-3.5">INSTITUTE NAME</th>
-                    <th className="py-3 px-3.5">PLACE OF WORKING</th>
+                    <th className="py-3 px-3.5">BRANCH</th>
                     <th className="py-3 px-3.5 text-center text-emerald-700">PRESENT</th>
                     <th className="py-3 px-3.5 text-center text-amber-700">LATE</th>
                     <th className="py-3 px-3.5 text-center text-rose-700">ABSENT</th>
@@ -3591,7 +3770,19 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
 
         {/* Filters */}
         <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-sm space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-2.5 text-xs">
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">Scope / Category</label>
+              <select
+                value={dailyAttendeeType}
+                onChange={(e) => setDailyAttendeeType(e.target.value as any)}
+                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
+              >
+                <option value="all">All (Staff & Students)</option>
+                <option value="employees">Employees</option>
+                <option value="students">Students</option>
+              </select>
+            </div>
             <div>
               <label className="block text-[11px] font-bold text-slate-600 mb-1">District</label>
               <select

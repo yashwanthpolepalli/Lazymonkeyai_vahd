@@ -114,7 +114,7 @@ export function LivevahdActivity({ activity }: LivevahdActivityProps) {
       );
 
       const resolved = resolveRole(roleUpper, rawCustId);
-      const name = (item.person_name || item.name || '').trim() || 'Unknown Attendee';
+      const name = ((item as any).person_name || (item as any).name || '').trim() || 'Unknown Attendee';
       const { time, fullDateStr, sortTime } = formatTimestamp(item.timestamp, item.time);
 
       list.push({

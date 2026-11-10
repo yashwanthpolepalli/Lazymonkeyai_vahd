@@ -288,6 +288,21 @@ class studentService:
             or ""
         )
 
+        # Resolve Institute / Organization name
+        b_match = None
+        if c.branch_id:
+            b_match = db.query(vahdBranch).filter(vahdBranch.id == c.branch_id).first()
+        if not b_match and c.primary_vahd_location:
+            b_match = db.query(vahdBranch).filter(or_(vahdBranch.branch_name == c.primary_vahd_location, vahdBranch.vahd_name == c.primary_vahd_location)).first()
+        inst_label = (
+            meta.get("college_name")
+            or meta.get("institute_name")
+            or getattr(b_match, "vahd_name", None)
+            or getattr(b_match, "branch_name", None)
+            or c.primary_vahd_location
+            or "Main Institute"
+        )
+
         return {
             "id": c.id,
             "student_id": c.id,
@@ -319,8 +334,15 @@ class studentService:
             "lastVisit": last_visit or "No recent visit",
             "expiry": expiry_str or "No active plan",
             "revenue": revenue_str,
-            "branch": c.primary_vahd_location or "",
-            "branch_id": c.branch_id or "",
+            "branch": c.primary_vahd_location or (b_match.branch_name if b_match else ""),
+            "branch_id": c.branch_id or (b_match.id if b_match else ""),
+            "branch_name": b_match.branch_name if b_match else (c.primary_vahd_location or ""),
+            "vahd_name": getattr(b_match, "vahd_name", None) or inst_label,
+            "city": getattr(b_match, "city", None) or "Hyderabad",
+            "district": meta.get("district") or getattr(b_match, "city", None) or "Hyderabad",
+            "institute_name": inst_label,
+            "college_name": inst_label,
+            "organization_name": inst_label,
             "owner_id": c.owner_id or "",
             "ho_id": c.ho_id or "",
             "created_at": c.created_at.isoformat() if c.created_at else None,

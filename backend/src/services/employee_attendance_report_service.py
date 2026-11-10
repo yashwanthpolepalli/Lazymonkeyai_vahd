@@ -270,6 +270,7 @@ class EmployeeAttendanceReportService:
             "vahd_branch": emp.vahd_branch or "",
             "branch_id": emp.branch_id,
             "organization_name": org_name,
+            "institute_name": org_name,
             "owner_id": emp.owner_id,
             "ho_id": emp.ho_id,
             "year": target_year,
@@ -282,6 +283,7 @@ class EmployeeAttendanceReportService:
             "days_half_day": days_half_day,
             "effective_present_days": effective_present,
             "attendance_percentage": attendance_percentage,
+            "status_text": "Optimal" if attendance_percentage >= 75 else ("Moderate" if attendance_percentage >= 60 else "Low Attendance"),
             "is_current_month": is_current_month,
             "day_wise_records": day_wise_records
         }
@@ -1074,6 +1076,7 @@ class EmployeeAttendanceReportService:
             branch_obj = branches_dict.get(emp.branch_id)
             branch_label = branch_obj.branch_name if branch_obj else (emp.vahd_branch or "")
             vahd_label = branch_obj.vahd_name if branch_obj else ""
+            inst_label = vahd_label or branch_label or emp.vahd_branch or "Main Organisation"
 
             items.append({
                 "employee_id": emp.id,
@@ -1087,11 +1090,14 @@ class EmployeeAttendanceReportService:
                 "branch_id": emp.branch_id,
                 "branch_name": branch_label,
                 "vahd_name": vahd_label,
+                "organization_name": inst_label,
+                "institute_name": inst_label,
                 "total_working_days": working_days,
                 "days_present": days_present,
                 "days_absent": days_absent,
                 "days_leave": days_leave,
                 "attendance_percentage": att_pct,
+                "status_text": "Optimal" if att_pct >= 75 else ("Moderate" if att_pct >= 60 else "Low Attendance"),
                 "delivery_status": status,
                 "last_sent_at": last_sent,
                 "error_message": err_msg

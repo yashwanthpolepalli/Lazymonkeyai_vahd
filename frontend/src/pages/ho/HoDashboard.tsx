@@ -1417,6 +1417,7 @@ export const HoDashboard: React.FC = () => {
                           <tr>
                             <th className="py-2.5 px-3">Emp Code</th>
                             <th className="py-2.5 px-3">Employee Name</th>
+                            <th className="py-2.5 px-3">Institute / Organisation</th>
                             <th className="py-2.5 px-3">Designation &amp; Dept</th>
                             <th className="py-2.5 px-3">Email &amp; Phone</th>
                             <th className="py-2.5 px-3 text-center">Working</th>
@@ -1430,7 +1431,7 @@ export const HoDashboard: React.FC = () => {
                         <tbody className="divide-y divide-slate-100 text-slate-700">
                           {!b.employees?.list || b.employees.list.length === 0 ? (
                             <tr>
-                              <td colSpan={10} className="py-8 text-center text-slate-400 font-semibold">
+                              <td colSpan={11} className="py-8 text-center text-slate-400 font-semibold">
                                 No active employees found in this branch.
                               </td>
                             </tr>
@@ -1439,6 +1440,16 @@ export const HoDashboard: React.FC = () => {
                               <tr key={emp.id} className="hover:bg-slate-50/80 transition-colors">
                                 <td className="py-3 px-3 font-mono font-bold text-slate-900">{emp.code}</td>
                                 <td className="py-3 px-3 font-extrabold text-slate-900">{emp.name}</td>
+                                <td className="py-3 px-3 text-[11px] font-bold text-slate-800">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="w-5 h-5 rounded-md bg-purple-50 text-purple-700 border border-purple-200 flex items-center justify-center shrink-0 text-[10px]">
+                                      🏛️
+                                    </span>
+                                    <span className="truncate max-w-[190px]" title={emp.organization_name || emp.institute_name || b.vahd_name || b.branch_name}>
+                                      {emp.organization_name || emp.institute_name || b.vahd_name || b.branch_name || '--'}
+                                    </span>
+                                  </div>
+                                </td>
                                 <td className="py-3 px-3 text-slate-600">
                                   {emp.designation} &bull; <span className="text-slate-400">{emp.department}</span>
                                 </td>
@@ -1506,7 +1517,7 @@ export const HoDashboard: React.FC = () => {
                             <th className="py-2.5 px-3 text-center">Present</th>
                             <th className="py-2.5 px-3 text-center">Absent</th>
                             <th className="py-2.5 px-3 text-center">Score %</th>
-                            <th className="py-2.5 px-3">Academic Standing</th>
+                            <th className="py-2.5 px-3">Institute Name</th>
                             <th className="py-2.5 px-3 text-right">Statements</th>
                           </tr>
                         </thead>
@@ -1540,7 +1551,16 @@ export const HoDashboard: React.FC = () => {
                                     {s.attendance_percentage}%
                                   </span>
                                 </td>
-                                <td className="py-3 px-3 text-[11px] text-slate-500">{s.status_text || '--'}</td>
+                                <td className="py-3 px-3 text-[11px] font-bold text-slate-800">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="w-5 h-5 rounded-md bg-purple-50 text-purple-700 border border-purple-200 flex items-center justify-center shrink-0 text-[10px]">
+                                      🏛️
+                                    </span>
+                                    <span className="truncate max-w-[200px]" title={s.institute_name || s.college_name || b.vahd_name || b.branch_name}>
+                                      {s.institute_name || s.college_name || b.vahd_name || b.branch_name || '--'}
+                                    </span>
+                                  </div>
+                                </td>
                                 <td className="py-3 px-3 text-right">
                                   <div className="inline-flex items-center gap-1.5">
                                     <a

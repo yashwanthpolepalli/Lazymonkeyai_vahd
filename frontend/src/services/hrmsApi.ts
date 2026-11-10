@@ -22,6 +22,12 @@ export interface EmployeeItem {
   emergency_contact: string;
   address?: string;
   district?: string;
+  city?: string;
+  branch_id?: string;
+  branch_name?: string;
+  vahd_name?: string;
+  organization_name?: string;
+  institute_name?: string;
   created_at?: string;
 }
 

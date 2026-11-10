@@ -206,7 +206,19 @@ class StudentAttendanceReportService:
 
         course_name = meta.get("course") or "Degree Program"
         medium_name = meta.get("medium") or ""
-        college_name = meta.get("college_name") or student.primary_vahd_location or "VAHD Higher Education Academy"
+        
+        # Resolve real candidate institute/college name from meta_data, branch institution, or location
+        inst_candidate = (
+            meta.get("college_name")
+            or meta.get("institute_name")
+            or meta.get("institution_name")
+        )
+        if not inst_candidate and getattr(student, "branch_id", None):
+            br_obj = db.query(vahdBranch).filter(vahdBranch.id == student.branch_id).first()
+            if br_obj:
+                inst_candidate = getattr(br_obj, "vahd_name", None) or getattr(br_obj, "name", None) or br_obj.branch_name
+
+        college_name = inst_candidate or student.primary_vahd_location or "VAHD Higher Education Academy"
 
         # Resolve sequential roll code (stu0001, stu0002...)
         roll_number = getattr(student, "member_code", None)
@@ -228,6 +240,7 @@ class StudentAttendanceReportService:
             "parent_phone": parent_phone,
             "has_parent_phone": bool(parent_phone),
             "college_name": college_name,
+            "institute_name": college_name,
             "branch_id": student.branch_id,
             "course": f"{course_name}{f' ({medium_name} Medium)' if medium_name else ''}",
             "year": target_year,
@@ -698,6 +711,12 @@ class StudentAttendanceReportService:
             branch_obj = branches_dict.get(s.branch_id)
             branch_label = branch_obj.branch_name if branch_obj else (s.primary_vahd_location or "Main Campus")
             vahd_label = branch_obj.vahd_name if branch_obj else ""
+            inst_label = (
+                rep.get("institute_name")
+                or rep.get("college_name")
+                or vahd_label
+                or branch_label
+            )
 
             student_reports.append({
                 "student_id": s.id,
@@ -708,6 +727,8 @@ class StudentAttendanceReportService:
                 "branch_id": s.branch_id,
                 "branch_name": branch_label,
                 "vahd_name": vahd_label,
+                "college_name": inst_label,
+                "institute_name": inst_label,
                 "parent_phone": rep.get("parent_phone"),
                 "has_parent_phone": rep.get("has_parent_phone"),
                 "total_working_days": rep.get("total_working_days"),

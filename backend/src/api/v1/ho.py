@@ -2,12 +2,15 @@ import uuid
 import io
 import csv
 import calendar
+import logging
 from typing import Dict, Any, List, Optional
 from datetime import datetime, date, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Query, Body, status, Response
 from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, and_, func, desc, String, cast
+
+logger = logging.getLogger(__name__)
 
 from src.database.session import get_db
 from src.models.user import User
@@ -1005,19 +1008,25 @@ def _gather_ho_branch_attendance(
                 b_emp_absent_sum += rep["days_absent"]
                 b_emp_leave_sum += rep["days_leave"]
                 b_emp_pct_sum += rep["attendance_percentage"]
+                org_label = getattr(b, "vahd_name", None) or b.branch_name or rep.get("organization_name") or ""
                 emp_list.append({
                     "id": e.id,
                     "code": e.code,
                     "name": f"{e.first_name} {e.last_name or ''}".strip(),
                     "designation": e.designation or "Employee",
                     "department": e.department or "General",
+                    "branch_name": b.branch_name,
+                    "vahd_name": getattr(b, "vahd_name", None) or b.branch_name,
+                    "organization_name": org_label,
+                    "institute_name": org_label,
                     "email": e.email,
                     "phone": e.phone or "--",
                     "total_working_days": rep["total_working_days"],
                     "days_present": rep["days_present"],
                     "days_absent": rep["days_absent"],
                     "days_leave": rep["days_leave"],
-                    "attendance_percentage": rep["attendance_percentage"]
+                    "attendance_percentage": rep["attendance_percentage"],
+                    "status_text": "Optimal" if rep["attendance_percentage"] >= 75 else ("Moderate" if rep["attendance_percentage"] >= 60 else "Low Attendance")
                 })
             except Exception as ex:
                 logger.warning(f"Error computing employee attendance for {e.id}: {ex}")
@@ -1058,11 +1067,21 @@ def _gather_ho_branch_attendance(
                 b_stud_present_sum += s_rep["days_present"]
                 b_stud_absent_sum += s_rep["days_absent"]
                 b_stud_pct_sum += s_rep["attendance_percentage"]
+                inst_cand = (
+                    s_rep.get("institute_name")
+                    or s_rep.get("college_name")
+                    or getattr(b, "vahd_name", None)
+                    or b.branch_name
+                )
                 stud_list.append({
                     "id": s.id,
                     "roll_number": s_rep.get("roll_number") or s.id,
                     "name": s.full_name,
                     "course": s_rep.get("course") or "Degree Program",
+                    "institute_name": inst_cand,
+                    "college_name": inst_cand,
+                    "branch_name": b.branch_name,
+                    "vahd_name": getattr(b, "vahd_name", None) or b.branch_name,
                     "phone": s.phone or "--",
                     "email": s.email or "--",
                     "parent_phone": s_rep.get("parent_phone") or "--",
@@ -1087,6 +1106,7 @@ def _gather_ho_branch_attendance(
             "branch_name": b.branch_name,
             "vahd_name": getattr(b, "vahd_name", None) or b.branch_name,
             "city": getattr(b, "city", "") or "",
+            "district": getattr(b, "city", "") or "",
             "address": getattr(b, "address", "") or "",
             "owner_name": ", ".join([o.full_name for o in branch_owners if o.full_name]) if branch_owners else (primary_owner.full_name if primary_owner else None),
             "owner_email": primary_owner.email if primary_owner else None,
@@ -1159,7 +1179,8 @@ def export_ho_attendance_excel(
 ):
     """
     Generates and downloads a consolidated Excel/CSV file containing
-    branch-wise attendance reports for employees, students, or both.
+    student attendance records, employee attendance records, or both.
+    When category='students', strictly outputs ONLY student attendance details without branch/employee summary.
     """
     ho_id = _get_ho_context(current_user)
     data = _gather_ho_branch_attendance(
@@ -1169,47 +1190,74 @@ def export_ho_attendance_excel(
     output = io.StringIO()
     writer = csv.writer(output)
 
-    writer.writerow(["# HEAD OFFICE CONSOLIDATED BRANCH ATTENDANCE REPORT"])
-    writer.writerow(["Reporting Period", data.get("period", "")])
-    writer.writerow(["Total Branches", data.get("total_branches", 0)])
-    writer.writerow(["Total Employees", data.get("total_employees", 0)])
-    writer.writerow(["Total Students", data.get("total_students", 0)])
-    writer.writerow([])
-
-    # Table 1: Branch Summary
-    writer.writerow(["--- BRANCH WISE ATTENDANCE SUMMARY ---"])
-    writer.writerow([
-        "Branch ID", "Branch Name", "City", "Branch Owner",
-        "Total Employees", "Employee Avg %", "Employee Present Days",
-        "Total Students", "Student Avg %", "Student Present Days"
-    ])
-    for b in data.get("branches", []):
-        writer.writerow([
-            b.get("branch_id"),
-            b.get("branch_name"),
-            b.get("city"),
-            b.get("owner_name") or "--",
-            b.get("employees", {}).get("total_count", 0),
-            f"{b.get('employees', {}).get('avg_attendance_percentage', 0)}%",
-            b.get("employees", {}).get("total_present_days", 0),
-            b.get("students", {}).get("total_count", 0),
-            f"{b.get('students', {}).get('avg_attendance_percentage', 0)}%",
-            b.get("students", {}).get("total_present_days", 0),
-        ])
-
-    # Table 2: Employee Breakdown
-    if category in ["all", "employees"]:
+    if category == "students":
+        # STRICTLY ONLY STUDENT ATTENDANCE DETAILS
+        writer.writerow(["# STUDENT OFFICIAL MONTHLY ATTENDANCE REPORT"])
+        writer.writerow(["Reporting Period", data.get("period", "")])
+        writer.writerow(["Total Students", data.get("total_students", 0)])
         writer.writerow([])
-        writer.writerow(["--- EMPLOYEE INDIVIDUAL ATTENDANCE BREAKDOWN ---"])
         writer.writerow([
-            "Branch Name", "Employee Code", "Employee Name", "Designation",
-            "Department", "Email", "Phone", "Working Days", "Days Present",
-            "Days Absent", "Leaves", "Attendance %"
+            "Institute Name",
+            "Student ID / Roll",
+            "Student Name",
+            "Course / Program",
+            "Registered Mobile",
+            "Parent Mobile",
+            "Student Email",
+            "Campus / Branch",
+            "Total Working Days",
+            "Days Present",
+            "Days Absent",
+            "Attendance %"
         ])
         for b in data.get("branches", []):
             b_name = b.get("branch_name")
-            for emp in b.get("employees", {}).get("list", []):
+            for s in b.get("students", {}).get("list", []):
+                inst = s.get("institute_name") or s.get("college_name") or b.get("vahd_name") or b_name
                 writer.writerow([
+                    inst,
+                    s.get("roll_number"),
+                    s.get("name"),
+                    s.get("course"),
+                    s.get("phone"),
+                    s.get("parent_phone"),
+                    s.get("email"),
+                    b_name,
+                    s.get("total_working_days"),
+                    s.get("days_present"),
+                    s.get("days_absent"),
+                    f"{s.get('attendance_percentage')}%"
+                ])
+    elif category == "employees":
+        # STRICTLY ONLY EMPLOYEE ATTENDANCE DETAILS
+        writer.writerow(["# EMPLOYEE OFFICIAL MONTHLY ATTENDANCE REPORT"])
+        writer.writerow(["Reporting Period", data.get("period", "")])
+        writer.writerow(["Total Employees", data.get("total_employees", 0)])
+        writer.writerow([])
+        writer.writerow([
+            "Institute / Organisation",
+            "Campus / Branch",
+            "Employee Code",
+            "Employee Name",
+            "Designation",
+            "Department",
+            "Official Email",
+            "Phone Number",
+            "Total Working Days",
+            "Days Present",
+            "Days Absent",
+            "Approved Leaves",
+            "Attendance %",
+            "Compliance Status"
+        ])
+        for b in data.get("branches", []):
+            b_name = b.get("branch_name")
+            org_label = b.get("vahd_name") or b_name
+            for emp in b.get("employees", {}).get("list", []):
+                pct = emp.get("attendance_percentage", 0.0)
+                status = emp.get("status_text") or ("Optimal" if pct >= 75 else ("Moderate" if pct >= 60 else "Low Attendance"))
+                writer.writerow([
+                    emp.get("institute_name") or emp.get("organization_name") or org_label,
                     b_name,
                     emp.get("code"),
                     emp.get("name"),
@@ -1221,37 +1269,51 @@ def export_ho_attendance_excel(
                     emp.get("days_present"),
                     emp.get("days_absent"),
                     emp.get("days_leave"),
-                    f"{emp.get('attendance_percentage')}%"
+                    f"{pct}%",
+                    status
                 ])
-
-    # Table 3: Student Breakdown
-    if category in ["all", "students"]:
+    else:
+        # ALL: MULTI-BRANCH CONSOLIDATED SUMMARY REPORT (STRICTLY BRANCH/ORGANISATION SUMMARY ONLY - NO INDIVIDUAL STAFF/STUDENTS ROSTERS)
+        writer.writerow(["# HEAD OFFICE MULTI-BRANCH CONSOLIDATED ATTENDANCE REPORT"])
+        writer.writerow(["Reporting Period", data.get("period", "")])
+        writer.writerow(["Total Registered Campuses / Branches", data.get("total_branches", 0)])
+        writer.writerow(["Total Staff Count", data.get("total_employees", 0)])
+        writer.writerow(["Total Students Count", data.get("total_students", 0)])
         writer.writerow([])
-        writer.writerow(["--- STUDENT INDIVIDUAL ATTENDANCE BREAKDOWN ---"])
+
+        # Table 1: Organisation & Branch Attendance Summary
+        writer.writerow(["--- MULTI-BRANCH ATTENDANCE SUMMARY ---"])
         writer.writerow([
-            "Branch Name", "Student ID / Roll", "Student Name", "Course / Program",
-            "Student Phone", "Student Email", "Parent Phone", "Working Days",
-            "Days Present", "Days Absent", "Attendance %", "Academic Standing"
+            "Organisation Name",
+            "Campus / Branch Name",
+            "City",
+            "Branch Owner",
+            "Total Staff",
+            "Staff Attendance %",
+            "Staff Present Days",
+            "Total Students",
+            "Student Attendance %",
+            "Student Present Days"
         ])
         for b in data.get("branches", []):
-            b_name = b.get("branch_name")
-            for s in b.get("students", {}).get("list", []):
-                writer.writerow([
-                    b_name,
-                    s.get("roll_number"),
-                    s.get("name"),
-                    s.get("course"),
-                    s.get("phone"),
-                    s.get("email"),
-                    s.get("parent_phone"),
-                    s.get("total_working_days"),
-                    s.get("days_present"),
-                    s.get("days_absent"),
-                    f"{s.get('attendance_percentage')}%",
-                    s.get("status_text")
-                ])
+            org_title = b.get("vahd_name") or b.get("branch_name") or "--"
+            writer.writerow([
+                org_title,
+                b.get("branch_name"),
+                b.get("city") or "--",
+                b.get("owner_name") or "--",
+                b.get("employees", {}).get("total_count", 0),
+                f"{b.get('employees', {}).get('avg_attendance_percentage', 0)}%",
+                b.get("employees", {}).get("total_present_days", 0),
+                b.get("students", {}).get("total_count", 0),
+                f"{b.get('students', {}).get('avg_attendance_percentage', 0)}%",
+                b.get("students", {}).get("total_present_days", 0),
+            ])
 
-    filename = f"HO_Branch_Attendance_{category.title()}_{data.get('month_name')}_{data.get('year')}.csv"
+    if category == "all":
+        filename = f"Multi_Branch_Consolidated_Attendance_{data.get('month_name')}_{data.get('year')}.csv"
+    else:
+        filename = f"Attendance_{category.title()}_{data.get('month_name')}_{data.get('year')}.csv"
     csv_bytes = ("\ufeff" + output.getvalue()).encode("utf-8")
     return Response(
         content=csv_bytes,
@@ -1294,11 +1356,13 @@ def export_ho_attendance_pdf(
         # Employee rows
         emp_rows = ""
         for e in emp_data.get("list", []):
+            emp_inst = e.get("institute_name") or e.get("organization_name") or getattr(b, "vahd_name", None) or b_name
             emp_rows += f"""
             <tr style="border-bottom: 1px solid #f1f5f9;">
                 <td style="padding: 7px 10px; font-weight: 600;">{e.get('code')}</td>
                 <td style="padding: 7px 10px; font-weight: 600; color: #0f172a;">{e.get('name')}</td>
                 <td style="padding: 7px 10px; color: #64748b;">{e.get('designation')}</td>
+                <td style="padding: 7px 10px; font-weight: 600; color: #4338ca;">{emp_inst}</td>
                 <td style="padding: 7px 10px; text-align: center;">{e.get('days_present')}</td>
                 <td style="padding: 7px 10px; text-align: center; color: #dc2626;">{e.get('days_absent')}</td>
                 <td style="padding: 7px 10px; text-align: center; color: #4f46e5;">{e.get('days_leave')}</td>
@@ -1309,11 +1373,13 @@ def export_ho_attendance_pdf(
         # Student rows
         stud_rows = ""
         for s in stud_data.get("list", []):
+            inst = s.get("institute_name") or s.get("college_name") or b_name
             stud_rows += f"""
             <tr style="border-bottom: 1px solid #f1f5f9;">
                 <td style="padding: 7px 10px; font-weight: 600;">{s.get('roll_number')}</td>
                 <td style="padding: 7px 10px; font-weight: 600; color: #0f172a;">{s.get('name')}</td>
                 <td style="padding: 7px 10px; color: #64748b;">{s.get('course')}</td>
+                <td style="padding: 7px 10px; font-weight: 600; color: #4338ca;">{inst}</td>
                 <td style="padding: 7px 10px; text-align: center;">{s.get('days_present')}</td>
                 <td style="padding: 7px 10px; text-align: center; color: #dc2626;">{s.get('days_absent')}</td>
                 <td style="padding: 7px 10px; text-align: right; font-weight: 700; color: #2563eb;">{s.get('attendance_percentage')}%</td>
@@ -1328,12 +1394,12 @@ def export_ho_attendance_pdf(
                     <div style="font-size: 12px; color: #64748b; margin-top: 2px;">Owner: <strong>{owner_name}</strong> &bull; City: {b.get('city') or 'Primary'}</div>
                 </div>
                 <div style="display: flex; gap: 16px; font-size: 13px;">
-                    <div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 6px 12px; border-radius: 8px;">
+                    {f'''<div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 6px 12px; border-radius: 8px;">
                         Employees: <strong>{emp_data.get('total_count')}</strong> (Avg: <span style="color:#16a34a; font-weight:700;">{emp_data.get('avg_attendance_percentage')}%</span>)
-                    </div>
-                    <div style="background: #eff6ff; border: 1px solid #bfdbfe; padding: 6px 12px; border-radius: 8px;">
+                    </div>''' if category in ["all", "employees"] else ''}
+                    {f'''<div style="background: #eff6ff; border: 1px solid #bfdbfe; padding: 6px 12px; border-radius: 8px;">
                         Students: <strong>{stud_data.get('total_count')}</strong> (Avg: <span style="color:#2563eb; font-weight:700;">{stud_data.get('avg_attendance_percentage')}%</span>)
-                    </div>
+                    </div>''' if category in ["all", "students"] else ''}
                 </div>
             </div>
 
@@ -1346,6 +1412,7 @@ def export_ho_attendance_pdf(
                             <th style="padding: 6px 10px;">Code</th>
                             <th style="padding: 6px 10px;">Employee</th>
                             <th style="padding: 6px 10px;">Designation</th>
+                            <th style="padding: 6px 10px;">Institute / Branch</th>
                             <th style="padding: 6px 10px; text-align: center;">Present</th>
                             <th style="padding: 6px 10px; text-align: center;">Absent</th>
                             <th style="padding: 6px 10px; text-align: center;">Leaves</th>
@@ -1353,7 +1420,7 @@ def export_ho_attendance_pdf(
                         </tr>
                     </thead>
                     <tbody>
-                        {emp_rows if emp_rows else '<tr><td colspan="7" style="padding: 10px; text-align:center; color:#94a3b8;">No active employees in this branch</td></tr>'}
+                        {emp_rows if emp_rows else '<tr><td colspan="8" style="padding: 10px; text-align:center; color:#94a3b8;">No active employees in this branch</td></tr>'}
                     </tbody>
                 </table>
             </div>
@@ -1361,20 +1428,21 @@ def export_ho_attendance_pdf(
 
             {f'''
             <div style="margin-top: 20px;">
-                <div style="font-size: 13px; font-weight: 700; color: #334155; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">🎓 Branch Students</div>
+                <div style="font-size: 13px; font-weight: 700; color: #334155; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">🎓 Students Official Roster</div>
                 <table style="width:100%; border-collapse: collapse; font-size: 12px;">
                     <thead>
                         <tr style="background: #f8fafc; color: #475569; text-align: left;">
                             <th style="padding: 6px 10px;">ID / Roll</th>
                             <th style="padding: 6px 10px;">Student Name</th>
                             <th style="padding: 6px 10px;">Program / Course</th>
+                            <th style="padding: 6px 10px;">Institute Name</th>
                             <th style="padding: 6px 10px; text-align: center;">Present</th>
                             <th style="padding: 6px 10px; text-align: center;">Absent</th>
                             <th style="padding: 6px 10px; text-align: right;">Attendance</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {stud_rows if stud_rows else '<tr><td colspan="6" style="padding: 10px; text-align:center; color:#94a3b8;">No active students in this branch</td></tr>'}
+                        {stud_rows if stud_rows else '<tr><td colspan="7" style="padding: 10px; text-align:center; color:#94a3b8;">No active students in this branch</td></tr>'}
                     </tbody>
                 </table>
             </div>

@@ -341,11 +341,29 @@ class HrmsService:
             )
 
         employees = query.order_by(Employee.code.asc(), Employee.created_at.desc()).all()
+        branches = db.query(vahdBranch).all()
+        branches_dict = {b.id: b for b in branches}
+        branches_name_dict = {b.branch_name: b for b in branches if b.branch_name}
+        vahd_name_dict = {b.vahd_name: b for b in branches if b.vahd_name}
+        default_inst = (
+            (branches[0].vahd_name if (branches and getattr(branches[0], "vahd_name", None)) else None)
+            or (branches[0].branch_name if branches else None)
+            or "Main Institute"
+        )
         result = []
         for e in employees:
             full_name = f"{e.first_name} {e.last_name or ''}".strip()
             parts = full_name.split()
             initials = "".join([p[0].upper() for p in parts[:2]]) if parts else "EM"
+
+            b_match = branches_dict.get(e.branch_id) or branches_name_dict.get(e.vahd_branch) or vahd_name_dict.get(e.vahd_branch)
+            b_name = b_match.branch_name if b_match else (e.vahd_branch or "")
+            v_name = getattr(b_match, "vahd_name", None) or b_name if b_match else (e.vahd_branch or "")
+            b_city = getattr(b_match, "city", None) or "Hyderabad"
+            e_meta = e.meta_data if (e.meta_data and isinstance(e.meta_data, dict)) else {}
+            e_dist = e_meta.get("district") or getattr(e, "address", None) or b_city
+            inst_label = v_name or b_name or e.vahd_branch or default_inst
+
             result.append({
                 "id": e.id,
                 "code": e.code,
@@ -367,8 +385,14 @@ class HrmsService:
                 "skills": e.skills or [],
                 "qualification": getattr(e, "qualification", None) or "",
                 "specialization": getattr(e, "specialization", None) or "",
-                "vahd_branch": e.vahd_branch or "",
-                "branch_id": e.branch_id or "",
+                "vahd_branch": e.vahd_branch or b_name or "",
+                "branch_id": e.branch_id or (b_match.id if b_match else ""),
+                "branch_name": b_name,
+                "vahd_name": v_name,
+                "city": b_city,
+                "district": e_dist,
+                "organization_name": inst_label,
+                "institute_name": inst_label,
                 "ho_id": e.ho_id or "",
                 "owner_id": getattr(e, "owner_id", None) or "",
                 "emergency_contact": e.emergency_contact or "",
@@ -1535,6 +1559,16 @@ class HrmsService:
         recorded_emp_ids = set()
 
         # Pre-build in-memory lookup maps to eliminate O(N) query flood on PostgreSQL pool
+        all_branches = db.query(vahdBranch).all()
+        br_map = {b.id: b for b in all_branches}
+        br_name_map = {b.branch_name: b for b in all_branches if b.branch_name}
+        vahd_name_map = {b.vahd_name: b for b in all_branches if b.vahd_name}
+        def_inst = (
+            (all_branches[0].vahd_name if (all_branches and getattr(all_branches[0], "vahd_name", None)) else None)
+            or (all_branches[0].branch_name if all_branches else None)
+            or "Main Institute"
+        )
+
         all_emps = db.query(Employee).all()
         emp_map = {}
         for e in all_emps:
@@ -1661,6 +1695,15 @@ class HrmsService:
 
             fmt_date = l.date.strftime("%d/%m/%Y") if (l.date and hasattr(l.date, "strftime")) else str(l.date or target_date_slash)
 
+            log_inst = def_inst
+            if emp:
+                bm = br_map.get(emp.branch_id) or br_name_map.get(emp.vahd_branch) or vahd_name_map.get(emp.vahd_branch)
+                log_inst = getattr(bm, "vahd_name", None) or getattr(bm, "branch_name", None) or emp.vahd_branch or def_inst
+            elif stu:
+                m_stu = stu.meta_data if isinstance(stu.meta_data, dict) else {}
+                bm = br_map.get(stu.branch_id) if stu.branch_id else None
+                log_inst = m_stu.get("college_name") or m_stu.get("institute_name") or getattr(bm, "vahd_name", None) or getattr(bm, "branch_name", None) or stu.primary_vahd_location or def_inst
+
             result.append({
                 "id": l.id,
                 "employee_id": l.employee_id,
@@ -1669,6 +1712,8 @@ class HrmsService:
                 "initials": initials,
                 "designation": desg,
                 "department": dept,
+                "institute_name": log_inst,
+                "organization_name": log_inst,
                 "date": fmt_date,
                 "check_in": l.check_in or "--:--",
                 "check_out": l.check_out or "--:--",

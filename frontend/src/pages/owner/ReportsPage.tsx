@@ -138,7 +138,7 @@ const combinedAttendanceCards: ReportCardConfig[] = [
   {
     id: 'daily-abstract',
     title: 'Daily Abstract',
-    description: 'District & mandal aggregated present, late, absent counts and percentages.',
+    description: 'Institute & campus aggregated present, late, absent counts and percentages.',
     icon: 'bar-chart-2',
     iconBg: 'bg-purple-50 text-purple-600 border border-purple-100',
     iconColor: 'text-purple-600',
@@ -146,7 +146,7 @@ const combinedAttendanceCards: ReportCardConfig[] = [
   {
     id: 'attendance-abstract',
     title: 'Attendance Abstract',
-    description: 'Place of working summaries, branch operational status and roster ratios.',
+    description: 'Institute & campus working summaries, branch operational status and roster ratios.',
     icon: 'table',
     iconBg: 'bg-blue-50 text-blue-600 border border-blue-100',
     iconColor: 'text-blue-600',
@@ -181,7 +181,7 @@ const dailyAbstractCards: ReportCardConfig[] = [
   {
     id: 'not-logged-out-abstract',
     title: 'Not Logged Out Abstract',
-    description: 'District-wise consolidated headcount of open shifts and auto-closed logs',
+    description: 'Institute-wise consolidated headcount of open shifts and auto-closed logs',
     icon: 'alert-triangle',
     iconBg: 'bg-orange-50 text-orange-600 border border-orange-100',
     iconColor: 'text-orange-600',
@@ -189,7 +189,7 @@ const dailyAbstractCards: ReportCardConfig[] = [
   {
     id: 'late-attendance-abstract',
     title: 'Late Attendance Abstract',
-    description: 'District-wise aggregate of late check-ins and average delay minutes',
+    description: 'Institute-wise aggregate of late check-ins and average delay minutes',
     icon: 'hourglass',
     iconBg: 'bg-yellow-50 text-yellow-600 border border-yellow-100',
     iconColor: 'text-yellow-600',
@@ -205,15 +205,15 @@ const dailyAbstractCards: ReportCardConfig[] = [
   {
     id: 'registered-unregistered-users',
     title: 'Registered vs Unregistered',
-    description: 'Biometric & face ID enrolment status breakdown across all  institutions',
+    description: 'Biometric & face ID enrolment status breakdown across all institutions',
     icon: 'scan-face',
     iconBg: 'bg-emerald-50 text-emerald-600 border border-emerald-100',
     iconColor: 'text-emerald-600',
   },
   {
     id: 'districts-abstract',
-    title: 'Districts Abstract',
-    description: 'High-level executive comparison matrix across all 33 Telangana districts',
+    title: 'Institutes Abstract',
+    description: 'High-level executive comparison matrix across all registered institutes and campuses',
     icon: 'map-pin',
     iconBg: 'bg-teal-50 text-teal-600 border border-teal-100',
     iconColor: 'text-teal-600',
@@ -285,7 +285,10 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
   };
 
   // Common Filters for Drill-Downs
-  const [filterDistrict, setFilterDistrict] = useState('All Districts');
+  const [filterInstitute, setFilterInstitute] = useState('All Institutes');
+  const [selectedDistrict, setSelectedDistrict] = useState('All Districts');
+  const filterDistrict = filterInstitute;
+  const setFilterDistrict = setFilterInstitute;
   const [filterPlace, setFilterPlace] = useState('All Places');
   const [filterDate, setFilterDate] = useState(() => getTodayDateStr());
   const [filterFromDate, setFilterFromDate] = useState(() => {
@@ -302,7 +305,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
   const [filterStatus, setFilterStatus] = useState('All');
   const [filterInstType, setFilterInstType] = useState('All Types');
   const [searchTableQuery, setSearchTableQuery] = useState('');
-  const [rangeTabMode, setRangeTabMode] = useState<'Report' | 'Detail' | 'Abstract'>('Report');
+  const [rangeTabMode, setRangeTabMode] = useState<'Report' | 'Detail' | 'Abstract' | 'Employees' | 'Students'>('Report');
 
   // Monthly Attendance State for Students, Employees & Multi-Branch
   const [targetYear, setTargetYear] = useState<number>(new Date().getFullYear());
@@ -317,7 +320,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
   const [selectedBranch, setSelectedBranch] = useState<string>(() => {
     return localStorage.getItem('vahd_selected_org_id') || 'all';
   });
-  const [allBranchesList, setAllBranchesList] = useState<Array<{ id: string; branch_name: string; vahd_name?: string }>>([]);
+  const [allBranchesList, setAllBranchesList] = useState<Array<{ id: string; branch_name: string; vahd_name?: string; city?: string; district?: string }>>([]);
 
   // Synchronize with Topbar organization / branch switcher
   useEffect(() => {
@@ -341,6 +344,8 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
               id: br.branch_id,
               branch_name: br.branch_name,
               vahd_name: br.vahd_name,
+              city: br.city || br.district || '',
+              district: br.district || br.city || '',
             }))
           );
         }
@@ -497,9 +502,9 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
     fetchData(filterDate);
   }, [filterDate, selectedBranch]);
 
-  // Dynamic district rollup computed live from employee attendance records
+  // Dynamic institute rollup computed live from employee and student attendance records
   const dynamicDistricts = useMemo(() => {
-    if (employees.length === 0 && attendance.length === 0) {
+    if (employees.length === 0 && attendance.length === 0 && students.length === 0) {
       return [];
     }
 
@@ -513,17 +518,62 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
       absent: number;
       leave: number;
       od: number;
+      district: string;
     }>();
 
     // Map attendance records by employee
     const attMap = new Map<string, AttendanceRecord>();
     attendance.forEach((att) => {
-      if (att.employee_id) attMap.set(att.employee_id, att);
-      if (att.employee_code) attMap.set(att.employee_code, att);
+      if (att.employee_id) attMap.set(att.employee_id.toLowerCase(), att);
+      if (att.employee_code) attMap.set(att.employee_code.toLowerCase(), att);
+      if (att.employee_name) attMap.set(att.employee_name.toLowerCase(), att);
     });
 
+    let activeOrgInst = '';
+    try {
+      const stored = localStorage.getItem('vahd_user');
+      if (stored) {
+        const u = JSON.parse(stored);
+        activeOrgInst = u?.vahd_name || u?.branch_name || u?.vahdName || u?.branchName || '';
+      }
+    } catch {}
+
     employees.forEach((emp) => {
-      const dName = emp.address || emp.vahd_branch || 'Unassigned';
+      const branchObj = allBranchesList.find((b) => b.id === emp.branch_id || b.branch_name === emp.vahd_branch || b.vahd_name === emp.vahd_branch);
+      const dName = emp.institute_name || emp.organization_name || branchObj?.vahd_name || branchObj?.branch_name || emp.vahd_branch || (allBranchesList[0]?.vahd_name || allBranchesList[0]?.branch_name) || activeOrgInst || 'Main Institute';
+      const empDist = emp.district || branchObj?.district || branchObj?.city || (allBranchesList.find((b) => b.city)?.city) || 'Hyderabad';
+      const empPlace = emp.department || branchObj?.branch_name || emp.vahd_branch || '—';
+
+      // District Filter
+      if (selectedDistrict !== 'All Districts') {
+        const matchDist = empDist.toLowerCase() === selectedDistrict.toLowerCase() ||
+          dName.toLowerCase().includes(selectedDistrict.toLowerCase());
+        if (!matchDist) return;
+      }
+
+      // Institute Filter
+      if (filterInstitute !== 'All Institutes' && filterInstitute !== 'All Districts') {
+        if (dName.toLowerCase() !== filterInstitute.toLowerCase()) return;
+      }
+
+      // Place of Working Filter
+      if (filterPlace !== 'All Places') {
+        if (empPlace.toLowerCase() !== filterPlace.toLowerCase()) return;
+      }
+
+      // Institution Type Filter
+      if (filterInstType !== 'All Types') {
+        const fullCheck = `${dName} ${empPlace} ${emp.vahd_branch || ''}`.toUpperCase();
+        if (!fullCheck.includes(filterInstType.toUpperCase())) return;
+      }
+
+      // Search Filter
+      if (searchTableQuery.trim()) {
+        const q = searchTableQuery.toLowerCase();
+        const fullStr = `${dName} ${empDist} ${empPlace} ${emp.first_name || ''} ${emp.last_name || ''} ${emp.code || ''}`.toLowerCase();
+        if (!fullStr.includes(q)) return;
+      }
+
       if (!distGroups.has(dName)) {
         distGroups.set(dName, {
           total: 0,
@@ -534,14 +584,15 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
           notOut: 0,
           absent: 0,
           leave: 0,
-          od: 0
+          od: 0,
+          district: empDist
         });
       }
       const st = distGroups.get(dName)!;
       st.total += 1;
       st.registered += 1;
 
-      const att = attMap.get(emp.id) || attMap.get(emp.code);
+      const att = attMap.get(emp.id?.toLowerCase()) || (emp.code ? attMap.get(emp.code.toLowerCase()) : undefined);
       if (att) {
         const s = (att.status || '').toLowerCase();
         if (s === 'present') {
@@ -565,14 +616,88 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
       }
     });
 
+    // Also include students if employee list is empty
+    if (employees.length === 0 && students.length > 0) {
+      students.forEach((s) => {
+        const meta = s.meta_data || {};
+        const branchObj = allBranchesList.find((b) => b.id === s.branch_id);
+        const dName = s.institute_name || meta.college_name || meta.institute_name || branchObj?.vahd_name || branchObj?.branch_name || s.primary_vahd_location || (allBranchesList[0]?.vahd_name || allBranchesList[0]?.branch_name) || activeOrgInst || 'Main Institute';
+        const stuDist = s.district || meta.district || branchObj?.district || branchObj?.city || 'Hyderabad';
+        const stuPlace = s.course || branchObj?.branch_name || s.primary_vahd_location || '—';
+
+        if (selectedDistrict !== 'All Districts') {
+          const matchDist = stuDist.toLowerCase() === selectedDistrict.toLowerCase() ||
+            dName.toLowerCase().includes(selectedDistrict.toLowerCase());
+          if (!matchDist) return;
+        }
+
+        if (filterInstitute !== 'All Institutes' && filterInstitute !== 'All Districts') {
+          if (dName.toLowerCase() !== filterInstitute.toLowerCase()) return;
+        }
+
+        if (filterPlace !== 'All Places') {
+          if (stuPlace.toLowerCase() !== filterPlace.toLowerCase()) return;
+        }
+
+        if (searchTableQuery.trim()) {
+          const q = searchTableQuery.toLowerCase();
+          const fullStr = `${dName} ${stuDist} ${stuPlace} ${s.full_name || ''} ${s.member_code || ''}`.toLowerCase();
+          if (!fullStr.includes(q)) return;
+        }
+
+        if (!distGroups.has(dName)) {
+          distGroups.set(dName, {
+            total: 0,
+            registered: 0,
+            attended: 0,
+            late: 0,
+            early: 0,
+            notOut: 0,
+            absent: 0,
+            leave: 0,
+            od: 0,
+            district: stuDist
+          });
+        }
+        const st = distGroups.get(dName)!;
+        st.total += 1;
+        st.registered += 1;
+        if (s.is_present || s.isPresentToday || s.today_status === 'Present') {
+          st.attended += 1;
+        } else {
+          st.absent += 1;
+        }
+      });
+    }
+
     return Array.from(distGroups.entries()).map(([name, stats]) => ({
       name,
       ...stats
     }));
-  }, [employees, attendance]);
+  }, [employees, attendance, students, allBranchesList, selectedDistrict, filterInstitute, filterPlace, filterInstType, searchTableQuery]);
 
   // Built dynamic employee daily rows from live database records
-  const employeeAttendanceRows = useMemo(() => {
+  interface AttendanceRowItem {
+    attendee_type: string;
+    name: string;
+    id: string;
+    desg: string;
+    place: string;
+    dist: string;
+    district: string;
+    in: string;
+    out: string;
+    in_loc: string;
+    out_loc: string;
+    in_lat: number | null | undefined;
+    in_lng: number | null | undefined;
+    out_lat: number | null | undefined;
+    out_lng: number | null | undefined;
+    loc: string;
+    status: string;
+  }
+
+  const employeeAttendanceRows: AttendanceRowItem[] = useMemo(() => {
     const attMap = new Map<string, AttendanceRecord>();
     const registerAtt = (key: string | undefined | null, record: AttendanceRecord) => {
       if (!key) return;
@@ -609,6 +734,15 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
     });
 
     const recordedEmpIds = new Set<string>();
+
+    let activeOrgInst = '';
+    try {
+      const stored = localStorage.getItem('vahd_user');
+      if (stored) {
+        const u = JSON.parse(stored);
+        activeOrgInst = u?.vahd_name || u?.branch_name || u?.vahdName || u?.branchName || '';
+      }
+    } catch {}
 
     const cleanLocation = (rawLoc?: string | null): string => {
       if (!rawLoc || rawLoc === '—' || rawLoc === '--:--') return '—';
@@ -664,8 +798,10 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
         status = emp.status;
       }
 
-      const branchOrDept = emp.vahd_branch || emp.department || '—';
-      const dist = emp.address || emp.vahd_branch || '—';
+      const branchObj = allBranchesList.find((b) => b.id === emp.branch_id || b.branch_name === emp.vahd_branch || b.vahd_name === emp.vahd_branch);
+      const branchOrDept = emp.department || branchObj?.branch_name || emp.vahd_branch || '—';
+      const dist = emp.institute_name || emp.organization_name || branchObj?.vahd_name || branchObj?.branch_name || emp.vahd_branch || (allBranchesList[0]?.vahd_name || allBranchesList[0]?.branch_name) || activeOrgInst || 'Main Institute';
+      const empDist = emp.district || branchObj?.district || branchObj?.city || (allBranchesList.find((b) => b.city)?.city) || 'Hyderabad';
 
       // Dynamic check-in location from DB (strictly '—' if user has not checked in)
       let inLoc = '—';
@@ -700,6 +836,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
         desg: emp.designation || '—',
         place: branchOrDept,
         dist: dist,
+        district: empDist,
         in: inTime,
         out: outTime,
         in_loc: inLoc,
@@ -767,9 +904,11 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
         status = s.status;
       }
 
-      const branchOrDept = s.primary_vahd_location || s.branch || s.branch_name || s.course || '—';
       const meta = s.meta_data || {};
-      const dist = meta.district || meta.city || meta.permanent_address?.district || s.primary_vahd_location || s.branch || '—';
+      const branchObj = allBranchesList.find((b) => b.id === s.branch_id);
+      const branchOrDept = s.course || branchObj?.branch_name || s.primary_vahd_location || '—';
+      const dist = s.institute_name || meta.college_name || meta.institute_name || branchObj?.vahd_name || branchObj?.branch_name || s.primary_vahd_location || (allBranchesList[0]?.vahd_name || allBranchesList[0]?.branch_name) || activeOrgInst || 'Main Institute';
+      const stuDist = s.district || meta.district || branchObj?.district || branchObj?.city || 'Hyderabad';
 
       let inLoc = '—';
       if (hasInPunch) {
@@ -802,6 +941,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
         desg: s.course || s.specialization || s.qualification || 'Student',
         place: branchOrDept,
         dist: dist,
+        district: stuDist,
         in: inTime,
         out: outTime,
         in_loc: inLoc,
@@ -850,6 +990,8 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
         }
 
         const defaultPlace = att.department || '—';
+        const extraDist = (att as any).institute_name || (att as any).vahd_name || (att as any).branch_name || activeOrgInst || (allBranchesList[0]?.vahd_name || allBranchesList[0]?.branch_name) || 'Main Institute';
+        const extraDistrict = (att as any).district || (att as any).city || (allBranchesList.find((b) => b.city)?.city) || 'Hyderabad';
 
         return {
           attendee_type: 'employee',
@@ -857,7 +999,8 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
           id: att.employee_code || att.employee_id || `STAFF-${idx + 1}`,
           desg: att.designation || '—',
           place: defaultPlace,
-          dist: '—',
+          dist: extraDist,
+          district: extraDistrict,
           in: inTime,
           out: outTime,
           in_loc: inLoc,
@@ -880,21 +1023,59 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
     }
   }, [employees, attendance, students, dailyAttendeeType]);
 
-  // Dynamic filter lists from live records (100% dynamic from DB via backend)
-  const dynamicDistrictsList = useMemo(() => {
-    const list = Array.from(new Set(employeeAttendanceRows.map((r) => r.dist).filter((d) => d && d !== '—')));
-    return ['All Districts', ...list];
-  }, [employeeAttendanceRows]);
+  // Dynamic district filter list (from live records, branches, and official districts)
+  const availableDistrictsList = useMemo(() => {
+    const fromRecords = employeeAttendanceRows
+      .map((r) => r.district)
+      .filter((d): d is string => !!d && d !== '—' && d.trim() !== '');
+    const fromBranches = allBranchesList
+      .map((b) => b.district || b.city)
+      .filter((d): d is string => !!d && d !== '—' && d.trim() !== '');
+    const combined = Array.from(new Set([...fromRecords, ...fromBranches, ...DISTRICTS.slice(1)]));
+    return ['All Districts', ...combined];
+  }, [employeeAttendanceRows, allBranchesList]);
+
+  // Dynamic institute filter list (narrowed by selectedDistrict if set)
+  const availableInstitutesList = useMemo(() => {
+    let rows = employeeAttendanceRows;
+    if (selectedDistrict !== 'All Districts') {
+      rows = rows.filter((r) =>
+        (r.district && r.district.toLowerCase() === selectedDistrict.toLowerCase()) ||
+        (r.dist && r.dist.toLowerCase().includes(selectedDistrict.toLowerCase()))
+      );
+    }
+    const list = Array.from(new Set(rows.map((r) => r.dist).filter((d) => d && d !== '—')));
+    return ['All Institutes', ...list];
+  }, [employeeAttendanceRows, selectedDistrict]);
+
+  const dynamicDistrictsList = availableInstitutesList;
 
   const dynamicPlacesList = useMemo(() => {
-    const list = Array.from(new Set(employeeAttendanceRows.map((r) => r.place).filter((p) => p && p !== '—')));
+    let rows = employeeAttendanceRows;
+    if (selectedDistrict !== 'All Districts') {
+      rows = rows.filter((r) =>
+        (r.district && r.district.toLowerCase() === selectedDistrict.toLowerCase()) ||
+        (r.dist && r.dist.toLowerCase().includes(selectedDistrict.toLowerCase()))
+      );
+    }
+    if (filterInstitute !== 'All Institutes') {
+      rows = rows.filter((r) => r.dist.toLowerCase() === filterInstitute.toLowerCase());
+    }
+    const list = Array.from(new Set(rows.map((r) => r.place).filter((p) => p && p !== '—')));
     return ['All Places', ...list];
-  }, [employeeAttendanceRows]);
+  }, [employeeAttendanceRows, selectedDistrict, filterInstitute]);
 
   // Filtered rows for Daily Attendance Report
   const filteredDailyAttendance = useMemo(() => {
     return employeeAttendanceRows.filter((r) => {
-      const matchDist = filterDistrict === 'All Districts' || r.dist.toLowerCase() === filterDistrict.toLowerCase();
+      const matchDistrict =
+        selectedDistrict === 'All Districts' ||
+        (r.district && r.district.toLowerCase() === selectedDistrict.toLowerCase()) ||
+        (r.dist && r.dist.toLowerCase().includes(selectedDistrict.toLowerCase()));
+      const matchInst =
+        filterInstitute === 'All Institutes' ||
+        filterInstitute === 'All Districts' ||
+        r.dist.toLowerCase() === filterInstitute.toLowerCase();
       const matchPlace = filterPlace === 'All Places' || r.place.toLowerCase() === filterPlace.toLowerCase();
       const st = (r.status || '').toLowerCase();
       const fst = (filterStatus || '').toLowerCase();
@@ -911,14 +1092,15 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
         r.id.toLowerCase().includes(searchTableQuery.toLowerCase()) ||
         r.desg.toLowerCase().includes(searchTableQuery.toLowerCase()) ||
         r.dist.toLowerCase().includes(searchTableQuery.toLowerCase()) ||
+        (r.district && r.district.toLowerCase().includes(searchTableQuery.toLowerCase())) ||
         r.place.toLowerCase().includes(searchTableQuery.toLowerCase());
 
       const matchCheckin = !filterCheckinTime || (r.in !== '—' && r.in.includes(filterCheckinTime));
       const matchCheckout = !filterCheckoutTime || (r.out !== '—' && r.out.includes(filterCheckoutTime));
 
-      return matchDist && matchPlace && matchStatus && matchQuery && matchCheckin && matchCheckout;
+      return matchDistrict && matchInst && matchPlace && matchStatus && matchQuery && matchCheckin && matchCheckout;
     });
-  }, [employeeAttendanceRows, filterDistrict, filterPlace, filterStatus, searchTableQuery, filterCheckinTime, filterCheckoutTime]);
+  }, [employeeAttendanceRows, selectedDistrict, filterInstitute, filterPlace, filterStatus, searchTableQuery, filterCheckinTime, filterCheckoutTime]);
 
   // Export to CSV helper with UTF-8 BOM so Microsoft Excel opens it cleanly with full columns and data
   const handleExportCSV = (filename: string, headers: string[], rows: (string | number | undefined | null)[][]) => {
@@ -993,34 +1175,44 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
 
     return (
       <div className="space-y-4 animate-fade-in font-sans text-slate-900">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shrink-0 shadow-2xs">
-              <Icon name="graduation-cap" size={20} />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-base font-extrabold text-slate-900">
-                  Student Attendance Report &amp; Download Center
-                </h2>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-blue-50 text-blue-700 border border-blue-200">
-                  STUDENTS
-                </span>
-              </div>
-              <p className="text-xs text-slate-500 font-medium">
-                Official monthly student biometric attendance records, course performance, and downloadable statements
-              </p>
-            </div>
-          </div>
-
+        <div className="text-xs font-bold text-slate-500 mb-1 flex items-center gap-1.5">
+          <Icon name="home" size={13} className="text-blue-600" />
           <button
             type="button"
             onClick={() => { setSelectedReport(null); setHubCategory('all'); }}
-            className="px-3.5 py-1.5 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 flex items-center gap-1.5 transition shadow-2xs self-start sm:self-auto cursor-pointer"
+            className="text-blue-600 hover:underline cursor-pointer"
           >
-            <Icon name="chevron-left" size={13} />
-            <span>All Report Modules</span>
+            Home
           </button>
+          <span className="text-slate-400">›</span>
+          <button
+            type="button"
+            onClick={() => { setSelectedReport(null); setHubCategory('all'); }}
+            className="text-blue-600 hover:underline cursor-pointer"
+          >
+            Reports
+          </button>
+          <span className="text-slate-400">›</span>
+          <span className="text-slate-900 font-bold">Students Attendance</span>
+        </div>
+
+        <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shrink-0 shadow-2xs">
+            <Icon name="graduation-cap" size={20} />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-extrabold text-slate-900">
+                Student Attendance Report &amp; Download Center
+              </h2>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-blue-50 text-blue-700 border border-blue-200">
+                STUDENTS
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 font-medium">
+              Official monthly student biometric attendance records, course performance, and downloadable statements
+            </p>
+          </div>
         </div>
 
         {/* Filter Toolbar Box */}
@@ -1130,9 +1322,10 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                 onClick={() =>
                   handleExportCSV(
                     `Student_Attendance_${targetYear}_${targetMonth}`,
-                    ['#', 'ROLL NO', 'STUDENT NAME', 'DEGREE / COURSE', 'REGISTERED MOBILE', 'WORKING DAYS', 'PRESENT', 'ABSENT', 'ATTENDANCE %', 'ACADEMIC STANDING'],
+                    ['#', 'INSTITUTE NAME', 'ROLL NO', 'STUDENT NAME', 'DEGREE / COURSE', 'REGISTERED MOBILE', 'WORKING DAYS', 'PRESENT', 'ABSENT', 'ATTENDANCE %'],
                     filteredStudents.map((s: any, idx: number) => [
                       idx + 1,
+                      s.college_name || s.institute_name || s.vahd_name || s.branch_name || '--',
                       s.roll_number || s.member_code || s.student_number || s.code || (s.student_id?.startsWith('cust_') ? `stu${s.student_id.slice(-4)}` : s.student_id),
                       s.student_name,
                       s.degree || '--',
@@ -1140,8 +1333,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                       s.total_working_days,
                       s.days_present,
                       s.days_absent,
-                      `${s.attendance_percentage}%`,
-                      s.attendance_percentage >= 75 ? 'Eligible' : s.attendance_percentage >= 60 ? 'Borderline' : 'Critical Shortage'
+                      `${s.attendance_percentage}%`
                     ])
                   )
                 }
@@ -1243,7 +1435,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                   <th className="py-2.5 px-3 text-center">Present</th>
                   <th className="py-2.5 px-3 text-center">Absent</th>
                   <th className="py-2.5 px-3 text-center">Score %</th>
-                  <th className="py-2.5 px-3">Academic Standing</th>
+                  <th className="py-2.5 px-3">Institute Name</th>
                   <th className="py-2.5 px-3 text-right">Statements &amp; Downloads</th>
                 </tr>
               </thead>
@@ -1291,14 +1483,15 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                             {pct}%
                           </span>
                         </td>
-                        <td className="py-3 px-3 text-[11px] font-medium text-slate-600">
-                          {pct >= 75 ? (
-                            <span className="text-emerald-700 font-bold">✓ Exam Eligible</span>
-                          ) : pct >= 60 ? (
-                            <span className="text-amber-700 font-bold">⚠ Borderline</span>
-                          ) : (
-                            <span className="text-rose-700 font-bold">✗ Shortage Alert</span>
-                          )}
+                        <td className="py-3 px-3 text-[11px] font-bold text-slate-800">
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-5 h-5 rounded-md bg-purple-50 text-purple-700 border border-purple-200 flex items-center justify-center shrink-0 text-[10px]">
+                              🏛️
+                            </span>
+                            <span className="truncate max-w-[200px]" title={s.college_name || s.institute_name || s.vahd_name || s.branch_name}>
+                              {s.college_name || s.institute_name || s.vahd_name || s.branch_name || '--'}
+                            </span>
+                          </div>
                         </td>
                         <td className="py-3 px-3 text-right">
                           <div className="inline-flex items-center gap-1.5">
@@ -1372,34 +1565,44 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
 
     return (
       <div className="space-y-4 animate-fade-in font-sans text-slate-900">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 border border-purple-100 flex items-center justify-center shrink-0 shadow-2xs">
-              <Icon name="user-check" size={20} />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-base font-extrabold text-slate-900">
-                  Employee Attendance Report &amp; Download Center
-                </h2>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-purple-50 text-purple-700 border border-purple-200">
-                  EMPLOYEES
-                </span>
-              </div>
-              <p className="text-xs text-slate-500 font-medium">
-                Official staff attendance statements, biometric hours breakdown, and executive reports
-              </p>
-            </div>
-          </div>
-
+        <div className="text-xs font-bold text-slate-500 mb-1 flex items-center gap-1.5">
+          <Icon name="home" size={13} className="text-blue-600" />
           <button
             type="button"
             onClick={() => { setSelectedReport(null); setHubCategory('all'); }}
-            className="px-3.5 py-1.5 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 flex items-center gap-1.5 transition shadow-2xs self-start sm:self-auto cursor-pointer"
+            className="text-blue-600 hover:underline cursor-pointer"
           >
-            <Icon name="chevron-left" size={13} />
-            <span>All Report Modules</span>
+            Home
           </button>
+          <span className="text-slate-400">›</span>
+          <button
+            type="button"
+            onClick={() => { setSelectedReport(null); setHubCategory('all'); }}
+            className="text-blue-600 hover:underline cursor-pointer"
+          >
+            Reports
+          </button>
+          <span className="text-slate-400">›</span>
+          <span className="text-slate-900 font-bold">Employees Attendance</span>
+        </div>
+
+        <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 border border-purple-100 flex items-center justify-center shrink-0 shadow-2xs">
+            <Icon name="user-check" size={20} />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-extrabold text-slate-900">
+                Employee Attendance Report &amp; Download Center
+              </h2>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-purple-50 text-purple-700 border border-purple-200">
+                EMPLOYEES
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 font-medium">
+              Official staff attendance statements, biometric hours breakdown, and executive reports
+            </p>
+          </div>
         </div>
 
         {/* Filter Toolbar Box */}
@@ -1509,20 +1712,27 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                 onClick={() =>
                   handleExportCSV(
                     `Employee_Attendance_${targetYear}_${targetMonth}`,
-                    ['#', 'EMP CODE', 'EMPLOYEE NAME', 'DESIGNATION', 'DEPARTMENT', 'EMAIL', 'WORKING DAYS', 'PRESENT', 'ABSENT', 'LEAVES', 'ATTENDANCE %'],
-                    filteredEmployees.map((emp: any, idx: number) => [
-                      idx + 1,
-                      emp.employee_code,
-                      emp.employee_name,
-                      emp.designation || '--',
-                      emp.department || '--',
-                      emp.email || '--',
-                      emp.total_working_days,
-                      emp.days_present,
-                      emp.days_absent,
-                      emp.days_leave,
-                      `${emp.attendance_percentage}%`
-                    ])
+                    ['#', 'INSTITUTE / ORGANISATION', 'EMP CODE', 'EMPLOYEE NAME', 'DESIGNATION', 'DEPARTMENT', 'EMAIL', 'MOBILE', 'WORKING DAYS', 'PRESENT', 'ABSENT', 'LEAVES', 'ATTENDANCE %', 'STATUS'],
+                    filteredEmployees.map((emp: any, idx: number) => {
+                      const pct = emp.attendance_percentage ?? 0;
+                      const status = pct >= 75 ? 'Optimal' : pct >= 60 ? 'Moderate' : 'Low Attendance';
+                      return [
+                        idx + 1,
+                        emp.institute_name || emp.organization_name || emp.vahd_name || emp.branch_name || emp.vahd_branch || '--',
+                        emp.employee_code,
+                        emp.employee_name,
+                        emp.designation || '--',
+                        emp.department || '--',
+                        emp.email || '--',
+                        emp.phone || '--',
+                        emp.total_working_days,
+                        emp.days_present,
+                        emp.days_absent,
+                        emp.days_leave,
+                        `${pct}%`,
+                        status
+                      ];
+                    })
                   )
                 }
                 className="px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 flex items-center gap-1.5 shadow-2xs transition cursor-pointer"
@@ -1617,6 +1827,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                 <tr>
                   <th className="py-2.5 px-3">Emp Code</th>
                   <th className="py-2.5 px-3">Employee Name</th>
+                  <th className="py-2.5 px-3">Institute / Organisation</th>
                   <th className="py-2.5 px-3">Designation &amp; Dept</th>
                   <th className="py-2.5 px-3">Email &amp; Mobile</th>
                   <th className="py-2.5 px-3 text-center">Working</th>
@@ -1624,19 +1835,20 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                   <th className="py-2.5 px-3 text-center">Absent</th>
                   <th className="py-2.5 px-3 text-center">Leaves</th>
                   <th className="py-2.5 px-3 text-center">Score %</th>
+                  <th className="py-2.5 px-3 text-center">Status</th>
                   <th className="py-2.5 px-3 text-right">Statements &amp; Downloads</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-700">
                 {loadingMonthly ? (
                   <tr>
-                    <td colSpan={10} className="py-12 text-center text-slate-400 font-semibold">
+                    <td colSpan={12} className="py-12 text-center text-slate-400 font-semibold">
                       Loading employee attendance records...
                     </td>
                   </tr>
                 ) : filteredEmployees.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="py-12 text-center text-slate-400 font-semibold">
+                    <td colSpan={12} className="py-12 text-center text-slate-400 font-semibold">
                       No employees found matching your filters.
                     </td>
                   </tr>
@@ -1650,16 +1862,27 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                           <div>{emp.employee_name}</div>
                           <div className="text-[10px] text-slate-500 font-medium flex items-center gap-1 mt-0.5">
                             <span className="px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 border border-slate-200">
-                              🏫 {emp.branch_name || emp.vahd_branch || ''}
+                              🏫 {emp.branch_name || emp.vahd_branch || 'Main Branch'}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-3 text-[11px] font-bold text-slate-800">
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-5 h-5 rounded-md bg-purple-50 text-purple-700 border border-purple-200 flex items-center justify-center shrink-0 text-[10px]">
+                              🏛️
+                            </span>
+                            <span className="truncate max-w-[190px]" title={emp.organization_name || emp.institute_name || emp.vahd_name || emp.branch_name || emp.vahd_branch}>
+                              {emp.organization_name || emp.institute_name || emp.vahd_name || emp.branch_name || emp.vahd_branch || '--'}
                             </span>
                           </div>
                         </td>
                         <td className="py-3 px-3 text-slate-600">
-                          {emp.designation} &bull; <span className="text-slate-400">{emp.department}</span>
+                          <div className="font-semibold text-slate-800">{emp.designation}</div>
+                          <div className="text-[10px] text-slate-400 font-medium">{emp.department}</div>
                         </td>
                         <td className="py-3 px-3">
                           <div className="text-indigo-600 font-medium truncate max-w-[160px]">{emp.email}</div>
-                          <div className="text-[10px] text-slate-400">{emp.phone}</div>
+                          <div className="text-[10px] text-slate-500 font-mono font-semibold">{emp.phone}</div>
                         </td>
                         <td className="py-3 px-3 text-center font-bold text-slate-800">{emp.total_working_days}</td>
                         <td className="py-3 px-3 text-center font-bold text-emerald-600 bg-emerald-50/30">{emp.days_present}</td>
@@ -1676,6 +1899,21 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                           >
                             {pct}%
                           </span>
+                        </td>
+                        <td className="py-3 px-3 text-center">
+                          {pct >= 75 ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              ✓ Optimal
+                            </span>
+                          ) : pct >= 60 ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                              ⚠ Moderate
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                              ✗ Low Attendance
+                            </span>
+                          )}
                         </td>
                         <td className="py-3 px-3 text-right">
                           <div className="inline-flex items-center gap-1.5">
@@ -1718,14 +1956,37 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
 
     return (
       <div className="space-y-4 animate-fade-in font-sans text-slate-900">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs">
+        <div className="text-xs font-bold text-slate-500 mb-1 flex items-center gap-1.5">
+          <Icon name="home" size={13} className="text-blue-600" />
+          <button
+            type="button"
+            onClick={() => { setSelectedReport(null); setHubCategory('all'); }}
+            className="text-blue-600 hover:underline cursor-pointer"
+          >
+            Home
+          </button>
+          <span className="text-slate-400">›</span>
+          <button
+            type="button"
+            onClick={() => { setSelectedReport(null); setHubCategory('all'); }}
+            className="text-blue-600 hover:underline cursor-pointer"
+          >
+            Reports
+          </button>
+          <span className="text-slate-400">›</span>
+          <span className="text-slate-900 font-bold">Multi-Branch Consolidated</span>
+        </div>
+
+        {/* Unified Top Bar Card: Header, Inline Filters & Master Download Actions */}
+        <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-sm flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+          {/* Left: Branding & Subtitle */}
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center shrink-0 shadow-2xs">
               <Icon name="building-2" size={20} />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-base font-extrabold text-slate-900">
+                <h2 className="text-base font-extrabold text-slate-900 tracking-tight">
                   Multi-Branch Consolidated Attendance Center
                 </h2>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-indigo-50 text-indigo-700 border border-indigo-200">
@@ -1738,56 +1999,47 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => { setSelectedReport(null); setHubCategory('all'); }}
-            className="px-3.5 py-1.5 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 flex items-center gap-1.5 transition shadow-2xs self-start sm:self-auto cursor-pointer"
-          >
-            <Icon name="chevron-left" size={13} />
-            <span>All Report Modules</span>
-          </button>
-        </div>
+          {/* Right: Inline Filters & Master Download Actions */}
+          <div className="flex flex-wrap items-center gap-2.5">
+            <div className="flex items-center gap-2 bg-slate-50/90 px-3 py-1.5 rounded-xl border border-slate-200/80">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Month</span>
+                <select
+                  value={targetMonth}
+                  onChange={(e) => setTargetMonth(Number(e.target.value))}
+                  className="px-2.5 py-1 rounded-lg border border-slate-200 bg-white font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20 cursor-pointer shadow-2xs"
+                >
+                  {[
+                    'January', 'February', 'March', 'April', 'May', 'June',
+                    'July', 'August', 'September', 'October', 'November', 'December'
+                  ].map((m, idx) => (
+                    <option key={m} value={idx + 1}>{m}</option>
+                  ))}
+                </select>
+              </div>
 
-        {/* Filter Toolbar Box */}
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-sm flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div>
-              <label className="block text-[11px] font-bold text-slate-600 mb-1">Reporting Month</label>
-              <select
-                value={targetMonth}
-                onChange={(e) => setTargetMonth(Number(e.target.value))}
-                className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20"
-              >
-                {[
-                  'January', 'February', 'March', 'April', 'May', 'June',
-                  'July', 'August', 'September', 'October', 'November', 'December'
-                ].map((m, idx) => (
-                  <option key={m} value={idx + 1}>{m}</option>
-                ))}
-              </select>
+              <div className="h-4 w-px bg-slate-200 mx-1" />
+
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Year</span>
+                <select
+                  value={targetYear}
+                  onChange={(e) => setTargetYear(Number(e.target.value))}
+                  className="px-2.5 py-1 rounded-lg border border-slate-200 bg-white font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20 cursor-pointer shadow-2xs"
+                >
+                  {[2024, 2025, 2026, 2027].map((y) => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
-            <div>
-              <label className="block text-[11px] font-bold text-slate-600 mb-1">Reporting Year</label>
-              <select
-                value={targetYear}
-                onChange={(e) => setTargetYear(Number(e.target.value))}
-                className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20"
-              >
-                {[2024, 2025, 2026, 2027].map((y) => (
-                  <option key={y} value={y}>{y}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
             <a
               href={`/api/v1/ho/attendance-reports/export/excel?year=${targetYear}&month=${targetMonth}&category=all${authParam}`}
               download
-              className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 shadow-md shadow-emerald-600/20 transition cursor-pointer"
+              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 shadow-sm shadow-emerald-600/20 transition cursor-pointer"
             >
-              <Icon name="file-spreadsheet" size={15} />
+              <Icon name="file-spreadsheet" size={14} />
               <span>Download Master Consolidated Excel</span>
             </a>
 
@@ -1795,9 +2047,9 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
               href={`/api/v1/ho/attendance-reports/export/pdf?year=${targetYear}&month=${targetMonth}&category=all${authParam}`}
               target="_blank"
               rel="noreferrer"
-              className="px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-1.5 shadow-md shadow-indigo-600/20 transition cursor-pointer"
+              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-1.5 shadow-sm shadow-indigo-600/20 transition cursor-pointer"
             >
-              <Icon name="printer" size={15} />
+              <Icon name="printer" size={14} />
               <span>Download Master Consolidated PDF</span>
             </a>
           </div>
@@ -1931,36 +2183,36 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
         {/* Breadcrumb & Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <div className="text-xs text-slate-400 font-bold mb-1 flex items-center gap-1.5">
+            <div className="text-xs font-bold text-slate-500 mb-1 flex items-center gap-1.5">
+              <Icon name="home" size={13} className="text-blue-600" />
               <button
                 type="button"
-                onClick={() => setSelectedReport(null)}
-                className="hover:text-purple-600 hover:underline cursor-pointer"
+                onClick={() => { setSelectedReport(null); setHubCategory('all'); }}
+                className="text-blue-600 hover:underline cursor-pointer"
+              >
+                Home
+              </button>
+              <span className="text-slate-400">›</span>
+              <button
+                type="button"
+                onClick={() => { setSelectedReport(null); setHubCategory('all'); }}
+                className="text-blue-600 hover:underline cursor-pointer"
               >
                 Reports
               </button>
-              <span>›</span>
-              <span className="text-slate-700">Daily Attendance</span>
+              <span className="text-slate-400">›</span>
+              <span className="text-slate-900 font-bold">Daily Attendance Report</span>
             </div>
             <h1 className="text-2xl font-black tracking-tight text-slate-900 uppercase">
               DAILY ATTENDANCE REPORT
             </h1>
             <p className="text-xs text-slate-500 font-medium">Employee &amp; Student daily attendance records with organisation mapping</p>
           </div>
-
-          <button
-            type="button"
-            onClick={() => setSelectedReport(null)}
-            className="px-4 py-2 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 flex items-center gap-1.5 transition shadow-2xs self-start sm:self-auto cursor-pointer"
-          >
-            <Icon name="chevron-left" size={14} />
-            <span>Back to Reports</span>
-          </button>
         </div>
 
         {/* Filter Toolbar Box */}
         <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-sm space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2.5 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-9 gap-2.5 text-xs">
             <div>
               <label className="block text-[11px] font-bold text-slate-600 mb-1">Attendee Type</label>
               <select
@@ -1977,11 +2229,26 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
             <div>
               <label className="block text-[11px] font-bold text-slate-600 mb-1">District</label>
               <select
-                value={filterDistrict}
-                onChange={(e) => setFilterDistrict(e.target.value)}
-                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20"
+                value={selectedDistrict}
+                onChange={(e) => setSelectedDistrict(e.target.value)}
+                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
               >
-                {dynamicDistrictsList.map((d) => (
+                {availableDistrictsList.map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">Institute / Campus</label>
+              <select
+                value={filterInstitute}
+                onChange={(e) => setFilterInstitute(e.target.value)}
+                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
+              >
+                {availableInstitutesList.map((d) => (
                   <option key={d} value={d}>
                     {d}
                   </option>
@@ -2073,7 +2340,8 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
               type="button"
               onClick={() => {
                 setDailyAttendeeType('all');
-                setFilterDistrict('All Districts');
+                setSelectedDistrict('All Districts');
+                setFilterInstitute('All Institutes');
                 setFilterPlace('All Places');
                 setFilterStatus('All');
                 setSearchTableQuery('');
@@ -2107,7 +2375,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                 onClick={() =>
                   handleExportCSV(
                     'Daily_Attendance_Report',
-                    ['#', 'DISTRICT', 'ID / ROLL NO.', 'NAME', 'TYPE', 'DESIGNATION / COURSE', 'INSTITUTION', 'ATTENDANCE DATE', 'CHECK-IN TIME', 'CHECK-IN LOCATION', 'CHECK-OUT TIME', 'CHECK-OUT LOCATION', 'STATUS'],
+                    ['#', 'INSTITUTE NAME', 'ID / ROLL NO.', 'NAME', 'TYPE', 'DESIGNATION / COURSE', 'CAMPUS / DEPARTMENT', 'ATTENDANCE DATE', 'CHECK-IN TIME', 'CHECK-IN LOCATION', 'CHECK-OUT TIME', 'CHECK-OUT LOCATION', 'STATUS'],
                     filteredDailyAttendance.map((r, i) => [i + 1, r.dist, r.id, r.name, r.attendee_type === 'student' ? 'Student' : 'Employee', r.desg, r.place, filterDate, r.in, r.in_loc, r.out, r.out_loc, r.status])
                   )
                 }
@@ -2133,11 +2401,11 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
               <thead className="bg-slate-50/80 text-slate-500 font-extrabold uppercase text-[10px] tracking-wider border-b border-slate-200/90">
                 <tr>
                   <th className="py-3 px-3.5">#</th>
-                  <th className="py-3 px-3.5">DISTRICT</th>
+                  <th className="py-3 px-3.5">INSTITUTE NAME</th>
                   <th className="py-3 px-3.5">ID / ROLL NO.</th>
                   <th className="py-3 px-3.5">NAME</th>
                   <th className="py-3 px-3.5">DESIGNATION</th>
-                  <th className="py-3 px-3.5">INSTITUTION</th>
+                  <th className="py-3 px-3.5">CAMPUS / DEPT</th>
                   <th className="py-3 px-3.5">ATTENDANCE DATE</th>
                   <th className="py-3 px-3.5">CHECK-IN TIME</th>
                   <th className="py-3 px-3.5">CHECK-IN LOCATION</th>
@@ -2157,7 +2425,24 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                   filteredDailyAttendance.map((row, idx) => (
                     <tr key={idx} className="hover:bg-purple-50/20 transition-colors">
                       <td className="py-3 px-3.5 text-slate-400 font-bold">{idx + 1}</td>
-                      <td className="py-3 px-3.5 font-bold text-slate-800">{row.dist || '—'}</td>
+                      <td className="py-3 px-3.5 font-bold text-slate-800">
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-5 h-5 rounded-md bg-purple-50 text-purple-700 border border-purple-200 flex items-center justify-center shrink-0 text-[10px]">
+                            🏛️
+                          </span>
+                          <div>
+                            <span className="truncate max-w-[190px] block" title={row.dist}>
+                              {row.dist || '—'}
+                            </span>
+                            {row.district && row.district !== '—' && (
+                              <span className="text-[10px] text-slate-400 font-semibold flex items-center gap-0.5">
+                                <span>📍</span>
+                                <span>{row.district}</span>
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </td>
                       <td className="py-3 px-3.5 font-mono text-slate-600 font-bold">{row.id}</td>
                       <td className="py-3 px-3.5 font-extrabold text-slate-900">{row.name}</td>
                       <td className="py-3 px-3.5 text-slate-600">{row.desg}</td>
@@ -2245,47 +2530,42 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
       <div className="space-y-4 animate-fade-in font-sans text-slate-900">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <div className="text-xs text-slate-400 font-bold mb-1 flex items-center gap-1.5">
+            <div className="text-xs font-bold text-slate-500 mb-1 flex items-center gap-1.5">
+              <Icon name="home" size={13} className="text-blue-600" />
               <button
                 type="button"
-                onClick={() => setSelectedReport(null)}
-                className="hover:text-purple-600 hover:underline cursor-pointer"
+                onClick={() => { setSelectedReport(null); setHubCategory('all'); }}
+                className="text-blue-600 hover:underline cursor-pointer"
+              >
+                Home
+              </button>
+              <span className="text-slate-400">›</span>
+              <button
+                type="button"
+                onClick={() => { setSelectedReport(null); setHubCategory('all'); }}
+                className="text-blue-600 hover:underline cursor-pointer"
               >
                 Reports
               </button>
-              <span>›</span>
-              <span className="text-slate-700">Daily Attendance Abstract</span>
+              <span className="text-slate-400">›</span>
+              <span className="text-slate-900 font-bold">Daily Attendance Abstract</span>
             </div>
             <h1 className="text-2xl font-black tracking-tight text-slate-900 uppercase">
               DAILY ATTENDANCE ABSTRACT
             </h1>
-            <p className="text-xs text-slate-500 font-medium">District-level daily attendance rollup</p>
+            <p className="text-xs text-slate-500 font-medium">Institute-level daily attendance rollup</p>
           </div>
-
-          <button
-            type="button"
-            onClick={() => setSelectedReport(null)}
-            className="px-4 py-2 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 flex items-center gap-1.5 transition shadow-2xs self-start sm:self-auto cursor-pointer"
-          >
-            <Icon name="chevron-left" size={14} />
-            <span>Back to Reports</span>
-          </button>
-        </div>
-
-        {/* Notice alert banner */}
-        <div className="bg-amber-50 border border-amber-200 text-amber-900 text-xs px-4 py-2.5 rounded-xl font-medium">
-          <strong>Notice:</strong> Replaces: District Wise Attendance Count, Daily Abstract Report, Late/Early Leaving/Not Logged Out Abstracts, District Wise Attendance Abstract With Time Count.
         </div>
 
         {/* Filters */}
         <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-sm space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2.5 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5 text-xs">
             <div>
               <label className="block text-[11px] font-bold text-slate-600 mb-1">Institution Type</label>
               <select
                 value={filterInstType}
                 onChange={(e) => setFilterInstType(e.target.value)}
-                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20"
+                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
               >
                 <option value="All Types">All Types</option>
                 <option value="ADDL">ADDL</option>
@@ -2300,11 +2580,26 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
             <div>
               <label className="block text-[11px] font-bold text-slate-600 mb-1">District</label>
               <select
-                value={filterDistrict}
-                onChange={(e) => setFilterDistrict(e.target.value)}
-                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20"
+                value={selectedDistrict}
+                onChange={(e) => setSelectedDistrict(e.target.value)}
+                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
               >
-                {dynamicDistrictsList.map((d) => (
+                {availableDistrictsList.map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">Institute / Campus</label>
+              <select
+                value={filterInstitute}
+                onChange={(e) => setFilterInstitute(e.target.value)}
+                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
+              >
+                {availableInstitutesList.map((d) => (
                   <option key={d} value={d}>
                     {d}
                   </option>
@@ -2317,7 +2612,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
               <select
                 value={filterPlace}
                 onChange={(e) => setFilterPlace(e.target.value)}
-                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20"
+                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
               >
                 {dynamicPlacesList.map((p) => (
                   <option key={p} value={p}>
@@ -2333,7 +2628,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                 type="date"
                 value={filterDate}
                 onChange={(e) => setFilterDate(e.target.value)}
-                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20"
+                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
               />
             </div>
 
@@ -2360,7 +2655,8 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
             <button
               type="button"
               onClick={() => {
-                setFilterDistrict('All Districts');
+                setSelectedDistrict('All Districts');
+                setFilterInstitute('All Institutes');
                 setFilterPlace('All Places');
                 setFilterInstType('All Types');
                 setSearchTableQuery('');
@@ -2378,7 +2674,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
             <div className="flex items-center gap-2">
               <span className="text-sm font-extrabold text-slate-900">Daily Attendance Abstract</span>
               <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-xs font-bold font-mono">
-                {dynamicDistricts.length} districts
+                {dynamicDistricts.length} institutes
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -2387,7 +2683,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                 onClick={() =>
                   handleExportCSV(
                     'Daily_Attendance_Abstract',
-                    ['#', 'DISTRICT', 'TOTAL STAFF', 'REGISTERED', 'ATTENDED ON TIME', 'LATE COUNT', 'EARLY LEAVING', 'NOT LOGGED OUT', 'ABSENT', 'LEAVE', 'OD'],
+                    ['#', 'INSTITUTE NAME', 'TOTAL STAFF', 'REGISTERED', 'ATTENDED ON TIME', 'LATE COUNT', 'EARLY LEAVING', 'NOT LOGGED OUT', 'ABSENT', 'LEAVE', 'OD'],
                     dynamicDistricts.map((d, i) => [i + 1, d.name, d.total, d.registered, d.attended, d.late, d.early, d.notOut, d.absent, d.leave, d.od])
                   )
                 }
@@ -2412,7 +2708,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
               <thead className="bg-slate-50/80 text-slate-500 font-extrabold uppercase text-[10px] tracking-wider border-b border-slate-200/90">
                 <tr>
                   <th className="py-3 px-3.5">#</th>
-                  <th className="py-3 px-3.5">DISTRICT</th>
+                  <th className="py-3 px-3.5">INSTITUTE NAME</th>
                   <th className="py-3 px-3.5 text-center">TOTAL STAFF</th>
                   <th className="py-3 px-3.5 text-center">REGISTERED</th>
                   <th className="py-3 px-3.5 text-center text-emerald-700">ATTENDED ON TIME</th>
@@ -2428,14 +2724,29 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                 {dynamicDistricts.length === 0 ? (
                   <tr>
                     <td colSpan={11} className="py-12 text-center text-slate-400 font-medium">
-                      No district rollup records found.
+                      No institute rollup records found.
                     </td>
                   </tr>
                 ) : (
                   dynamicDistricts.map((row, idx) => (
                     <tr key={idx} className="hover:bg-purple-50/20 transition-colors">
                       <td className="py-3 px-3.5 text-slate-400 font-medium">{idx + 1}</td>
-                      <td className="py-3 px-3.5 font-extrabold text-slate-900">{row.name}</td>
+                      <td className="py-3 px-3.5 font-extrabold text-slate-900">
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-5 h-5 rounded-md bg-purple-50 text-purple-700 border border-purple-200 flex items-center justify-center shrink-0 text-[10px]">
+                            🏛️
+                          </span>
+                          <div>
+                            <div>{row.name}</div>
+                            {row.district && row.district !== '—' && (
+                              <div className="text-[10px] text-slate-400 font-semibold flex items-center gap-0.5">
+                                <span>📍</span>
+                                <span>{row.district}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </td>
                       <td className="py-3 px-3.5 text-center font-mono">{row.total}</td>
                       <td className="py-3 px-3.5 text-center font-mono text-slate-700">{row.registered}</td>
                       <td className="py-3 px-3.5 text-center font-mono text-emerald-700 bg-emerald-50/40">{row.attended}</td>
@@ -2465,31 +2776,110 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
       <div className="space-y-4 animate-fade-in font-sans text-slate-900">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <div className="text-xs text-slate-400 font-bold mb-1 flex items-center gap-1.5">
+            <div className="text-xs font-bold text-slate-500 mb-1 flex items-center gap-1.5">
+              <Icon name="home" size={13} className="text-blue-600" />
               <button
                 type="button"
-                onClick={() => setSelectedReport(null)}
-                className="hover:text-purple-600 hover:underline cursor-pointer"
+                onClick={() => { setSelectedReport(null); setHubCategory('all'); }}
+                className="text-blue-600 hover:underline cursor-pointer"
+              >
+                Home
+              </button>
+              <span className="text-slate-400">›</span>
+              <button
+                type="button"
+                onClick={() => { setSelectedReport(null); setHubCategory('all'); }}
+                className="text-blue-600 hover:underline cursor-pointer"
               >
                 Reports
               </button>
-              <span>›</span>
-              <span className="text-slate-700">Attendance Abstract</span>
+              <span className="text-slate-400">›</span>
+              <span className="text-slate-900 font-bold">Attendance Abstract</span>
             </div>
             <h1 className="text-2xl font-black tracking-tight text-slate-900 uppercase">
               ATTENDANCE ABSTRACT
             </h1>
-            <p className="text-xs text-slate-500 font-medium">Aggregate attendance stats per district</p>
+            <p className="text-xs text-slate-500 font-medium">Aggregate attendance stats per institute</p>
+          </div>
+        </div>
+
+        {/* Filters */}
+        <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-sm space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5 text-xs">
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">District</label>
+              <select
+                value={selectedDistrict}
+                onChange={(e) => setSelectedDistrict(e.target.value)}
+                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
+              >
+                {availableDistrictsList.map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">Institute / Campus</label>
+              <select
+                value={filterInstitute}
+                onChange={(e) => setFilterInstitute(e.target.value)}
+                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
+              >
+                {availableInstitutesList.map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">Date</label>
+              <input
+                type="date"
+                value={filterDate}
+                onChange={(e) => setFilterDate(e.target.value)}
+                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">Search</label>
+              <input
+                type="text"
+                placeholder="Search..."
+                value={searchTableQuery}
+                onChange={(e) => setSearchTableQuery(e.target.value)}
+                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white font-medium text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20"
+              />
+            </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setSelectedReport(null)}
-            className="px-4 py-2 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 flex items-center gap-1.5 transition shadow-2xs self-start sm:self-auto cursor-pointer"
-          >
-            <Icon name="chevron-left" size={14} />
-            <span>Back to Reports</span>
-          </button>
+          <div className="flex items-center justify-end gap-2 pt-1 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={() => fetchData(filterDate)}
+              className="px-5 py-1.5 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white transition shadow-sm cursor-pointer"
+            >
+              Search
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedDistrict('All Districts');
+                setFilterInstitute('All Institutes');
+                setFilterPlace('All Places');
+                setFilterInstType('All Types');
+                setSearchTableQuery('');
+              }}
+              className="px-4 py-1.5 rounded-xl text-xs font-bold border border-slate-200 text-slate-700 hover:bg-slate-50 transition cursor-pointer"
+            >
+              Reset
+            </button>
+          </div>
         </div>
 
         <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden">
@@ -2507,7 +2897,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                 onClick={() =>
                   handleExportCSV(
                     'Attendance_Abstract',
-                    ['NO.', 'DISTRICT', 'TOTAL NO. OF EMPLOYEES', 'USERS REGISTERED', 'MARKED ATTENDANCE'],
+                    ['NO.', 'INSTITUTE NAME', 'TOTAL NO. OF EMPLOYEES', 'USERS REGISTERED', 'MARKED ATTENDANCE'],
                     dynamicDistricts.map((d, i) => [i + 1, d.name, d.total, d.registered, d.attended])
                   )
                 }
@@ -2532,7 +2922,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
               <thead className="bg-slate-50/80 text-slate-500 font-extrabold uppercase text-[10px] tracking-wider border-b border-slate-200/90">
                 <tr>
                   <th className="py-3 px-4">NO.</th>
-                  <th className="py-3 px-4">DISTRICT</th>
+                  <th className="py-3 px-4">INSTITUTE NAME</th>
                   <th className="py-3 px-4 text-center">TOTAL NO. OF EMPLOYEES</th>
                   <th className="py-3 px-4 text-center">USERS REGISTERED</th>
                   <th className="py-3 px-4 text-center text-emerald-700">MARKED ATTENDANCE</th>
@@ -2542,14 +2932,27 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                 {dynamicDistricts.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="py-12 text-center text-slate-400 font-medium">
-                      No district attendance data recorded.
+                      No institute attendance data recorded.
                     </td>
                   </tr>
                 ) : (
                   dynamicDistricts.map((row, idx) => (
                     <tr key={idx} className="hover:bg-purple-50/20 transition-colors">
                       <td className="py-3.5 px-4 text-slate-400 font-medium">{idx + 1}</td>
-                      <td className="py-3.5 px-4 font-extrabold text-slate-900">{row.name}</td>
+                      <td className="py-3.5 px-4 font-extrabold text-slate-900">
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-purple-50 text-purple-900 font-bold border border-purple-200">
+                            <span>🏛️</span>
+                            <span>{row.name}</span>
+                          </span>
+                          {row.district && row.district !== '—' && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-semibold text-[11px] border border-slate-200">
+                              <span>📍</span>
+                              <span>{row.district}</span>
+                            </span>
+                          )}
+                        </div>
+                      </td>
                       <td className="py-3.5 px-4 text-center font-mono text-slate-700">{row.total}</td>
                       <td className="py-3.5 px-4 text-center font-mono text-slate-700">{row.registered}</td>
                       <td className="py-3.5 px-4 text-center font-mono text-emerald-700 font-black">{row.attended}</td>
@@ -2569,51 +2972,54 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
   // ─────────────────────────────────────────────────────────────────────────────
 
   const renderRangeAttendanceView = () => {
+    const rangeDisplayRows =
+      rangeTabMode === 'Employees'
+        ? filteredDailyAttendance.filter((r) => r.attendee_type === 'employee')
+        : rangeTabMode === 'Students'
+        ? filteredDailyAttendance.filter((r) => r.attendee_type === 'student')
+        : filteredDailyAttendance;
+
     return (
       <div className="space-y-4 animate-fade-in font-sans text-slate-900">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <div className="text-xs text-slate-400 font-bold mb-1 flex items-center gap-1.5">
+            <div className="text-xs font-bold text-slate-500 mb-1 flex items-center gap-1.5">
+              <Icon name="home" size={13} className="text-blue-600" />
               <button
                 type="button"
-                onClick={() => setSelectedReport(null)}
-                className="hover:text-purple-600 hover:underline cursor-pointer"
+                onClick={() => { setSelectedReport(null); setHubCategory('all'); }}
+                className="text-blue-600 hover:underline cursor-pointer"
+              >
+                Home
+              </button>
+              <span className="text-slate-400">›</span>
+              <button
+                type="button"
+                onClick={() => { setSelectedReport(null); setHubCategory('all'); }}
+                className="text-blue-600 hover:underline cursor-pointer"
               >
                 Reports
               </button>
-              <span>›</span>
-              <span className="text-slate-700">Range Attendance</span>
+              <span className="text-slate-400">›</span>
+              <span className="text-slate-900 font-bold">Range Attendance</span>
             </div>
             <h1 className="text-2xl font-black tracking-tight text-slate-900 uppercase">
               RANGE ATTENDANCE
             </h1>
-            <p className="text-xs text-slate-500 font-medium">Report, Detail, and Abstract views across a date range</p>
+            <p className="text-xs text-slate-500 font-medium">Report, Detail, Abstract, Employees, and Students views across a date range</p>
           </div>
-
-          <button
-            type="button"
-            onClick={() => setSelectedReport(null)}
-            className="px-4 py-2 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 flex items-center gap-1.5 transition shadow-2xs self-start sm:self-auto cursor-pointer"
-          >
-            <Icon name="chevron-left" size={14} />
-            <span>Back to Reports</span>
-          </button>
-        </div>
-
-        <div className="bg-amber-50 border border-amber-200 text-amber-900 text-xs px-4 py-2.5 rounded-xl font-medium">
-          <strong>Notice:</strong> Replaces: Attendance Report (Report tab + Abstract tab) and Detail Employee Attendance Report — now three tabs on one screen, sharing one date-range query.
         </div>
 
         {/* Filter Toolbar with Range Tabs */}
         <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-sm space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-2.5 text-xs">
             <div>
               <label className="block text-[11px] font-bold text-slate-600 mb-1">From Date</label>
               <input
                 type="date"
                 value={filterFromDate}
                 onChange={(e) => setFilterFromDate(e.target.value)}
-                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs"
+                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs cursor-pointer"
               />
             </div>
             <div>
@@ -2622,17 +3028,31 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                 type="date"
                 value={filterToDate}
                 onChange={(e) => setFilterToDate(e.target.value)}
-                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs"
+                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs cursor-pointer"
               />
             </div>
             <div>
               <label className="block text-[11px] font-bold text-slate-600 mb-1">District</label>
               <select
-                value={filterDistrict}
-                onChange={(e) => setFilterDistrict(e.target.value)}
-                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20"
+                value={selectedDistrict}
+                onChange={(e) => setSelectedDistrict(e.target.value)}
+                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
               >
-                {dynamicDistrictsList.map((d) => (
+                {availableDistrictsList.map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">Institute / Campus</label>
+              <select
+                value={filterInstitute}
+                onChange={(e) => setFilterInstitute(e.target.value)}
+                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
+              >
+                {availableInstitutesList.map((d) => (
                   <option key={d} value={d}>
                     {d}
                   </option>
@@ -2653,20 +3073,22 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
 
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 border-t border-slate-100">
             {/* Range Tab Switcher */}
-            <div className="bg-slate-50 p-1 rounded-xl flex items-center border border-slate-200/90 text-xs">
-              {(['Report', 'Detail', 'Abstract'] as const).map((tab) => (
+            <div className="bg-slate-50 p-1 rounded-xl flex items-center border border-slate-200/90 text-xs gap-1 overflow-x-auto max-w-full">
+              {(['Report', 'Detail', 'Abstract', 'Employees', 'Students'] as const).map((tab) => (
                 <button
                   key={tab}
                   type="button"
                   onClick={() => setRangeTabMode(tab)}
                   className={cn(
-                    'px-4 py-1.5 rounded-lg font-bold text-xs transition cursor-pointer',
+                    'px-3.5 py-1.5 rounded-lg font-bold text-xs transition cursor-pointer flex items-center gap-1.5 shrink-0',
                     rangeTabMode === tab
                       ? 'bg-blue-600 text-white shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
                   )}
                 >
-                  {tab}
+                  {tab === 'Employees' && <span>👤</span>}
+                  {tab === 'Students' && <span>🎓</span>}
+                  <span>{tab}</span>
                 </button>
               ))}
             </div>
@@ -2682,7 +3104,8 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
               <button
                 type="button"
                 onClick={() => {
-                  setFilterDistrict('All Districts');
+                  setSelectedDistrict('All Districts');
+                  setFilterInstitute('All Institutes');
                   setSearchTableQuery('');
                 }}
                 className="px-4 py-1.5 rounded-xl text-xs font-bold border border-slate-200 text-slate-700 hover:bg-slate-50 transition cursor-pointer"
@@ -2691,13 +3114,40 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
               </button>
               <button
                 type="button"
-                onClick={() =>
-                  handleExportCSV(
-                    'Range_Attendance_Report',
-                    ['#', 'EMPLOYEE NO', 'NAME', 'DISTRICT', 'PLACE OF WORKING', 'PRESENT', 'LATE', 'ABSENT', 'LEAVE', 'TOTAL', 'ATTENDANCE %'],
-                    filteredDailyAttendance.map((r, i) => [i + 1, r.id, r.name, r.dist, r.place, r.status === 'Present' ? 1 : 0, r.status === 'Late' ? 1 : 0, r.status === 'Absent' ? 1 : 0, r.status === 'Leave' ? 1 : 0, 1, r.status === 'Absent' ? '0%' : '100%'])
-                  )
-                }
+                onClick={() => {
+                  const rows = rangeDisplayRows;
+                  if (rangeTabMode === 'Abstract') {
+                    handleExportCSV(
+                      `Range_Attendance_Abstract_${filterFromDate}_to_${filterToDate}`,
+                      ['#', 'INSTITUTE NAME', 'TOTAL STAFF & STUDENTS', 'REGISTERED', 'ATTENDED ON TIME', 'LATE COUNT', 'EARLY LEAVING', 'NOT LOGGED OUT', 'ABSENT', 'LEAVE', 'OD'],
+                      dynamicDistricts.map((d, i) => [i + 1, d.name, d.total, d.registered, d.attended, d.late, d.early, d.notOut, d.absent, d.leave, d.od])
+                    );
+                  } else if (rangeTabMode === 'Detail') {
+                    handleExportCSV(
+                      `Range_Attendance_Detail_${filterFromDate}_to_${filterToDate}`,
+                      ['#', 'ID / ROLL NO', 'NAME', 'TYPE', 'INSTITUTE NAME', 'CAMPUS / DEPT', 'DATE', 'CHECK-IN TIME', 'CHECK-IN LOCATION', 'CHECK-OUT TIME', 'CHECK-OUT LOCATION', 'STATUS'],
+                      rows.map((r, i) => [i + 1, r.id, r.name, r.attendee_type === 'student' ? 'Student' : 'Employee', r.dist, r.place, filterDate, r.in, r.in_loc, r.out, r.out_loc, r.status])
+                    );
+                  } else if (rangeTabMode === 'Employees') {
+                    handleExportCSV(
+                      `Range_Attendance_Employees_${filterFromDate}_to_${filterToDate}`,
+                      ['#', 'EMPLOYEE NO', 'NAME', 'INSTITUTE NAME', 'PLACE OF WORKING', 'PRESENT', 'LATE', 'ABSENT', 'LEAVE', 'TOTAL', 'ATTENDANCE %'],
+                      rows.map((r, i) => [i + 1, r.id, r.name, r.dist, r.place, r.status === 'Present' ? 1 : 0, r.status === 'Late' ? 1 : 0, r.status === 'Absent' ? 1 : 0, r.status === 'Leave' ? 1 : 0, 1, r.status === 'Absent' ? '0%' : '100%'])
+                    );
+                  } else if (rangeTabMode === 'Students') {
+                    handleExportCSV(
+                      `Range_Attendance_Students_${filterFromDate}_to_${filterToDate}`,
+                      ['#', 'ROLL NO', 'STUDENT NAME', 'INSTITUTE NAME', 'COURSE / PROGRAM', 'CAMPUS / DEPT', 'PRESENT', 'LATE', 'ABSENT', 'LEAVE', 'TOTAL', 'ATTENDANCE %'],
+                      rows.map((r, i) => [i + 1, r.id, r.name, r.dist, r.desg, r.place, r.status === 'Present' ? 1 : 0, r.status === 'Late' ? 1 : 0, r.status === 'Absent' ? 1 : 0, r.status === 'Leave' ? 1 : 0, 1, r.status === 'Absent' ? '0%' : '100%'])
+                    );
+                  } else {
+                    handleExportCSV(
+                      `Range_Attendance_Report_${filterFromDate}_to_${filterToDate}`,
+                      ['#', 'ID / ROLL NO', 'NAME', 'TYPE', 'INSTITUTE NAME', 'PLACE OF WORKING', 'PRESENT', 'LATE', 'ABSENT', 'LEAVE', 'TOTAL', 'ATTENDANCE %'],
+                      rows.map((r, i) => [i + 1, r.id, r.name, r.attendee_type === 'student' ? 'Student' : 'Employee', r.dist, r.place, r.status === 'Present' ? 1 : 0, r.status === 'Late' ? 1 : 0, r.status === 'Absent' ? 1 : 0, r.status === 'Leave' ? 1 : 0, 1, r.status === 'Absent' ? '0%' : '100%'])
+                    );
+                  }
+                }}
                 className="px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
               >
                 <Icon name="download" size={13} />
@@ -2718,81 +3168,390 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
         {/* Range Table */}
         <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden">
           <div className="p-3.5 border-b border-slate-200/90 bg-slate-50/60 flex items-center justify-between">
-            <div className="text-xs font-extrabold text-slate-900">
-              Report — Employee Totals, {filterFromDate} to {filterToDate}{' '}
-              <span className="ml-2 px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-[11px] font-mono">
-                {filteredDailyAttendance.length} records
+            <div className="text-xs font-extrabold text-slate-900 flex items-center gap-2">
+              <span>
+                {rangeTabMode === 'Employees'
+                  ? 'Report — Employee Attendance Totals'
+                  : rangeTabMode === 'Students'
+                  ? 'Report — Student Attendance Totals'
+                  : rangeTabMode === 'Detail'
+                  ? 'Detail — Shift Logs & Punch Activity'
+                  : rangeTabMode === 'Abstract'
+                  ? 'Abstract — Institute Rollup Summary'
+                  : 'Report — Consolidated Attendance Totals'}, {filterFromDate} to {filterToDate}
+              </span>
+              <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-[11px] font-mono">
+                {rangeTabMode === 'Abstract' ? dynamicDistricts.length : rangeDisplayRows.length} records
               </span>
             </div>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50/80 text-slate-500 font-extrabold uppercase text-[10px] tracking-wider border-b border-slate-200/90">
-                <tr>
-                  <th className="py-3 px-3.5">#</th>
-                  <th className="py-3 px-3.5">EMPLOYEE NO</th>
-                  <th className="py-3 px-3.5">NAME</th>
-                  <th className="py-3 px-3.5">DISTRICT</th>
-                  <th className="py-3 px-3.5">PLACE OF WORKING</th>
-                  <th className="py-3 px-3.5 text-center text-emerald-700">PRESENT</th>
-                  <th className="py-3 px-3.5 text-center text-amber-700">LATE</th>
-                  <th className="py-3 px-3.5 text-center text-rose-700">ABSENT</th>
-                  <th className="py-3 px-3.5 text-center text-purple-700">LEAVE</th>
-                  <th className="py-3 px-3.5 text-center">TOTAL</th>
-                  <th className="py-3 px-3.5 text-center">ATTENDANCE %</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 font-medium">
-                {filteredDailyAttendance.length === 0 ? (
+            {rangeTabMode === 'Abstract' ? (
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50/80 text-slate-500 font-extrabold uppercase text-[10px] tracking-wider border-b border-slate-200/90">
                   <tr>
-                    <td colSpan={11} className="py-12 text-center text-slate-400 font-medium">
-                      No range attendance records found.
-                    </td>
+                    <th className="py-3 px-3.5">#</th>
+                    <th className="py-3 px-3.5">INSTITUTE NAME</th>
+                    <th className="py-3 px-3.5 text-center">TOTAL STAFF &amp; STUDENTS</th>
+                    <th className="py-3 px-3.5 text-center">REGISTERED</th>
+                    <th className="py-3 px-3.5 text-center text-emerald-700">ATTENDED ON TIME</th>
+                    <th className="py-3 px-3.5 text-center text-amber-700">LATE COUNT</th>
+                    <th className="py-3 px-3.5 text-center text-indigo-700">EARLY LEAVING</th>
+                    <th className="py-3 px-3.5 text-center text-orange-700">NOT LOGGED OUT</th>
+                    <th className="py-3 px-3.5 text-center text-rose-700">ABSENT</th>
+                    <th className="py-3 px-3.5 text-center text-purple-700">LEAVE</th>
+                    <th className="py-3 px-3.5 text-center text-sky-700">OD</th>
                   </tr>
-                ) : (
-                  filteredDailyAttendance.map((row, idx) => (
-                    <tr key={idx} className="hover:bg-purple-50/20 transition-colors">
-                      <td className="py-3 px-3.5 text-slate-400 font-bold">{idx + 1}</td>
-                      <td className="py-3 px-3.5 font-mono text-slate-700 font-bold">{row.id}</td>
-                      <td className="py-3 px-3.5 font-extrabold text-slate-900">{row.name}</td>
-                      <td className="py-3 px-3.5 text-slate-700 font-bold">{row.dist}</td>
-                      <td className="py-3 px-3.5 text-slate-600">{row.place}</td>
-                      <td className="py-3 px-3.5 text-center font-mono font-bold text-emerald-700 bg-emerald-50/30">
-                        {row.status === 'Present' ? 1 : 0}
-                      </td>
-                      <td className="py-3 px-3.5 text-center font-mono font-bold text-amber-700 bg-amber-50/30">
-                        {row.status === 'Late' ? 1 : 0}
-                      </td>
-                      <td className="py-3 px-3.5 text-center font-mono font-bold text-rose-700 bg-rose-50/30">
-                        {row.status === 'Absent' ? 1 : 0}
-                      </td>
-                      <td className="py-3 px-3.5 text-center font-mono font-bold text-purple-700">
-                        {row.status === 'Leave' ? 1 : 0}
-                      </td>
-                      <td className="py-3 px-3.5 text-center font-mono font-bold text-slate-900">1</td>
-                      <td className="py-3 px-3.5 text-center">
-                        <span
-                          className={cn(
-                            'px-2.5 py-0.5 rounded-full text-[10px] font-black font-mono border',
-                            row.status === 'Absent'
-                              ? 'bg-rose-50 text-rose-700 border-rose-200'
-                              : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                          )}
-                        >
-                          {row.status === 'Absent' ? '0%' : '100%'}
-                        </span>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-bold">
+                  {dynamicDistricts.length === 0 ? (
+                    <tr>
+                      <td colSpan={11} className="py-12 text-center text-slate-400 font-medium">
+                        No institute rollup records found.
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : (
+                    dynamicDistricts.map((row, idx) => (
+                      <tr key={idx} className="hover:bg-purple-50/20 transition-colors">
+                        <td className="py-3 px-3.5 text-slate-400 font-medium">{idx + 1}</td>
+                        <td className="py-3 px-3.5 font-extrabold text-slate-900">
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-5 h-5 rounded-md bg-purple-50 text-purple-700 border border-purple-200 flex items-center justify-center shrink-0 text-[10px]">
+                              🏛️
+                            </span>
+                            <div>
+                              <div>{row.name}</div>
+                              {row.district && row.district !== '—' && (
+                                <div className="text-[10px] text-slate-400 font-semibold flex items-center gap-0.5">
+                                  <span>📍</span>
+                                  <span>{row.district}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-3 px-3.5 text-center font-mono">{row.total}</td>
+                        <td className="py-3 px-3.5 text-center font-mono text-slate-700">{row.registered}</td>
+                        <td className="py-3 px-3.5 text-center font-mono text-emerald-700 bg-emerald-50/40">{row.attended}</td>
+                        <td className="py-3 px-3.5 text-center font-mono text-amber-700 bg-amber-50/40">{row.late}</td>
+                        <td className="py-3 px-3.5 text-center font-mono text-indigo-700">{row.early}</td>
+                        <td className="py-3 px-3.5 text-center font-mono text-orange-700">{row.notOut}</td>
+                        <td className="py-3 px-3.5 text-center font-mono text-rose-700 bg-rose-50/40">{row.absent}</td>
+                        <td className="py-3 px-3.5 text-center font-mono text-purple-700">{row.leave}</td>
+                        <td className="py-3 px-3.5 text-center font-mono text-sky-700">{row.od}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            ) : rangeTabMode === 'Detail' ? (
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50/80 text-slate-500 font-extrabold uppercase text-[10px] tracking-wider border-b border-slate-200/90">
+                  <tr>
+                    <th className="py-3 px-3.5">#</th>
+                    <th className="py-3 px-3.5">ID / ROLL NO</th>
+                    <th className="py-3 px-3.5">NAME</th>
+                    <th className="py-3 px-3.5">TYPE</th>
+                    <th className="py-3 px-3.5">INSTITUTE NAME</th>
+                    <th className="py-3 px-3.5">CAMPUS / DEPT</th>
+                    <th className="py-3 px-3.5">CHECK-IN TIME</th>
+                    <th className="py-3 px-3.5">CHECK-IN LOCATION</th>
+                    <th className="py-3 px-3.5">CHECK-OUT TIME</th>
+                    <th className="py-3 px-3.5">CHECK-OUT LOCATION</th>
+                    <th className="py-3 px-3.5 text-center">STATUS</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-medium">
+                  {rangeDisplayRows.length === 0 ? (
+                    <tr>
+                      <td colSpan={11} className="py-12 text-center text-slate-400 font-medium">
+                        No detail attendance records found.
+                      </td>
+                    </tr>
+                  ) : (
+                    rangeDisplayRows.map((row, idx) => (
+                      <tr key={idx} className="hover:bg-purple-50/20 transition-colors">
+                        <td className="py-3 px-3.5 text-slate-400 font-bold">{idx + 1}</td>
+                        <td className="py-3 px-3.5 font-mono text-slate-700 font-bold">{row.id}</td>
+                        <td className="py-3 px-3.5 font-extrabold text-slate-900">{row.name}</td>
+                        <td className="py-3 px-3.5">
+                          <span
+                            className={cn(
+                              'px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border',
+                              row.attendee_type === 'student'
+                                ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            )}
+                          >
+                            {row.attendee_type === 'student' ? 'Student' : 'Employee'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3.5 text-slate-700 font-bold">
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-purple-50 text-purple-900 border border-purple-200 text-xs font-bold">
+                            <span>🏛️</span>
+                            <span>{row.dist}</span>
+                          </span>
+                        </td>
+                        <td className="py-3 px-3.5 text-slate-600">{row.place}</td>
+                        <td className="py-3 px-3.5 font-mono text-slate-900 font-bold">{row.in}</td>
+                        <td className="py-3 px-3.5 text-slate-600">{row.in_loc}</td>
+                        <td className="py-3 px-3.5 font-mono text-slate-900">{row.out}</td>
+                        <td className="py-3 px-3.5 text-slate-600">{row.out_loc}</td>
+                        <td className="py-3 px-3.5 text-center">
+                          <span
+                            className={cn(
+                              'px-2.5 py-0.5 rounded-full text-[10px] font-black font-mono border',
+                              row.status === 'Absent'
+                                ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                : row.status === 'Late'
+                                ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            )}
+                          >
+                            {row.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            ) : rangeTabMode === 'Students' ? (
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50/80 text-slate-500 font-extrabold uppercase text-[10px] tracking-wider border-b border-slate-200/90">
+                  <tr>
+                    <th className="py-3 px-3.5">#</th>
+                    <th className="py-3 px-3.5">ROLL NO / ID</th>
+                    <th className="py-3 px-3.5">STUDENT NAME</th>
+                    <th className="py-3 px-3.5">INSTITUTE NAME</th>
+                    <th className="py-3 px-3.5">COURSE / PROGRAM</th>
+                    <th className="py-3 px-3.5">CAMPUS / DEPT</th>
+                    <th className="py-3 px-3.5 text-center text-emerald-700">PRESENT</th>
+                    <th className="py-3 px-3.5 text-center text-amber-700">LATE</th>
+                    <th className="py-3 px-3.5 text-center text-rose-700">ABSENT</th>
+                    <th className="py-3 px-3.5 text-center text-purple-700">LEAVE</th>
+                    <th className="py-3 px-3.5 text-center">TOTAL</th>
+                    <th className="py-3 px-3.5 text-center">ATTENDANCE %</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-medium">
+                  {rangeDisplayRows.length === 0 ? (
+                    <tr>
+                      <td colSpan={12} className="py-12 text-center text-slate-400 font-medium">
+                        No student range attendance records found.
+                      </td>
+                    </tr>
+                  ) : (
+                    rangeDisplayRows.map((row, idx) => (
+                      <tr key={idx} className="hover:bg-purple-50/20 transition-colors">
+                        <td className="py-3 px-3.5 text-slate-400 font-bold">{idx + 1}</td>
+                        <td className="py-3 px-3.5 font-mono text-blue-700 font-bold">{row.id}</td>
+                        <td className="py-3 px-3.5 font-extrabold text-slate-900">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs">🎓</span>
+                            <span>{row.name}</span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-3.5 text-slate-700 font-bold">
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-purple-50 text-purple-900 border border-purple-200 text-xs font-bold">
+                            <span>🏛️</span>
+                            <span>{row.dist}</span>
+                          </span>
+                        </td>
+                        <td className="py-3 px-3.5 text-slate-600 font-medium">{row.desg}</td>
+                        <td className="py-3 px-3.5 text-slate-600">{row.place}</td>
+                        <td className="py-3 px-3.5 text-center font-mono font-bold text-emerald-700 bg-emerald-50/30">
+                          {row.status === 'Present' ? 1 : 0}
+                        </td>
+                        <td className="py-3 px-3.5 text-center font-mono font-bold text-amber-700 bg-amber-50/30">
+                          {row.status === 'Late' ? 1 : 0}
+                        </td>
+                        <td className="py-3 px-3.5 text-center font-mono font-bold text-rose-700 bg-rose-50/30">
+                          {row.status === 'Absent' ? 1 : 0}
+                        </td>
+                        <td className="py-3 px-3.5 text-center font-mono font-bold text-purple-700">
+                          {row.status === 'Leave' ? 1 : 0}
+                        </td>
+                        <td className="py-3 px-3.5 text-center font-mono font-bold text-slate-900">1</td>
+                        <td className="py-3 px-3.5 text-center">
+                          <span
+                            className={cn(
+                              'px-2.5 py-0.5 rounded-full text-[10px] font-black font-mono border',
+                              row.status === 'Absent'
+                                ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            )}
+                          >
+                            {row.status === 'Absent' ? '0%' : '100%'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            ) : rangeTabMode === 'Employees' ? (
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50/80 text-slate-500 font-extrabold uppercase text-[10px] tracking-wider border-b border-slate-200/90">
+                  <tr>
+                    <th className="py-3 px-3.5">#</th>
+                    <th className="py-3 px-3.5">EMPLOYEE NO</th>
+                    <th className="py-3 px-3.5">NAME</th>
+                    <th className="py-3 px-3.5">INSTITUTE NAME</th>
+                    <th className="py-3 px-3.5">DESIGNATION</th>
+                    <th className="py-3 px-3.5">PLACE OF WORKING</th>
+                    <th className="py-3 px-3.5 text-center text-emerald-700">PRESENT</th>
+                    <th className="py-3 px-3.5 text-center text-amber-700">LATE</th>
+                    <th className="py-3 px-3.5 text-center text-rose-700">ABSENT</th>
+                    <th className="py-3 px-3.5 text-center text-purple-700">LEAVE</th>
+                    <th className="py-3 px-3.5 text-center">TOTAL</th>
+                    <th className="py-3 px-3.5 text-center">ATTENDANCE %</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-medium">
+                  {rangeDisplayRows.length === 0 ? (
+                    <tr>
+                      <td colSpan={12} className="py-12 text-center text-slate-400 font-medium">
+                        No employee range attendance records found.
+                      </td>
+                    </tr>
+                  ) : (
+                    rangeDisplayRows.map((row, idx) => (
+                      <tr key={idx} className="hover:bg-purple-50/20 transition-colors">
+                        <td className="py-3 px-3.5 text-slate-400 font-bold">{idx + 1}</td>
+                        <td className="py-3 px-3.5 font-mono text-slate-700 font-bold">{row.id}</td>
+                        <td className="py-3 px-3.5 font-extrabold text-slate-900">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs">👤</span>
+                            <span>{row.name}</span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-3.5 text-slate-700 font-bold">
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-purple-50 text-purple-900 border border-purple-200 text-xs font-bold">
+                            <span>🏛️</span>
+                            <span>{row.dist}</span>
+                          </span>
+                        </td>
+                        <td className="py-3 px-3.5 text-slate-600 font-medium">{row.desg}</td>
+                        <td className="py-3 px-3.5 text-slate-600">{row.place}</td>
+                        <td className="py-3 px-3.5 text-center font-mono font-bold text-emerald-700 bg-emerald-50/30">
+                          {row.status === 'Present' ? 1 : 0}
+                        </td>
+                        <td className="py-3 px-3.5 text-center font-mono font-bold text-amber-700 bg-amber-50/30">
+                          {row.status === 'Late' ? 1 : 0}
+                        </td>
+                        <td className="py-3 px-3.5 text-center font-mono font-bold text-rose-700 bg-rose-50/30">
+                          {row.status === 'Absent' ? 1 : 0}
+                        </td>
+                        <td className="py-3 px-3.5 text-center font-mono font-bold text-purple-700">
+                          {row.status === 'Leave' ? 1 : 0}
+                        </td>
+                        <td className="py-3 px-3.5 text-center font-mono font-bold text-slate-900">1</td>
+                        <td className="py-3 px-3.5 text-center">
+                          <span
+                            className={cn(
+                              'px-2.5 py-0.5 rounded-full text-[10px] font-black font-mono border',
+                              row.status === 'Absent'
+                                ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            )}
+                          >
+                            {row.status === 'Absent' ? '0%' : '100%'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            ) : (
+              /* Report (Consolidated) */
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50/80 text-slate-500 font-extrabold uppercase text-[10px] tracking-wider border-b border-slate-200/90">
+                  <tr>
+                    <th className="py-3 px-3.5">#</th>
+                    <th className="py-3 px-3.5">ID / ROLL NO</th>
+                    <th className="py-3 px-3.5">NAME</th>
+                    <th className="py-3 px-3.5">TYPE</th>
+                    <th className="py-3 px-3.5">INSTITUTE NAME</th>
+                    <th className="py-3 px-3.5">PLACE OF WORKING</th>
+                    <th className="py-3 px-3.5 text-center text-emerald-700">PRESENT</th>
+                    <th className="py-3 px-3.5 text-center text-amber-700">LATE</th>
+                    <th className="py-3 px-3.5 text-center text-rose-700">ABSENT</th>
+                    <th className="py-3 px-3.5 text-center text-purple-700">LEAVE</th>
+                    <th className="py-3 px-3.5 text-center">TOTAL</th>
+                    <th className="py-3 px-3.5 text-center">ATTENDANCE %</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-medium">
+                  {rangeDisplayRows.length === 0 ? (
+                    <tr>
+                      <td colSpan={12} className="py-12 text-center text-slate-400 font-medium">
+                        No range attendance records found.
+                      </td>
+                    </tr>
+                  ) : (
+                    rangeDisplayRows.map((row, idx) => (
+                      <tr key={idx} className="hover:bg-purple-50/20 transition-colors">
+                        <td className="py-3 px-3.5 text-slate-400 font-bold">{idx + 1}</td>
+                        <td className="py-3 px-3.5 font-mono text-slate-700 font-bold">{row.id}</td>
+                        <td className="py-3 px-3.5 font-extrabold text-slate-900">{row.name}</td>
+                        <td className="py-3 px-3.5">
+                          <span
+                            className={cn(
+                              'px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border',
+                              row.attendee_type === 'student'
+                                ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            )}
+                          >
+                            {row.attendee_type === 'student' ? 'Student' : 'Employee'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3.5 text-slate-700 font-bold">
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-purple-50 text-purple-900 border border-purple-200 text-xs font-bold">
+                            <span>🏛️</span>
+                            <span>{row.dist}</span>
+                          </span>
+                        </td>
+                        <td className="py-3 px-3.5 text-slate-600">{row.place}</td>
+                        <td className="py-3 px-3.5 text-center font-mono font-bold text-emerald-700 bg-emerald-50/30">
+                          {row.status === 'Present' ? 1 : 0}
+                        </td>
+                        <td className="py-3 px-3.5 text-center font-mono font-bold text-amber-700 bg-amber-50/30">
+                          {row.status === 'Late' ? 1 : 0}
+                        </td>
+                        <td className="py-3 px-3.5 text-center font-mono font-bold text-rose-700 bg-rose-50/30">
+                          {row.status === 'Absent' ? 1 : 0}
+                        </td>
+                        <td className="py-3 px-3.5 text-center font-mono font-bold text-purple-700">
+                          {row.status === 'Leave' ? 1 : 0}
+                        </td>
+                        <td className="py-3 px-3.5 text-center font-mono font-bold text-slate-900">1</td>
+                        <td className="py-3 px-3.5 text-center">
+                          <span
+                            className={cn(
+                              'px-2.5 py-0.5 rounded-full text-[10px] font-black font-mono border',
+                              row.status === 'Absent'
+                                ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            )}
+                          >
+                            {row.status === 'Absent' ? '0%' : '100%'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
       </div>
     );
-  }
+  };
 
   // ─────────────────────────────────────────────────────────────────────────────
   // 5. GENERIC DRILLDOWN SUBVIEW (For remaining cards)
@@ -2805,31 +3564,110 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
       <div className="space-y-4 animate-fade-in font-sans text-slate-900">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <div className="text-xs text-slate-400 font-bold mb-1 flex items-center gap-1.5">
+            <div className="text-xs font-bold text-slate-500 mb-1 flex items-center gap-1.5">
+              <Icon name="home" size={13} className="text-blue-600" />
               <button
                 type="button"
-                onClick={() => setSelectedReport(null)}
-                className="hover:text-purple-600 hover:underline cursor-pointer"
+                onClick={() => { setSelectedReport(null); setHubCategory('all'); }}
+                className="text-blue-600 hover:underline cursor-pointer"
+              >
+                Home
+              </button>
+              <span className="text-slate-400">›</span>
+              <button
+                type="button"
+                onClick={() => { setSelectedReport(null); setHubCategory('all'); }}
+                className="text-blue-600 hover:underline cursor-pointer"
               >
                 Reports
               </button>
-              <span>›</span>
-              <span className="text-slate-700">{activeConfig.title}</span>
+              <span className="text-slate-400">›</span>
+              <span className="text-slate-900 font-bold">{activeConfig.title}</span>
             </div>
             <h1 className="text-2xl font-black tracking-tight text-slate-900 uppercase">
               {activeConfig.title}
             </h1>
             <p className="text-xs text-slate-500 font-medium">{activeConfig.description}</p>
           </div>
+        </div>
 
-          <button
-            type="button"
-            onClick={() => setSelectedReport(null)}
-            className="px-4 py-2 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 flex items-center gap-1.5 transition shadow-2xs self-start sm:self-auto cursor-pointer"
-          >
-            <Icon name="chevron-left" size={14} />
-            <span>Back to Reports</span>
-          </button>
+        {/* Filters */}
+        <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-sm space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5 text-xs">
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">District</label>
+              <select
+                value={selectedDistrict}
+                onChange={(e) => setSelectedDistrict(e.target.value)}
+                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
+              >
+                {availableDistrictsList.map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">Institute / Campus</label>
+              <select
+                value={filterInstitute}
+                onChange={(e) => setFilterInstitute(e.target.value)}
+                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
+              >
+                {availableInstitutesList.map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">Date</label>
+              <input
+                type="date"
+                value={filterDate}
+                onChange={(e) => setFilterDate(e.target.value)}
+                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">Search</label>
+              <input
+                type="text"
+                placeholder="Search..."
+                value={searchTableQuery}
+                onChange={(e) => setSearchTableQuery(e.target.value)}
+                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white font-medium text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-1 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={() => fetchData(filterDate)}
+              className="px-5 py-1.5 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white transition shadow-sm cursor-pointer"
+            >
+              Search
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedDistrict('All Districts');
+                setFilterInstitute('All Institutes');
+                setFilterPlace('All Places');
+                setFilterInstType('All Types');
+                setSearchTableQuery('');
+              }}
+              className="px-4 py-1.5 rounded-xl text-xs font-bold border border-slate-200 text-slate-700 hover:bg-slate-50 transition cursor-pointer"
+            >
+              Reset
+            </button>
+          </div>
         </div>
 
         <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-5 space-y-4">
@@ -2850,7 +3688,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                 onClick={() =>
                   handleExportCSV(
                     activeConfig.title.replace(/\s+/g, '_'),
-                    ['DISTRICT', 'METRIC', 'VALUE', 'DATE'],
+                    ['INSTITUTE NAME', 'METRIC', 'VALUE', 'DATE'],
                     dynamicDistricts.map((d) => [d.name, activeConfig.title, d.total, filterDate])
                   )
                 }
@@ -2875,7 +3713,7 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
               <thead className="bg-slate-50/80 text-slate-500 font-extrabold uppercase text-[10px] tracking-wider border-b border-slate-200/90">
                 <tr>
                   <th className="py-3 px-4">#</th>
-                  <th className="py-3 px-4">District / Unit</th>
+                  <th className="py-3 px-4">INSTITUTE NAME</th>
                   <th className="py-3 px-4 text-center">Total Staff</th>
                   <th className="py-3 px-4 text-center text-emerald-700">Compliant Count</th>
                   <th className="py-3 px-4 text-center text-amber-700">Pending Review</th>
@@ -2894,7 +3732,20 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
                   dynamicDistricts.map((d, i) => (
                     <tr key={i} className="hover:bg-purple-50/20 transition-colors">
                       <td className="py-3 px-4 text-slate-400 font-medium">{i + 1}</td>
-                      <td className="py-3 px-4 font-extrabold text-slate-900">{d.name}</td>
+                      <td className="py-3 px-4 font-extrabold text-slate-900">
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-purple-50 text-purple-900 font-bold border border-purple-200">
+                            <span>🏛️</span>
+                            <span>{d.name}</span>
+                          </span>
+                          {d.district && d.district !== '—' && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-semibold text-[11px] border border-slate-200">
+                              <span>📍</span>
+                              <span>{d.district}</span>
+                            </span>
+                          )}
+                        </div>
+                      </td>
                       <td className="py-3 px-4 text-center font-mono">{d.total}</td>
                       <td className="py-3 px-4 text-center font-mono text-emerald-700 bg-emerald-50/30">{d.attended}</td>
                       <td className="py-3 px-4 text-center font-mono text-amber-700 bg-amber-50/30">{d.late}</td>
@@ -3085,123 +3936,95 @@ export function ReportsPage({ embedded = false }: { embedded?: boolean }) {
 
   return (
     <div className="min-h-full bg-transparent w-full px-4 sm:px-6 py-4 space-y-4 font-sans text-slate-900">
-      {/* Breadcrumb & Title */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1">
-        <div>
-          <div className="text-xs font-bold text-slate-600 mb-1 flex items-center gap-1.5">
-            <Icon name="home" size={13} className="text-blue-600" />
-            <button
-              type="button"
-              onClick={() => { setSelectedReport(null); setHubCategory('all'); }}
-              className="text-blue-600 hover:underline cursor-pointer"
-            >
-              Home
-            </button>
-            <span className="text-slate-400">›</span>
-            <button
-              type="button"
-              onClick={() => { setSelectedReport(null); setHubCategory('all'); }}
-              className={selectedReport ? "text-blue-600 hover:underline cursor-pointer" : "text-slate-900 font-black"}
-            >
-              Reports
-            </button>
-            {selectedReport && (
-              <>
-                <span className="text-slate-400">›</span>
-                <span className="text-slate-900 font-black">
-                  {selectedReport === 'student-attendance'
-                    ? 'Students Attendance'
-                    : selectedReport === 'employee-attendance'
-                    ? 'Employees Attendance'
-                    : selectedReport === 'branch-consolidated'
-                    ? 'Multi-Branch Consolidated'
-                    : selectedReport === 'daily-attendance'
-                    ? 'Daily Attendance'
-                    : selectedReport === 'daily-abstract'
-                    ? 'Daily Abstract'
-                    : selectedReport === 'attendance-abstract'
-                    ? 'Attendance Abstract'
-                    : selectedReport === 'range-attendance'
-                    ? 'Range Attendance'
-                    : selectedReport.replace(/-/g, ' ')}
-                </span>
-              </>
-            )}
-          </div>
-          <div className="flex items-center gap-2.5 mt-1">
-            <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 border border-purple-100 flex items-center justify-center shrink-0 shadow-2xs">
-              <Icon name="bar-chart-2" size={17} />
-            </div>
+      {!selectedReport && (
+        <>
+          {/* Main Directory Header & Global Directory Search */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1">
             <div>
-              <h1 className="text-2xl sm:text-[28px] font-black text-slate-900 tracking-tight leading-tight">
-                Reports &amp; Analytics
-              </h1>
-              <p className="text-xs sm:text-[13px] text-slate-500 font-medium">
-                District-level analytics, exportable attendance statements, and multi-campus progress tracking.
-              </p>
+              <div className="text-xs font-bold text-slate-600 mb-1 flex items-center gap-1.5">
+                <Icon name="home" size={13} className="text-blue-600" />
+                <button
+                  type="button"
+                  onClick={() => { setSelectedReport(null); setHubCategory('all'); }}
+                  className="text-blue-600 hover:underline cursor-pointer"
+                >
+                  Home
+                </button>
+                <span className="text-slate-400">›</span>
+                <span className="text-slate-900 font-black">Reports</span>
+              </div>
+              <div className="flex items-center gap-2.5 mt-1">
+                <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 border border-purple-100 flex items-center justify-center shrink-0 shadow-2xs">
+                  <Icon name="bar-chart-2" size={17} />
+                </div>
+                <div>
+                  <h1 className="text-2xl sm:text-[28px] font-black text-slate-900 tracking-tight leading-tight">
+                    Reports &amp; Analytics
+                  </h1>
+                  <p className="text-xs sm:text-[13px] text-slate-500 font-medium">
+                    Institute-level analytics, exportable attendance statements, and multi-campus progress tracking.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Global Search Bar */}
+            <div className="relative w-full sm:w-80">
+              <Icon name="search" size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Search report modules..."
+                value={searchReportDirectory}
+                onChange={(e) => setSearchReportDirectory(e.target.value)}
+                className="w-full pl-11 pr-4 py-2.5 text-xs rounded-full bg-white border border-slate-200/90 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-semibold shadow-2xs"
+              />
             </div>
           </div>
-        </div>
 
-        {/* Global Search Bar */}
-        <div className="relative w-full sm:w-80">
-          <Icon name="search" size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-          <input
-            type="text"
-            placeholder="Search report modules..."
-            value={searchReportDirectory}
-            onChange={(e) => setSearchReportDirectory(e.target.value)}
-            className="w-full pl-11 pr-4 py-2.5 text-xs rounded-full bg-white border border-slate-200/90 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-semibold shadow-2xs"
-          />
-        </div>
-      </div>
+          {/* Category Navigation Pills matching Reference Screenshot */}
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pt-1">
+            {[
+              { id: 'all', label: 'All Report Modules', icon: 'layers' },
+              { id: 'students', label: 'Students Attendance', icon: 'graduation-cap' },
+              { id: 'employees', label: 'Employees Attendance', icon: 'users' },
+              { id: 'branches', label: 'Multi-Branch Consolidated', icon: 'building-2' },
+            ].map((tab) => {
+              const isTabActive = tab.id === hubCategory;
 
-      {/* Category Navigation Pills matching Reference Screenshot */}
-      <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pt-1">
-        {[
-          { id: 'all', label: 'All Report Modules', icon: 'layers' },
-          { id: 'students', label: 'Students Attendance', icon: 'graduation-cap' },
-          { id: 'employees', label: 'Employees Attendance', icon: 'users' },
-          { id: 'branches', label: 'Multi-Branch Consolidated', icon: 'building-2' },
-        ].map((tab) => {
-          const isTabActive =
-            (tab.id === 'all' && !selectedReport) ||
-            (tab.id === 'students' && selectedReport === 'student-attendance') ||
-            (tab.id === 'employees' && selectedReport === 'employee-attendance') ||
-            (tab.id === 'branches' && selectedReport === 'branch-consolidated');
-
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => {
-                if (tab.id === 'all') {
-                  setSelectedReport(null);
-                  setHubCategory('all');
-                } else if (tab.id === 'students') {
-                  setSelectedReport('student-attendance');
-                  setHubCategory('students');
-                } else if (tab.id === 'employees') {
-                  setSelectedReport('employee-attendance');
-                  setHubCategory('employees');
-                } else if (tab.id === 'branches') {
-                  setSelectedReport('branch-consolidated');
-                  setHubCategory('branches');
-                }
-              }}
-              className={cn(
-                'flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap',
-                isTabActive
-                  ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-orange-500 text-white shadow-md shadow-blue-500/20'
-                  : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/90 shadow-2xs'
-              )}
-            >
-              <Icon name={tab.icon} size={14} className={isTabActive ? 'text-white' : 'text-slate-500'} />
-              <span>{tab.label}</span>
-            </button>
-          );
-        })}
-      </div>
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => {
+                    if (tab.id === 'all') {
+                      setSelectedReport(null);
+                      setHubCategory('all');
+                    } else if (tab.id === 'students') {
+                      setSelectedReport('student-attendance');
+                      setHubCategory('students');
+                    } else if (tab.id === 'employees') {
+                      setSelectedReport('employee-attendance');
+                      setHubCategory('employees');
+                    } else if (tab.id === 'branches') {
+                      setSelectedReport('branch-consolidated');
+                      setHubCategory('branches');
+                    }
+                  }}
+                  className={cn(
+                    'flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap',
+                    isTabActive
+                      ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-orange-500 text-white shadow-md shadow-blue-500/20'
+                      : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/90 shadow-2xs'
+                  )}
+                >
+                  <Icon name={tab.icon} size={14} className={isTabActive ? 'text-white' : 'text-slate-500'} />
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
 
       {/* Dynamic Content View */}
       {selectedReport === 'student-attendance'

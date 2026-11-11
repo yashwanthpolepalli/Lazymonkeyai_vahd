@@ -393,9 +393,8 @@ class DashboardService:
                 display_id = (
                     emp_obj.code if (emp_obj and emp_obj.code)
                     else (emp_obj.id if emp_obj
-                    else (employee_obj.id if employee_obj
                     else (user_obj.id if user_obj
-                    else (uid or "EMP"))))
+                    else (uid or "EMP")))
                 )
                 member_mem = None
                 days_remaining = None

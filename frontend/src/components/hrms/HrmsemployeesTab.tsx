@@ -1586,10 +1586,11 @@ export function HrmsemployeesTab() {
                             <button
                               type="button"
                               onClick={() => setSelectedEmployeeForView(t)}
-                              className="p-1.5 rounded-xl text-blue-600 hover:text-blue-700 hover:bg-blue-50 border border-blue-200/80 shadow-2xs transition-all active:scale-[0.98] cursor-pointer"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 hover:text-indigo-800 border border-indigo-200/80 shadow-2xs transition-all active:scale-[0.98] cursor-pointer"
                               title="View Full Employee Dossier / Service Form"
                             >
-                              <Icon name="file-text" size={15} />
+                              <Icon name="file-text" size={13} className="text-indigo-600" />
+                              <span>Form</span>
                             </button>
                             <button
                               type="button"

@@ -604,6 +604,48 @@ class HrmsService:
                 if not existing_md_desg:
                     raise ValueError(f"Designation '{designation}' not found in database. Please configure it in Settings first.")
 
+        # 3. Settings gating ("proper locking"): when an org scope is active,
+        #    any designation/department/role the payload supplies must exist in
+        #    this org's configured sets (shared-master tables are auto-scoped
+        #    to org + HO + global, so the allowed set is exactly what Tenant
+        #    Session returns). Blank fields are NOT gated — many employees
+        #    legitimately have no designation. Unscoped (super-admin/platform,
+        #    scope None) skips gating entirely.
+        try:
+            from src.database.tenant_session import get_tenant_scope
+            _scope = get_tenant_scope()
+        except Exception:
+            _scope = None
+        if _scope:
+            _designation_allowed = [
+                r[0] for r in db.query(Designation.title).all() if r[0]
+            ]
+            if _designation_allowed and designation:
+                if designation.strip().lower() not in {v.lower() for v in _designation_allowed}:
+                    raise ValueError(
+                        f"Designation '{designation}' is not configured for this organization. "
+                        f"Allowed: {', '.join(sorted({v.strip() for v in _designation_allowed})[:20])}"
+                    )
+            _department_allowed = [
+                r[0] for r in db.query(Department.name).all() if r[0]
+            ]
+            if _department_allowed and department:
+                if department.strip().lower() not in {v.lower() for v in _department_allowed}:
+                    raise ValueError(
+                        f"Department '{department}' is not configured for this organization. "
+                        f"Allowed: {', '.join(sorted({v.strip() for v in _department_allowed})[:20])}"
+                    )
+            _roles_allowed = [
+                r[0] for r in db.query(MasterData.name).filter(MasterData.category == "roles").all() if r[0]
+            ]
+            _payload_role = str(payload.get("role") or "").strip()
+            if _roles_allowed and _payload_role:
+                if _payload_role.lower() not in {v.lower() for v in _roles_allowed}:
+                    raise ValueError(
+                        f"Role '{_payload_role}' is not configured for this organization. "
+                        f"Allowed: {', '.join(sorted({v.strip() for v in _roles_allowed})[:20])}"
+                    )
+
         from src.models.settings import Branch as vahdBranch
         from sqlalchemy import or_
 
@@ -1330,6 +1372,7 @@ class HrmsService:
             
             result.append({
                 "id": d.id,
+                "tenant_id": getattr(d, "tenant_id", None),
                 "title": d.title,
                 "department": d.department or "",
                 "level": d.level or "",
@@ -2867,6 +2910,7 @@ class HrmsService:
         for lt in leave_types:
             result.append({
                 "id": lt.id,
+                "tenant_id": getattr(lt, "tenant_id", None),
                 "name": lt.name,
                 "code": lt.code,
                 "category": lt.category or "General Leave",

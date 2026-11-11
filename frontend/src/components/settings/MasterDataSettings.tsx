@@ -150,9 +150,28 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
     }
   }, [propSelectedCatId]);
 
+  // ── Organization-aware settings ────────────────────────────────────────
+  // The topbar ribbon writes 'vahd_selected_org_id' to localStorage BEFORE
+  // dispatching 'vahd:org_changed' (apiClient sends it as X-Tenant-Id on
+  // every request). Master-data caches are therefore keyed PER ORGANIZATION
+  // so switching the ribbon never shows the previous org's settings.
+  const [orgKey, setOrgKey] = useState<string>(() => localStorage.getItem('vahd_selected_org_id') || 'all');
+  const cacheKey = orgKey === 'all' ? 'vahd_master_data_v3' : `vahd_master_data_v3__${orgKey}`;
+
+  useEffect(() => {
+    const handleOrgChanged = (e: any) => {
+      const id = e?.detail?.id ?? localStorage.getItem('vahd_selected_org_id') ?? 'all';
+      setOrgKey(id);
+    };
+    window.addEventListener('vahd:org_changed', handleOrgChanged);
+    return () => window.removeEventListener('vahd:org_changed', handleOrgChanged);
+  }, []);
+
   const [masterStore, setMasterStore] = useState<Record<string, MasterDataItem[]>>(() => {
     try {
-      const stored = localStorage.getItem('vahd_master_data_v3');
+      const key = localStorage.getItem('vahd_selected_org_id') || 'all';
+      const readKey = key === 'all' ? 'vahd_master_data_v3' : `vahd_master_data_v3__${key}`;
+      const stored = localStorage.getItem(readKey);
       if (stored) {
         const parsed = JSON.parse(stored);
         if (parsed && typeof parsed === 'object') {
@@ -179,8 +198,23 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
     return initial;
   });
 
-  // Fetch all master data directly from backend database on mount
+  // Fetch all master data directly from backend database on mount AND on
+  // organization switch (the backend already scopes the read to the selected
+  // org + its Head Office + platform-shared rows via X-Tenant-Id).
+  const isInitialMount = useRef(true);
   useEffect(() => {
+    // On an ORG SWITCH, wipe the previous org's rows so they never flash on
+    // screen while the new org's data loads. On the initial mount the
+    // localStorage cache is kept for instant paint.
+    if (!isInitialMount.current) {
+      setMasterStore(() => {
+        const empty: Record<string, MasterDataItem[]> = {};
+        MASTER_CATEGORIES.forEach((cat) => { empty[cat.id] = []; });
+        return empty;
+      });
+    } else {
+      isInitialMount.current = false;
+    }
     masterDataApi.getAll().then((data) => {
       if (data && typeof data === 'object') {
         setMasterStore((prev) => {
@@ -191,25 +225,30 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
             }
           });
           try {
-            localStorage.setItem('vahd_master_data_v3', JSON.stringify(merged));
+            localStorage.setItem(cacheKey, JSON.stringify(merged));
             window.dispatchEvent(new Event('vahd_master_data_updated'));
           } catch { }
           return merged;
         });
       }
     }).catch(() => { });
-  }, []);
+  }, [orgKey, cacheKey]);
 
   const saveMasterStore = (updated: Record<string, MasterDataItem[]>) => {
     setMasterStore(updated);
     try {
-      localStorage.setItem('vahd_master_data_v3', JSON.stringify(updated));
-      localStorage.setItem('vahd_master_data_v2', JSON.stringify(updated));
+      localStorage.setItem(cacheKey, JSON.stringify(updated));
+      if (orgKey === 'all') {
+        localStorage.setItem('vahd_master_data_v3', JSON.stringify(updated));
+        localStorage.setItem('vahd_master_data_v2', JSON.stringify(updated));
+      }
       window.dispatchEvent(new Event('vahd_master_data_updated'));
     } catch { }
   };
 
-  // Synchronize DB-backed categories with live backend database
+  // Synchronize DB-backed categories with live backend database.
+  // Also re-runs on organization switch (orgKey) — these endpoints are
+  // auto-scoped server-side via X-Tenant-Id, so the org's own rows come back.
   useEffect(() => {
     if (selectedCatId === 'leave_reasons' || !selectedCatId) {
       hrmsApi.getLeaveTypes().then((types) => {
@@ -225,13 +264,14 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
               is_active: t.is_active,
               description: t.description || '',
               extra_info: extra,
+              tenant_id: (t as any).tenant_id ?? null,
             };
           });
 
           setMasterStore((prev) => {
             const next = { ...prev, leave_reasons: mapped };
             try {
-              localStorage.setItem('vahd_master_data_v3', JSON.stringify(next));
+              localStorage.setItem(cacheKey, JSON.stringify(next));
             } catch { }
             return next;
           });
@@ -253,12 +293,13 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
               extra_info: extra,
               employee_count: d.employee_count,
               student_count: d.student_count,
+              tenant_id: (d as any).tenant_id ?? null,
             };
           });
           setMasterStore((prev) => {
             const next = { ...prev, departments: mapped };
             try {
-              localStorage.setItem('vahd_master_data_v3', JSON.stringify(next));
+              localStorage.setItem(cacheKey, JSON.stringify(next));
             } catch { }
             return next;
           });
@@ -277,18 +318,19 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
             parent_name: d.department,
             is_active: d.is_active !== false,
             description: d.description || '',
+            tenant_id: d.tenant_id ?? null,
           }));
           setMasterStore((prev) => {
             const next = { ...prev, designations: mapped };
             try {
-              localStorage.setItem('vahd_master_data_v3', JSON.stringify(next));
+              localStorage.setItem(cacheKey, JSON.stringify(next));
             } catch { }
             return next;
           });
         }
       }).catch(() => { });
     }
-  }, [selectedCatId]);
+  }, [selectedCatId, orgKey]);
 
   const selectedCategory = useMemo(() => {
     return MASTER_CATEGORIES.find((c) => c.id === selectedCatId) || null;
@@ -579,6 +621,26 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
     });
   };
 
+  // Provenance badge: is this row owned by a specific organization, or is it
+  // a platform-wide (shared) row? `tenant_id` is set by the backend getters
+  // (null/absent = shared). A shared row is read-only from an org context —
+  // editing it copies it into the org (copy-on-write) instead of mutating it.
+  const renderProvenanceBadge = (item: MasterDataItem) => {
+    const isOrgSpecific = Boolean(item.tenant_id);
+    return (
+      <span
+        title={isOrgSpecific ? 'Owned by this organization' : 'Platform-wide shared item — editing copies it into your organization'}
+        className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider border ${
+          isOrgSpecific
+            ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800'
+            : 'bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-600'
+        }`}
+      >
+        {isOrgSpecific ? 'Org-specific' : 'Shared'}
+      </span>
+    );
+  };
+
   // Dynamic Active / Inactive selector for table rows (Interactive Select + 1-Click Toggle)
   const renderActiveStatusSelector = (item: MasterDataItem) => (
     <div className="inline-flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
@@ -757,7 +819,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
   };
 
   // Save Add/Edit
-  const handleSaveModal = (e: React.FormEvent) => {
+  const handleSaveModal = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedCatId || !formName.trim()) return;
 
@@ -805,19 +867,6 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
         }).catch(() => { });
       }
 
-      // Also persist to backend database for all master categories
-      masterDataApi.update(selectedCatId, editingItem.id, {
-        name: formName.trim(),
-        code: formCode.trim() || editingItem.code,
-        is_active: formActive,
-        parent_id: formParentId || undefined,
-        parent_name: resolvedParentName || editingItem.parent_name,
-        extra_info: finalExtra || editingItem.extra_info,
-        level: formLevel || undefined,
-        display_order: parseInt(formDisplayOrder, 10) || 0,
-        description: formDescription.trim() || undefined,
-      }).catch((err) => console.error('Failed to update master data in DB:', err));
-
       const updatedList = currentItems.map((item) => {
         if (item.id === editingItem.id) {
           return {
@@ -839,6 +888,32 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
         return item;
       });
       saveMasterStore({ ...masterStore, [selectedCatId]: updatedList });
+
+      // Copy-on-write: when the edited row is a shared/platform row, the
+      // backend updates return the NEW org-owned row (different id). Await
+      // the response and reconcile the local list so the UI reflects the
+      // org-owned copy instead of the stale shared id.
+      try {
+        const res: any = await masterDataApi.update(selectedCatId, editingItem.id, {
+          name: formName.trim(),
+          code: formCode.trim() || editingItem.code,
+          is_active: formActive,
+          parent_id: formParentId || undefined,
+          parent_name: resolvedParentName || editingItem.parent_name,
+          extra_info: finalExtra || editingItem.extra_info,
+          level: formLevel || undefined,
+          display_order: parseInt(formDisplayOrder, 10) || 0,
+          description: formDescription.trim() || undefined,
+        });
+        if (res && res.id && res.id !== editingItem.id && !currentItems.some((i) => i.id === res.id)) {
+          setMasterStore((prev) => {
+            const list = (prev[selectedCatId] || []).filter((i) => i.id !== editingItem.id);
+            return { ...prev, [selectedCatId]: [{ ...res, tenant_id: res.tenant_id ?? undefined }, ...list] };
+          });
+        }
+      } catch (err) {
+        console.error('Failed to update master data in DB:', err);
+      }
     } else {
       // Add new
       const autoCode =
@@ -2033,7 +2108,12 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                             />
                           </td>
                         )}
-                        <td className="py-3.5 px-4 font-semibold text-slate-500">{idx + 1}</td>
+                        <td className="py-3.5 px-4 font-semibold text-slate-500">
+                          <div className="flex items-center gap-2">
+                            <span>{idx + 1}</span>
+                            {renderProvenanceBadge(item)}
+                          </div>
+                        </td>
 
                         {/* Specialization Columns */}
                         {isSpecialization ? (

@@ -194,6 +194,8 @@ def create_master_data(
 ):
     try:
         return SettingsService.create_master_data_item(db, category=category, data=payload)
+    except HTTPException:
+        raise  # lets copy-on-write / 409 platform-item conflicts surface
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -210,6 +212,8 @@ def update_master_data(
 ):
     try:
         return SettingsService.update_master_data_item(db, category=category, item_id=item_id, data=payload)
+    except HTTPException:
+        raise  # lets copy-on-write / 409 platform-item conflicts surface
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to update master data item: {e}")
 
@@ -224,6 +228,8 @@ def delete_master_data(
     try:
         SettingsService.delete_master_data_item(db, category=category, item_id=item_id)
         return {"message": "Item deleted successfully", "id": item_id, "category": category}
+    except HTTPException:
+        raise  # lets the 409 platform-item conflict surface
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to delete master data item: {e}")
 

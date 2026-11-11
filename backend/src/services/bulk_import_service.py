@@ -205,19 +205,24 @@ def _resolve_branch(row: Dict[str, Any], m: Dict[str, Any]) -> Tuple[Optional[st
 # ---------------------------------------------------------------------------
 # master-data / department validation across a whole file (pre-load existing)
 # ---------------------------------------------------------------------------
-def _load_master_validation_sets(db: Session, tenant_id: Optional[str] = None) -> Dict[str, Set[str]]:
+def _load_master_validation_sets(db: Session, tenant_ids: Optional[List[str]] = None) -> Dict[str, Set[str]]:
     """Loads existing master-data from database so bulk imports only accept
-    valid, pre-configured values. Nothing is auto-created or appended into the DB."""
+    valid, pre-configured values. Nothing is auto-created or appended into the DB.
+
+    `tenant_ids` is the request's tenant scope (a LIST of branch ids, e.g. the
+    expanded org + its HO branches). Rows are valid when their tenant_id is in
+    that set OR is NULL (global/legacy rows stay valid). When None (super-admin
+    unscoped) no tenant filter is applied — validate against everything."""
     dept_query = db.query(Department.name, Department.code).filter(Department.is_active != False)
     desg_query = db.query(Designation.title)
     md_query = db.query(MasterData.category, MasterData.name, MasterData.code, MasterData.extra_info).filter(MasterData.is_active != False)
     course_query = db.query(MembershipPlan.name, MembershipPlan.category, MembershipPlan.badge).filter(MembershipPlan.is_active != False)
 
-    if tenant_id:
-        dept_query = dept_query.filter(or_(Department.tenant_id == tenant_id, Department.tenant_id == None))
-        desg_query = desg_query.filter(or_(Designation.tenant_id == tenant_id, Designation.tenant_id == None))
-        md_query = md_query.filter(or_(MasterData.tenant_id == tenant_id, MasterData.tenant_id == None))
-        course_query = course_query.filter(or_(MembershipPlan.tenant_id == tenant_id, MembershipPlan.tenant_id == None))
+    if tenant_ids:
+        dept_query = dept_query.filter(or_(Department.tenant_id.in_(tenant_ids), Department.tenant_id.is_(None)))
+        desg_query = desg_query.filter(or_(Designation.tenant_id.in_(tenant_ids), Designation.tenant_id.is_(None)))
+        md_query = md_query.filter(or_(MasterData.tenant_id.in_(tenant_ids), MasterData.tenant_id.is_(None)))
+        course_query = course_query.filter(or_(MembershipPlan.tenant_id.in_(tenant_ids), MembershipPlan.tenant_id.is_(None)))
 
     valid_depts: Set[str] = set()
     for row in dept_query.all():
@@ -240,8 +245,8 @@ def _load_master_validation_sets(db: Session, tenant_id: Optional[str] = None) -
     try:
         from src.models.course import Course, CourseLanguage
         c_query = db.query(Course.name, Course.code, Course.category, Course.badge).filter(Course.is_active != False)
-        if tenant_id:
-            c_query = c_query.filter(or_(Course.tenant_id == tenant_id, Course.tenant_id == None))
+        if tenant_ids:
+            c_query = c_query.filter(or_(Course.tenant_id.in_(tenant_ids), Course.tenant_id.is_(None)))
         for cn, cc, ccat, cbadge in c_query.all():
             if cn:
                 valid_courses.add(cn.strip().lower())
@@ -336,7 +341,16 @@ def _run_students_import(db: Session, rows: List[Dict[str, Any]], job: Dict[str,
     ALLOWED_STUDENT_STATUSES = {"ACTIVE", "INACTIVE", "PENDING", "COMPLETED", "SUSPENDED"}
     ALLOWED_STUDENT_ROLES = {"STUDENT", "MEMBER"}
 
-    masters = _load_master_validation_sets(db, tenant_id=branches.get("user_branch_id"))
+    # Validate against the request's full tenant scope (org + HO branches +
+    # global rows). Lazy import: get_tenant_scope lives in the DB layer.
+    try:
+        from src.database.tenant_session import get_tenant_scope
+        _tids = get_tenant_scope() or (
+            [branches.get("user_branch_id")] if branches.get("user_branch_id") else None
+        )
+    except Exception:
+        _tids = [branches.get("user_branch_id")] if branches.get("user_branch_id") else None
+    masters = _load_master_validation_sets(db, tenant_ids=_tids)
     valid_departments = masters["departments"]
     valid_courses = masters["courses"]
     valid_mediums = masters.get("mediums", set())
@@ -701,7 +715,16 @@ def _run_employees_import(db: Session, rows: List[Dict[str, Any]], job: Dict[str
     emps_by_user = {e.user_id: e for e in db.query(Employee).all() if e.user_id}
     branches = _branch_maps(db, current_user=current_user)
 
-    masters = _load_master_validation_sets(db, tenant_id=branches.get("user_branch_id"))
+    # Validate against the request's full tenant scope (org + HO branches +
+    # global rows). Lazy import: get_tenant_scope lives in the DB layer.
+    try:
+        from src.database.tenant_session import get_tenant_scope
+        _tids = get_tenant_scope() or (
+            [branches.get("user_branch_id")] if branches.get("user_branch_id") else None
+        )
+    except Exception:
+        _tids = [branches.get("user_branch_id")] if branches.get("user_branch_id") else None
+    masters = _load_master_validation_sets(db, tenant_ids=_tids)
     valid_departments = masters["departments"]
     valid_designations = masters["designations"]
     valid_roles = masters["roles"]

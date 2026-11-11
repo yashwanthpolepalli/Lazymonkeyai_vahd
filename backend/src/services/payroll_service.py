@@ -424,6 +424,53 @@ class PayrollService:
             employee_role = "EMPLOYEE"
         employee_id = data.get("id")
 
+        # Settings gating ("proper locking"): when an org scope is active, any
+        # designation/department/role supplied must exist in this org's
+        # configured sets. Shared-master reads are auto-scoped by TenantSession
+        # to org + HO + global, so that is exactly the allowed set. Blank
+        # values are not gated; unscoped requests (scope None) skip entirely.
+        _payroll_designation = str(data.get("specialization") or "").strip()
+        _payroll_department = str(data.get("department") or "").strip()
+        _payroll_role = str(employee_role or "").strip()
+        try:
+            from src.database.tenant_session import get_tenant_scope
+            _gate_scope = get_tenant_scope()
+        except Exception:
+            _gate_scope = None
+        if _gate_scope:
+            from src.models.hrms import Designation, Department as HrmsDepartment
+            from src.models.settings import MasterData
+
+            _desg_allowed = [r[0] for r in db.query(Designation.title).all() if r[0]]
+            if _desg_allowed and _payroll_designation:
+                if _payroll_designation.lower() not in {v.lower() for v in _desg_allowed}:
+                    raise ValueError(
+                        f"Designation '{_payroll_designation}' is not configured for this organization. "
+                        f"Allowed: {', '.join(sorted({v.strip() for v in _desg_allowed})[:20])}"
+                    )
+            _dept_allowed = [r[0] for r in db.query(HrmsDepartment.name).all() if r[0]]
+            if _dept_allowed and _payroll_department:
+                if _payroll_department.lower() not in {v.lower() for v in _dept_allowed}:
+                    raise ValueError(
+                        f"Department '{_payroll_department}' is not configured for this organization. "
+                        f"Allowed: {', '.join(sorted({v.strip() for v in _dept_allowed})[:20])}"
+                    )
+            # Role is gated only when the caller explicitly provided one AND
+            # it is not the platform default "EMPLOYEE" (the default is
+            # legitimate for every org; create_employee derives it internally
+            # without user intent, so derived values are never gated).
+            _explicit_role = data.get("role")
+            if _explicit_role and str(_explicit_role).strip().upper() not in ("EMPLOYEE", ""):
+                _roles_allowed = [
+                    r[0] for r in db.query(MasterData.name).filter(MasterData.category == "roles").all() if r[0]
+                ]
+                if _roles_allowed:
+                    if _explicit_role.strip().lower() not in {v.lower() for v in _roles_allowed}:
+                        raise ValueError(
+                            f"Role '{_explicit_role}' is not configured for this organization. "
+                            f"Allowed: {', '.join(sorted({v.strip() for v in _roles_allowed})[:20])}"
+                        )
+
         # Check existing User
         existing_user = db.query(User).filter(User.email == email).first()
 

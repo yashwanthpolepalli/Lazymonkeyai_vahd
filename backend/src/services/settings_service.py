@@ -7,6 +7,11 @@ from src.models.hrms import Department, Designation, Employee
 from src.models.student import student
 from src.models.biometric_device import BiometricDevice
 
+# Shared-master (copy-on-write) tenant helpers, reused from the HRMS service
+# so settings writes get the exact same scoped-match / copy / 409 semantics.
+from src.services.hrms_service import _tenant_context, _tenant_guard, _platform_item_conflict
+
+
 class SettingsService:
 
     @staticmethod
@@ -278,6 +283,7 @@ class SettingsService:
         for it in items:
             item_dicts.append({
                 "id": it.id,
+                "tenant_id": getattr(it, "tenant_id", None),
                 "category": it.category,
                 "name": it.name,
                 "code": it.code or "",
@@ -458,11 +464,29 @@ class SettingsService:
         level = str(data.get("level") or "").strip() or None
         display_order = int(data.get("display_order") or 0)
 
-        # Check if already exists in MasterData
-        existing = db.query(MasterData).filter(
+        # Scoped-match / copy-on-write semantics (shared with the HRMS
+        # settings helpers): an org-scoped request operates on its OWN rows
+        # and copies a global row on write instead of mutating it.
+        _is_scoped, _home_tenant = _tenant_context(db)
+
+        # Check if already exists in MasterData (own tenant's row first)
+        q = db.query(MasterData).filter(
             MasterData.category == category,
             or_(MasterData.id == item_id, MasterData.name.ilike(name))
-        ).first()
+        )
+        if _is_scoped:
+            q = q.filter(MasterData.tenant_id == _home_tenant)
+        existing = q.first()
+        if not existing and _is_scoped:
+            gq = db.query(MasterData).filter(
+                MasterData.category == category,
+                or_(MasterData.id == item_id, MasterData.name.ilike(name)),
+                MasterData.tenant_id.is_(None),
+            )
+            global_existing = gq.first()
+            if global_existing:
+                # COPY-ON-WRITE: org gets its own row; the global row stays untouched.
+                existing = _tenant_guard(db, global_existing, MasterData)
 
         if existing:
             existing.name = name
@@ -487,6 +511,7 @@ class SettingsService:
                 extra_info=extra_info,
                 level=level,
                 display_order=display_order,
+                tenant_id=_home_tenant if _is_scoped else None,
             )
             db.add(new_item)
             target_obj = new_item
@@ -533,6 +558,7 @@ class SettingsService:
         db.refresh(target_obj)
         return {
             "id": target_obj.id,
+            "tenant_id": getattr(target_obj, "tenant_id", None),
             "category": target_obj.category,
             "name": target_obj.name,
             "code": target_obj.code or "",
@@ -548,10 +574,22 @@ class SettingsService:
 
     @staticmethod
     def update_master_data_item(db: Session, category: str, item_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
-        item = db.query(MasterData).filter(
-            MasterData.category == category,
-            or_(MasterData.id == item_id, MasterData.code.ilike(item_id), MasterData.name.ilike(item_id))
-        ).first()
+        # Same scoped semantics as create: an org-scoped request edits its OWN
+        # row; a global match is copied into the org (copy-on-write) so the
+        # platform-wide row is never mutated.
+        _is_scoped, _home_tenant = _tenant_context(db)
+        _match_filter = or_(MasterData.id == item_id, MasterData.code.ilike(item_id), MasterData.name.ilike(item_id))
+        q = db.query(MasterData).filter(MasterData.category == category, _match_filter)
+        if _is_scoped:
+            q = q.filter(MasterData.tenant_id == _home_tenant)
+        item = q.first()
+        if item is None and _is_scoped:
+            gq = db.query(MasterData).filter(
+                MasterData.category == category, _match_filter, MasterData.tenant_id.is_(None)
+            )
+            global_item = gq.first()
+            if global_item is not None:
+                item = _tenant_guard(db, global_item, MasterData)
 
         name = str(data.get("name") or (item.name if item else "")).strip()
         code = str(data.get("code") or (item.code if item else "")).strip() or None
@@ -574,6 +612,7 @@ class SettingsService:
                 parent_name=parent_name,
                 extra_info=extra_info,
                 level=level,
+                tenant_id=_home_tenant if _is_scoped else None,
             )
             db.add(item)
         else:
@@ -620,6 +659,7 @@ class SettingsService:
         db.refresh(item)
         return {
             "id": item.id,
+            "tenant_id": getattr(item, "tenant_id", None),
             "category": item.category,
             "name": item.name,
             "code": item.code or "",
@@ -635,24 +675,46 @@ class SettingsService:
 
     @staticmethod
     def delete_master_data_item(db: Session, category: str, item_id: str) -> bool:
-        item = db.query(MasterData).filter(
-            MasterData.category == category,
-            or_(MasterData.id == item_id, MasterData.code.ilike(item_id), MasterData.name.ilike(item_id))
-        ).first()
-        if item:
-            db.delete(item)
+        # A scoped request may only delete its OWN row. A global (shared) row
+        # is platform data — deleting it would break every other org, so it
+        # is refused with a 409 ("manage it as super-admin").
+        _is_scoped, _home_tenant = _tenant_context(db)
+        _match_filter = or_(MasterData.id == item_id, MasterData.code.ilike(item_id), MasterData.name.ilike(item_id))
+        q = db.query(MasterData).filter(MasterData.category == category, _match_filter)
+        if _is_scoped:
+            q = q.filter(MasterData.tenant_id == _home_tenant)
+        item = q.first()
+        if item is None:
+            # scoped request found only a global row → 409 conflict
+            if _is_scoped:
+                gq = db.query(MasterData).filter(
+                    MasterData.category == category, _match_filter,
+                    or_(MasterData.tenant_id.is_(None), MasterData.tenant_id != _home_tenant)
+                )
+                if gq.first() is not None:
+                    raise _platform_item_conflict()
+            return True
+        db.delete(item)
 
+        # Mirror rows: only the request's OWN mirrors are removed — a scoped
+        # request must never delete a global or other-org mirror row.
         if category == "departments":
-            dept = db.query(Department).filter(
+            dq = db.query(Department).filter(
                 or_(Department.id == item_id, Department.name.ilike(item_id))
-            ).first()
+            )
+            if _is_scoped:
+                dq = dq.filter(Department.tenant_id == _home_tenant)
+            dept = dq.first()
             if dept:
                 db.delete(dept)
 
         if category == "designations":
-            desg = db.query(Designation).filter(
+            sq = db.query(Designation).filter(
                 or_(Designation.id == item_id, Designation.title.ilike(item_id))
-            ).first()
+            )
+            if _is_scoped:
+                sq = sq.filter(Designation.tenant_id == _home_tenant)
+            desg = sq.first()
             if desg:
                 db.delete(desg)
 

@@ -499,8 +499,19 @@ export function EmployeeEnrollmentModal({
   useEffect(() => {
     syncAllMasterAndApiData();
     window.addEventListener('vahd_master_data_updated', syncAllMasterAndApiData);
-    return () => window.removeEventListener('vahd_master_data_updated', syncAllMasterAndApiData);
-  }, []);
+    // The topbar ribbon (switch organization / filter by head office) must
+    // refresh the master-data lookups so the selected org's own roles,
+    // designations & departments are the ones offered (the backend scopes the
+    // reads to that org + its head office + shared platform rows).
+    const handleOrgChanged = () => {
+      if (visible) syncAllMasterAndApiData();
+    };
+    window.addEventListener('vahd:org_changed', handleOrgChanged);
+    return () => {
+      window.removeEventListener('vahd_master_data_updated', syncAllMasterAndApiData);
+      window.removeEventListener('vahd:org_changed', handleOrgChanged);
+    };
+  }, [visible]);
 
   useEffect(() => {
     if (visible) {

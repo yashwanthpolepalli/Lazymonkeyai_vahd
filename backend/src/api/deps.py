@@ -108,6 +108,18 @@ def _expand_tenant(db: Session, tenant_id: str) -> List[str]:
     ).all()
     ids = [b.id for b in rows if b.id]
     ids.insert(0, tenant_id)  # keep the selected id itself (branch id or HO-stamped rows)
+    # Settings created at "All Head Offices" level are stamped with the HO
+    # user id / branch owner id. When the ribbon selects a SPECIFIC
+    # organization, that branch's own ho_id/owner_id (and its siblings')
+    # must stay in the read scope, or the HO-created settings disappear
+    # from that org's Settings tab.
+    selected = None
+    if db is not None:
+        selected = db.query(Branch).filter(Branch.id == tenant_id).first()
+    for b in ([selected] if selected else []) + rows:
+        for hid in (getattr(b, "ho_id", None), getattr(b, "owner_id", None)):
+            if hid and hid not in ids:
+                ids.append(hid)
     _BRANCH_CACHE[cache_key] = (now + 30.0, ids)
     return ids
 

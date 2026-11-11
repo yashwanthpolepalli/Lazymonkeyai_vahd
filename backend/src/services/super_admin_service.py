@@ -208,6 +208,18 @@ class SuperAdminService:
     ) -> List[Dict[str, Any]]:
         SuperAdminService.ensure_default_feature_controls(db)
 
+        # Ribbon scoping: when the request carries a tenant scope (a selected
+        # organization), only HOs whose id or ho_id intersects that scope are
+        # listed, and the branch set is narrowed the same way. An unscoped
+        # super-admin (scope is None) sees every HO - the original behavior.
+        scope: Optional[List[str]] = None
+        try:
+            from src.api.deps import current_tenant_scope
+            scope = current_tenant_scope()
+        except Exception:
+            scope = None
+        scope_list = [s for s in (scope or []) if s]
+
         # Retrieve all Head Office users
         ho_users_query = db.query(User).filter(
             or_(
@@ -219,80 +231,162 @@ class SuperAdminService:
             ho_users_query = ho_users_query.filter(
                 or_(User.id == ho_id_filter.strip(), User.ho_id == ho_id_filter.strip())
             )
+        if scope_list:
+            ho_users_query = ho_users_query.filter(
+                or_(User.id.in_(scope_list), User.ho_id.in_(scope_list))
+            )
 
         ho_users = ho_users_query.order_by(desc(User.created_at)).all()
 
+        # --- batched loads: one branch fetch + GROUP BY counts, no per-HO N+1
+        involved_ho_ids = [ho.ho_id for ho in ho_users if ho.ho_id]
+        involved_branch_ids = [ho.branch_id for ho in ho_users if ho.branch_id]
+        all_involved_ids = list(dict.fromkeys(involved_ho_ids + involved_branch_ids))
+        all_branches: List[vahdBranch] = []
+        if all_involved_ids:
+            bq = db.query(vahdBranch).filter(vahdBranch.id.in_(all_involved_ids))
+            if scope_list:
+                bq = bq.filter(or_(vahdBranch.id.in_(scope_list), vahdBranch.ho_id.in_(scope_list)))
+            all_branches = bq.all()
+        branches_by_ho: Dict[str, List[vahdBranch]] = {}
+        branches_by_id: Dict[str, List[vahdBranch]] = {}
+        for b in all_branches:
+            if b.ho_id:
+                branches_by_ho.setdefault(b.ho_id, []).append(b)
+            if b.id:
+                branches_by_id.setdefault(b.id, []).append(b)
+
+        # Branch ids reached via the HOs' linked branches (not just each HO
+        # user's own branch) - used for the staff/student/revenue GROUP BYs.
+        all_branch_ids = list(dict.fromkeys(involved_branch_ids + [b.id for b in all_branches if b.id]))
+
+        staff_role_cond = or_(
+            func.upper(User.role).in_(["EMPLOYEE", "STAFF", "COACH"]),
+            User.role == "employee"
+        )
+        emp_by_ho: Dict[str, int] = {}
+        emp_by_branch: Dict[str, int] = {}
+        if involved_ho_ids:
+            for k, c in db.query(User.ho_id, func.count(User.id)).filter(
+                staff_role_cond, User.ho_id.in_(involved_ho_ids)
+            ).group_by(User.ho_id).all():
+                emp_by_ho[k] = c
+        if all_branch_ids:
+            for k, c in db.query(User.branch_id, func.count(User.id)).filter(
+                staff_role_cond, User.branch_id.in_(all_branch_ids)
+            ).group_by(User.branch_id).all():
+                emp_by_branch[k] = c
+
+        # One student fetch supplies the count keys AND the revenue stamps
+        related_students: List[Any] = []
+        stu_by_ho: Dict[str, int] = {}
+        stu_by_branch: Dict[str, int] = {}
+        stu_rev_by_ho: Dict[str, float] = {}
+        stu_rev_by_branch: Dict[str, float] = {}
+        related_stu_ids: List[str] = []
+        if involved_ho_ids or all_branch_ids:
+            sq = db.query(student)
+            conds = []
+            if involved_ho_ids:
+                conds.append(student.ho_id.in_(involved_ho_ids))
+            if all_branch_ids:
+                conds.append(student.branch_id.in_(all_branch_ids))
+            if conds:
+                related_students = sq.filter(or_(*conds)).all()
+                for s in related_students:
+                    related_stu_ids.append(s.id)
+                    if s.ho_id:
+                        stu_by_ho[s.ho_id] = stu_by_ho.get(s.ho_id, 0) + 1
+                    if s.branch_id:
+                        stu_by_branch[s.branch_id] = stu_by_branch.get(s.branch_id, 0) + 1
+        rev_by_stu: Dict[str, float] = {}
+        if related_stu_ids:
+            for sid, total in db.query(Membership.student_id, func.sum(Membership.paid_amount)).filter(
+                Membership.student_id.in_(related_stu_ids)
+            ).group_by(Membership.student_id).all():
+                rev_by_stu[sid] = float(total or 0.0)
+            for s in related_students:
+                rev = rev_by_stu.get(s.id, 0.0)
+                if rev:
+                    if s.ho_id:
+                        stu_rev_by_ho[s.ho_id] = stu_rev_by_ho.get(s.ho_id, 0.0) + rev
+                    if s.branch_id:
+                        stu_rev_by_branch[s.branch_id] = stu_rev_by_branch.get(s.branch_id, 0.0) + rev
+
+        # Student-role fallback counts (same GROUP BY pattern)
+        suser_by_ho: Dict[str, int] = {}
+        suser_by_branch: Dict[str, int] = {}
+        if involved_ho_ids:
+            for k, c in db.query(User.ho_id, func.count(User.id)).filter(
+                User.role.in_(["STUDENT", "student"]), User.ho_id.in_(involved_ho_ids)
+            ).group_by(User.ho_id).all():
+                suser_by_ho[k] = c
+        if all_branch_ids:
+            for k, c in db.query(User.branch_id, func.count(User.id)).filter(
+                User.role.in_(["STUDENT", "student"]), User.branch_id.in_(all_branch_ids)
+            ).group_by(User.branch_id).all():
+                suser_by_branch[k] = c
+
+        # Global device total - computed ONCE outside the loop (was the N+1)
+        devices_total = db.query(BiometricDevice).count()
+
+        # All OWNER users fetched ONCE; owners_count is computed in-memory
+        all_owner_users = db.query(User).filter(User.role == "OWNER").all()
+
         res = []
         for ho in ho_users:
-            # Locate primary branch or any branch linked to this HO
-            primary_branch = db.query(vahdBranch).filter(
-                or_(
-                    vahdBranch.ho_id == ho.ho_id if ho.ho_id else False,
-                    vahdBranch.id == ho.branch_id if ho.branch_id else False
-                )
-            ).order_by(vahdBranch.created_at.asc()).first()
+            # In-memory branch lookup (replaces the per-HO branch queries)
+            ho_branches: List[vahdBranch] = []
+            if ho.ho_id:
+                ho_branches.extend(branches_by_ho.get(ho.ho_id, []))
+            if ho.branch_id:
+                ho_branches.extend(branches_by_id.get(ho.branch_id, []))
+            ho_branch_ids = list(dict.fromkeys([b.id for b in ho_branches if b.id]))
 
-            # All institutions/branches linked to this Head Office
-            ho_branches = db.query(vahdBranch).filter(
-                or_(
-                    vahdBranch.ho_id == ho.ho_id if ho.ho_id else False,
-                    vahdBranch.id == ho.branch_id if ho.branch_id else False
+            primary_branch = None
+            if ho_branches:
+                primary_branch = min(
+                    ho_branches,
+                    key=lambda b: (b.created_at is None, b.created_at or datetime.datetime.min, b.id),
                 )
-            ).all()
-            ho_branch_ids = [b.id for b in ho_branches]
 
-            # All Owners under this Head Office
-            ho_owners = db.query(User).filter(
-                User.role == "OWNER",
-                or_(
-                    User.ho_id == ho.ho_id if ho.ho_id else False,
-                    User.branch_id.in_(ho_branch_ids) if ho_branch_ids else False,
-                    User.id.in_([b.owner_id for b in ho_branches if b.owner_id]) if ho_branches else False
-                )
-            ).all()
-
-            # All Employees / Staff under this Head Office
-            employees_count = db.query(User).filter(
-                or_(
-                    func.upper(User.role).in_(["EMPLOYEE", "STAFF", "COACH"]),
-                    User.role == "employee"
-                ),
-                or_(
-                    User.ho_id == ho.ho_id if ho.ho_id else False,
-                    User.branch_id.in_(ho_branch_ids) if ho_branch_ids else False
-                )
-            ).count()
-
-            # All Students under this Head Office
-            students_count = db.query(student).filter(
-                or_(
-                    student.ho_id == ho.ho_id if ho.ho_id else False,
-                    student.branch_id.in_(ho_branch_ids) if ho_branch_ids else False
-                )
-            ).count()
-            if students_count == 0:
-                students_count = db.query(User).filter(
-                    User.role.in_(["STUDENT", "student"]),
-                    or_(
-                        User.ho_id == ho.ho_id if ho.ho_id else False,
-                        User.branch_id.in_(ho_branch_ids) if ho_branch_ids else False
-                    )
-                ).count()
-
-            # Revenue under this Head Office
-            rev_sum = 0.0
-            branch_cust_ids = [
-                c.id for c in db.query(student.id).filter(
-                    or_(
-                        student.ho_id == ho.ho_id if ho.ho_id else False,
-                        student.branch_id.in_(ho_branch_ids) if ho_branch_ids else False
-                    )
-                ).all()
+            # Owners under this Head Office (single OWNER fetch, filtered in memory)
+            ho_branch_owner_ids = set()
+            for b in ho_branches:
+                if b.owner_id:
+                    ho_branch_owner_ids.add(b.owner_id)
+            ho_owners = [
+                u for u in all_owner_users
+                if (ho.ho_id and u.ho_id == ho.ho_id)
+                or (u.branch_id in ho_branch_ids)
+                or (u.id in ho_branch_owner_ids)
             ]
-            if branch_cust_ids:
-                rev_sum = db.query(func.sum(Membership.paid_amount)).filter(
-                    Membership.student_id.in_(branch_cust_ids)
-                ).scalar() or 0.0
+
+            # Employees / staff under this Head Office (batched GROUP BY dicts)
+            employees_count = 0
+            if ho.ho_id:
+                employees_count += emp_by_ho.get(ho.ho_id, 0)
+            for b in ho_branch_ids:
+                employees_count += emp_by_branch.get(b, 0)
+
+            # Students under this Head Office (batched GROUP BY dicts)
+            students_count = 0
+            if ho.ho_id:
+                students_count += stu_by_ho.get(ho.ho_id, 0)
+            for b in ho_branch_ids:
+                students_count += stu_by_branch.get(b, 0)
+            if students_count == 0:
+                if ho.ho_id:
+                    students_count += suser_by_ho.get(ho.ho_id, 0)
+                for b in ho_branch_ids:
+                    students_count += suser_by_branch.get(b, 0)
+
+            # Revenue under this Head Office (batched GROUP BY)
+            rev_sum = 0.0
+            if ho.ho_id:
+                rev_sum += stu_rev_by_ho.get(ho.ho_id, 0.0)
+            for b in ho_branch_ids:
+                rev_sum += stu_rev_by_branch.get(b, 0.0)
 
             org_name = (
                 (primary_branch.vahd_name if primary_branch and primary_branch.vahd_name else None)
@@ -352,7 +446,7 @@ class SuperAdminService:
                 "health_score": 100 if ho.is_active else 0,
                 "ai_credits_used": 0,
                 "storage_used_gb": 0.0,
-                "devices_count": db.query(BiometricDevice).count(),
+                "devices_count": devices_total,
                 "created_at": ho.created_at.strftime("%b %d, %Y") if ho.created_at else ""
             })
 

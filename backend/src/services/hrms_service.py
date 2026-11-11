@@ -3345,28 +3345,15 @@ class HrmsService:
         if not emp:
             # Check if applicant is a student
             stu = db.query(student).filter(
-                (student.id == emp_id) | (student.member_code == emp_id) | (student.email.ilike(emp_id))
+                (student.id == emp_id) | (student.member_code.ilike(emp_id)) | (student.email.ilike(emp_id))
             ).first()
             if stu:
                 emp_id = stu.id
-                full = (stu.full_name or "").strip()
-                parts = full.split(" ", 1) if full else []
-                emp = Employee(
-                    id=stu.id,
-                    code=stu.member_code or stu.id,
-                    first_name=parts[0] if parts else "",
-                    last_name=parts[1] if len(parts) > 1 else "",
-                    email=stu.email or "",
-                    phone=stu.phone or "",
-                    gender=stu.gender or "",
-                    designation=getattr(stu, "designation", None) or getattr(stu, "qualification", None) or "",
-                    department=stu.qualification or stu.specialization or "",
-                    tenant_id=stu.tenant_id,
-                    branch_id=stu.branch_id,
-                    status=stu.status or "",
-                )
-                db.add(emp)
-                db.flush()
+                # Do NOT create an HRMS Employee row for students: leave the
+                # application pointing at the student's own id. get_leaves
+                # resolves the applicant name via its student fallback, and
+                # the absence of an Employee row keeps students out of the
+                # Employee Directory.
             else:
                 clean_tid = emp_id.replace("emp_", "")
                 employee = db.query(employeeProfile).filter((employeeProfile.id == emp_id) | (employeeProfile.id == clean_tid) | (employeeProfile.email.ilike(emp_id))).first()

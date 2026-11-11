@@ -175,7 +175,11 @@ class LeaveRequest(Base):
 
     id = Column(String, primary_key=True, default=lambda: f"leave_{uuid.uuid4().hex[:8]}")
     tenant_id = Column(String, nullable=True, index=True)
-    employee_id = Column(String, ForeignKey("hrms_employees.id", ondelete="CASCADE"), nullable=False)
+    # Loose coupling: leave applicants can be HRMS employees OR students
+    # (cust_*/stu_* ids resolved via the student fallback in get_leaves),
+    # so no hard FK to hrms_employees (mirrors EmployeeAttendance /
+    # EmployeeShiftRoster).
+    employee_id = Column(String, nullable=False, index=True)
     leave_type_id = Column(String, nullable=True)
     leave_type = Column(String, nullable=False)
     paid_type = Column(String, nullable=True)

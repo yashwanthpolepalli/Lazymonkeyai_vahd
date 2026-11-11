@@ -423,6 +423,14 @@ def run_database_migrations() -> None:
             except Exception as fkey_err:
                 conn.rollback()
 
+            try:
+                # Leave applicants can be students (cust_*/stu_* ids), so
+                # leave records must not be hard-locked to hrms_employees.
+                conn.execute(text('ALTER TABLE "hrms_leaves" DROP CONSTRAINT IF EXISTS "hrms_leaves_employee_id_fkey";'))
+                conn.commit()
+            except Exception as fkey_err:
+                conn.rollback()
+
             # 2. Safely drop any non-canonical tables detected in the database
             for tbl in obsolete_tables:
                 try:

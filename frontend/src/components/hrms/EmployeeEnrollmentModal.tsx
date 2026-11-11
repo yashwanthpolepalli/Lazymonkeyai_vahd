@@ -514,7 +514,8 @@ export function EmployeeEnrollmentModal({
 
     if (employeeToEdit) {
       const meta = employeeToEdit.meta_data || {};
-      setEmployeeCode(employeeToEdit.code || meta.employee_code || `EMP-${Math.floor(1000 + Math.random() * 9000)}`);
+      const existingCode = employeeToEdit.code || employeeToEdit.empNo || employeeToEdit.employee_code || meta.employee_code || '';
+      setEmployeeCode(existingCode || `EMP-${Math.floor(1000 + Math.random() * 9000)}`);
       setName(employeeToEdit.full_name || employeeToEdit.name || `${employeeToEdit.first_name || ''} ${employeeToEdit.last_name || ''}`.trim());
       setFatherName(meta.father_name || '');
       setDob(meta.dob || '');

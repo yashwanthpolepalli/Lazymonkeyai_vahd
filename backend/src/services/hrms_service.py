@@ -497,162 +497,36 @@ class HrmsService:
         ho_id = payload.get("ho_id")
         owner_id = payload.get("owner_id")
 
-        # 1. Auto-create Department if it doesn't already exist in DB
+        # 1. Validate Department strictly against DB (no auto-creation)
         if department:
             clean_d = department.strip()
             existing_dept = db.query(Department).filter(
-                func.lower(Department.name) == clean_d.lower()
+                func.lower(Department.name) == clean_d.lower(),
+                Department.is_active != False
             ).first()
-            words = clean_d.split()
-            d_code = "".join([w[0].upper() for w in words if w.isalnum()])[:6] or clean_d[:4].upper()
             if not existing_dept:
-                existing_code = db.query(Department).filter(Department.code == d_code).first()
-                if existing_code:
-                    d_code = f"{d_code}{uuid.uuid4().hex[:3].upper()}"
-                new_dept = Department(
-                    id=f"dept_{uuid.uuid4().hex[:8]}",
-                    name=clean_d,
-                    code=d_code,
-                    description=f"Auto-created department: {clean_d}",
-                    head_name="",
-                    is_active=True
-                )
-                db.add(new_dept)
-                try:
-                    db.commit()
-                except Exception:
-                    db.rollback()
+                existing_md = db.query(MasterData).filter(
+                    MasterData.category == "departments",
+                    func.lower(MasterData.name) == clean_d.lower(),
+                    MasterData.is_active != False
+                ).first()
+                if not existing_md:
+                    raise ValueError(f"Department '{department}' not found in database. Please configure it in Settings first.")
 
-            # Synchronize with MasterData for departments (marked as employee)
-            existing_md = db.query(MasterData).filter(
-                MasterData.category == "departments",
-                func.lower(MasterData.name) == clean_d.lower()
-            ).first()
-            if not existing_md:
-                new_md = MasterData(
-                    id=f"mdata_{uuid.uuid4().hex[:8]}",
-                    category="departments",
-                    name=clean_d,
-                    code=d_code,
-                    description=f"Auto-created department: {clean_d}",
-                    extra_info="employee",
-                    is_active=True
-                )
-                db.add(new_md)
-                try:
-                    db.commit()
-                except Exception:
-                    db.rollback()
-            elif not existing_md.extra_info or existing_md.extra_info.lower() not in ("employee", "both"):
-                existing_md.extra_info = "employee"
-                try:
-                    db.commit()
-                except Exception:
-                    db.rollback()
-
-        # 2. Auto-create Designation if it doesn't already exist in DB
+        # 2. Validate Designation strictly against DB (no auto-creation)
         if designation:
             clean_desg = designation.strip()
             existing_desg = db.query(Designation).filter(
                 func.lower(Designation.title) == clean_desg.lower()
             ).first()
             if not existing_desg:
-                clean_desg = designation.strip()
-                new_desg = Designation(
-                    id=f"desg_{uuid.uuid4().hex[:8]}",
-                    title=clean_desg,
-                    department=department or "General",
-                    level="Mid",
-                    description=f"Auto-created designation: {clean_desg}"
-                )
-                db.add(new_desg)
-                try:
-                    db.commit()
-                except Exception:
-                    db.rollback()
-
-            # Also sync to MasterData for designations
-            existing_md_desg = db.query(MasterData).filter(
-                MasterData.category == "designations",
-                func.lower(MasterData.name) == clean_desg.lower()
-            ).first()
-            if not existing_md_desg:
-                new_md_desg = MasterData(
-                    id=f"mdata_{uuid.uuid4().hex[:8]}",
-                    category="designations",
-                    name=clean_desg,
-                    code=f"DES-{clean_desg[:4].upper()}",
-                    parent_name=department or "General",
-                    description=f"Auto-created designation: {clean_desg}",
-                    is_active=True
-                )
-                db.add(new_md_desg)
-                try:
-                    db.commit()
-                except Exception:
-                    db.rollback()
-
-        # 3. Auto-append gender, qualification, specialization to MasterData if not present
-        if gender:
-            clean_gender = gender.strip().capitalize()
-            if clean_gender:
-                existing_g = db.query(MasterData).filter(
-                    MasterData.category == "gender_types",
-                    func.lower(MasterData.name) == clean_gender.lower()
+                existing_md_desg = db.query(MasterData).filter(
+                    MasterData.category == "designations",
+                    func.lower(MasterData.name) == clean_desg.lower(),
+                    MasterData.is_active != False
                 ).first()
-                if not existing_g:
-                    db.add(MasterData(
-                        id=f"mdata_{uuid.uuid4().hex[:8]}",
-                        category="gender_types",
-                        name=clean_gender,
-                        code=f"GND-{clean_gender[:3].upper()}",
-                        is_active=True
-                    ))
-                    try:
-                        db.commit()
-                    except Exception:
-                        db.rollback()
-
-        emp_qual = payload.get("qualification")
-        if emp_qual and str(emp_qual).strip():
-            clean_qual = str(emp_qual).strip()
-            existing_q = db.query(MasterData).filter(
-                MasterData.category == "qualifications",
-                func.lower(MasterData.name) == clean_qual.lower()
-            ).first()
-            if not existing_q:
-                db.add(MasterData(
-                    id=f"mdata_{uuid.uuid4().hex[:8]}",
-                    category="qualifications",
-                    name=clean_qual,
-                    code=f"QLF-{clean_qual[:4].upper()}",
-                    is_active=True
-                ))
-                try:
-                    db.commit()
-                except Exception:
-                    db.rollback()
-
-        emp_spec = payload.get("specialization")
-        if emp_spec and str(emp_spec).strip():
-            clean_spec = str(emp_spec).strip()
-            existing_s = db.query(MasterData).filter(
-                MasterData.category == "specializations",
-                func.lower(MasterData.name) == clean_spec.lower()
-            ).first()
-            if not existing_s:
-                db.add(MasterData(
-                    id=f"mdata_{uuid.uuid4().hex[:8]}",
-                    category="specializations",
-                    name=clean_spec,
-                    code=f"SPC-{clean_spec[:4].upper()}",
-                    parent_name=str(emp_qual).strip() if emp_qual else "",
-                    is_active=True
-                ))
-                try:
-                    db.commit()
-                except Exception:
-                    db.rollback()
+                if not existing_md_desg:
+                    raise ValueError(f"Designation '{designation}' not found in database. Please configure it in Settings first.")
 
         from src.models.settings import Branch as vahdBranch
         from sqlalchemy import or_

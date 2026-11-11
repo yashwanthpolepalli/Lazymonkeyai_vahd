@@ -3,7 +3,7 @@ import uuid
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy import text, or_
-from src.models.course import Course, StudentCourse, CourseLanguage, CourseClassification
+from src.models.course import Course, CourseLanguage, CourseClassification, CourseDurationTier
 from src.models.plan import MembershipPlan
 from src.models.membership import Membership
 from src.models.settings import Setting
@@ -14,94 +14,107 @@ class CourseService:
 
     @staticmethod
     def format_duration(days: int, raw_period: Optional[str] = None) -> str:
-        if raw_period and raw_period.strip():
-            return raw_period.strip()
-        if days == 1095 or days == 1096:
-            return "3 Years"
-        if days == 1460 or days == 1461:
-            return "4 Years"
-        if days == 730:
-            return "2 Years"
-        if days == 365:
-            return "1 Year"
-        if days == 180:
-            return "6 Months"
-        if days == 90:
-            return "3 Months"
-        if days == 30:
-            return "1 Month"
-        if days >= 365 and days % 365 == 0:
-            y = days // 365
-            return f"{y} Years" if y > 1 else "1 Year"
-        if days >= 30 and days % 30 == 0:
-            m = days // 30
-            if m % 12 == 0:
-                y = m // 12
-                return f"{y} Years" if y > 1 else "1 Year"
-            return f"{m} Months" if m > 1 else "1 Month"
-        return f"{days} Days"
+        clean_period = (raw_period or "").strip()
+        if clean_period and clean_period.lower() not in ("year", "month", "day", "days"):
+            return clean_period
+        if not days or days <= 0:
+            return ""
+        if days >= 365:
+            years = round(days / 365)
+            return f"{years} Year" if years == 1 else f"{years} Years"
+        if days >= 30:
+            months = round(days / 30)
+            return f"{months} Month" if months == 1 else f"{months} Months"
+        return f"{days} Day" if days == 1 else f"{days} Days"
 
     @staticmethod
     def get_all_courses(db: Session, owner_id: Optional[str] = None, branch_id: Optional[str] = None) -> List[Dict[str, Any]]:
         """
         Returns dynamic active courses/degree programs stored in the database.
+        Syncs between membership_plans and courses tables so data is strictly persisted in DB.
         """
+        from src.database.session import engine
+        Course.__table__.create(bind=engine, checkfirst=True)
+        MembershipPlan.__table__.create(bind=engine, checkfirst=True)
+
         try:
-            from src.database.session import engine
-            Course.__table__.create(bind=engine, checkfirst=True)
-
-            query = db.query(Course).filter(Course.is_active == True)
-            if owner_id:
-                query = query.filter(or_(Course.owner_id == owner_id, Course.owner_id.is_(None)))
-            if branch_id:
-                query = query.filter(or_(Course.branch_id == branch_id, Course.branch_id.is_(None)))
-            courses = query.order_by(Course.created_at.asc()).all()
-
-            if courses:
-                result = []
-                for c in courses:
-                    days = c.duration_days or 365
-                    period = getattr(c, "period", None) or CourseService.format_duration(days)
-                    features = [f.strip() for f in (c.description or "").split(",") if f.strip()]
-                    result.append({
-                        "id": c.id,
-                        "owner_id": c.owner_id,
-                        "branch_id": c.branch_id,
-                        "name": c.name,
-                        "category": c.category or "General",
-                        "department": c.department or "Academics",
-                        "degree_type": c.degree_type or "Degree",
-                        "price": float(c.price or 0.0),
-                        "duration_days": days,
-                        "period": period,
-                        "description": c.description or "",
-                        "features": features,
-                        "color": c.color or "from-blue-600 to-indigo-700",
-                        "badge": c.badge or "Degree Course",
-                        "is_combo": bool(c.is_combo),
-                        "isCombo": bool(c.is_combo),
-                        "is_active": c.is_active,
-                        "created_at": c.created_at.isoformat() if c.created_at else None,
-                    })
-                return result
+            plans = db.query(MembershipPlan).filter(MembershipPlan.is_active == True).all()
+            existing_courses = {c.id: c for c in db.query(Course).all()}
+            for p in plans:
+                if p.id not in existing_courses:
+                    days = p.duration_days or 0
+                    code_val = (p.category or p.badge or "").strip()
+                    new_c = Course(
+                        id=p.id,
+                        tenant_id=p.tenant_id or p.branch_id,
+                        owner_id=p.owner_id,
+                        branch_id=p.branch_id,
+                        name=p.name,
+                        category=code_val,
+                        price=float(p.price or 0.0),
+                        duration_days=days,
+                        description=p.description or "",
+                        badge=code_val,
+                        is_active=p.is_active if p.is_active is not None else True,
+                    )
+                    db.add(new_c)
+            db.commit()
         except Exception:
             db.rollback()
 
-        # Dynamic database plans from MembershipService
-        plans = MembershipService.get_all_plans(db, owner_id=owner_id, branch_id=branch_id)
-        for p in plans:
-            days = p.get("duration_days") or 365
-            p["period"] = CourseService.format_duration(days)
-        return plans
+        query = db.query(Course).filter(Course.is_active != False)
+        if owner_id:
+            query = query.filter(or_(Course.owner_id == owner_id, Course.owner_id.is_(None)))
+        if branch_id:
+            query = query.filter(or_(Course.branch_id == branch_id, Course.branch_id.is_(None)))
+        courses = query.order_by(Course.created_at.asc()).all()
+
+        result = []
+        for c in courses:
+            days = c.duration_days or 0
+            period = CourseService.format_duration(days)
+            features = [f.strip() for f in (c.description or "").split(",") if f.strip()]
+            code_val = (c.category or c.badge or "").strip()
+            result.append({
+                "id": c.id,
+                "owner_id": c.owner_id,
+                "branch_id": c.branch_id,
+                "name": c.name,
+                "code": code_val,
+                "category": code_val,
+                "department": c.department or "",
+                "degree_type": c.degree_type or "",
+                "price": float(c.price or 0.0),
+                "duration_days": days,
+                "period": period,
+                "description": c.description or "",
+                "features": features,
+                "color": c.color or "",
+                "badge": c.badge or code_val,
+                "is_combo": bool(c.is_combo),
+                "isCombo": bool(c.is_combo),
+                "is_active": c.is_active,
+                "created_at": c.created_at.isoformat() if c.created_at else None,
+            })
+        return result
 
     @staticmethod
     def create_course(db: Session, payload: Dict[str, Any], owner_id: Optional[str] = None, branch_id: Optional[str] = None) -> Dict[str, Any]:
         """
-        Persists a course/program in the database with custom duration (Years/Months).
+        Persists a course/program dynamically in both courses and membership_plans database tables.
         """
+        import re
+        from src.database.session import engine
+        Course.__table__.create(bind=engine, checkfirst=True)
+        MembershipPlan.__table__.create(bind=engine, checkfirst=True)
+
+        name = str(payload.get("name") or "").strip()
+        if not name:
+            raise ValueError("Course / Program name is required")
+
         duration_val = payload.get("duration_value")
-        duration_unit = payload.get("duration_unit", "Years").lower()
-        duration_days = int(payload.get("duration_days") or 365)
+        duration_unit = str(payload.get("duration_unit") or "Years").lower()
+        duration_days = 0
 
         if duration_val:
             try:
@@ -110,83 +123,218 @@ class CourseService:
                     duration_days = num * 365
                 elif "month" in duration_unit:
                     duration_days = num * 30
+                elif "sem" in duration_unit:
+                    duration_days = num * 180
                 elif "day" in duration_unit:
                     duration_days = num
             except Exception:
                 pass
 
-        period = payload.get("period") or CourseService.format_duration(duration_days)
-        payload["duration_days"] = duration_days
-        payload["period"] = period
+        if not duration_days and payload.get("duration_days"):
+            try:
+                duration_days = int(payload.get("duration_days"))
+            except Exception:
+                duration_days = 0
 
-        res = MembershipService.create_plan(db, payload, owner_id=owner_id, branch_id=branch_id)
+        raw_period = str(payload.get("period") or payload.get("duration") or "").strip()
+        if not duration_days and raw_period:
+            match = re.search(r"(\d+)", raw_period)
+            num = int(match.group(1)) if match else 1
+            low = raw_period.lower()
+            if "year" in low:
+                duration_days = num * 365
+            elif "month" in low:
+                duration_days = num * 30
+            elif "sem" in low:
+                duration_days = num * 180
+            else:
+                duration_days = num
 
-        try:
-            course_id = res.get("id") or f"crs_{uuid.uuid4().hex[:10]}"
-            new_course = Course(
-                id=course_id,
-                owner_id=owner_id or payload.get("owner_id"),
-                branch_id=branch_id or payload.get("branch_id"),
-                name=payload.get("name", "New Course").strip(),
-                category=payload.get("category", "degree"),
-                department=payload.get("department", "Academics"),
-                degree_type=payload.get("degree_type", "Degree"),
-                price=float(payload.get("price") or 0.0),
-                duration_days=duration_days,
-                description=payload.get("description") or (", ".join(payload.get("features", [])) if isinstance(payload.get("features"), list) else ""),
-                color=payload.get("color", "from-blue-600 to-indigo-700"),
-                badge=payload.get("badge", "Degree"),
-                is_combo=bool(payload.get("is_combo") or payload.get("isCombo")),
-                is_active=True,
-            )
-            db.add(new_course)
-            db.commit()
-            res["period"] = period
-            res["duration_days"] = duration_days
-        except Exception:
-            db.rollback()
+        period = CourseService.format_duration(duration_days, raw_period=raw_period)
+        code = str(payload.get("code") or payload.get("category") or payload.get("badge") or "").strip().upper()
+        price = float(payload.get("price") or 0.0)
+        description = str(payload.get("description") or "").strip()
+        dept = str(payload.get("department") or "").strip() or None
+        deg_type = str(payload.get("degree_type") or "").strip() or None
+        is_active = payload.get("is_active", True)
+        cid = f"crs_{uuid.uuid4().hex[:10]}"
 
-        return res
+        resolved_owner = owner_id or payload.get("owner_id")
+        resolved_branch = branch_id or payload.get("branch_id")
+
+        # 1. Store directly in courses table
+        new_course = Course(
+            id=cid,
+            tenant_id=resolved_branch,
+            owner_id=resolved_owner,
+            branch_id=resolved_branch,
+            name=name,
+            category=code,
+            badge=code,
+            department=dept,
+            degree_type=deg_type,
+            price=price,
+            duration_days=duration_days,
+            description=description,
+            is_active=is_active,
+        )
+        db.add(new_course)
+
+        # 2. Mirror into membership_plans table with same id and tenant
+        new_plan = MembershipPlan(
+            id=cid,
+            tenant_id=resolved_branch,
+            owner_id=resolved_owner,
+            branch_id=resolved_branch,
+            name=name,
+            category=code,
+            badge=code,
+            price=price,
+            duration_days=duration_days,
+            description=description,
+            is_active=is_active,
+        )
+        db.add(new_plan)
+        db.commit()
+
+        return {
+            "id": cid,
+            "name": name,
+            "code": code,
+            "category": code,
+            "badge": code,
+            "period": period,
+            "duration_days": duration_days,
+            "price": price,
+            "description": description,
+            "is_active": is_active,
+        }
 
     @staticmethod
     def update_course(db: Session, course_id: str, payload: Dict[str, Any], owner_id: Optional[str] = None, branch_id: Optional[str] = None) -> Dict[str, Any]:
-        duration_days = payload.get("duration_days")
-        if duration_days:
-            payload["period"] = CourseService.format_duration(int(duration_days))
+        course = db.query(Course).filter(Course.id == course_id).first()
+        plan = db.query(MembershipPlan).filter(MembershipPlan.id == course_id).first()
+        if not course and not plan:
+            raise ValueError(f"Course '{course_id}' not found")
 
-        res = MembershipService.update_plan(db, course_id, payload, owner_id=owner_id, branch_id=branch_id)
-        try:
-            course = db.query(Course).filter(Course.id == course_id).first()
-            if course:
-                if "name" in payload: course.name = payload["name"]
-                if "price" in payload: course.price = float(payload["price"])
-                if "duration_days" in payload: course.duration_days = int(payload["duration_days"])
-                if "category" in payload: course.category = payload["category"]
-                if "department" in payload: course.department = payload["department"]
-                if "degree_type" in payload: course.degree_type = payload["degree_type"]
-                if "color" in payload: course.color = payload["color"]
-                if "badge" in payload: course.badge = payload["badge"]
-                if "description" in payload: course.description = payload["description"]
-                db.commit()
-        except Exception:
-            db.rollback()
-        return res
+        name = payload.get("name")
+        price = payload.get("price")
+        duration_days = payload.get("duration_days")
+        raw_period = payload.get("period") or payload.get("duration")
+        if duration_days is None and raw_period:
+            match = re.search(r"(\d+)", str(raw_period))
+            num = int(match.group(1)) if match else 1
+            low = str(raw_period).lower()
+            if "year" in low:
+                duration_days = num * 365
+            elif "month" in low:
+                duration_days = num * 30
+            elif "sem" in low:
+                duration_days = num * 180
+            elif "day" in low:
+                duration_days = num
+            else:
+                duration_days = num * 365
+
+        code = payload.get("code") or payload.get("category")
+        description = payload.get("description")
+        is_active = payload.get("is_active")
+
+        if course:
+            if name is not None: course.name = str(name).strip()
+            if price is not None: course.price = float(price)
+            if duration_days is not None: course.duration_days = int(duration_days)
+            if code is not None:
+                course.category = str(code).strip().upper()
+                course.badge = str(code).strip().upper()
+            if description is not None: course.description = str(description).strip()
+            if is_active is not None: course.is_active = bool(is_active)
+
+        if plan:
+            if name is not None: plan.name = str(name).strip()
+            if price is not None: plan.price = float(price)
+            if duration_days is not None: plan.duration_days = int(duration_days)
+            if code is not None:
+                plan.category = str(code).strip().upper()
+                plan.badge = str(code).strip().upper()
+            if description is not None: plan.description = str(description).strip()
+            if is_active is not None: plan.is_active = bool(is_active)
+
+        db.commit()
+
+        target = course or plan
+        days = getattr(target, "duration_days", 0) or 0
+        cd = getattr(target, "category", "") or getattr(target, "badge", "") or ""
+        return {
+            "id": course_id,
+            "name": target.name,
+            "code": cd,
+            "category": cd,
+            "price": float(target.price or 0.0),
+            "duration_days": days,
+            "period": CourseService.format_duration(days),
+            "description": target.description or "",
+            "is_active": target.is_active,
+        }
 
     @staticmethod
     def delete_course(db: Session, course_id: str) -> Dict[str, Any]:
-        res = MembershipService.delete_plan(db, course_id)
-        try:
-            course = db.query(Course).filter(Course.id == course_id).first()
-            if course:
-                course.is_active = False
-                db.commit()
-        except Exception:
-            db.rollback()
-        return res
+        course = db.query(Course).filter(Course.id == course_id).first()
+        plan = db.query(MembershipPlan).filter(MembershipPlan.id == course_id).first()
+        if not course and not plan:
+            raise ValueError(f"Course '{course_id}' not found")
+        if course:
+            db.delete(course)
+        if plan:
+            db.delete(plan)
+        db.commit()
+        return {"id": course_id, "deleted": True}
 
     # ============================================================
     # LANGUAGES & MEDIUMS OF INSTRUCTION (PURE DATABASE DRIVEN)
     # ============================================================
+
+    @staticmethod
+    def get_language_records(db: Session) -> List[Dict[str, Any]]:
+        """
+        Returns complete language records (id, name, is_active) for the Medium sub-page.
+        """
+        try:
+            from src.database.session import engine
+            CourseLanguage.__table__.create(bind=engine, checkfirst=True)
+
+            langs = db.query(CourseLanguage).order_by(CourseLanguage.created_at.asc()).all()
+            return [{"id": l.id, "name": l.name, "is_active": l.is_active} for l in langs]
+        except Exception:
+            db.rollback()
+            return []
+
+    @staticmethod
+    def update_language(db: Session, lang_id_or_name: str, payload: dict) -> Dict[str, Any]:
+        """
+        Updates name or toggles is_active for a medium of instruction language.
+        """
+        try:
+            from src.database.session import engine
+            from sqlalchemy import or_
+            from fastapi import HTTPException
+            CourseLanguage.__table__.create(bind=engine, checkfirst=True)
+
+            existing = db.query(CourseLanguage).filter(
+                or_(CourseLanguage.id == lang_id_or_name, CourseLanguage.name.ilike(lang_id_or_name.strip()))
+            ).first()
+            if not existing:
+                raise HTTPException(status_code=404, detail="Language / Medium not found")
+            if "name" in payload and payload["name"].strip():
+                existing.name = payload["name"].strip()
+            if "is_active" in payload:
+                existing.is_active = bool(payload["is_active"])
+            db.commit()
+            db.refresh(existing)
+            return {"id": existing.id, "name": existing.name, "is_active": existing.is_active}
+        except Exception as e:
+            db.rollback()
+            raise e
 
     @staticmethod
     def get_languages(db: Session) -> List[str]:
@@ -204,13 +352,13 @@ class CourseService:
             return []
 
     @staticmethod
-    def add_language(db: Session, lang_name: str) -> List[str]:
+    def add_language(db: Session, lang_name: str, tenant_id: Optional[str] = None) -> Dict[str, Any]:
         """
         Adds a new language / medium of instruction directly in database.
         """
         name = lang_name.strip()
         if not name:
-            return CourseService.get_languages(db)
+            raise ValueError("Medium name is required")
         try:
             from src.database.session import engine
             CourseLanguage.__table__.create(bind=engine, checkfirst=True)
@@ -220,33 +368,178 @@ class CourseService:
                 if not existing.is_active:
                     existing.is_active = True
                     db.commit()
+                return {"id": existing.id, "name": existing.name, "is_active": existing.is_active}
             else:
-                row = CourseLanguage(id=f"lang_{uuid.uuid4().hex[:8]}", name=name, is_active=True)
+                row = CourseLanguage(
+                    id=f"lang_{uuid.uuid4().hex[:8]}",
+                    tenant_id=tenant_id,
+                    name=name,
+                    is_active=True
+                )
                 db.add(row)
                 db.commit()
-            return CourseService.get_languages(db)
-        except Exception:
+                db.refresh(row)
+                return {"id": row.id, "name": row.name, "is_active": row.is_active}
+        except Exception as e:
             db.rollback()
-            return CourseService.get_languages(db)
+            raise e
 
     @staticmethod
-    def delete_language(db: Session, lang_name: str) -> List[str]:
+    def delete_language(db: Session, lang_name_or_id: str) -> Dict[str, Any]:
         """
-        Removes a language / medium of instruction from database.
+        Removes a language / medium of instruction from database by id or name.
         """
-        name = lang_name.strip()
+        name = lang_name_or_id.strip()
         try:
             from src.database.session import engine
             CourseLanguage.__table__.create(bind=engine, checkfirst=True)
 
-            existing = db.query(CourseLanguage).filter(CourseLanguage.name.ilike(name)).first()
+            existing = db.query(CourseLanguage).filter(
+                or_(CourseLanguage.id == name, CourseLanguage.name.ilike(name))
+            ).first()
             if existing:
                 db.delete(existing)
                 db.commit()
-            return CourseService.get_languages(db)
-        except Exception:
+                return {"id": name, "deleted": True}
+            return {"id": name, "deleted": False}
+        except Exception as e:
             db.rollback()
-            return CourseService.get_languages(db)
+            raise e
+
+    # ============================================================
+    # DURATION TIERS (PURE DATABASE DRIVEN)
+    # ============================================================
+
+    @staticmethod
+    def get_duration_tiers(db: Session) -> List[Dict[str, Any]]:
+        """
+        Returns active course duration tiers configured in database.
+        """
+        from src.database.session import engine
+        CourseDurationTier.__table__.create(bind=engine, checkfirst=True)
+
+        tiers = db.query(CourseDurationTier).order_by(CourseDurationTier.days.asc()).all()
+        return [
+            {
+                "id": t.id,
+                "name": t.name,
+                "days": t.days,
+                "unitCount": t.unit_count or 1,
+                "unitType": t.unit_type or "years",
+                "multiplier": t.multiplier or 1.0,
+                "suffix": t.suffix or f"{t.days}D",
+                "is_active": t.is_active,
+            }
+            for t in tiers
+        ]
+
+    @staticmethod
+    def create_duration_tier(db: Session, payload: Dict[str, Any], tenant_id: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Creates or updates a duration tier in the database.
+        """
+        from src.database.session import engine
+        CourseDurationTier.__table__.create(bind=engine, checkfirst=True)
+
+        name = str(payload.get("name") or "").strip()
+        days = int(payload.get("days") or 365)
+        unit_count = int(payload.get("unitCount") or payload.get("unit_count") or 1)
+        unit_type = str(payload.get("unitType") or payload.get("unit_type") or "years").strip().lower()
+        multiplier = float(payload.get("multiplier") or 1.0)
+        suffix = str(payload.get("suffix") or "").strip() or f"{unit_count}{unit_type[:1].upper()}"
+
+        existing = db.query(CourseDurationTier).filter(CourseDurationTier.name.ilike(name)).first()
+        if existing:
+            existing.days = days
+            existing.unit_count = unit_count
+            existing.unit_type = unit_type
+            existing.multiplier = multiplier
+            existing.suffix = suffix
+            existing.is_active = True
+            db.commit()
+            return {
+                "id": existing.id,
+                "name": existing.name,
+                "days": existing.days,
+                "unitCount": existing.unit_count,
+                "unitType": existing.unit_type,
+                "multiplier": existing.multiplier,
+                "suffix": existing.suffix,
+                "is_active": existing.is_active,
+            }
+
+        tid = f"tier_{uuid.uuid4().hex[:8]}"
+        row = CourseDurationTier(
+            id=tid,
+            tenant_id=tenant_id,
+            name=name,
+            days=days,
+            unit_count=unit_count,
+            unit_type=unit_type,
+            multiplier=multiplier,
+            suffix=suffix,
+            is_active=True,
+        )
+        db.add(row)
+        db.commit()
+        return {
+            "id": tid,
+            "name": name,
+            "days": days,
+            "unitCount": unit_count,
+            "unitType": unit_type,
+            "multiplier": multiplier,
+            "suffix": suffix,
+            "is_active": True,
+        }
+
+    @staticmethod
+    def update_duration_tier(db: Session, tier_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Updates an existing duration tier in the database.
+        """
+        tier = db.query(CourseDurationTier).filter(CourseDurationTier.id == tier_id).first()
+        if not tier:
+            raise ValueError(f"Duration tier '{tier_id}' not found")
+
+        if "name" in payload and payload["name"]:
+            tier.name = str(payload["name"]).strip()
+        if "days" in payload:
+            tier.days = int(payload["days"])
+        if "unitCount" in payload or "unit_count" in payload:
+            tier.unit_count = int(payload.get("unitCount") or payload.get("unit_count") or 1)
+        if "unitType" in payload or "unit_type" in payload:
+            tier.unit_type = str(payload.get("unitType") or payload.get("unit_type")).strip().lower()
+        if "multiplier" in payload:
+            tier.multiplier = float(payload["multiplier"])
+        if "suffix" in payload:
+            tier.suffix = str(payload["suffix"]).strip()
+        if "is_active" in payload:
+            tier.is_active = bool(payload["is_active"])
+
+        db.commit()
+        return {
+            "id": tier.id,
+            "name": tier.name,
+            "days": tier.days,
+            "unitCount": tier.unit_count,
+            "unitType": tier.unit_type,
+            "multiplier": tier.multiplier,
+            "suffix": tier.suffix,
+            "is_active": tier.is_active,
+        }
+
+    @staticmethod
+    def delete_duration_tier(db: Session, tier_id: str) -> Dict[str, Any]:
+        """
+        Removes a duration tier from the database.
+        """
+        tier = db.query(CourseDurationTier).filter(CourseDurationTier.id == tier_id).first()
+        if not tier:
+            raise ValueError(f"Duration tier '{tier_id}' not found")
+        db.delete(tier)
+        db.commit()
+        return {"id": tier_id, "deleted": True}
 
     # ============================================================
     # COURSE CLASSIFICATIONS / TYPES (DATABASE DRIVEN & EDITABLE)

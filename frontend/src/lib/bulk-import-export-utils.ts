@@ -59,9 +59,12 @@ export interface StudentImportRow {
   presMobile?: string;     // present address contact number
   telephone?: string;      // landline / telephone
 
-  // Campus / Branch / Status
+  // Campus / Branch / Status & Meta
   branch?: string;
   status?: string;
+  role?: string;
+  admissionType?: string;
+  goal?: string;
 }
 
 export const STUDENT_TEMPLATE_HEADERS = [
@@ -683,7 +686,7 @@ export function normalizeStudentImportRow(raw: any): StudentImportRow {
 
   // Academic
   const course = findVal('degreecourseprogram', 'degreecourse', 'course', 'degree', 'program');
-  const medium = findVal('mediumofinstruction', 'medium', 'instructionmedium', 'lang') || 'English';
+  const medium = findVal('mediumofinstruction', 'medium', 'instructionmedium', 'lang');
   const department = findVal('department', 'dept', 'branchdept');
   const academicYear = findVal('academicyear', 'year', 'batch');
   const rollNo = findVal('studentrollno', 'rollno', 'studentno', 'code', 'membercode');
@@ -691,7 +694,7 @@ export function normalizeStudentImportRow(raw: any): StudentImportRow {
   const specialization = findVal('specialization');
 
   // Personal Info
-  const gender = findVal('gender', 'sex') || 'Male';
+  const gender = findVal('gender', 'sex');
   const dob = findVal('dateofbirth', 'dob', 'birthdate');
   const age = findVal('age');
   const bloodGroup = findVal('bloodgroup', 'blood');
@@ -730,9 +733,12 @@ export function normalizeStudentImportRow(raw: any): StudentImportRow {
   const presMobile = findVal('presentcontactmobile', 'prescontactmobile', 'presmobile', 'presentmobile');
   const telephone = findVal('telephonelandline', 'telephone', 'landline', 'tel');
 
-  // Campus / Status
+  // Campus / Status & Meta
   const branch = findVal('institutionbranch', 'institution', 'branch', 'campus', 'college');
-  const status = findVal('status') || 'ACTIVE';
+  const status = findVal('status');
+  const role = findVal('role', 'studentrole');
+  const admissionType = findVal('admissiontype', 'admission');
+  const goal = findVal('goal');
 
   return {
     fullName, email, phone, parentPhone,
@@ -742,7 +748,7 @@ export function normalizeStudentImportRow(raw: any): StudentImportRow {
     fatherName, motherName, parentOccupation, annualIncome,
     permDoorNo, permStreet, permVillage, permMandal, permDistrict, permState, permMobile,
     presDoorNo, presStreet, presVillage, presMandal, presDistrict, presState, presMobile, telephone,
-    branch, status,
+    branch, status, role, admissionType, goal,
   };
 }
 
@@ -1094,8 +1100,10 @@ export function normalizeDesignationImportRow(raw: any): DesignationImportRow {
 
 export interface CourseImportRow {
   name: string;
+  code?: string;
   category?: string;
   degreeType?: string;
+  duration?: string;
   durationYears?: string;
   durationMonths?: string;
   price: string;
@@ -1106,39 +1114,21 @@ export interface CourseImportRow {
 
 export const COURSE_TEMPLATE_HEADERS = [
   'Course / Program Name *',
-  'Category / Department *',
-  'Classification / Degree Type',
-  'Duration in Years (e.g. 4, 3, 2, 1)',
-  'Duration in Months (e.g. 6, 12, 24, 36, 48)',
-  'Tuition / Program Fee (₹) *',
-  'Medium of Instruction',
+  'Course Code *',
+  'Duration (e.g. 4 Years, 3 Years, 2 Years, 1 Year)',
+  'Tuition Fee (₹) *',
   'Description',
   'Status',
 ];
 
 export function downloadCourseSampleXlsx() {
-  const guidanceRow = [
-    'B.Tech Computer Science & Engineering',
-    'Computer Science & Engineering',
-    'Undergraduate Degree',
-    '4',
-    '48',
-    '125000',
-    'English',
-    'Four-year comprehensive engineering program with AI & Software specialization.',
-    'Active',
-  ];
-
-  const ws = XLSX.utils.aoa_to_sheet([COURSE_TEMPLATE_HEADERS, guidanceRow]);
+  const ws = XLSX.utils.aoa_to_sheet([COURSE_TEMPLATE_HEADERS]);
   ws['!cols'] = [
-    { wch: 36 }, // Course Name
-    { wch: 30 }, // Category/Dept
-    { wch: 26 }, // Classification
-    { wch: 30 }, // Duration Years
-    { wch: 32 }, // Duration Months
-    { wch: 24 }, // Fee
-    { wch: 22 }, // Medium
-    { wch: 50 }, // Description
+    { wch: 38 }, // Course Name
+    { wch: 20 }, // Course Code
+    { wch: 32 }, // Duration
+    { wch: 22 }, // Fee
+    { wch: 45 }, // Description
     { wch: 14 }, // Status
   ];
 
@@ -1148,21 +1138,10 @@ export function downloadCourseSampleXlsx() {
 }
 
 export function downloadCourseSampleCsv() {
-  const guidanceRow = [
-    {
-      'Course / Program Name *': 'B.Tech Computer Science & Engineering',
-      'Category / Department *': 'Computer Science & Engineering',
-      'Classification / Degree Type': 'Undergraduate Degree',
-      'Duration in Years (e.g. 4, 3, 2, 1)': '4',
-      'Duration in Months (e.g. 6, 12, 24, 36, 48)': '48',
-      'Tuition / Program Fee (₹) *': '125000',
-      'Medium of Instruction': 'English',
-      'Description': 'Four-year comprehensive engineering program with AI & Software specialization.',
-      'Status': 'Active',
-    },
-  ];
-
-  const csv = Papa.unparse(guidanceRow);
+  const csv = Papa.unparse({
+    fields: COURSE_TEMPLATE_HEADERS,
+    data: [],
+  });
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
@@ -1174,36 +1153,48 @@ export function downloadCourseSampleCsv() {
 }
 
 export function exportCoursesToXlsx(courses: any[], filename = 'courses_export.xlsx') {
-  const rows = courses.map((c, idx) => ({
-    '#': idx + 1,
-    'Course / Program Name': c.name || '',
-    'Category / Branch': Array.isArray(c.categories) ? c.categories.join(', ') : (c.category || c.department || ''),
-    'Classification': c.classification || c.degree_type || '',
-    'Duration': c.durationText || c.period || (c.duration_days ? `${Math.round(c.duration_days / 365)} Years` : '1 Year'),
-    'Tuition Fee (₹)': c.price || 0,
-    'Features / Description': Array.isArray(c.features) ? c.features.join(', ') : (c.description || ''),
-    'Status': c.is_active === false ? 'Inactive' : 'Active',
-  }));
+  let ws: any;
+  if (!courses || courses.length === 0) {
+    ws = XLSX.utils.aoa_to_sheet([COURSE_TEMPLATE_HEADERS]);
+    ws['!cols'] = COURSE_TEMPLATE_HEADERS.map((h) => ({ wch: Math.max(h.length + 3, 20) }));
+  } else {
+    const rows = courses.map((c, idx) => ({
+      '#': idx + 1,
+      'Course / Program Name': c.name || '',
+      'Course Code': c.code || c.category || c.badge || '',
+      'Duration': c.duration || c.period || (c.duration_days ? (c.duration_days >= 365 ? `${Math.round(c.duration_days / 365)} Year${Math.round(c.duration_days / 365) > 1 ? 's' : ''}` : `${Math.round(c.duration_days / 30)} Month${Math.round(c.duration_days / 30) > 1 ? 's' : ''}`) : ''),
+      'Tuition Fee (₹)': c.price || 0,
+      'Description': c.description || '',
+      'Status': c.is_active === false ? 'Inactive' : 'Active',
+    }));
+    ws = XLSX.utils.json_to_sheet(rows);
+  }
 
-  const ws = XLSX.utils.json_to_sheet(rows);
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Courses_Fee_Structure');
+  XLSX.utils.book_append_sheet(wb, ws, 'Courses_and_Programs');
   XLSX.writeFile(wb, filename);
 }
 
 export function exportCoursesToCsv(courses: any[], filename = 'courses_export.csv') {
-  const rows = courses.map((c, idx) => ({
-    '#': idx + 1,
-    'Course / Program Name': c.name || '',
-    'Category / Branch': Array.isArray(c.categories) ? c.categories.join(', ') : (c.category || c.department || ''),
-    'Classification': c.classification || c.degree_type || '',
-    'Duration': c.durationText || c.period || (c.duration_days ? `${Math.round(c.duration_days / 365)} Years` : '1 Year'),
-    'Tuition Fee (₹)': c.price || 0,
-    'Features / Description': Array.isArray(c.features) ? c.features.join(', ') : (c.description || ''),
-    'Status': c.is_active === false ? 'Inactive' : 'Active',
-  }));
+  let csv = '';
+  if (!courses || courses.length === 0) {
+    csv = Papa.unparse({
+      fields: COURSE_TEMPLATE_HEADERS,
+      data: [],
+    });
+  } else {
+    const rows = courses.map((c, idx) => ({
+      '#': idx + 1,
+      'Course / Program Name': c.name || '',
+      'Course Code': c.code || c.category || c.badge || '',
+      'Duration': c.duration || c.period || (c.duration_days ? (c.duration_days >= 365 ? `${Math.round(c.duration_days / 365)} Year${Math.round(c.duration_days / 365) > 1 ? 's' : ''}` : `${Math.round(c.duration_days / 30)} Month${Math.round(c.duration_days / 30) > 1 ? 's' : ''}`) : ''),
+      'Tuition Fee (₹)': c.price || 0,
+      'Description': c.description || '',
+      'Status': c.is_active === false ? 'Inactive' : 'Active',
+    }));
+    csv = Papa.unparse(rows);
+  }
 
-  const csv = Papa.unparse(rows);
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
@@ -1233,19 +1224,23 @@ export function normalizeCourseImportRow(raw: any): CourseImportRow {
   };
 
   const name = findVal('courseprogramname', 'coursename', 'programname', 'name', 'title');
-  const category = findVal('categorydepartment', 'category', 'department', 'branch');
+  const code = findVal('coursecode', 'code', 'categorydepartment', 'category', 'badge');
+  const category = code;
   const degreeType = findVal('classificationdegreetype', 'classification', 'degreetype', 'type');
+  const duration = findVal('duration', 'period', 'courseduration');
   const durationYears = findVal('durationinyears', 'durationyears', 'years', 'year');
   const durationMonths = findVal('durationinmonths', 'durationmonths', 'months', 'month');
-  const price = findVal('tuitionprogramfee', 'fee', 'price', 'amount', 'cost');
+  const price = findVal('tuitionfee', 'tuitionprogramfee', 'fee', 'price', 'amount', 'cost');
   const language = findVal('mediumofinstruction', 'medium', 'language', 'lang');
   const description = findVal('description', 'desc', 'features', 'details');
   const status = findVal('status') || 'Active';
 
   return {
     name,
+    code,
     category,
     degreeType,
+    duration,
     durationYears,
     durationMonths,
     price,
@@ -1282,14 +1277,7 @@ export const SHIFT_TEMPLATE_HEADERS = [
 ];
 
 export function downloadShiftTemplateSampleXlsx() {
-  const sampleRows = [
-    SHIFT_TEMPLATE_HEADERS,
-    ['GEN', 'General Day Shift', '09:00', '18:00', 60, 15, 'No', '#7c3aed'],
-    ['MORN', 'Morning Shift', '06:00', '14:00', 30, 10, 'No', '#059669'],
-    ['EVE', 'Evening Shift', '14:00', '22:00', 45, 15, 'No', '#d97706'],
-    ['NGT', 'Night Shift', '22:00', '06:00', 60, 15, 'Yes', '#475569'],
-  ];
-  const ws = XLSX.utils.aoa_to_sheet(sampleRows);
+  const ws = XLSX.utils.aoa_to_sheet([SHIFT_TEMPLATE_HEADERS]);
   ws['!cols'] = [
     { wch: 16 },
     { wch: 28 },
@@ -1306,15 +1294,9 @@ export function downloadShiftTemplateSampleXlsx() {
 }
 
 export function downloadShiftTemplateSampleCsv() {
-  const sampleRows = [
-    ['GEN', 'General Day Shift', '09:00', '18:00', 60, 15, 'No', '#7c3aed'],
-    ['MORN', 'Morning Shift', '06:00', '14:00', 30, 10, 'No', '#059669'],
-    ['EVE', 'Evening Shift', '14:00', '22:00', 45, 15, 'No', '#d97706'],
-    ['NGT', 'Night Shift', '22:00', '06:00', 60, 15, 'Yes', '#475569'],
-  ];
   const csv = Papa.unparse({
     fields: SHIFT_TEMPLATE_HEADERS,
-    data: sampleRows,
+    data: [],
   });
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
@@ -1425,18 +1407,7 @@ export const HOLIDAY_TEMPLATE_HEADERS = [
 ];
 
 export function downloadHolidaySampleXlsx() {
-  const sampleRows = [
-    HOLIDAY_TEMPLATE_HEADERS,
-    ['Republic Day', '2026-01-26', 'National', 'National holiday celebration'],
-    ['Maha Shivaratri', '2026-02-15', 'Festival', 'Lord Shiva annual festival'],
-    ['Holi', '2026-03-04', 'Festival', 'Festival of colors'],
-    ['Good Friday', '2026-04-03', 'Gazetted', 'Christian holy day'],
-    ['Independence Day', '2026-08-15', 'National', 'Indian Independence day celebration'],
-    ['Gandhi Jayanti', '2026-10-02', 'National', 'Mahatma Gandhi birth anniversary'],
-    ['Diwali (Deepavali)', '2026-11-08', 'Festival', 'Festival of lights celebration'],
-    ['Christmas Day', '2026-12-25', 'Public', 'Christmas holiday celebration'],
-  ];
-  const ws = XLSX.utils.aoa_to_sheet(sampleRows);
+  const ws = XLSX.utils.aoa_to_sheet([HOLIDAY_TEMPLATE_HEADERS]);
   ws['!cols'] = [
     { wch: 26 },
     { wch: 22 },
@@ -1449,19 +1420,9 @@ export function downloadHolidaySampleXlsx() {
 }
 
 export function downloadHolidaySampleCsv() {
-  const sampleRows = [
-    ['Republic Day', '2026-01-26', 'National', 'National holiday celebration'],
-    ['Maha Shivaratri', '2026-02-15', 'Festival', 'Lord Shiva annual festival'],
-    ['Holi', '2026-03-04', 'Festival', 'Festival of colors'],
-    ['Good Friday', '2026-04-03', 'Gazetted', 'Christian holy day'],
-    ['Independence Day', '2026-08-15', 'National', 'Indian Independence day celebration'],
-    ['Gandhi Jayanti', '2026-10-02', 'National', 'Mahatma Gandhi birth anniversary'],
-    ['Diwali (Deepavali)', '2026-11-08', 'Festival', 'Festival of lights celebration'],
-    ['Christmas Day', '2026-12-25', 'Public', 'Christmas holiday celebration'],
-  ];
   const csv = Papa.unparse({
     fields: HOLIDAY_TEMPLATE_HEADERS,
-    data: sampleRows,
+    data: [],
   });
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);

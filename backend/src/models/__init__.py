@@ -6,7 +6,7 @@ from .biometric_device import BiometricDevice
 from .employee import employeeProfile, EmployeeProfile
 from .payroll import PayrollInvoice
 from .plan import MembershipPlan
-from .course import Course, StudentCourse
+from .course import Course
 from .settings import Branch, Setting, PaymentMethod, FeatureControl, vahdBranch, vahdSetting, MasterData
 from .crm import (
     PushNotificationTemplate, NotificationBroadcast, LiveNotification, UserDeviceToken,

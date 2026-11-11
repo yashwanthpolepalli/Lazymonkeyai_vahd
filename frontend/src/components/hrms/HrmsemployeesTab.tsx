@@ -625,6 +625,8 @@ export function HrmsemployeesTab() {
       owner_id: ownerId,
       ho_id: hoId,
       empNo,
+      code: empNo,
+      employee_code: empNo,
       name,
       email,
       phone,
@@ -1133,10 +1135,10 @@ export function HrmsemployeesTab() {
                         type="button"
                         onClick={() => setSelectedEmployeeForView(t)}
                         className="px-3 py-1.5 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/60 rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
-                        title="View Full Employee Dossier / Service Form"
+                        title="View Full Employee Dossier"
                       >
-                        <Icon name="file-text" size={13} className="text-indigo-600" />
-                        <span>Form</span>
+                        <Icon name="eye" size={13} className="text-indigo-600" />
+                        <span>View</span>
                       </button>
                       <button
                         onClick={() => {
@@ -1588,10 +1590,10 @@ export function HrmsemployeesTab() {
                               type="button"
                               onClick={() => setSelectedEmployeeForView(t)}
                               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 hover:text-indigo-800 border border-indigo-200/80 shadow-2xs transition-all active:scale-[0.98] cursor-pointer"
-                              title="View Full Employee Dossier / Service Form"
+                              title="View Full Employee Dossier"
                             >
-                              <Icon name="file-text" size={13} className="text-indigo-600" />
-                              <span>Form</span>
+                              <Icon name="eye" size={13} className="text-indigo-600" />
+                              <span>View</span>
                             </button>
                             <button
                               type="button"

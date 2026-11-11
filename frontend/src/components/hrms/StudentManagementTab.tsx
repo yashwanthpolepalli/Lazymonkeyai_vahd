@@ -1381,10 +1381,10 @@ export function StudentManagementTab() {
                           <button
                             type="button"
                             onClick={() => setSelectedStudentForView(s)}
-                            className="p-1.5 rounded-lg text-blue-600 hover transition font-bold"
+                            className="p-1.5 rounded-lg text-blue-600 hover:bg-blue-50 transition font-bold"
                             title="View Full Admission Dossier"
                           >
-                            <Icon name="file-text" size={15} />
+                            <Icon name="eye" size={15} />
                           </button>
                           <button
                             type="button"
@@ -1553,9 +1553,9 @@ export function StudentManagementTab() {
                   <button
                     type="button"
                     onClick={() => setSelectedStudentForView(s)}
-                    className="px-2.5 py-1.5 rounded-xl bg-blue-50 hover text-blue-700 text-xs font-bold transition flex items-center gap-1.5"
+                    className="px-2.5 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold transition flex items-center gap-1.5"
                   >
-                    <Icon name="file-text" size={13} /> Admission Form
+                    <Icon name="eye" size={13} /> View Dossier
                   </button>
                   <div className="flex items-center gap-1">
                     <button
@@ -1717,7 +1717,7 @@ export function StudentManagementTab() {
                     {getStudentCourse(selectedStudentForView)}
                   </div>
                   <span className="text-xs font-semibold text-slate-500">
-                    {selectedStudentForView.meta_data?.medium ? `Medium: ${selectedStudentForView.meta_data.medium}` : ''} {selectedStudentForView.meta_data?.academic_year ? `• Academic Year: ${selectedStudentForView.meta_data.academic_year}` : ''}
+                    Student No: <span className="font-mono font-bold text-blue-700">{selectedStudentForView.member_code || (selectedStudentForView as any).code || (selectedStudentForView as any).roll_number || '—'}</span> {selectedStudentForView.meta_data?.medium ? `• Medium: ${selectedStudentForView.meta_data.medium}` : ''} {selectedStudentForView.meta_data?.academic_year ? `• Academic Year: ${selectedStudentForView.meta_data.academic_year}` : ''}
                   </span>
                 </div>
                 {(selectedStudentForView.face_image || selectedStudentForView.profile_image) && (

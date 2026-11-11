@@ -133,23 +133,35 @@ export function HrmsImportExportControls({
   return (
     <div className={`flex items-center gap-2 shrink-0 flex-nowrap ${className}`}>
       
-      {/* 1. Import Dropdown */}
-      <div className="relative" ref={importDropdownRef}>
+      {/* 1. Import Button with Dropdown Options */}
+      <div className="relative inline-flex rounded-xl shadow-2xs" ref={importDropdownRef}>
+        <button
+          type="button"
+          onClick={() => {
+            setImportModalOpen(true);
+            setImportDropdownOpen(false);
+            setExportDropdownOpen(false);
+          }}
+          className="px-3 py-2 rounded-l-xl text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 border border-r-0 border-slate-200/90 flex items-center gap-1.5 transition-all cursor-pointer active:scale-[0.98]"
+          title={`Import ${type.charAt(0).toUpperCase() + type.slice(1)}`}
+        >
+          <Icon name="upload" size={14} className="text-slate-600" />
+          <span>Import</span>
+        </button>
         <button
           type="button"
           onClick={() => {
             setImportDropdownOpen(!importDropdownOpen);
             setExportDropdownOpen(false);
           }}
-          className="px-3.5 py-2 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/90 flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer active:scale-[0.98]"
-          title={`Import ${type.charAt(0).toUpperCase() + type.slice(1)}`}
+          className="px-2 py-2 rounded-r-xl bg-white hover:bg-slate-50 text-slate-500 hover:text-slate-700 border border-slate-200/90 transition-all cursor-pointer"
+          title="Import Options & Sample Templates"
         >
-          <Icon name="upload" size={14} className="text-slate-600" />
-          <span>Import</span>
+          <Icon name="chevron-down" size={13} />
         </button>
 
         {importDropdownOpen && (
-          <div className="absolute left-0 mt-1.5 w-52 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl py-1.5 z-40 animate-fade-in text-xs font-bold">
+          <div className="absolute left-0 top-full mt-1.5 w-52 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl py-1.5 z-50 animate-fade-in text-xs font-bold">
             <button
               type="button"
               onClick={() => {
@@ -201,25 +213,32 @@ export function HrmsImportExportControls({
         )}
       </div>
 
-      {/* 2. Export Dropdown */}
+      {/* 2. Export Button with Dropdown Options */}
       {showExport && (
-        <div className="relative" ref={exportDropdownRef}>
+        <div className="relative inline-flex rounded-xl shadow-2xs" ref={exportDropdownRef}>
+          <button
+            type="button"
+            onClick={handleExportXlsx}
+            className="px-3 py-2 rounded-l-xl text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 border border-r-0 border-slate-200/90 flex items-center gap-1.5 transition-all cursor-pointer active:scale-[0.98]"
+            title="Export to Excel (.xlsx)"
+          >
+            <Icon name="download" size={14} className="text-slate-600" />
+            <span>Export</span>
+          </button>
           <button
             type="button"
             onClick={() => {
               setExportDropdownOpen(!exportDropdownOpen);
               setImportDropdownOpen(false);
             }}
-            className="px-3.5 py-2 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/90 flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer active:scale-[0.98]"
-            title="Export Records"
+            className="px-2 py-2 rounded-r-xl bg-white hover:bg-slate-50 text-slate-500 hover:text-slate-700 border border-slate-200/90 transition-all cursor-pointer"
+            title="Export Options"
           >
-            <Icon name="download" size={14} className="text-slate-600" />
-            <span>Export</span>
-            <Icon name="chevron-down" size={13} className="text-slate-400" />
+            <Icon name="chevron-down" size={13} />
           </button>
 
           {exportDropdownOpen && (
-            <div className="absolute right-0 mt-1.5 w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl py-1.5 z-40 animate-fade-in text-xs font-bold">
+            <div className="absolute right-0 top-full mt-1.5 w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl py-1.5 z-50 animate-fade-in text-xs font-bold">
               <button
                 type="button"
                 onClick={handleExportXlsx}

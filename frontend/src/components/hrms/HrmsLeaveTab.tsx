@@ -12,6 +12,7 @@ import {
 } from '@/services/hrmsApi';
 import { cn } from '@/utils/cn';
 import { apiClient } from '@/services/apiClient';
+import { getLeaveReasonType } from '@/components/settings/MasterDataSettings';
 
 interface HrmsLeaveTabProps {
   onSuccessToast?: (msg: string) => void;
@@ -66,16 +67,26 @@ export function HrmsLeaveTab({ onSuccessToast, scope }: HrmsLeaveTabProps) {
   const [formReason, setFormReason] = useState('');
   const [selectedReasonName, setSelectedReasonName] = useState('');
 
-  // Dynamically derived from DB-backed leaveTypes (zero hardcoded mock data)
+  // Dynamically derived from DB-backed leaveTypes, filtered according to employee vs student scope
   const leaveReasonsList = useMemo(() => {
+    const targetScope = scope || leaveScope;
     return leaveTypes
-      .filter((r) => r.is_active !== false)
+      .filter((r) => {
+        if (r.is_active === false) return false;
+        const audience = getLeaveReasonType(r as any);
+        if (targetScope === 'student') {
+          return audience === 'student' || audience === 'both';
+        } else if (targetScope === 'employee') {
+          return audience === 'employee' || audience === 'both';
+        }
+        return true;
+      })
       .map((r) => ({
         id: r.id,
         name: r.name,
         days: r.annual_quota || 0,
       }));
-  }, [leaveTypes]);
+  }, [leaveTypes, scope, leaveScope]);
 
   useEffect(() => {
     const handleSync = () => {

@@ -183,13 +183,13 @@ export const SETTING_CARDS: SettingCardConfig[] = [
   },
   {
     id: 'courses',
-    title: 'Courses',
+    title: 'Course & Medium',
     type: 'courses',
     icon: 'graduation-cap',
     iconBg: 'bg-emerald-50 text-emerald-600 border-emerald-100',
     iconColor: 'text-emerald-600',
     waveColor: 'text-emerald-200/70',
-    description: 'Branch courses & streams'
+    description: 'Courses, duration tiers & mediums'
   },
   {
     id: 'erp',
@@ -262,7 +262,7 @@ export function SettingsPage() {
     if (rawTab === 'department') return 'departments';
     if (rawTab === 'qualification') return 'qualifications';
     if (rawTab === 'specialization') return 'specializations';
-    if (rawTab === 'course' || rawTab === 'memberships' || rawTab === 'plans') return 'courses';
+    if (rawTab === 'course' || rawTab === 'courses' || rawTab === 'memberships' || rawTab === 'plans' || rawTab === 'medium' || rawTab === 'course_medium') return 'courses';
     if (rawTab === 'general' || rawTab === 'profile' || rawTab === 'account' || rawTab === 'password' || rawTab === 'reset-password' || rawTab === 'security') return 'general';
     if (rawTab === 'report' || rawTab === 'analytics') return 'reports';
     if (rawTab === 'role' || rawTab === 'roles') {
@@ -1154,10 +1154,10 @@ export function SettingsPage() {
                   <Icon name="chevron-right" size={12} />
                   <span className="hover:text-blue-600 cursor-pointer" onClick={() => handleSelectSection(null)}>Settings</span>
                   <Icon name="chevron-right" size={12} />
-                  <span className="text-slate-800 font-bold">Courses</span>
+                  <span className="text-slate-800 font-bold">Course &amp; Medium</span>
                 </div>
-                <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Courses</h2>
-                <p className="text-xs text-slate-500 font-medium">Settings · Branch Courses &amp; Stream Structures</p>
+                <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Course &amp; Medium</h2>
+                <p className="text-xs text-slate-500 font-medium">Settings · Course Programs, Duration Tiers &amp; Instruction Mediums</p>
               </div>
             </div>
           </div>

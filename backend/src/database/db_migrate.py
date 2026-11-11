@@ -253,7 +253,6 @@ def _backfill_tenant_scoping(conn, inspector) -> None:
     child_rules = [
         # (child_table, child_col, source_table, source_col)
         ("memberships",          "student_id", "students",            "tenant_id"),
-        ("student_courses",      "student_id", "students",            "tenant_id"),
         ("biometric_logs",       "student_id", "students",            "tenant_id"),
         ("payroll_invoices",     "employee_id","employee_profiles",    "tenant_id"),
         ("hrms_documents",       "employee_id","hrms_employees",      "tenant_id"),

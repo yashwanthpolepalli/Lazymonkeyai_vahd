@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import * as XLSX from 'xlsx';
+import Papa from 'papaparse';
 import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/utils/cn';
 import { hrmsApi } from '@/services/hrmsApi';
@@ -58,7 +60,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
   { id: 'surgical_types', title: 'Surgical Type', icon: 'settings', bgLight: 'bg-blue-100', textColor: 'text-blue-700', codePrefix: 'STP' },
   { id: 'surgical', title: 'Surgical', icon: 'plus-circle', bgLight: 'bg-indigo-100', textColor: 'text-indigo-700', codePrefix: 'SUR' },
   { id: 'qualifications', title: 'Qualification', icon: 'book-open', bgLight: 'bg-sky-100', textColor: 'text-sky-700', codePrefix: 'QLF' },
-  { id: 'specializations', title: 'Specialization', icon: 'file-text', bgLight: 'bg-slate-100', textColor: 'text-slate-800', parentCategory: 'qualifications', codePrefix: 'SPC' },
+  { id: 'specializations', title: 'Specialization', icon: 'file-text', bgLight: 'bg-slate-100', textColor: 'text-slate-800', codePrefix: 'SPC' },
   { id: 'leave_reasons', title: 'Leave Reasons', icon: 'clock', bgLight: 'bg-emerald-100', textColor: 'text-emerald-700', codePrefix: 'LVR' },
   { id: 'grampanchayath', title: 'Grampanchayath', icon: 'home', bgLight: 'bg-emerald-100', textColor: 'text-emerald-700', codePrefix: 'GP' },
   { id: 'allocation_forms', title: 'Allocation Form', icon: 'file-spreadsheet', bgLight: 'bg-indigo-100', textColor: 'text-indigo-700', codePrefix: 'ALF' },
@@ -115,6 +117,14 @@ export function getTechnicalSkillType(item: Partial<MasterDataItem> | { name?: s
   return 'both';
 }
 
+export function getLeaveReasonType(item: Partial<MasterDataItem> | { name?: string; extra_info?: string; description?: string; category?: string }): 'student' | 'employee' | 'both' {
+  const extra = (item.extra_info || (item as any).category || '').toLowerCase().trim();
+  if (extra === 'student' || extra === 'students') return 'student';
+  if (extra === 'employee' || extra === 'employees' || extra === 'staff') return 'employee';
+  if (extra === 'both' || extra === 'all') return 'both';
+  return 'both';
+}
+
 export interface MasterDataSettingsProps {
   selectedCatId?: string | null;
   onBack?: () => void;
@@ -139,10 +149,15 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
       if (stored) {
         const parsed = JSON.parse(stored);
         if (parsed && typeof parsed === 'object') {
-          // Remove any legacy hardcoded dummy seeded records
+          // Remove any legacy hardcoded dummy seeded records or corrupted binary strings
           Object.keys(parsed).forEach((k) => {
             if (Array.isArray(parsed[k])) {
-              parsed[k] = parsed[k].filter((it: MasterDataItem) => !it.id?.startsWith('dept_seed_'));
+              parsed[k] = parsed[k].filter((it: MasterDataItem) => {
+                if (!it || !it.name) return false;
+                if (it.id?.startsWith('dept_seed_')) return false;
+                if (it.name.includes('docProps') || it.name.includes('PK\x03\x04') || /[\x00-\x08\x0B\x0C\x0E-\x1F]/.test(it.name)) return false;
+                return true;
+              });
             }
           });
           return parsed;
@@ -192,14 +207,20 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
     if (selectedCatId === 'leave_reasons' || !selectedCatId) {
       hrmsApi.getLeaveTypes().then((types) => {
         if (Array.isArray(types) && types.length > 0) {
-          const mapped: MasterDataItem[] = types.map((t) => ({
-            id: t.id,
-            name: t.name,
-            code: t.code,
-            days: t.annual_quota || 0,
-            is_active: t.is_active,
-            description: t.description || '',
-          }));
+          const mapped: MasterDataItem[] = types.map((t) => {
+            const rawExtra = (t as any).extra_info || (t as any).applicable_for || (t.category && t.category.toLowerCase() !== 'general leave' ? t.category : undefined);
+            const extra = getLeaveReasonType({ extra_info: rawExtra });
+            return {
+              id: t.id,
+              name: t.name,
+              code: t.code,
+              days: t.annual_quota || 0,
+              is_active: t.is_active,
+              description: t.description || '',
+              extra_info: extra,
+            };
+          });
+
           setMasterStore((prev) => {
             const next = { ...prev, leave_reasons: mapped };
             try {
@@ -307,6 +328,10 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
   const [skillTab, setSkillTab] = useState<'all' | 'employees' | 'students'>('all');
   const [skillTypeInModal, setSkillTypeInModal] = useState<'student' | 'employee' | 'both'>('both');
 
+  // Leave Reasons Sub-View State (All Leave Reasons vs Employees Leaves vs Students Leaves)
+  const [leaveTab, setLeaveTab] = useState<'all' | 'employees' | 'students'>('all');
+  const [leaveTypeInModal, setLeaveTypeInModal] = useState<'student' | 'employee' | 'both'>('both');
+
   // Modal State
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'add' | 'edit' | 'view'>('add');
@@ -329,6 +354,23 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const exportDropdownRef = useRef<HTMLDivElement | null>(null);
+  const templateDropdownRef = useRef<HTMLDivElement | null>(null);
+  const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
+  const [templateDropdownOpen, setTemplateDropdownOpen] = useState(false);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (exportDropdownRef.current && !exportDropdownRef.current.contains(event.target as Node)) {
+        setExportDropdownOpen(false);
+      }
+      if (templateDropdownRef.current && !templateDropdownRef.current.contains(event.target as Node)) {
+        setTemplateDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Department count metrics for the view switcher
   const deptCounts = useMemo(() => {
@@ -352,6 +394,20 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
     let students = 0;
     items.forEach((it) => {
       const t = getTechnicalSkillType(it);
+      if (t === 'employee' || t === 'both') employees++;
+      if (t === 'student' || t === 'both') students++;
+    });
+    return { all: items.length, employees, students };
+  }, [selectedCatId, masterStore]);
+
+  // Leave Reasons count metrics for the view switcher
+  const leaveCounts = useMemo(() => {
+    if (selectedCatId !== 'leave_reasons') return { all: 0, employees: 0, students: 0 };
+    const items = masterStore['leave_reasons'] || [];
+    let employees = 0;
+    let students = 0;
+    items.forEach((it) => {
+      const t = getLeaveReasonType(it);
       if (t === 'employee' || t === 'both') employees++;
       if (t === 'student' || t === 'both') students++;
     });
@@ -385,13 +441,25 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
           return t === 'employee' || t === 'both';
         });
       }
+    } else if (selectedCatId === 'leave_reasons') {
+      if (leaveTab === 'students') {
+        base = base.filter((item) => {
+          const t = getLeaveReasonType(item);
+          return t === 'student' || t === 'both';
+        });
+      } else if (leaveTab === 'employees') {
+        base = base.filter((item) => {
+          const t = getLeaveReasonType(item);
+          return t === 'employee' || t === 'both';
+        });
+      }
     }
     const active = base.filter((i) => i.is_active).length;
     const inactive = base.filter((i) => !i.is_active).length;
     return { all: base.length, active, inactive };
-  }, [categoryItems, selectedCatId, deptTab, skillTab]);
+  }, [categoryItems, selectedCatId, deptTab, skillTab, leaveTab]);
 
-  // Filtered rows (respects department/skill view tab + dynamic active/inactive filter + search)
+  // Filtered rows (respects department/skill/leave view tab + dynamic active/inactive filter + search)
   const filteredItems = useMemo(() => {
     let base = categoryItems;
     if (selectedCatId === 'departments') {
@@ -415,6 +483,18 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
       } else if (skillTab === 'employees') {
         base = base.filter((item) => {
           const t = getTechnicalSkillType(item);
+          return t === 'employee' || t === 'both';
+        });
+      }
+    } else if (selectedCatId === 'leave_reasons') {
+      if (leaveTab === 'students') {
+        base = base.filter((item) => {
+          const t = getLeaveReasonType(item);
+          return t === 'student' || t === 'both';
+        });
+      } else if (leaveTab === 'employees') {
+        base = base.filter((item) => {
+          const t = getLeaveReasonType(item);
           return t === 'employee' || t === 'both';
         });
       }
@@ -571,12 +651,18 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
     const initialSkillType = skillTab === 'employees' ? 'employee' : skillTab === 'students' ? 'student' : 'both';
     setSkillTypeInModal(initialSkillType);
 
+    // Automatically pre-select Leave Reasons mapping
+    const initialLeaveType = leaveTab === 'employees' ? 'employee' : leaveTab === 'students' ? 'student' : 'both';
+    setLeaveTypeInModal(initialLeaveType);
+
     setFormExtra(
       selectedCatId === 'departments'
         ? initialDeptType
         : selectedCatId === 'technical_skills'
           ? initialSkillType
-          : ''
+          : selectedCatId === 'leave_reasons'
+            ? initialLeaveType
+            : ''
     );
 
     setFormCheckIn('');
@@ -603,12 +689,17 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
     const sType = getTechnicalSkillType(item);
     setSkillTypeInModal(sType);
 
+    const lType = getLeaveReasonType(item);
+    setLeaveTypeInModal(lType);
+
     setFormExtra(
       selectedCatId === 'departments'
         ? (item.extra_info || dType)
         : selectedCatId === 'technical_skills'
           ? (item.extra_info || sType)
-          : (item.extra_info || '')
+          : selectedCatId === 'leave_reasons'
+            ? (item.extra_info || lType)
+            : (item.extra_info || '')
     );
 
     setFormCheckIn(item.check_in_time || '');
@@ -635,12 +726,17 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
     const sType = getTechnicalSkillType(item);
     setSkillTypeInModal(sType);
 
+    const lType = getLeaveReasonType(item);
+    setLeaveTypeInModal(lType);
+
     setFormExtra(
       selectedCatId === 'departments'
         ? (item.extra_info || dType)
         : selectedCatId === 'technical_skills'
           ? (item.extra_info || sType)
-          : (item.extra_info || '')
+          : selectedCatId === 'leave_reasons'
+            ? (item.extra_info || lType)
+            : (item.extra_info || '')
     );
 
     setFormCheckIn(item.check_in_time || '');
@@ -675,13 +771,16 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
       ? deptTypeInModal
       : selectedCatId === 'technical_skills'
         ? skillTypeInModal
-        : (formExtra.trim() || resolvedParentCode || undefined);
+        : selectedCatId === 'leave_reasons'
+          ? leaveTypeInModal
+          : (formExtra.trim() || resolvedParentCode || undefined);
 
     if (modalMode === 'edit' && editingItem) {
       if (selectedCatId === 'leave_reasons') {
         hrmsApi.updateLeaveType(editingItem.id, {
           name: formName.trim(),
           code: formCode.trim() || editingItem.code,
+          category: leaveTypeInModal,
           annual_quota: parseFloat(formDays) || 15,
           is_active: formActive,
         }).catch(() => { });
@@ -743,6 +842,7 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
         hrmsApi.createLeaveType({
           name: formName.trim(),
           code: autoCode,
+          category: leaveTypeInModal,
           annual_quota: parseFloat(formDays) || 15,
           paid_type: 'PAID',
           is_paid: true,
@@ -865,43 +965,26 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
     setSelectedItemIds([]);
   };
 
-  // Dynamic Template CSV Download without hardcoded dummy values
+  // Dynamic Template CSV Download (headers only, zero hardcoded dummy data)
   const handleDownloadSampleCsv = () => {
     if (!selectedCategory) return;
     let headers: string[] = [];
-    let sampleRows: string[][] = [];
 
     if (selectedCategory.id === 'technical_skills') {
       headers = ['NAME', 'CODE', 'MAPPING', 'IS_ACTIVE', 'DESCRIPTION'];
-      sampleRows = [
-        ['Veterinary Surgery & Clinical Care', 'SKL-101', 'Both', 'TRUE', 'Major/minor surgical interventions'],
-        ['Artificial Insemination & Theriogenology', 'SKL-102', 'Employee', 'TRUE', 'Bovine AI and reproductive tech'],
-        ['Ultrasonography & Diagnostic Imaging', 'SKL-103', 'Both', 'TRUE', 'Soft tissue and abdominal scans'],
-        ['Veterinary Clinical Pathology', 'SKL-104', 'Student', 'TRUE', 'Hematology and biochemistry diagnostics'],
-      ];
     } else if (selectedCategory.id === 'departments') {
-      headers = ['NAME', 'CODE', 'IS_ACTIVE', 'TYPE', 'DESCRIPTION'];
-      sampleRows = [
-        ['Animal Nutrition', 'ANUT', 'TRUE', 'Both', 'Nutrition & Feed tech department'],
-        ['Veterinary Anatomy', 'VANAT', 'TRUE', 'Student', 'Academic anatomy department'],
-        ['Administrative Office', 'ADMIN', 'TRUE', 'Employee', 'Central administration'],
-      ];
+      headers = ['NAME', 'CODE', 'TYPE', 'IS_ACTIVE', 'DESCRIPTION'];
     } else if (selectedCategory.id === 'institution_types') {
       headers = ['NAME', 'CODE', 'CHECK_IN', 'CHECK_OUT', 'LEVEL', 'DISPLAY_ORDER', 'IS_ACTIVE'];
-      sampleRows = [['Veterinary Polyclinic', 'VPC', '09:00 AM', '05:00 PM', '1', '1', 'TRUE']];
     } else if (selectedCategory.id === 'leave_reasons') {
-      headers = ['NAME', 'DAYS', 'IS_ACTIVE'];
-      sampleRows = [['Casual Leave', '15', 'TRUE']];
+      headers = ['NAME', 'CODE', 'DAYS', 'APPLICABLE_FOR', 'IS_ACTIVE', 'DESCRIPTION'];
     } else if (selectedCategory.parentCategory) {
       headers = ['NAME', 'CODE', 'IS_ACTIVE', 'PARENT_NAME'];
-      sampleRows = [['Sample Name', `${selectedCategory.codePrefix}-001`, 'TRUE', 'Parent Category']];
     } else {
-      headers = ['NAME', 'CODE', 'IS_ACTIVE'];
-      sampleRows = [['Sample Name', `${selectedCategory.codePrefix}-001`, 'TRUE']];
+      headers = ['NAME', 'CODE', 'IS_ACTIVE', 'DESCRIPTION'];
     }
 
-    const csvLines = [headers.join(','), ...sampleRows.map((r) => r.map((c) => `"${c}"`).join(','))];
-    const csvContent = csvLines.join('\n');
+    const csvContent = Papa.unparse({ fields: headers, data: [] });
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -913,45 +996,34 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
     URL.revokeObjectURL(url);
   };
 
-  // Dynamic Template Excel (.xlsx / .xls) Download
+  // Dynamic Template Excel (.xlsx) Download (headers only, zero hardcoded dummy data)
   const handleDownloadSampleXlsx = () => {
     if (!selectedCategory) return;
     let headers: string[] = [];
-    let sampleRows: string[][] = [];
 
     if (selectedCategory.id === 'technical_skills') {
       headers = ['NAME', 'CODE', 'MAPPING', 'IS_ACTIVE', 'DESCRIPTION'];
-      sampleRows = [
-        ['Veterinary Surgery & Clinical Care', 'SKL-101', 'Both', 'TRUE', 'Major/minor surgical interventions'],
-        ['Artificial Insemination & Theriogenology', 'SKL-102', 'Employee', 'TRUE', 'Bovine AI and reproductive tech'],
-        ['Ultrasonography & Diagnostic Imaging', 'SKL-103', 'Both', 'TRUE', 'Soft tissue and abdominal scans'],
-        ['Veterinary Clinical Pathology', 'SKL-104', 'Student', 'TRUE', 'Hematology and biochemistry diagnostics'],
-      ];
     } else if (selectedCategory.id === 'departments') {
-      headers = ['NAME', 'CODE', 'IS_ACTIVE', 'TYPE', 'DESCRIPTION'];
-      sampleRows = [
-        ['Animal Nutrition', 'ANUT', 'TRUE', 'Both', 'Nutrition & Feed tech department'],
-        ['Veterinary Anatomy', 'VANAT', 'TRUE', 'Student', 'Academic anatomy department'],
-        ['Administrative Office', 'ADMIN', 'TRUE', 'Employee', 'Central administration'],
-      ];
+      headers = ['NAME', 'CODE', 'TYPE', 'IS_ACTIVE', 'DESCRIPTION'];
+    } else if (selectedCategory.id === 'institution_types') {
+      headers = ['NAME', 'CODE', 'CHECK_IN', 'CHECK_OUT', 'LEVEL', 'DISPLAY_ORDER', 'IS_ACTIVE'];
+    } else if (selectedCategory.id === 'leave_reasons') {
+      headers = ['NAME', 'CODE', 'DAYS', 'APPLICABLE_FOR', 'IS_ACTIVE', 'DESCRIPTION'];
+    } else if (selectedCategory.parentCategory) {
+      headers = ['NAME', 'CODE', 'IS_ACTIVE', 'PARENT_NAME'];
     } else {
-      headers = ['NAME', 'CODE', 'IS_ACTIVE'];
-      sampleRows = [['Sample Item', `${selectedCategory.codePrefix}-001`, 'TRUE']];
+      headers = ['NAME', 'CODE', 'IS_ACTIVE', 'DESCRIPTION'];
     }
 
-    const tsvContent = [headers.join('\t'), ...sampleRows.map((r) => r.join('\t'))].join('\n');
-    const blob = new Blob([tsvContent], { type: 'application/vnd.ms-excel;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `template_${selectedCategory.id}.xls`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    const ws = XLSX.utils.aoa_to_sheet([headers]);
+    ws['!cols'] = headers.map((h) => ({ wch: Math.max(h.length + 4, 18) }));
+    const wb = XLSX.utils.book_new();
+    const sheetTitle = selectedCategory.title.replace(/[\\/?*[\]]/g, '').slice(0, 31);
+    XLSX.utils.book_append_sheet(wb, ws, sheetTitle);
+    XLSX.writeFile(wb, `template_${selectedCategory.id}.xlsx`);
   };
 
-  // Export current filtered master data to CSV or Excel
+  // Export current filtered master data to CSV or Excel (.xlsx)
   const handleExportData = (format: 'csv' | 'xlsx') => {
     if (!selectedCategory) return;
     const items = filteredItems;
@@ -976,111 +1048,254 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
         it.is_active ? 'TRUE' : 'FALSE',
         it.description || '',
       ]);
+    } else if (selectedCategory.id === 'institution_types') {
+      headers = ['NAME', 'CODE', 'CHECK_IN', 'CHECK_OUT', 'LEVEL', 'DISPLAY_ORDER', 'IS_ACTIVE'];
+      rows = items.map((it) => [
+        it.name,
+        it.code || '',
+        it.check_in_time || '',
+        it.check_out_time || '',
+        String(it.level ?? ''),
+        String(it.display_order ?? ''),
+        it.is_active ? 'TRUE' : 'FALSE',
+      ]);
+    } else if (selectedCategory.id === 'leave_reasons') {
+      headers = ['NAME', 'CODE', 'DAYS', 'APPLICABLE_FOR', 'IS_ACTIVE', 'DESCRIPTION'];
+      rows = items.map((it) => [
+        it.name,
+        it.code || '',
+        String(it.days ?? ''),
+        getLeaveReasonType(it) === 'employee' ? 'Employee' : getLeaveReasonType(it) === 'student' ? 'Student' : 'Both',
+        it.is_active ? 'TRUE' : 'FALSE',
+        it.description || '',
+      ]);
+    } else if (selectedCategory.parentCategory) {
+      headers = ['NAME', 'CODE', 'IS_ACTIVE', 'PARENT_NAME'];
+      rows = items.map((it) => [
+        it.name,
+        it.code || '',
+        it.is_active ? 'TRUE' : 'FALSE',
+        it.parent_name || '',
+      ]);
     } else {
       headers = ['NAME', 'CODE', 'IS_ACTIVE', 'DESCRIPTION'];
       rows = items.map((it) => [
         it.name,
         it.code || '',
         it.is_active ? 'TRUE' : 'FALSE',
-        it.description || it.parent_name || '',
+        it.description || '',
       ]);
     }
 
-    const separator = format === 'csv' ? ',' : '\t';
-    const mime = format === 'csv' ? 'text/csv;charset=utf-8;' : 'application/vnd.ms-excel;charset=utf-8;';
-    const ext = format === 'csv' ? 'csv' : 'xls';
-
-    const text = [
-      headers.join(separator),
-      ...rows.map((r) => r.map((c) => (format === 'csv' ? `"${(c || '').replace(/"/g, '""')}"` : c)).join(separator)),
-    ].join('\n');
-
-    const blob = new Blob([text], { type: mime });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `${selectedCategory.id}_export.${ext}`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    if (format === 'xlsx') {
+      const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+      ws['!cols'] = headers.map((h, i) => {
+        const maxLen = Math.max(h.length, ...rows.map((r) => String(r[i] || '').length));
+        return { wch: Math.min(Math.max(maxLen + 3, 14), 50) };
+      });
+      const wb = XLSX.utils.book_new();
+      const sheetTitle = selectedCategory.title.replace(/[\\/?*[\]]/g, '').slice(0, 31);
+      XLSX.utils.book_append_sheet(wb, ws, sheetTitle);
+      XLSX.writeFile(wb, `${selectedCategory.id}_export.xlsx`);
+    } else {
+      const csv = Papa.unparse({ fields: headers, data: rows });
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${selectedCategory.id}_export.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
   };
 
-  // CSV Import
-  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Robust Excel (.xlsx, .xls) and CSV (.csv) Import
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !selectedCatId) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const text = String(event.target?.result || '');
-        const lines = text.split(/\r?\n/).filter(Boolean);
-        if (lines.length <= 1) return;
-        const newRecords: MasterDataItem[] = [];
-        for (let i = 1; i < lines.length; i++) {
-          const cols = lines[i].split(',').map((c) => c.trim().replace(/^"|"$/g, ''));
-          if (cols[0]) {
-            let extraVal: string | undefined = undefined;
-            if (selectedCatId === 'departments') {
-              const rawType = cols[3] ? cols[3].toLowerCase() : '';
-              extraVal = (rawType === 'employee' || rawType === 'staff')
-                ? 'employee'
-                : (rawType === 'both' || rawType === 'all')
-                  ? 'both'
-                  : (rawType === 'student' || rawType === 'students' || rawType === 'academic')
-                    ? 'student'
-                    : getDepartmentType({ name: cols[0], extra_info: rawType });
-            } else if (selectedCatId === 'technical_skills') {
-              const rawMapping = cols[2] ? cols[2].toLowerCase() : '';
-              extraVal = (rawMapping === 'employee' || rawMapping === 'staff')
-                ? 'employee'
-                : (rawMapping === 'student' || rawMapping === 'students')
-                  ? 'student'
-                  : 'both';
-            }
 
-            const recItem: MasterDataItem = {
-              id: `${selectedCatId}_imp_${Date.now()}_${i}`,
-              name: cols[0],
-              code: cols[1] || `${selectedCategory?.codePrefix || 'CD'}-${Math.floor(100 + Math.random() * 900)}`,
-              is_active: cols[2] ? cols[2].toUpperCase() !== 'FALSE' : true,
-              extra_info: extraVal,
-              parent_name: selectedCatId !== 'departments' && selectedCatId !== 'technical_skills' ? cols[3] || undefined : undefined,
-              description: selectedCatId === 'departments' ? cols[4] || undefined : selectedCatId === 'technical_skills' ? cols[4] || undefined : undefined,
-            };
-            newRecords.push(recItem);
+    try {
+      const fileNameLower = file.name.toLowerCase();
+      const isExcel = fileNameLower.endsWith('.xlsx') || fileNameLower.endsWith('.xls');
+      let rawRows: any[][] = [];
 
-            // Also persist imported department or skill to backend DB
-            if (selectedCatId === 'departments') {
-              masterDataApi.create('departments', {
-                name: cols[0],
-                code: recItem.code,
-                is_active: recItem.is_active,
-                extra_info: extraVal,
-                description: cols[4] || undefined,
-              }).catch(() => {});
-            } else if (selectedCatId === 'technical_skills') {
-              masterDataApi.create('technical_skills', {
-                name: cols[0],
-                code: recItem.code,
-                is_active: cols[3] ? cols[3].toUpperCase() !== 'FALSE' : true,
-                extra_info: extraVal,
-                description: cols[4] || undefined,
-              }).catch(() => {});
-            }
-          }
+      if (isExcel) {
+        const buffer = await file.arrayBuffer();
+        const workbook = XLSX.read(new Uint8Array(buffer), { type: 'array' });
+        const firstSheetName = workbook.SheetNames[0];
+        if (!firstSheetName) {
+          alert('Excel workbook contains no sheets.');
+          return;
         }
-        if (newRecords.length > 0) {
-          const existing = masterStore[selectedCatId] || [];
-          saveMasterStore({ ...masterStore, [selectedCatId]: [...existing, ...newRecords] });
-          alert(`Successfully imported ${newRecords.length} records into ${selectedCategory?.title}.`);
-        }
-      } catch (err) {
-        alert('Failed to parse file. Please use a valid CSV file.');
+        rawRows = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName], { header: 1, defval: '' });
+      } else {
+        const text = await file.text();
+        const parsed = Papa.parse<string[]>(text, { skipEmptyLines: true });
+        rawRows = parsed.data || [];
       }
-    };
-    reader.readAsText(file);
-    if (fileInputRef.current) fileInputRef.current.value = '';
+
+      if (!rawRows || rawRows.length <= 1) {
+        alert('File contains no data rows.');
+        return;
+      }
+
+      // Read header row
+      const headerRow = (rawRows[0] || []).map((h: any) =>
+        String(h || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '')
+      );
+
+      const findColIdx = (...keys: string[]) => {
+        for (const k of keys) {
+          const cleanKey = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+          const idx = headerRow.findIndex((h) => h === cleanKey || h.includes(cleanKey));
+          if (idx !== -1) return idx;
+        }
+        return -1;
+      };
+
+      const nameIdx = findColIdx('name', 'skillname', 'departmentname', 'title', 'item', 'label') !== -1
+        ? findColIdx('name', 'skillname', 'departmentname', 'title', 'item', 'label')
+        : 0;
+      const codeIdx = findColIdx('code', 'skillcode', 'departmentcode', 'shortcode');
+      const mappingIdx = findColIdx('mapping', 'type', 'applicablefor', 'scope', 'target');
+      const activeIdx = findColIdx('isactive', 'active', 'status');
+      const daysIdx = findColIdx('days', 'numdays', 'count');
+      const descIdx = findColIdx('description', 'desc', 'details', 'notes', 'policy');
+      const parentIdx = findColIdx('parentname', 'parent', 'parentcategory', 'district', 'mandal');
+
+      const isLeave = selectedCatId === 'leave_reasons';
+      const isDept = selectedCatId === 'departments';
+      const isSkills = selectedCatId === 'technical_skills';
+      const isInstType = selectedCatId === 'institution_types';
+
+      const newRecords: MasterDataItem[] = [];
+
+      for (let i = 1; i < rawRows.length; i++) {
+        const row = rawRows[i];
+        if (!row || !row[nameIdx]) continue;
+        const nameVal = String(row[nameIdx] || '').trim();
+        if (!nameVal || nameVal.toLowerCase() === 'name') continue;
+
+        // Skip binary garbage if any
+        if (nameVal.includes('docProps') || nameVal.includes('PK\x03\x04') || /[\x00-\x08\x0B\x0C\x0E-\x1F]/.test(nameVal)) {
+          continue;
+        }
+
+        const rawCode = codeIdx !== -1 && row[codeIdx] ? String(row[codeIdx]).trim() : (row[1] ? String(row[1]).trim() : '');
+        const itemCode = rawCode;
+
+        let extraVal: string | undefined = undefined;
+        if (mappingIdx !== -1 && row[mappingIdx]) {
+          const rawM = String(row[mappingIdx]).trim().toLowerCase();
+          if (rawM === 'employee' || rawM === 'staff') extraVal = 'employee';
+          else if (rawM === 'student' || rawM === 'students' || rawM === 'academic') extraVal = 'student';
+          else if (rawM === 'both' || rawM === 'all') extraVal = 'both';
+          else extraVal = String(row[mappingIdx]).trim();
+        } else if (isDept && row[3]) {
+          const rawM = String(row[3]).trim().toLowerCase();
+          if (rawM === 'employee' || rawM === 'staff') extraVal = 'employee';
+          else if (rawM === 'student' || rawM === 'students') extraVal = 'student';
+          else if (rawM === 'both' || rawM === 'all') extraVal = 'both';
+        } else if (isSkills && row[2]) {
+          const rawM = String(row[2]).trim().toLowerCase();
+          if (rawM === 'employee' || rawM === 'staff') extraVal = 'employee';
+          else if (rawM === 'student' || rawM === 'students') extraVal = 'student';
+          else if (rawM === 'both' || rawM === 'all') extraVal = 'both';
+        }
+
+        // Active status
+        let isActive = true;
+        if (activeIdx !== -1 && row[activeIdx] !== undefined && row[activeIdx] !== '') {
+          const rawA = String(row[activeIdx]).trim().toUpperCase();
+          isActive = rawA !== 'FALSE' && rawA !== '0' && rawA !== 'INACTIVE' && rawA !== 'NO';
+        } else if (isLeave && row[4]) {
+          isActive = String(row[4]).trim().toUpperCase() !== 'FALSE';
+        } else if (row[3] && (String(row[3]).trim().toUpperCase() === 'TRUE' || String(row[3]).trim().toUpperCase() === 'FALSE')) {
+          isActive = String(row[3]).trim().toUpperCase() === 'TRUE';
+        } else if (row[2] && (String(row[2]).trim().toUpperCase() === 'TRUE' || String(row[2]).trim().toUpperCase() === 'FALSE')) {
+          isActive = String(row[2]).trim().toUpperCase() === 'TRUE';
+        }
+
+        // Days
+        let daysVal: number | string | undefined = undefined;
+        if (daysIdx !== -1 && row[daysIdx]) {
+          daysVal = parseInt(String(row[daysIdx]), 10) || String(row[daysIdx]);
+        } else if (isLeave && row[2]) {
+          daysVal = parseInt(String(row[2]), 10) || String(row[2]);
+        }
+
+        // Description
+        let descVal: string | undefined = undefined;
+        if (descIdx !== -1 && row[descIdx]) {
+          descVal = String(row[descIdx]).trim();
+        } else if (isSkills && row[4]) {
+          descVal = String(row[4]).trim();
+        } else if (isDept && row[4]) {
+          descVal = String(row[4]).trim();
+        } else if (isLeave && row[5]) {
+          descVal = String(row[5]).trim();
+        }
+
+        // Parent name
+        let parentVal: string | undefined = undefined;
+        if (parentIdx !== -1 && row[parentIdx]) {
+          parentVal = String(row[parentIdx]).trim();
+        } else if (!isDept && !isSkills && !isLeave && row[3]) {
+          parentVal = String(row[3]).trim();
+        }
+
+        const recItem: MasterDataItem = {
+          id: `${selectedCatId}_imp_${Date.now()}_${i}`,
+          name: nameVal,
+          code: itemCode,
+          days: daysVal,
+          is_active: isActive,
+          extra_info: extraVal,
+          parent_name: parentVal,
+          description: descVal,
+        };
+
+        if (isInstType) {
+          recItem.check_in_time = row[2] ? String(row[2]).trim() : undefined;
+          recItem.check_out_time = row[3] ? String(row[3]).trim() : undefined;
+          recItem.level = row[4] ? String(row[4]).trim() : undefined;
+          recItem.display_order = row[5] ? parseInt(String(row[5]), 10) : undefined;
+          if (row[6]) recItem.is_active = String(row[6]).trim().toUpperCase() !== 'FALSE';
+        }
+
+        newRecords.push(recItem);
+
+        // Persist to backend database API
+        masterDataApi.create(selectedCatId, {
+          name: recItem.name,
+          code: recItem.code,
+          is_active: recItem.is_active,
+          extra_info: recItem.extra_info,
+          description: recItem.description,
+          days: String(recItem.days || ''),
+          parent_name: recItem.parent_name,
+          check_in_time: recItem.check_in_time,
+          check_out_time: recItem.check_out_time,
+          level: recItem.level,
+          display_order: recItem.display_order,
+        }).catch((err) => console.error('Failed to persist imported item', err));
+      }
+
+      if (newRecords.length > 0) {
+        const existing = masterStore[selectedCatId] || [];
+        saveMasterStore({ ...masterStore, [selectedCatId]: [...existing, ...newRecords] });
+        alert(`Successfully imported ${newRecords.length} records into ${selectedCategory?.title}.`);
+      } else {
+        alert('No valid records found in the uploaded file.');
+      }
+    } catch (err: any) {
+      console.error('Import error', err);
+      alert(`Failed to import file: ${err?.message || 'Invalid format'}. Please use a valid Excel (.xlsx) or CSV (.csv) file.`);
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   // Parent options for dropdowns
@@ -1148,27 +1363,93 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                   <span>Import Excel / CSV</span>
                 </button>
 
-                {/* Export Button (Consolidated Single Action) */}
-                <button
-                  type="button"
-                  onClick={() => handleExportData('csv')}
-                  className="px-3 py-1.5 rounded-xl border border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100 text-emerald-700 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
-                  title="Export records to spreadsheet"
-                >
-                  <Icon name="download" size={13} />
-                  <span>Export</span>
-                </button>
+                {/* Export Dropdown */}
+                <div className="relative" ref={exportDropdownRef}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setExportDropdownOpen((prev) => !prev);
+                      setTemplateDropdownOpen(false);
+                    }}
+                    className="px-3.5 py-1.5 rounded-xl border border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100 text-emerald-700 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                    title="Export records to spreadsheet"
+                  >
+                    <Icon name="download" size={13} />
+                    <span>Export</span>
+                    <Icon name="chevron-down" size={12} className={cn('transition-transform', exportDropdownOpen && 'rotate-180')} />
+                  </button>
 
-                {/* Sample Template (Consolidated Single Action) */}
-                <button
-                  type="button"
-                  onClick={handleDownloadSampleCsv}
-                  className="px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
-                  title="Download sample import template"
-                >
-                  <Icon name="file-text" size={13} />
-                  <span>Sample Template</span>
-                </button>
+                  {exportDropdownOpen && (
+                    <div className="absolute right-0 top-full mt-1.5 w-44 bg-white rounded-xl shadow-lg border border-slate-200 py-1.5 z-50 animate-fade-in text-xs font-semibold">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setExportDropdownOpen(false);
+                          handleExportData('xlsx');
+                        }}
+                        className="w-full text-left px-3.5 py-2 hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 flex items-center gap-2 cursor-pointer transition"
+                      >
+                        <Icon name="file-spreadsheet" size={14} className="text-emerald-600" />
+                        <span>Export Excel (.xlsx)</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setExportDropdownOpen(false);
+                          handleExportData('csv');
+                        }}
+                        className="w-full text-left px-3.5 py-2 hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 flex items-center gap-2 cursor-pointer transition"
+                      >
+                        <Icon name="file-text" size={14} className="text-emerald-600" />
+                        <span>Export CSV (.csv)</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Sample Template Dropdown */}
+                <div className="relative" ref={templateDropdownRef}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTemplateDropdownOpen((prev) => !prev);
+                      setExportDropdownOpen(false);
+                    }}
+                    className="px-3.5 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                    title="Download sample import template"
+                  >
+                    <Icon name="file-text" size={13} />
+                    <span>Sample Template</span>
+                    <Icon name="chevron-down" size={12} className={cn('transition-transform', templateDropdownOpen && 'rotate-180')} />
+                  </button>
+
+                  {templateDropdownOpen && (
+                    <div className="absolute right-0 top-full mt-1.5 w-48 bg-white rounded-xl shadow-lg border border-slate-200 py-1.5 z-50 animate-fade-in text-xs font-semibold">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTemplateDropdownOpen(false);
+                          handleDownloadSampleXlsx();
+                        }}
+                        className="w-full text-left px-3.5 py-2 hover:bg-blue-50 text-slate-700 hover:text-blue-700 flex items-center gap-2 cursor-pointer transition"
+                      >
+                        <Icon name="file-spreadsheet" size={14} className="text-blue-600" />
+                        <span>Template Excel (.xlsx)</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTemplateDropdownOpen(false);
+                          handleDownloadSampleCsv();
+                        }}
+                        className="w-full text-left px-3.5 py-2 hover:bg-blue-50 text-slate-700 hover:text-blue-700 flex items-center gap-2 cursor-pointer transition"
+                      >
+                        <Icon name="file-text" size={14} className="text-blue-600" />
+                        <span>Template CSV (.csv)</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
               </>
             )}
 
@@ -1234,12 +1515,81 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                     ? `Add ${deptTab === 'students' ? 'Student' : deptTab === 'employees' ? 'Employee' : ''} Department`
                     : selectedCategory.id === 'technical_skills'
                       ? `Add ${skillTab === 'students' ? 'Student' : skillTab === 'employees' ? 'Employee' : ''} Skill`
-                      : `Add ${selectedCategory.title}`}
+                      : selectedCategory.id === 'leave_reasons'
+                        ? `Add ${leaveTab === 'students' ? 'Student' : leaveTab === 'employees' ? 'Employee' : ''} Leave Reason`
+                        : `Add ${selectedCategory.title}`}
                 </span>
               </button>
             )}
           </div>
         </div>
+
+        {/* Leave Reasons Sub-Views Switcher (All vs Employees Leaves vs Students Leaves) */}
+        {selectedCategory.id === 'leave_reasons' && (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-2.5 rounded-2xl border border-slate-200/90 shadow-2xs">
+            <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-100/90 rounded-xl border border-slate-200/80">
+              <button
+                type="button"
+                onClick={() => setLeaveTab('all')}
+                className={cn(
+                  'flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer',
+                  leaveTab === 'all'
+                    ? 'bg-white text-emerald-700 shadow-xs border border-emerald-200'
+                    : 'text-slate-600 hover:text-slate-900'
+                )}
+              >
+                <Icon name="clock" size={15} className={leaveTab === 'all' ? 'text-emerald-600' : 'text-slate-400'} />
+                <span>All Leave Reasons</span>
+                <span className={cn(
+                  'text-[10px] px-2 py-0.5 rounded-full font-black',
+                  leaveTab === 'all' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'
+                )}>
+                  {leaveCounts.all}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setLeaveTab('employees')}
+                className={cn(
+                  'flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer',
+                  leaveTab === 'employees'
+                    ? 'bg-white text-emerald-700 shadow-xs border border-emerald-200'
+                    : 'text-slate-600 hover:text-slate-900'
+                )}
+              >
+                <Icon name="briefcase" size={15} className={leaveTab === 'employees' ? 'text-emerald-600' : 'text-slate-400'} />
+                <span>Employees Leaves</span>
+                <span className={cn(
+                  'text-[10px] px-2 py-0.5 rounded-full font-black',
+                  leaveTab === 'employees' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'
+                )}>
+                  {leaveCounts.employees}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setLeaveTab('students')}
+                className={cn(
+                  'flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer',
+                  leaveTab === 'students'
+                    ? 'bg-white text-indigo-700 shadow-xs border border-indigo-200'
+                    : 'text-slate-600 hover:text-slate-900'
+                )}
+              >
+                <Icon name="graduation-cap" size={15} className={leaveTab === 'students' ? 'text-indigo-600' : 'text-slate-400'} />
+                <span>Students Leaves</span>
+                <span className={cn(
+                  'text-[10px] px-2 py-0.5 rounded-full font-black',
+                  leaveTab === 'students' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-200 text-slate-600'
+                )}>
+                  {leaveCounts.students}
+                </span>
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Technical Skills Sub-Views Switcher (All vs Employees Skills vs Students Skills) */}
         {selectedCategory.id === 'technical_skills' && (
@@ -1476,10 +1826,9 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                   {/* Category-Specific Columns */}
                   {isSpecialization ? (
                     <>
-                      <th className="py-3.5 px-4">QUALIFICATION ID</th>
                       <th className="py-3.5 px-4">NAME</th>
+                      <th className="py-3.5 px-4">CODE</th>
                       <th className="py-3.5 px-4">IS ACTIVE</th>
-                      <th className="py-3.5 px-4">QUALIFICATION NAME</th>
                     </>
                   ) : isInstitutionType ? (
                     <>
@@ -1493,9 +1842,11 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                     </>
                   ) : isLeaveReasons ? (
                     <>
-                      <th className="py-3.5 px-4">NAME</th>
+                      <th className="py-3.5 px-4">LEAVE REASON</th>
+                      <th className="py-3.5 px-4">APPLICABLE FOR / AUDIENCE</th>
+                      <th className="py-3.5 px-4">MAX DAYS</th>
+                      <th className="py-3.5 px-4">DESCRIPTION</th>
                       <th className="py-3.5 px-4">IS ACTIVE</th>
-                      <th className="py-3.5 px-4">DAYS</th>
                     </>
                   ) : selectedCategory.id === 'departments' ? (
                     <>
@@ -1607,6 +1958,40 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                             </button>
                           </div>
                         </div>
+                      ) : selectedCategory.id === 'leave_reasons' ? (
+                        <div className="max-w-md mx-auto space-y-3">
+                          <div className="w-12 h-12 mx-auto rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600">
+                            <Icon name={leaveTab === 'students' ? 'graduation-cap' : leaveTab === 'employees' ? 'briefcase' : 'clock'} size={24} />
+                          </div>
+                          <div className="text-sm font-black text-slate-800">
+                            No {leaveTab === 'students' ? 'Students' : leaveTab === 'employees' ? 'Employees' : ''} Leave Reasons Found
+                          </div>
+                          <p className="text-xs text-slate-400">
+                            {leaveTab === 'students'
+                              ? 'Medical, examination, internship, sports, and personal leaves for students.'
+                              : leaveTab === 'employees'
+                                ? 'Casual, privilege, maternity, and sick leaves for employees and staff.'
+                                : 'Configure leave reasons for students and employees.'}
+                          </p>
+                          <div className="flex items-center justify-center gap-2 pt-1">
+                            <button
+                              type="button"
+                              onClick={handleOpenAdd}
+                              className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+                            >
+                              <Icon name="plus" size={13} />
+                              <span>+ Add Leave Reason</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => fileInputRef.current?.click()}
+                              className="px-3.5 py-1.5 rounded-xl border border-slate-300 bg-white text-slate-700 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                            >
+                              <Icon name="upload" size={13} />
+                              <span>Import CSV</span>
+                            </button>
+                          </div>
+                        </div>
                       ) : (
                         <div className="py-12 flex flex-col items-center justify-center text-center">
                           <div className="w-12 h-12 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center justify-center text-slate-400 mb-3 shadow-2xs">
@@ -1643,20 +2028,17 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                         )}
                         <td className="py-3.5 px-4 font-semibold text-slate-500">{idx + 1}</td>
 
-                        {/* Specialization Columns (Screenshot 3) */}
+                        {/* Specialization Columns */}
                         {isSpecialization ? (
                           <>
-                            <td className="py-3.5 px-4 font-mono text-[11px] text-slate-500">
-                              {item.extra_info || item.parent_id || '—'}
-                            </td>
                             <td className="py-3.5 px-4 font-bold text-slate-900">
                               {item.name}
                             </td>
+                            <td className="py-3.5 px-4 font-mono font-semibold text-slate-600">
+                              {item.code || '—'}
+                            </td>
                             <td className="py-3.5 px-4">
                               {renderActiveStatusSelector(item)}
-                            </td>
-                            <td className="py-3.5 px-4 font-bold text-slate-800">
-                              {item.parent_name || '—'}
                             </td>
                           </>
                         ) : isInstitutionType ? (
@@ -1705,16 +2087,70 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                             </td>
                           </>
                         ) : isLeaveReasons ? (
-                          /* Leave Reasons Columns (Screenshot 4) */
+                          /* Leave Reasons Columns with Student / Employee badge */
                           <>
                             <td className="py-3.5 px-4 font-bold text-slate-900">
-                              {item.name}
+                              <div className="flex items-center gap-2.5">
+                                <span className={cn(
+                                  'w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-xs',
+                                  getLeaveReasonType(item) === 'student'
+                                    ? 'bg-indigo-100 text-indigo-700'
+                                    : getLeaveReasonType(item) === 'employee'
+                                      ? 'bg-emerald-100 text-emerald-700'
+                                      : 'bg-blue-100 text-blue-700'
+                                )}>
+                                  <Icon
+                                    name={
+                                      getLeaveReasonType(item) === 'student'
+                                        ? 'graduation-cap'
+                                        : getLeaveReasonType(item) === 'employee'
+                                          ? 'briefcase'
+                                          : 'clock'
+                                    }
+                                    size={14}
+                                  />
+                                </span>
+                                <div>
+                                  <div className="font-bold text-slate-900">{item.name}</div>
+                                  {item.code && <div className="text-[10px] font-mono text-slate-400">{item.code}</div>}
+                                </div>
+                              </div>
+                            </td>
+                            <td className="py-3.5 px-4">
+                              {(() => {
+                                const t = getLeaveReasonType(item);
+                                if (t === 'student') {
+                                  return (
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                      <Icon name="graduation-cap" size={11} />
+                                      <span>Student Only</span>
+                                    </span>
+                                  );
+                                }
+                                if (t === 'employee') {
+                                  return (
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                      <Icon name="briefcase" size={11} />
+                                      <span>Employee Only</span>
+                                    </span>
+                                  );
+                                }
+                                return (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                                    <Icon name="layers" size={11} />
+                                    <span>Both (Student & Employee)</span>
+                                  </span>
+                                );
+                              })()}
+                            </td>
+                            <td className="py-3.5 px-4 font-bold text-slate-800">
+                              {item.days ? `${item.days} days` : 'Unlimited'}
+                            </td>
+                            <td className="py-3.5 px-4 text-xs text-slate-500 max-w-xs truncate">
+                              {item.description || '—'}
                             </td>
                             <td className="py-3.5 px-4">
                               {renderActiveStatusSelector(item)}
-                            </td>
-                            <td className="py-3.5 px-4 font-bold text-slate-800">
-                              {item.days ?? '—'}
                             </td>
                           </>
                         ) : selectedCategory.id === 'departments' ? (
@@ -1949,11 +2385,11 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
               </div>
 
               <form onSubmit={handleSaveModal} className="p-5 space-y-3.5 text-xs max-h-[85vh] overflow-y-auto">
-                {/* 1. Parent Selection if Specialization (Screenshot 3) or Mandal/Town */}
+                {/* 1. Parent Selection if Category has parent (e.g. Mandal -> District) */}
                 {selectedCategory.parentCategory && (
                   <div className="space-y-1">
                     <label className="block font-black uppercase text-[10px] tracking-wider text-slate-700">
-                      {isSpecialization ? 'QUALIFICATION *' : `${selectedCategory.parentCategory.replace('_', ' ').toUpperCase()} *`}
+                      {`${selectedCategory.parentCategory.replace('_', ' ').toUpperCase()} *`}
                     </label>
                     <select
                       value={formParentId}
@@ -2351,6 +2787,104 @@ export function MasterDataSettings({ selectedCatId: propSelectedCatId, onBack }:
                         value={formDescription}
                         onChange={(e) => setFormDescription(e.target.value)}
                         placeholder="e.g. Clinical diagnosis, laparoscopic surgery, ultrasound imaging"
+                        disabled={modalMode === 'view'}
+                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
+                      />
+                    </div>
+                  </>
+                )}
+
+                {/* Leave Reason Applicability / Audience Selection */}
+                {isLeaveReasons && (
+                  <>
+                    <div className="space-y-1.5 p-3 bg-emerald-50/60 rounded-xl border border-emerald-200">
+                      <label className="block font-black uppercase text-[10px] tracking-wider text-emerald-950">
+                        LEAVE REASON APPLICABLE FOR *
+                      </label>
+                      <p className="text-[11px] text-slate-500 font-medium leading-tight">
+                        Choose whether this leave reason applies to students, employees, or both.
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+                        <button
+                          type="button"
+                          disabled={modalMode === 'view'}
+                          onClick={() => setLeaveTypeInModal('student')}
+                          className={cn(
+                            'flex items-center gap-2 p-2.5 rounded-xl border text-left transition-all cursor-pointer',
+                            leaveTypeInModal === 'student'
+                              ? 'bg-indigo-50 border-indigo-400 text-indigo-900 font-bold ring-2 ring-indigo-500/20 shadow-2xs'
+                              : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+                          )}
+                        >
+                          <div className={cn(
+                            'w-7 h-7 rounded-lg flex items-center justify-center shrink-0',
+                            leaveTypeInModal === 'student' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500'
+                          )}>
+                            <Icon name="graduation-cap" size={14} />
+                          </div>
+                          <div>
+                            <div className="text-xs font-black">Students View</div>
+                            <div className="text-[10px] text-slate-400 font-normal">Student Leaves</div>
+                          </div>
+                        </button>
+
+                        <button
+                          type="button"
+                          disabled={modalMode === 'view'}
+                          onClick={() => setLeaveTypeInModal('employee')}
+                          className={cn(
+                            'flex items-center gap-2 p-2.5 rounded-xl border text-left transition-all cursor-pointer',
+                            leaveTypeInModal === 'employee'
+                              ? 'bg-emerald-50 border-emerald-400 text-emerald-900 font-bold ring-2 ring-emerald-500/20 shadow-2xs'
+                              : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+                          )}
+                        >
+                          <div className={cn(
+                            'w-7 h-7 rounded-lg flex items-center justify-center shrink-0',
+                            leaveTypeInModal === 'employee' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-500'
+                          )}>
+                            <Icon name="briefcase" size={14} />
+                          </div>
+                          <div>
+                            <div className="text-xs font-black">Employee View</div>
+                            <div className="text-[10px] text-slate-400 font-normal">Staff & Operations</div>
+                          </div>
+                        </button>
+
+                        <button
+                          type="button"
+                          disabled={modalMode === 'view'}
+                          onClick={() => setLeaveTypeInModal('both')}
+                          className={cn(
+                            'flex items-center gap-2 p-2.5 rounded-xl border text-left transition-all cursor-pointer',
+                            leaveTypeInModal === 'both'
+                              ? 'bg-blue-50 border-blue-400 text-blue-900 font-bold ring-2 ring-blue-500/20 shadow-2xs'
+                              : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+                          )}
+                        >
+                          <div className={cn(
+                            'w-7 h-7 rounded-lg flex items-center justify-center shrink-0',
+                            leaveTypeInModal === 'both' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500'
+                          )}>
+                            <Icon name="layers" size={14} />
+                          </div>
+                          <div>
+                            <div className="text-xs font-black">Both Views</div>
+                            <div className="text-[10px] text-slate-400 font-normal">Shared Across All</div>
+                          </div>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block font-black uppercase text-[10px] tracking-wider text-slate-700">
+                        DESCRIPTION / POLICY RULES
+                      </label>
+                      <input
+                        type="text"
+                        value={formDescription}
+                        onChange={(e) => setFormDescription(e.target.value)}
+                        placeholder="e.g. Medical certificate required for > 3 days, applies to semester exams, etc."
                         disabled={modalMode === 'view'}
                         className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
                       />

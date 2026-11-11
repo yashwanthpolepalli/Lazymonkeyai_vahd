@@ -24,62 +24,7 @@ export interface CourseOptionItem {
   department?: string;
 }
 
-export const DEFAULT_LANGUAGES = [
-  'English',
-  'Telugu',
-  'Hindi',
-  'Urdu',
-  'Tamil',
-  'Kannada',
-  'Marathi',
-  'Bengali',
-  'Sanskrit',
-];
-
-export const DEFAULT_COURSES: CourseOptionItem[] = [
-  { name: 'B.Tech Computer Science and Engineering', period: '4 Years' },
-  { name: 'B.Tech Artificial Intelligence & Data Science', period: '4 Years' },
-  { name: 'B.Tech Electronics & Communication Engineering', period: '4 Years' },
-  { name: 'B.Tech Mechanical Engineering', period: '4 Years' },
-  { name: 'B.Tech Civil Engineering', period: '4 Years' },
-  { name: 'B.Tech Electrical & Electronics Engineering', period: '4 Years' },
-  { name: 'B.Sc Computer Science', period: '3 Years' },
-  { name: 'B.Sc Data Science & Analytics', period: '3 Years' },
-  { name: 'B.Com Computer Applications', period: '3 Years' },
-  { name: 'BBA Business Administration', period: '3 Years' },
-  { name: 'MCA Master of Computer Applications', period: '2 Years' },
-  { name: 'MBA Business Administration', period: '2 Years' },
-  { name: 'Diploma in Polytechnic Engineering', period: '3 Years' },
-];
-
-export const DEFAULT_STUDENT_DEPARTMENTS = [
-  'Computer Science & Engineering',
-  'Electronics & Electrical Engineering',
-  'Mechanical & Civil Engineering',
-  'Science & Mathematics',
-  'Commerce & Banking',
-  'Management Studies',
-  'Humanities & Social Sciences',
-  'Polytechnic & Vocational Education',
-  'Physical Education & Sports Sciences',
-  'Other',
-];
-
-export const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
-export const CASTE_OPTIONS = [
-  { value: 'OC', label: 'OC / General' },
-  { value: 'BC-A', label: 'BC-A' },
-  { value: 'BC-B', label: 'BC-B' },
-  { value: 'BC-C', label: 'BC-C' },
-  { value: 'BC-D', label: 'BC-D' },
-  { value: 'BC-E', label: 'BC-E' },
-  { value: 'SC', label: 'SC (Scheduled Caste)' },
-  { value: 'ST', label: 'ST (Scheduled Tribe)' },
-  { value: 'EWS', label: 'EWS (Economically Weaker Section)' },
-  { value: 'Other', label: 'Other' },
-];
 export const MARITAL_STATUS_OPTIONS = ['Single / Unmarried', 'Married', 'Divorced', 'Widowed', 'Separated'];
-export const GENDER_OPTIONS = ['Male', 'Female', 'Other'];
 
 export function StudentEnrollmentModal({
   isOpen,
@@ -210,7 +155,7 @@ export function StudentEnrollmentModal({
         }
       }
     } catch { }
-    return BLOOD_GROUPS;
+    return [];
   });
 
   const [dynamicCastes, setDynamicCastes] = useState<Array<{ value: string; label: string }>>(() => {
@@ -226,7 +171,7 @@ export function StudentEnrollmentModal({
         }
       }
     } catch { }
-    return CASTE_OPTIONS;
+    return [];
   });
 
   const [dynamicGenders, setDynamicGenders] = useState<string[]>(() => {
@@ -239,7 +184,7 @@ export function StudentEnrollmentModal({
         }
       }
     } catch { }
-    return GENDER_OPTIONS;
+    return [];
   });
 
   const [departmentOptions, setDepartmentOptions] = useState<string[]>(() => {
@@ -253,7 +198,7 @@ export function StudentEnrollmentModal({
         }
       }
     } catch { }
-    return DEFAULT_STUDENT_DEPARTMENTS;
+    return [];
   });
 
   const [masterDistricts, setMasterDistricts] = useState<string[]>([]);
@@ -331,13 +276,13 @@ export function StudentEnrollmentModal({
             .map((d: any) => d.name);
         }
         const combined = Array.from(new Set([...masterDepts, ...apiDepts]));
-        setDepartmentOptions(combined.length > 0 ? combined : DEFAULT_STUDENT_DEPARTMENTS);
+        setDepartmentOptions(combined);
       }).catch(() => {
         if (Array.isArray(parsed.departments)) {
           const masterDepts = parsed.departments
             .filter((d: any) => d.is_active !== false && isStudentDept(d))
             .map((d: any) => d.name);
-          setDepartmentOptions(masterDepts.length > 0 ? masterDepts : DEFAULT_STUDENT_DEPARTMENTS);
+          setDepartmentOptions(masterDepts);
         }
       });
 
@@ -1227,9 +1172,16 @@ export function StudentEnrollmentModal({
           {/* Academic Header & Dynamic Medium + Course Dropdown Selectors */}
           <div className="border-2 border-slate-800 rounded-2xl p-4 bg-slate-50/60 space-y-3.5 shadow-xs">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-2.5">
-              <span className="font-extrabold uppercase tracking-wide text-slate-900 text-xs">
-                APPLICATION FORM
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="font-extrabold uppercase tracking-wide text-slate-900 text-xs">
+                  APPLICATION FORM
+                </span>
+                {studentToEdit && (
+                  <span className="px-2.5 py-0.5 rounded-lg bg-blue-100 text-blue-800 font-mono font-bold text-xs border border-blue-200">
+                    Student No: {(studentToEdit as any).member_code || (studentToEdit as any).code || (studentToEdit as any).roll_number || '—'}
+                  </span>
+                )}
+              </div>
               <div className="flex items-center gap-3 flex-wrap">
                 {branchesList.length > 0 ? (
                   <div className="flex items-center gap-1.5">
@@ -1337,7 +1289,7 @@ export function StudentEnrollmentModal({
                     className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none pr-8 cursor-pointer shadow-xs"
                   >
                     <option value="">-- Select Medium --</option>
-                    {(languagesList.length > 0 ? languagesList : DEFAULT_LANGUAGES).map((lang) => (
+                    {languagesList.map((lang) => (
                       <option key={lang} value={lang}>
                         {lang}
                       </option>
@@ -1387,7 +1339,7 @@ export function StudentEnrollmentModal({
                     className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none pr-8 cursor-pointer shadow-xs"
                   >
                     <option value="">-- Select Course / Program --</option>
-                    {(coursesList.length > 0 ? coursesList : DEFAULT_COURSES).map((c) => (
+                    {coursesList.map((c) => (
                       <option key={c.id || c.name} value={c.name}>
                         {c.name} {c.period ? `(${c.period})` : ''}
                       </option>

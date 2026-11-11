@@ -758,7 +758,7 @@ class SuperAdminService:
 
         from src.models import (
             student, User, Membership, BiometricLog, BiometricDevice,
-            Employee, employeeProfile, Course, StudentCourse, StudentAttendanceReportLog,
+            Employee, employeeProfile, Course, StudentAttendanceReportLog,
             EmployeeAttendance, LeaveRequest, EmployeeLeaveBalance, AttendanceCorrection,
             PayrollRecord, EmployeeDocument, EmployeePerformance, ExitRequest, PayrollInvoice
         )
@@ -779,7 +779,6 @@ class SuperAdminService:
             db.query(StudentAttendanceReportLog).filter(StudentAttendanceReportLog.student_id.in_(cust_ids)).delete(synchronize_session=False)
             db.query(Membership).filter(Membership.student_id.in_(cust_ids)).delete(synchronize_session=False)
             db.query(BiometricLog).filter(BiometricLog.student_id.in_(cust_ids)).delete(synchronize_session=False)
-            db.query(StudentCourse).filter(StudentCourse.student_id.in_(cust_ids)).delete(synchronize_session=False)
             db.query(student).filter(student.id.in_(cust_ids)).delete(synchronize_session=False)
 
         if cust_user_ids:
@@ -851,7 +850,6 @@ class SuperAdminService:
         db.execute(text("DELETE FROM student_attendance_report_logs WHERE branch_id = :bid"), {"bid": clean_id})
         db.execute(text("DELETE FROM hrms_shift_templates WHERE branch_id = :bid"), {"bid": clean_id})
         db.execute(text("DELETE FROM membership_plans WHERE branch_id = :bid"), {"bid": clean_id})
-        db.execute(text("DELETE FROM student_courses WHERE branch_id = :bid"), {"bid": clean_id})
         db.execute(text("DELETE FROM students WHERE branch_id = :bid"), {"bid": clean_id})
         db.execute(text("UPDATE users SET branch_id = NULL WHERE branch_id = :bid"), {"bid": clean_id})
 
@@ -861,12 +859,12 @@ class SuperAdminService:
         # stamped tenant; this purge catches anything stamped tenant_id
         # that the name/branch_id passes missed.
         from src.models import (
-            Membership, StudentCourse, StudentAttendanceReportLog,
+            Membership, StudentAttendanceReportLog,
             EmployeeAttendanceReportLog, BiometricLog, ShiftTemplate,
         )
         tenant_tables_to_purge = [
             StudentAttendanceReportLog, EmployeeAttendanceReportLog,
-            ShiftTemplate, Membership, StudentCourse, BiometricLog,
+            ShiftTemplate, Membership, BiometricLog,
         ]
         for _tbl in tenant_tables_to_purge:
             db.query(_tbl).filter(_tbl.tenant_id == clean_id).delete(synchronize_session=False)
@@ -893,7 +891,7 @@ class SuperAdminService:
                     if rem_c_ids:
                         db.query(Membership).filter(Membership.student_id.in_(rem_c_ids)).delete(synchronize_session=False)
                         db.query(BiometricLog).filter(BiometricLog.student_id.in_(rem_c_ids)).delete(synchronize_session=False)
-                        db.query(StudentCourse).filter(StudentCourse.student_id.in_(rem_c_ids)).delete(synchronize_session=False)
+                        db.query(student).filter(student.id.in_(rem_c_ids)).delete(synchronize_session=False)
                         db.query(student).filter(student.id.in_(rem_c_ids)).delete(synchronize_session=False)
                     if rem_c_uids:
                         db.query(User).filter(User.id.in_(rem_c_uids)).delete(synchronize_session=False)
@@ -1004,7 +1002,7 @@ class SuperAdminService:
             ho_id = ho_user.ho_id or ho_user.id
 
             from src.models import (
-                StudentAttendanceReportLog, Membership, BiometricLog, StudentCourse,
+                StudentAttendanceReportLog, Membership, BiometricLog,
                 EmployeeAttendance, LeaveRequest, EmployeeLeaveBalance, AttendanceCorrection,
                 PayrollRecord, EmployeeDocument, EmployeePerformance, ExitRequest
             )
@@ -1023,7 +1021,6 @@ class SuperAdminService:
                 db.query(StudentAttendanceReportLog).filter(StudentAttendanceReportLog.student_id.in_(ho_c_ids)).delete(synchronize_session=False)
                 db.query(Membership).filter(Membership.student_id.in_(ho_c_ids)).delete(synchronize_session=False)
                 db.query(BiometricLog).filter(BiometricLog.student_id.in_(ho_c_ids)).delete(synchronize_session=False)
-                db.query(StudentCourse).filter(StudentCourse.student_id.in_(ho_c_ids)).delete(synchronize_session=False)
                 db.query(student).filter(student.id.in_(ho_c_ids)).delete(synchronize_session=False)
             if ho_c_uids:
                 db.query(User).filter(

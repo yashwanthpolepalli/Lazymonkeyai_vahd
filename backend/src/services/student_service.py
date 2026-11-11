@@ -823,7 +823,7 @@ class studentService:
             or ""
         ).strip()
 
-        # Dynamic Department registration & synchronization for students
+        # Validate department strictly against database (no auto-creation)
         dept_candidate = (
             data.get("department")
             or (meta_data_payload.get("department") if isinstance(meta_data_payload, dict) else None)
@@ -838,106 +838,35 @@ class studentService:
             from src.models.hrms import Department
             from src.models.settings import MasterData
             clean_d = dept_candidate
-            existing_dept = db.query(Department).filter(func.lower(Department.name) == clean_d.lower()).first()
+            existing_dept = db.query(Department).filter(
+                func.lower(Department.name) == clean_d.lower(),
+                Department.is_active != False
+            ).first()
             if not existing_dept:
-                words = clean_d.split()
-                d_code = "".join([w[0].upper() for w in words if w.isalnum()])[:6] or clean_d[:4].upper()
-                new_dept = Department(
-                    id=f"dept_{uuid.uuid4().hex[:8]}",
-                    name=clean_d,
-                    code=d_code,
-                    description=f"Auto-created student department: {clean_d}",
-                    head_name="",
-                    is_active=True
-                )
-                db.add(new_dept)
-                try:
-                    db.commit()
-                except Exception:
-                    db.rollback()
-
-            existing_md = db.query(MasterData).filter(
-                MasterData.category == "departments",
-                func.lower(MasterData.name) == clean_d.lower()
-            ).first()
-            if not existing_md:
-                words = clean_d.split()
-                d_code = "".join([w[0].upper() for w in words if w.isalnum()])[:6] or clean_d[:4].upper()
-                new_md = MasterData(
-                    id=f"mdata_{uuid.uuid4().hex[:8]}",
-                    category="departments",
-                    name=clean_d,
-                    code=d_code,
-                    description=f"Student department: {clean_d}",
-                    extra_info="student",
-                    is_active=True
-                )
-                db.add(new_md)
-                try:
-                    db.commit()
-                except Exception:
-                    db.rollback()
-
-        # Also auto-append gender, qualification, specialization to MasterData if not present
-        from src.models.settings import MasterData
-        if gender:
-            clean_gender = gender.strip().capitalize()
-            if clean_gender:
-                existing_g = db.query(MasterData).filter(
-                    MasterData.category == "gender_types",
-                    func.lower(MasterData.name) == clean_gender.lower()
+                existing_md = db.query(MasterData).filter(
+                    MasterData.category == "departments",
+                    func.lower(MasterData.name) == clean_d.lower(),
+                    MasterData.is_active != False
                 ).first()
-                if not existing_g:
-                    db.add(MasterData(
-                        id=f"mdata_{uuid.uuid4().hex[:8]}",
-                        category="gender_types",
-                        name=clean_gender,
-                        code=f"GND-{clean_gender[:3].upper()}",
-                        is_active=True
-                    ))
-                    try:
-                        db.commit()
-                    except Exception:
-                        db.rollback()
+                if not existing_md:
+                    raise ValueError(f"Department '{dept_candidate}' not found in database. Please configure it in Settings first.")
 
-        if qualification:
-            clean_qual = qualification.strip()
-            existing_q = db.query(MasterData).filter(
-                MasterData.category == "qualifications",
-                func.lower(MasterData.name) == clean_qual.lower()
+        # Validate course / membership plan strictly against database (no auto-creation)
+        if membership_plan and str(membership_plan).strip():
+            from src.models.plan import MembershipPlan
+            from src.models.course import Course
+            clean_plan = str(membership_plan).strip()
+            plan_exists = db.query(MembershipPlan).filter(
+                func.lower(MembershipPlan.name) == clean_plan.lower(),
+                MembershipPlan.is_active != False
             ).first()
-            if not existing_q:
-                db.add(MasterData(
-                    id=f"mdata_{uuid.uuid4().hex[:8]}",
-                    category="qualifications",
-                    name=clean_qual,
-                    code=f"QLF-{clean_qual[:4].upper()}",
-                    is_active=True
-                ))
-                try:
-                    db.commit()
-                except Exception:
-                    db.rollback()
-
-        if specialization:
-            clean_spec = specialization.strip()
-            existing_s = db.query(MasterData).filter(
-                MasterData.category == "specializations",
-                func.lower(MasterData.name) == clean_spec.lower()
-            ).first()
-            if not existing_s:
-                db.add(MasterData(
-                    id=f"mdata_{uuid.uuid4().hex[:8]}",
-                    category="specializations",
-                    name=clean_spec,
-                    code=f"SPC-{clean_spec[:4].upper()}",
-                    parent_name=qualification or "",
-                    is_active=True
-                ))
-                try:
-                    db.commit()
-                except Exception:
-                    db.rollback()
+            if not plan_exists:
+                plan_exists = db.query(Course).filter(
+                    func.lower(Course.name) == clean_plan.lower(),
+                    Course.is_active != False
+                ).first()
+            if not plan_exists:
+                raise ValueError(f"Course / Program '{clean_plan}' not found in database. Please configure it in Course & Medium Settings first.")
 
         req_code = data.get("roll_no") or data.get("roll_number") or data.get("member_code") or data.get("student_number") or data.get("code")
         assigned_roll_code = studentService.generate_sequential_student_code(db, requested_code=req_code)
@@ -1149,14 +1078,7 @@ class studentService:
         user_id = cust.user_id
 
         try:
-            # 1. Clean up related courses & student enrollment mappings
-            try:
-                from src.models.course import StudentCourse
-                db.query(StudentCourse).filter(StudentCourse.student_id == student_id).delete(synchronize_session=False)
-            except Exception:
-                db.rollback()
-
-            # 2. Clean up biometric logs
+            # 1. Clean up biometric logs
             try:
                 from src.models.biometric import BiometricLog
                 db.query(BiometricLog).filter(BiometricLog.student_id == student_id).delete(synchronize_session=False)

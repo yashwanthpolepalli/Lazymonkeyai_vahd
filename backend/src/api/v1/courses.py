@@ -6,7 +6,7 @@ from src.services.course_service import CourseService
 from src.services.membership_service import MembershipService
 from src.services.settings_service import SettingsService
 from src.models.user import User
-from src.models.course import Course, StudentCourse
+from src.models.course import Course
 from src.models.membership import Membership
 from src.models.student import student
 from src.models.plan import MembershipPlan
@@ -66,23 +66,100 @@ def get_course_languages(db: Session = Depends(get_db)):
     return CourseService.get_languages(db)
 
 
+@router.get("/languages/records")
+def get_course_language_records(db: Session = Depends(get_db)):
+    """
+    Returns complete language records with id, name, and active status for management.
+    """
+    return CourseService.get_language_records(db)
+
+
+@router.put("/languages/{lang_id}")
+def update_course_language(lang_id: str, payload: dict, db: Session = Depends(get_db)):
+    """
+    Updates medium name or toggles is_active status.
+    """
+    return CourseService.update_language(db, lang_id, payload)
+
+
 @router.post("/languages")
-def add_course_language(payload: dict, db: Session = Depends(get_db)):
+def add_course_language(
+    payload: dict,
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user),
+):
     """
     Adds a new medium of instruction language to settings.
     """
     lang_name = payload.get("name") or payload.get("language") or ""
     if not lang_name.strip():
         raise HTTPException(status_code=400, detail="Language name is required")
-    return CourseService.add_language(db, lang_name)
+    tenant_id = current_user.branch_id if current_user else None
+    return CourseService.add_language(db, lang_name, tenant_id=tenant_id)
 
 
 @router.delete("/languages/{lang_name}")
 def delete_course_language(lang_name: str, db: Session = Depends(get_db)):
     """
-    Removes a medium of instruction language from settings.
+    Removes a medium of instruction language from settings by id or name.
     """
     return CourseService.delete_language(db, lang_name)
+
+
+# ============================================================
+# COURSE DURATIONS & INTERVAL TIERS (DATABASE DRIVEN)
+# ============================================================
+
+@router.get("/durations")
+def list_duration_tiers(db: Session = Depends(get_db)):
+    """
+    Returns active course duration tiers stored in database.
+    """
+    return CourseService.get_duration_tiers(db)
+
+
+@router.post("/durations")
+def create_duration_tier(
+    payload: dict,
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user),
+):
+    """
+    Persists a new duration tier directly in database.
+    """
+    if not payload.get("name"):
+        raise HTTPException(status_code=400, detail="Duration tier name is required")
+    tenant_id = current_user.branch_id if current_user else None
+    return CourseService.create_duration_tier(db, payload, tenant_id=tenant_id)
+
+
+@router.put("/durations/{tier_id}")
+def update_duration_tier(
+    tier_id: str,
+    payload: dict,
+    db: Session = Depends(get_db),
+):
+    """
+    Updates an existing duration tier in database.
+    """
+    try:
+        return CourseService.update_duration_tier(db, tier_id, payload)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.delete("/durations/{tier_id}")
+def delete_duration_tier(
+    tier_id: str,
+    db: Session = Depends(get_db),
+):
+    """
+    Removes a duration tier from database.
+    """
+    try:
+        return CourseService.delete_duration_tier(db, tier_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 # ============================================================
@@ -133,7 +210,6 @@ def delete_classification(class_id: str, db: Session = Depends(get_db)):
 # COURSES / DEGREE PLANS
 # ============================================================
 
-@router.get("")
 @router.get("/plans")
 def list_courses(
     branch_id: Optional[str] = Query(None),
@@ -155,7 +231,6 @@ def list_courses(
     return CourseService.get_all_courses(db, owner_id=resolved_owner_id, branch_id=resolved_branch_id)
 
 
-@router.post("")
 @router.post("/plans")
 def create_course(
     payload: dict,
@@ -180,7 +255,6 @@ def create_course(
 
 
 @router.put("/plans/{course_id}")
-@router.put("/{course_id}")
 def update_course(
     course_id: str,
     payload: dict,
@@ -205,7 +279,6 @@ def update_course(
 
 
 @router.delete("/plans/{course_id}")
-@router.delete("/{course_id}")
 def delete_course(
     course_id: str,
     db: Session = Depends(get_db),

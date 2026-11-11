@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/utils/cn';
@@ -70,15 +70,15 @@ function buildStudentPayload(s: StudentImportRow, ctx: ImportCtx, idx: number): 
     department: deptStr || undefined,
     gender: (s.gender || '').toLowerCase(),
     age: s.age ? Number(s.age) : undefined,
-    role: 'STUDENT',
-    goal: courseStr ? `${courseStr}${mediumStr ? ` (${mediumStr} Medium)` : ''}` : 'Student Admission',
-    status: s.status || 'ACTIVE',
+    role: s.role?.trim() || undefined,
+    goal: courseStr ? (mediumStr ? `${courseStr} (${mediumStr})` : courseStr) : undefined,
+    status: s.status?.trim() || undefined,
     branch_id: ctx.defaultBranchId,
     ho_id: ctx.userHoId,
     owner_id: ctx.userOwnerId,
     primary_vahd_location: s.branch?.trim() || undefined,
     meta_data: {
-      admission_type: 'DEGREE_ADMISSION',
+      admission_type: s.admissionType?.trim() || undefined,
       course: courseStr,
       medium: mediumStr,
       department: deptStr,
@@ -147,10 +147,10 @@ function buildEmployeePayload(e: EmployeeImportRow, ctx: ImportCtx, idx: number)
     department: e.department?.trim() || '',
     gender: e.gender ? e.gender.trim().toLowerCase() : '',
     code: e.code ? e.code.trim() : undefined,
-    role: e.role?.trim() || 'STAFF',
-    employment_type: e.employmentType?.trim() || 'Full-Time',
+    role: e.role?.trim() || undefined,
+    employment_type: e.employmentType?.trim() || undefined,
     joined_date: e.joinedDate?.trim() || '',
-    salary: e.salary ? Number(e.salary) : 0,
+    salary: e.salary ? Number(e.salary) : undefined,
     vahd_branch: e.branch?.trim() || '',
     branch_id: ctx.defaultBranchId,
     ho_id: ctx.userHoId,
@@ -163,8 +163,8 @@ function buildEmployeePayload(e: EmployeeImportRow, ctx: ImportCtx, idx: number)
     address: e.presentAddress?.trim() || e.permanentAddress?.trim() || '',
     emergency_contact: e.emergencyContactNo ? `${e.emergencyName || ''} (${e.emergencyRelationship || ''}): ${e.emergencyContactNo}` : (e.emergencyContactNo || ''),
     skills: e.technicalSkills ? e.technicalSkills.split(',').map((s) => s.trim()).filter(Boolean) : [],
-    status: e.status?.trim() || 'Active',
-    is_active: e.status ? e.status.toLowerCase() !== 'inactive' : true,
+    status: e.status?.trim() || undefined,
+    is_active: e.status ? e.status.toLowerCase() !== 'inactive' : undefined,
     meta_data: {
       form_title: 'PERSONAL DETAILS FORM',
       employee_code: e.code?.trim() || undefined,
@@ -192,7 +192,7 @@ function buildEmployeePayload(e: EmployeeImportRow, ctx: ImportCtx, idx: number)
         department: e.department?.trim() || '',
         designation: e.designation?.trim() || '',
         joining_date: e.joinedDate?.trim() || '',
-        role: e.role || 'STAFF',
+        role: e.role?.trim() || undefined,
         technical_skills: e.technicalSkills?.trim() || '',
       },
       bank_details: {
@@ -200,7 +200,7 @@ function buildEmployeePayload(e: EmployeeImportRow, ctx: ImportCtx, idx: number)
         bank_name: e.bankName?.trim() || '',
         account_number: e.accountNumber?.trim() || '',
         branch_city: e.bankBranchCity?.trim() || '',
-        account_type: e.bankAccountType?.trim() || 'Savings',
+        account_type: e.bankAccountType?.trim() || undefined,
         ifsc_code: e.ifscCode?.trim() || '',
         pan_no: e.panNumber?.trim() || '',
       },
@@ -229,9 +229,14 @@ export function HrmsBulkImportModal({
   const [importing, setImporting] = useState(false);
   const [progress, setProgress] = useState(0);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [fileFilter, setFileFilter] = useState<'all' | 'ready' | 'invalid'>('all');
+  const [importSummary, setImportSummary] = useState<{
+    total: number;
+    success: number;
+    failed: number;
+    errors: { row: number; name: string; error: string }[];
+  } | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-
-  if (!isOpen) return null;
 
   const isStudent = type === 'students';
   const isEmployee = type === 'employees';
@@ -318,34 +323,70 @@ export function HrmsBulkImportModal({
     }
   };
 
-  const validRows = parsedRows.filter((r) => {
+  const getRowValidation = (row: any) => {
+    const missing: string[] = [];
     if (isStudent) {
-      const s = r as StudentImportRow;
-      return Boolean(s.fullName && (s.email || s.phone));
+      const s = row as StudentImportRow;
+      if (!s.fullName?.trim()) missing.push('Full Name');
+      if (!s.course?.trim()) missing.push('Course');
+      if (!s.email?.trim() && !s.phone?.trim()) missing.push('Email or Mobile');
     } else if (isEmployee) {
-      const e = r as EmployeeImportRow;
-      return Boolean(e.fullName && (e.email || e.phone));
+      const e = row as EmployeeImportRow;
+      if (!e.fullName?.trim()) missing.push('Full Name');
+      if (!e.designation?.trim()) missing.push('Designation');
+      if (!e.department?.trim()) missing.push('Department');
+      if (!e.email?.trim() && !e.phone?.trim()) missing.push('Email or Mobile');
     } else if (isDepartment) {
-      const d = r as DepartmentImportRow;
-      return Boolean(d.name?.trim());
+      if (!(row as DepartmentImportRow).name?.trim()) missing.push('Department Name');
     } else if (isDesignation) {
-      const desg = r as DesignationImportRow;
-      return Boolean(desg.title?.trim());
+      if (!(row as DesignationImportRow).title?.trim()) missing.push('Designation Title');
     } else if (isShiftTemplate) {
-      const st = r as ShiftTemplateImportRow;
-      return Boolean(st.code?.trim() && st.name?.trim());
+      const st = row as ShiftTemplateImportRow;
+      if (!st.code?.trim()) missing.push('Shift Code');
+      if (!st.name?.trim()) missing.push('Shift Name');
     } else if (isHoliday) {
-      const h = r as HolidayImportRow;
-      return Boolean(h.name?.trim() && h.date?.trim());
+      const h = row as HolidayImportRow;
+      if (!h.name?.trim()) missing.push('Holiday Name');
+      if (!h.date?.trim()) missing.push('Holiday Date');
     } else {
-      const c = r as CourseImportRow;
-      return Boolean(c.name?.trim());
+      if (!(row as CourseImportRow).name?.trim()) missing.push('Course Name');
     }
-  });
+
+    return {
+      isValid: missing.length === 0,
+      missing,
+    };
+  };
+
+  const evaluatedRows = useMemo(() => {
+    return parsedRows.map((r: any, idx: number) => {
+      const v = getRowValidation(r);
+      return {
+        row: r,
+        index: idx + 1,
+        isValid: v.isValid,
+        missing: v.missing,
+      };
+    });
+  }, [parsedRows, type]);
+
+  const validRows = useMemo(() => {
+    return evaluatedRows.filter((e: any) => e.isValid).map((e: any) => e.row);
+  }, [evaluatedRows]);
+
+  const invalidRows = useMemo(() => {
+    return evaluatedRows.filter((e: any) => !e.isValid);
+  }, [evaluatedRows]);
+
+  const displayedRows = useMemo(() => {
+    if (fileFilter === 'ready') return evaluatedRows.filter((e: any) => e.isValid);
+    if (fileFilter === 'invalid') return evaluatedRows.filter((e: any) => !e.isValid);
+    return evaluatedRows;
+  }, [evaluatedRows, fileFilter]);
 
   const handleExecuteImport = async () => {
     if (validRows.length === 0) {
-      setErrorMsg('No valid rows found to import. Please check that Full Name and Email/Phone are provided.');
+      setErrorMsg(`No valid rows found to import. Please ensure required fields (${isStudent ? 'Full Name, Course, Email/Phone' : 'Full Name, Designation, Email/Phone'}) are provided.`);
       return;
     }
 
@@ -371,6 +412,7 @@ export function HrmsBulkImportModal({
 
     let successCount = 0;
     const total = validRows.length;
+    let job: any = null;
 
     try {
       if (isStudent || isEmployee) {
@@ -378,13 +420,13 @@ export function HrmsBulkImportModal({
         // 2000-row batches; files over 2000 rows run in a background thread
         // that we poll for progress on the job endpoint.
         const ctx = { defaultBranchId, userHoId, userOwnerId };
-        const bulkRows = validRows.map((r, idx) =>
+        const bulkRows = validRows.map((r: any, idx: number) =>
           isStudent
             ? buildStudentPayload(r as StudentImportRow, ctx, idx)
             : buildEmployeePayload(r as EmployeeImportRow, ctx, idx),
         );
         const endpoint = isStudent ? '/students/bulk-import' : '/hrms/employees/bulk-import';
-        let job: any = await apiClient.post(endpoint, { rows: bulkRows }, { timeout: 300000 });
+        job = await apiClient.post(endpoint, { rows: bulkRows }, { timeout: 300000 });
 
         if (job?.background && job?.job_id) {
           while (job?.status !== 'done' && job?.status !== 'error') {
@@ -449,24 +491,48 @@ export function HrmsBulkImportModal({
           }).catch(() => null);
         } else {
           const c = row as CourseImportRow;
-          let durationVal = 1;
+          const courseCode = (c.code || c.category || 'CRS').trim().toUpperCase();
+          let durationStr = c.duration?.trim() || '';
+          let durationVal = 4;
           let durationUnit = 'Years';
+          let durationDays = 1460;
+
           if (c.durationYears && Number(c.durationYears) > 0) {
             durationVal = Number(c.durationYears);
             durationUnit = 'Years';
+            durationStr = `${durationVal} Year${durationVal > 1 ? 's' : ''}`;
+            durationDays = durationVal * 365;
           } else if (c.durationMonths && Number(c.durationMonths) > 0) {
             durationVal = Number(c.durationMonths);
             durationUnit = 'Months';
+            durationStr = `${durationVal} Month${durationVal > 1 ? 's' : ''}`;
+            durationDays = durationVal * 30;
+          } else if (durationStr) {
+            const numMatch = durationStr.match(/\d+/);
+            const num = numMatch ? parseInt(numMatch[0], 10) : 1;
+            const durLow = durationStr.toLowerCase();
+            if (durLow.includes('month')) {
+              durationDays = num * 30;
+            } else if (durLow.includes('sem')) {
+              durationDays = num * 180;
+            } else if (durLow.includes('day')) {
+              durationDays = num;
+            } else if (durLow.includes('year') || num > 0) {
+              durationDays = num * 365;
+            }
+          } else {
+            durationStr = '';
+            durationDays = 0;
           }
+
           const payload = {
             name: c.name.trim(),
-            category: c.category?.trim() || 'General',
-            department: c.category?.trim() || 'Academics',
-            degree_type: c.degreeType?.trim() || 'Degree',
-            classification: c.degreeType?.trim() || 'Core Subject',
+            category: courseCode,
+            badge: courseCode,
+            code: courseCode,
+            period: durationStr,
+            duration_days: durationDays,
             price: Number(c.price) || 0,
-            duration_value: durationVal,
-            duration_unit: durationUnit,
             description: c.description?.trim() || '',
             is_active: c.status ? c.status.toLowerCase() !== 'inactive' : true,
           };
@@ -476,6 +542,24 @@ export function HrmsBulkImportModal({
         successCount++;
         setProgress(Math.round(((i + 1) / total) * 100));
       }
+      }
+
+      const serverErrors = job?.row_errors || [];
+      const clientSkippedErrors = invalidRows.map((inv: any) => ({
+        row: inv.index,
+        name: (inv.row as any).fullName || (inv.row as any).name || (inv.row as any).title || `Row ${inv.index}`,
+        error: `Missing required field(s): ${inv.missing.join(', ')}`,
+      }));
+      const combinedErrors = [...clientSkippedErrors, ...serverErrors];
+
+      if (combinedErrors.length > 0 || (job?.failed ?? 0) > 0) {
+        setImportSummary({
+          total: parsedRows.length,
+          success: successCount,
+          failed: parsedRows.length - successCount,
+          errors: combinedErrors,
+        });
+        return;
       }
 
       onSuccess(successCount);
@@ -491,10 +575,14 @@ export function HrmsBulkImportModal({
     setFile(null);
     setParsedRows([]);
     setErrorMsg(null);
+    setImportSummary(null);
+    setFileFilter('all');
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
   };
+
+  if (!isOpen) return null;
 
   const modalContent = (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 bg-slate-950/70 backdrop-blur-sm overflow-y-auto animate-fade-in font-sans">
@@ -629,21 +717,111 @@ export function HrmsBulkImportModal({
             </div>
           )}
 
+          {/* Post-Import Results Summary Screen */}
+          {importSummary && (
+            <div className="space-y-4 animate-fade-in">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="p-4 rounded-2xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-center">
+                  <div className="text-2xl font-black text-blue-700 dark:text-blue-300">{importSummary.total}</div>
+                  <div className="text-xs font-bold text-slate-600 dark:text-slate-400">Total Rows in File</div>
+                </div>
+                <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-center">
+                  <div className="text-2xl font-black text-emerald-700 dark:text-emerald-300">{importSummary.success}</div>
+                  <div className="text-xs font-bold text-slate-600 dark:text-slate-400">Successfully Imported</div>
+                </div>
+                <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-center">
+                  <div className="text-2xl font-black text-rose-700 dark:text-rose-300">{importSummary.failed}</div>
+                  <div className="text-xs font-bold text-slate-600 dark:text-slate-400">Skipped / Failed</div>
+                </div>
+              </div>
+
+              {importSummary.errors.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-black uppercase tracking-wider text-rose-700 dark:text-rose-400 flex items-center gap-1.5">
+                      <Icon name="alert-triangle" size={14} />
+                      <span>Issues &amp; Skipped Records Breakdown ({importSummary.errors.length})</span>
+                    </h4>
+                    <span className="text-[11px] text-slate-500 font-semibold">
+                      Please fix these records in your spreadsheet to import them.
+                    </span>
+                  </div>
+
+                  <div className="border border-rose-200 dark:border-rose-900/60 rounded-2xl overflow-hidden max-h-[280px] overflow-y-auto bg-white dark:bg-slate-900">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-rose-50 dark:bg-rose-950/60 text-[11px] font-black uppercase text-rose-800 dark:text-rose-300 tracking-wider sticky top-0 border-b border-rose-200 dark:border-rose-900 z-10">
+                        <tr>
+                          <th className="p-2.5 w-16">Row #</th>
+                          <th className="p-2.5 w-48">Name / Identifier</th>
+                          <th className="p-2.5">Reason for Error / Skipping</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-rose-100 dark:divide-rose-950/40 font-medium">
+                        {importSummary.errors.map((err, i) => (
+                          <tr key={i} className="hover:bg-rose-50/50 dark:hover:bg-rose-950/20">
+                            <td className="p-2.5 font-mono text-slate-500 font-bold">{err.row ?? '—'}</td>
+                            <td className="p-2.5 font-bold text-slate-900 dark:text-white">{err.name || 'Unnamed'}</td>
+                            <td className="p-2.5 text-rose-600 dark:text-rose-400 font-semibold flex items-center gap-1.5">
+                              <Icon name="alert-circle" size={13} className="shrink-0" />
+                              <span>{err.error}</span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Parsed Rows Preview Table */}
-          {file && !parsing && (
+          {file && !parsing && !importSummary && (
             <div className="space-y-3 animate-fade-in">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <span className="text-xs font-black text-slate-900 dark:text-white">
                     File: <span className="text-blue-600">{file.name}</span>
                   </span>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                    {validRows.length} Valid Records
-                  </span>
-                  {parsedRows.length > validRows.length && (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-800 border border-amber-300">
-                      {parsedRows.length - validRows.length} Incomplete
-                    </span>
+                  {/* Filter Pills */}
+                  <button
+                    type="button"
+                    onClick={() => setFileFilter('all')}
+                    className={cn(
+                      'px-2.5 py-0.5 rounded-full text-[11px] font-bold transition cursor-pointer',
+                      fileFilter === 'all'
+                        ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
+                    )}
+                  >
+                    All ({parsedRows.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFileFilter('ready')}
+                    className={cn(
+                      'px-2.5 py-0.5 rounded-full text-[11px] font-bold transition cursor-pointer flex items-center gap-1',
+                      fileFilter === 'ready'
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                    )}
+                  >
+                    <span>✓ Ready ({validRows.length})</span>
+                  </button>
+                  {invalidRows.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setFileFilter('invalid')}
+                      className={cn(
+                        'px-2.5 py-0.5 rounded-full text-[11px] font-bold transition cursor-pointer flex items-center gap-1',
+                        fileFilter === 'invalid'
+                          ? 'bg-rose-600 text-white'
+                          : 'bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-800'
+                      )}
+                    >
+                      <Icon name="alert-circle" size={11} />
+                      <span>Missing Fields ({invalidRows.length})</span>
+                    </button>
                   )}
                 </div>
 
@@ -657,23 +835,38 @@ export function HrmsBulkImportModal({
                 </button>
               </div>
 
-              <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden max-h-[260px] overflow-y-auto">
+              {/* Missing Fields Warning Banner */}
+              {invalidRows.length > 0 && (
+                <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-2xl flex items-start gap-2.5 text-xs text-amber-900 dark:text-amber-200">
+                  <Icon name="alert-triangle" size={16} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                  <div className="space-y-0.5">
+                    <div className="font-black">
+                      {invalidRows.length} {invalidRows.length === 1 ? 'row has' : 'rows have'} missing required fields.
+                    </div>
+                    <div className="text-[11px] text-amber-800 dark:text-amber-300">
+                      Required for {typeTitle}: <span className="font-bold">{isStudent ? 'Full Name *, Course/Degree *, Personal Email or Mobile *' : isEmployee ? 'Full Name *, Department *, Designation *, Personal Email or Mobile *' : 'Name *'}</span>. Rows with missing required fields are marked in red and will be skipped during import.
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden max-h-[280px] overflow-y-auto">
                 <table className="w-full text-left text-xs">
                   <thead className="bg-slate-100 dark:bg-slate-800 text-[11px] font-black uppercase text-slate-600 dark:text-slate-300 tracking-wider sticky top-0 z-10 border-b border-slate-200 dark:border-slate-700">
                     <tr>
                       <th className="p-2.5">#</th>
                       <th className="p-2.5">
                         {isDepartment
-                          ? 'DEPARTMENT NAME'
+                          ? 'DEPARTMENT NAME *'
                           : isDesignation
-                            ? 'DESIGNATION TITLE'
+                            ? 'DESIGNATION TITLE *'
                             : isCourse
-                              ? 'COURSE / PROGRAM NAME'
+                              ? 'COURSE / PROGRAM NAME *'
                               : isShiftTemplate
-                                ? 'SHIFT CODE & NAME'
+                                ? 'SHIFT CODE & NAME *'
                                 : isHoliday
-                                  ? 'HOLIDAY NAME'
-                                  : 'FULL NAME'}
+                                  ? 'HOLIDAY NAME *'
+                                  : 'FULL NAME *'}
                       </th>
                       <th className="p-2.5">
                         {isDepartment
@@ -685,8 +878,8 @@ export function HrmsBulkImportModal({
                               : isShiftTemplate
                                 ? 'START TIME'
                                 : isHoliday
-                                  ? 'DATE (YYYY-MM-DD)'
-                                  : 'EMAIL'}
+                                  ? 'DATE (YYYY-MM-DD) *'
+                                  : 'EMAIL *'}
                       </th>
                       <th className="p-2.5">
                         {isDepartment
@@ -699,7 +892,7 @@ export function HrmsBulkImportModal({
                                 ? 'END TIME'
                                 : isHoliday
                                   ? 'HOLIDAY TYPE'
-                                  : 'PHONE'}
+                                  : 'PHONE *'}
                       </th>
                       <th className="p-2.5">
                         {isDepartment || isDesignation || isCourse
@@ -709,8 +902,8 @@ export function HrmsBulkImportModal({
                             : isHoliday
                               ? 'DESCRIPTION'
                               : isStudent
-                                ? 'COURSE & MEDIUM'
-                                : 'DESIGNATION & DEPT'}
+                                ? 'COURSE & MEDIUM *'
+                                : 'DESIGNATION & DEPT *'}
                       </th>
                       <th className="p-2.5">
                         {isDepartment || isDesignation
@@ -729,107 +922,120 @@ export function HrmsBulkImportModal({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
-                    {parsedRows.map((row, idx) => {
-                      const isValid = isStudent
-                        ? Boolean((row as StudentImportRow).fullName && ((row as StudentImportRow).email || (row as StudentImportRow).phone))
-                        : isEmployee
-                          ? Boolean((row as EmployeeImportRow).fullName && ((row as EmployeeImportRow).email || (row as EmployeeImportRow).phone))
-                          : isDepartment
-                            ? Boolean((row as DepartmentImportRow).name?.trim())
-                            : isDesignation
-                              ? Boolean((row as DesignationImportRow).title?.trim())
-                              : isShiftTemplate
-                                ? Boolean((row as ShiftTemplateImportRow).code?.trim() && (row as ShiftTemplateImportRow).name?.trim())
-                                : isHoliday
-                                  ? Boolean((row as HolidayImportRow).name?.trim() && (row as HolidayImportRow).date?.trim())
-                                  : Boolean((row as CourseImportRow).name?.trim());
+                    {displayedRows.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="p-6 text-center text-xs text-slate-500">
+                          No records match the current filter.
+                        </td>
+                      </tr>
+                    ) : (
+                      displayedRows.map((item: any) => {
+                        const row = item.row as any;
+                        const idx = item.index;
+                        const isValid = item.isValid;
 
-                      return (
-                        <tr
-                          key={idx}
-                          className={cn(
-                            'hover:bg-slate-50 dark:hover:bg-slate-800/50',
-                            !isValid && 'bg-amber-50/50 dark:bg-amber-950/20'
-                          )}
-                        >
-                          <td className="p-2.5 text-slate-400 font-mono text-[11px]">{idx + 1}</td>
-                          <td className="p-2.5 font-bold text-slate-900 dark:text-white">
-                            {isDepartment
-                              ? (row.name || <span className="text-rose-500 italic">Missing Name</span>)
-                              : isDesignation
-                                ? (row.title || <span className="text-rose-500 italic">Missing Title</span>)
-                                : isCourse
-                                  ? (row.name || <span className="text-rose-500 italic">Missing Course</span>)
-                                  : isShiftTemplate
-                                    ? (`${row.code || '—'} · ${row.name || ''}` || <span className="text-rose-500 italic">Missing Code/Name</span>)
-                                    : isHoliday
-                                      ? (row.name || <span className="text-rose-500 italic">Missing Name</span>)
-                                      : (row.fullName || <span className="text-rose-500 italic">Missing Name</span>)}
-                          </td>
-                          <td className="p-2.5 text-slate-600 dark:text-slate-400 text-[11px]">
-                            {isDepartment
-                              ? row.code || '—'
-                              : isDesignation
-                                ? row.department || 'ALL'
-                                : isCourse
-                                  ? row.category || 'General'
-                                  : isShiftTemplate
-                                    ? row.start_time || '—'
-                                    : isHoliday
-                                      ? row.date || '—'
-                                      : row.email || '—'}
-                          </td>
-                          <td className="p-2.5 text-slate-600 dark:text-slate-400 text-[11px]">
-                            {isDepartment
-                              ? row.headName || '—'
-                              : isDesignation
-                                ? row.level || 'Mid'
-                                : isCourse
-                                  ? (row.durationYears ? `${row.durationYears} Years` : row.durationMonths ? `${row.durationMonths} Months` : '1 Year')
-                                  : isShiftTemplate
-                                    ? row.end_time || '—'
-                                    : isHoliday
-                                      ? row.holiday_type || '—'
-                                      : row.phone || '—'}
-                          </td>
-                          <td className="p-2.5 text-slate-700 dark:text-slate-300 max-w-[200px] truncate">
-                            {isDepartment || isDesignation || isCourse
-                              ? row.description || '—'
-                              : isShiftTemplate
-                                ? `Break: ${row.break_mins ?? 0}m · Grace: ${row.grace_period_mins ?? 0}m`
-                                : isHoliday
-                                  ? row.description || '—'
-                                  : isStudent
-                                    ? `${row.course || 'General'} (${row.medium || 'English'})`
-                                    : `${row.designation || 'Staff'} (${row.department || 'General'})`}
-                          </td>
-                          <td className="p-2.5 text-slate-600 dark:text-slate-400 text-[11px]">
-                            {isDepartment || isDesignation
-                              ? row.status || 'Active'
-                              : isCourse
-                                ? (row.price ? `₹${Number(row.price).toLocaleString()}` : '₹0')
-                                : isShiftTemplate
-                                  ? (row.is_night_shift ? 'Yes (Night)' : 'No (Day)')
-                                  : isHoliday
-                                    ? (row.date?.split('-')[0] || '—')
-                                    : isStudent
-                                      ? row.fatherName || '—'
-                                      : row.branch || '—'}
-                          </td>
-                          <td className="p-2.5 text-center">
-                            {isValid ? (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200">
-                                Ready
-                              </span>
-                            ) : (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border border-rose-200">
-                                Missing Fields
-                              </span>
+                        return (
+                          <tr
+                            key={idx}
+                            className={cn(
+                              'hover:bg-slate-50 dark:hover:bg-slate-800/50',
+                              !isValid && 'bg-rose-50/50 dark:bg-rose-950/20'
                             )}
-                          </td>
-                        </tr>
-                      );
-                    })}
+                          >
+                            <td className="p-2.5 text-slate-400 font-mono text-[11px]">{idx}</td>
+                            <td className="p-2.5 font-bold text-slate-900 dark:text-white">
+                              {isDepartment
+                                ? (row.name || <span className="text-rose-500 italic font-semibold">Missing Name *</span>)
+                                : isDesignation
+                                  ? (row.title || <span className="text-rose-500 italic font-semibold">Missing Title *</span>)
+                                  : isCourse
+                                    ? (row.name || <span className="text-rose-500 italic font-semibold">Missing Course *</span>)
+                                    : isShiftTemplate
+                                      ? (`${row.code || '—'} · ${row.name || ''}` || <span className="text-rose-500 italic font-semibold">Missing Code/Name *</span>)
+                                      : isHoliday
+                                        ? (row.name || <span className="text-rose-500 italic font-semibold">Missing Name *</span>)
+                                        : (row.fullName || (
+                                            <span className="inline-flex items-center gap-1 text-rose-600 dark:text-rose-400 font-bold bg-rose-100/70 dark:bg-rose-950/60 px-1.5 py-0.5 rounded text-[10px]">
+                                              <Icon name="alert-circle" size={10} /> Missing Name *
+                                            </span>
+                                          ))}
+                            </td>
+                            <td className="p-2.5 text-slate-600 dark:text-slate-400 text-[11px]">
+                              {isDepartment
+                                ? row.code || '—'
+                                : isDesignation
+                                  ? row.department || '—'
+                                  : isCourse
+                                    ? row.category || '—'
+                                    : isShiftTemplate
+                                      ? row.start_time || '—'
+                                      : isHoliday
+                                        ? (row.date || <span className="text-rose-500 italic font-semibold">Missing Date *</span>)
+                                        : (row.email || (
+                                            !row.phone ? (
+                                              <span className="text-rose-500 italic font-semibold">Missing Email/Phone *</span>
+                                            ) : '—'
+                                          ))}
+                            </td>
+                            <td className="p-2.5 text-slate-600 dark:text-slate-400 text-[11px]">
+                              {isDepartment
+                                ? row.headName || '—'
+                                : isDesignation
+                                  ? row.level || '—'
+                                  : isCourse
+                                    ? (row.durationYears ? `${row.durationYears} Years` : row.durationMonths ? `${row.durationMonths} Months` : '—')
+                                    : isShiftTemplate
+                                      ? row.end_time || '—'
+                                      : isHoliday
+                                        ? row.holiday_type || '—'
+                                        : (row.phone || (
+                                            !row.email ? (
+                                              <span className="text-rose-500 italic font-semibold">Missing Email/Phone *</span>
+                                            ) : '—'
+                                          ))}
+                            </td>
+                            <td className="p-2.5 text-slate-700 dark:text-slate-300 max-w-[200px] truncate">
+                              {isDepartment || isDesignation || isCourse
+                                ? row.description || '—'
+                                : isShiftTemplate
+                                  ? `Break: ${row.break_mins ?? 0}m · Grace: ${row.grace_period_mins ?? 0}m`
+                                  : isHoliday
+                                    ? row.description || '—'
+                                    : isStudent
+                                      ? (row.course ? (row.medium ? `${row.course} (${row.medium})` : row.course) : <span className="text-rose-500 italic font-semibold">Missing Course *</span>)
+                                      : (row.designation ? (row.department ? `${row.designation} (${row.department})` : row.designation) : <span className="text-rose-500 italic font-semibold">Missing Designation *</span>)}
+                            </td>
+                            <td className="p-2.5 text-slate-600 dark:text-slate-400 text-[11px]">
+                              {isDepartment || isDesignation
+                                ? row.status || '—'
+                                : isCourse
+                                  ? (row.price ? `₹${Number(row.price).toLocaleString()}` : '—')
+                                  : isShiftTemplate
+                                    ? (row.is_night_shift ? 'Yes (Night)' : 'No (Day)')
+                                    : isHoliday
+                                      ? (row.date?.split('-')[0] || '—')
+                                      : isStudent
+                                        ? row.fatherName || '—'
+                                        : row.branch || '—'}
+                            </td>
+                            <td className="p-2.5 text-center">
+                              {isValid ? (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200">
+                                  ✓ Ready
+                                </span>
+                              ) : (
+                                <span
+                                  className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border border-rose-200"
+                                  title={`Missing: ${item.missing.join(', ')}`}
+                                >
+                                  Missing: {item.missing.join(', ')}
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -855,39 +1061,75 @@ export function HrmsBulkImportModal({
 
         {/* Footer Actions */}
         <div className="p-4 sm:p-5 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 flex items-center justify-between gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={importing}
-            className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 transition cursor-pointer"
-          >
-            Cancel
-          </button>
+          {importSummary ? (
+            <>
+              <button
+                type="button"
+                onClick={resetUpload}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 transition cursor-pointer flex items-center gap-1.5"
+              >
+                <Icon name="upload-cloud" size={14} />
+                <span>Upload Another File</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (importSummary.success > 0) onSuccess(importSummary.success);
+                  onClose();
+                }}
+                className="px-5 py-2.5 rounded-xl text-xs font-extrabold text-white bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-500/20 active:scale-[0.98] transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <Icon name="check" size={15} />
+                <span>Done &amp; View Records</span>
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={importing}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 transition cursor-pointer"
+              >
+                Cancel
+              </button>
 
-          {file && (
-            <button
-              type="button"
-              onClick={handleExecuteImport}
-              disabled={importing || validRows.length === 0}
-              className={cn(
-                'px-5 py-2.5 rounded-xl text-xs font-extrabold text-white flex items-center gap-2 shadow-md transition-all cursor-pointer',
-                importing || validRows.length === 0
-                  ? 'bg-slate-400 cursor-not-allowed opacity-60'
-                  : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-blue-500/20 active:scale-[0.98]'
+              {file && (
+                <button
+                  type="button"
+                  onClick={handleExecuteImport}
+                  disabled={importing || validRows.length === 0}
+                  className={cn(
+                    'px-5 py-2.5 rounded-xl text-xs font-extrabold text-white flex items-center gap-2 shadow-md transition-all cursor-pointer',
+                    importing || validRows.length === 0
+                      ? 'bg-slate-400 cursor-not-allowed opacity-60'
+                      : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-blue-500/20 active:scale-[0.98]'
+                  )}
+                >
+                  {importing ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Importing Records...</span>
+                    </>
+                  ) : validRows.length === 0 ? (
+                    <>
+                      <Icon name="alert-triangle" size={15} />
+                      <span>Cannot Import: Missing Required Fields</span>
+                    </>
+                  ) : invalidRows.length > 0 ? (
+                    <>
+                      <Icon name="upload-cloud" size={15} />
+                      <span>Import {validRows.length} Valid Records ({invalidRows.length} Skipped)</span>
+                    </>
+                  ) : (
+                    <>
+                      <Icon name="upload-cloud" size={15} />
+                      <span>Import {validRows.length} {isStudent ? 'Students' : isEmployee ? 'Employees' : typeTitle}</span>
+                    </>
+                  )}
+                </button>
               )}
-            >
-              {importing ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Importing Records...</span>
-                </>
-              ) : (
-                <>
-                  <Icon name="upload-cloud" size={15} />
-                  <span>Import {validRows.length} {isStudent ? 'Students' : 'Employees'}</span>
-                </>
-              )}
-            </button>
+            </>
           )}
         </div>
 

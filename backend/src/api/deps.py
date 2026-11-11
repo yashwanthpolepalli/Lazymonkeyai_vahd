@@ -82,6 +82,36 @@ def resolve_tenant_scope(user: Optional[User], db: Session) -> Optional[list]:
     return [user.id]
 
 
+def _expand_tenant(db: Session, tenant_id: str) -> List[str]:
+    """Expand a ribbon-selected tenant id into the set of tenant ids to scope to.
+
+    People/HR tables are stamped with the *branch* id as their canonical tenant.
+    The ribbon may hold:
+      * a branch id (HO / owner selectors)      -> scope is just that branch
+      * an HO / owner id (super-admin selector) -> expand to every active branch
+        under that HO / owner, plus the id itself (rows may be stamped to it)
+
+    Using the expanded set, not a bare HO id, is what stops the super-admin
+    "switch organization" from narrowing to zero / the wrong org.
+    """
+    from src.models.settings import Branch
+
+    now = time.time()
+    cache_key = f"narrow:{tenant_id}"
+    if cache_key in _BRANCH_CACHE:
+        expiry, ids = _BRANCH_CACHE[cache_key]
+        if now < expiry:
+            return ids
+    rows = db.query(Branch).filter(
+        or_(Branch.ho_id == tenant_id, Branch.owner_id == tenant_id),
+        Branch.is_active == True,
+    ).all()
+    ids = [b.id for b in rows if b.id]
+    ids.insert(0, tenant_id)  # keep the selected id itself (branch id or HO-stamped rows)
+    _BRANCH_CACHE[cache_key] = (now + 30.0, ids)
+    return ids
+
+
 def _finish(user: Optional[User], db: Session, request: Optional[Request] = None) -> Optional[User]:
     """Set the request's tenant scope, then hand back the resolved user.
 
@@ -99,11 +129,14 @@ def _finish(user: Optional[User], db: Session, request: Optional[Request] = None
         if request is not None:
             req_tenant = request.headers.get("X-Tenant-Id") or request.query_params.get("x_tenant_id")
             if req_tenant and req_tenant.lower() not in ("all", ""):
+                expanded = _expand_tenant(db, req_tenant)
                 if scope is None:
-                    scope = [req_tenant]
-                elif req_tenant in scope:
-                    scope = [req_tenant]
-                # else: ignore out-of-scope request, keep the base scope
+                    scope = expanded
+                else:
+                    kept = [t for t in scope if t in expanded]
+                    if kept:
+                        scope = kept
+                    # else: out-of-scope selection — keep the base scope
         set_tenant_scope(scope)
     except Exception:  # never break auth because scoping failed to resolve
         set_tenant_scope(None)

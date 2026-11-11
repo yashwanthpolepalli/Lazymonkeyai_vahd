@@ -38,6 +38,12 @@ class Employee(Base):
     skills = Column(JSON, nullable=True)
     meta_data = Column(JSON, nullable=True)
     shift_code = Column(String, nullable=True)
+    # Canonical person link: the login User this employee maps to (via
+    # employeeProfile.user_id). Lets every view match a person by stable
+    # user_id instead of string-surgery on emp_/tr_/usr_ ids.
+    user_id = Column(String, nullable=True, index=True)
+    # The employeeProfile (payroll) row this HRMS employee mirrors.
+    profile_id = Column(String, nullable=True, index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 class Department(Base):

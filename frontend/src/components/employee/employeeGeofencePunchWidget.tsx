@@ -3,6 +3,7 @@ import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/utils/cn';
 import { useAuth } from '@/context/AuthContext';
 import { hrmsApi, type GeofenceScheme, type PunchResponse } from '@/services/hrmsApi';
+import { apiClient } from '@/services/apiClient';
 
 interface employeeGeofencePunchWidgetProps {
   onPunchSuccess?: (res: PunchResponse) => void;
@@ -97,6 +98,37 @@ export function EmployeeGeofencePunchWidget({ onPunchSuccess }: employeeGeofence
       );
     }
   }, []);
+
+  // Hydrate today's punch state from the real biometric logs on mount, so a
+  // page reload does NOT lock the CLOCK OUT button (isClockedIn defaults to
+  // false and was only ever set by a punch made in this page session).
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await apiClient.get<any[]>('/biometrics/recent', { params: { limit: 100 } }).catch(() => null);
+        if (cancelled) return;
+        const logs = Array.isArray(res) ? res : [];
+        const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+        const fmt = (ts: string) => new Date(ts).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+        const mine = logs
+          .filter((l: any) => l.direction === 'CHECK_IN' || l.direction === 'CHECK_OUT')
+          .filter((l: any) => l.meta_data?.user_id === user.id || (l.meta_data?.employee_id || '').startsWith(`emp_${user.id}`))
+          .filter((l: any) => new Date(l.timestamp) >= todayStart)
+          .sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+        if (mine.length === 0) return;
+        const last = mine[mine.length - 1];
+        const firstIn = mine.find((m: any) => m.direction === 'CHECK_IN');
+        if (last.direction === 'CHECK_OUT') {
+          setPunchStatus({ isClockedIn: false, clockInTime: firstIn ? fmt(firstIn.timestamp) : undefined, clockOutTime: fmt(last.timestamp), status: 'Clocked Out' });
+        } else {
+          setPunchStatus({ isClockedIn: true, clockInTime: firstIn ? fmt(firstIn.timestamp) : fmt(last.timestamp), status: 'Present' });
+        }
+      } catch { /* stay at defaults */ }
+    })();
+    return () => { cancelled = true; };
+  }, [user?.id]);
 
   useEffect(() => {
     if (deviceCoords && activeScheme?.latitude != null && activeScheme?.longitude != null) {

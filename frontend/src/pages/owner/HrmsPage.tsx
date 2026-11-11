@@ -17,13 +17,6 @@ import { apiClient } from '@/services/apiClient';
 import { cn } from '@/utils/cn';
 import {
   hrmsApi,
-  type DepartmentItem,
-  type DesignationItem,
-  type TeamItem,
-  type DocumentItem,
-  type AttendanceRecord,
-  type LeaveItem,
-  type PayrollItem,
   type ExitItem,
 } from '@/services/hrmsApi';
 
@@ -65,16 +58,11 @@ export function HrmsPage() {
   const [activeCategory, setActiveCategory] = useState<HrmsCategory>('Employee Management');
   const [activeSubTab, setActiveSubTab] = useState<string>(initialTab);
 
-  // Data States
-  const [departments, setDepartments] = useState<DepartmentItem[]>([]);
-  const [designations, setDesignations] = useState<DesignationItem[]>([]);
-  const [teams, setTeams] = useState<TeamItem[]>([]);
-  const [documents, setDocuments] = useState<DocumentItem[]>([]);
-  const [attendanceLogs, setAttendanceLogs] = useState<AttendanceRecord[]>([]);
-  const [leaves, setLeaves] = useState<LeaveItem[]>([]);
-  const [payroll, setPayroll] = useState<PayrollItem[]>([]);
+  // Data States — only the data actually rendered by this page. Each tab
+  // (HrmsemployeesTab, HrmsLeaveTab, HrmsPayrollTab, HrmsAttendanceTab,
+  // StudentManagementTab) fetches its own data on demand. Fetching all of
+  // it here on mount caused a request-storm that made the page feel slow.
   const [exitRequests, setExitRequests] = useState<ExitItem[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const { user } = useAuth();
@@ -207,38 +195,14 @@ export function HrmsPage() {
     setSearchParams({ view: 'students', tab: targetSub });
   };
 
-  // Fetch initial data
+  // Fetch only the data the page renders (Exit Management). The other tabs
+  // load their own data on demand — no mount-time request storm.
   const fetchData = async () => {
-    setLoading(true);
     try {
-      const activeOrg = localStorage.getItem('vahd_selected_org_id') || 'all';
-      const branchIdParam = activeOrg !== 'all' ? activeOrg : undefined;
-      const [deptRes, desgRes, teamRes, docRes] = await Promise.all([
-        hrmsApi.getDepartments(),
-        hrmsApi.getDesignations(),
-        hrmsApi.getTeams(),
-        hrmsApi.getDocuments(),
-      ]);
-      setDepartments(deptRes || []);
-      setDesignations(desgRes || []);
-      setTeams(teamRes || []);
-      setDocuments(docRes || []);
-
-      // Fetch supplementary modules
-      const [attRes, leaveRes, payRes, exitRes] = await Promise.all([
-        hrmsApi.getAttendance(undefined, branchIdParam),
-        hrmsApi.getLeaves(undefined, branchIdParam),
-        hrmsApi.getPayroll(undefined, undefined, branchIdParam),
-        hrmsApi.getExitRequests(),
-      ]);
-      setAttendanceLogs(attRes || []);
-      setLeaves(leaveRes || []);
-      setPayroll(payRes || []);
-      setExitRequests(exitRes || []);
+      const exitRes = await hrmsApi.getExitRequests().catch(() => []);
+      setExitRequests(Array.isArray(exitRes) ? exitRes : []);
     } catch (err) {
-      console.error('Error fetching HRMS data:', err);
-    } finally {
-      setLoading(false);
+      console.error('Error fetching exit requests:', err);
     }
   };
 

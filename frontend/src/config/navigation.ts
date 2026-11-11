@@ -29,7 +29,6 @@ export const navConfig: Record<Role, NavItem[]> = {
   ],
   employee: [
     { label: 'Dashboard', path: '/employee', icon: 'layout-dashboard' },
-    { label: 'Students', path: '/employee/students', icon: 'users' },
     { label: 'HRMS', path: '/employee/hrms', icon: 'users' },
     { label: 'Profile', path: '/employee/profile', icon: 'user' },
   ],

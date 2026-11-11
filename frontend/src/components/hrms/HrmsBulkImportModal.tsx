@@ -43,6 +43,180 @@ export interface HrmsBulkImportModalProps {
   onSuccess: (count: number) => void;
 }
 
+interface ImportCtx {
+  defaultBranchId?: string;
+  userHoId?: string;
+  userOwnerId?: string;
+}
+
+// Student row → the exact payload the /students create endpoint accepts.
+// (idx keeps synthesized emails unique across a whole file.)
+function buildStudentPayload(s: StudentImportRow, ctx: ImportCtx, idx: number): any {
+  const courseStr = s.course?.trim() || '';
+  const mediumStr = s.medium?.trim() || '';
+  const deptStr = s.department?.trim() || '';
+  const cleanParentMobile = s.parentPhone?.trim() || '';
+  const studentEmail = s.email?.trim() || (s.phone ? `${s.phone}@student.portal` : `${s.fullName.toLowerCase().replace(/[^a-z0-9]/g, '')}${idx % 100000}@student.portal`);
+
+  return {
+    full_name: s.fullName.toUpperCase().trim(),
+    email: studentEmail.toLowerCase(),
+    phone: s.phone?.trim() || '',
+    parent_phone: cleanParentMobile || undefined,
+    member_code: s.rollNo?.trim() || undefined,
+    roll_no: s.rollNo?.trim() || undefined,
+    qualification: s.qualification?.trim() || undefined,
+    specialization: s.specialization?.trim() || undefined,
+    department: deptStr || undefined,
+    gender: (s.gender || '').toLowerCase(),
+    age: s.age ? Number(s.age) : undefined,
+    role: 'STUDENT',
+    goal: courseStr ? `${courseStr}${mediumStr ? ` (${mediumStr} Medium)` : ''}` : 'Student Admission',
+    status: s.status || 'ACTIVE',
+    branch_id: ctx.defaultBranchId,
+    ho_id: ctx.userHoId,
+    owner_id: ctx.userOwnerId,
+    primary_vahd_location: s.branch?.trim() || undefined,
+    meta_data: {
+      admission_type: 'DEGREE_ADMISSION',
+      course: courseStr,
+      medium: mediumStr,
+      department: deptStr,
+      qualification: s.qualification?.trim() || undefined,
+      specialization: s.specialization?.trim() || undefined,
+      branch_id: ctx.defaultBranchId,
+      ho_id: ctx.userHoId,
+      owner_id: ctx.userOwnerId,
+      academic_year: s.academicYear || `${new Date().getFullYear()} - ${new Date().getFullYear() + 1}`,
+      roll_number: s.rollNo?.trim() || undefined,
+      student_number: s.rollNo?.trim() || undefined,
+      code: s.rollNo?.trim() || undefined,
+      father_name: s.fatherName?.toUpperCase().trim() || '',
+      mother_name: s.motherName?.toUpperCase().trim() || '',
+      parent_phone: cleanParentMobile,
+      parent_occupation: s.parentOccupation || '',
+      annual_income: s.annualIncome || '',
+      blood_group: s.bloodGroup || '',
+      caste: s.caste || '',
+      sub_caste: s.subCaste || '',
+      mother_tongue: s.motherTongue || '',
+      nationality: s.nationality || '',
+      marital_status: s.maritalStatus || '',
+      place_of_birth: s.placeOfBirth || '',
+      identification_marks: [s.identificationMark1 || '', s.identificationMark2 || ''].filter(Boolean),
+      aadhar_number: s.aadharNumber || '',
+      dob: s.dob || '',
+      age: s.age || '',
+      gender: s.gender || '',
+      permanent_address: {
+        door_no: s.permDoorNo || '',
+        street: s.permStreet || '',
+        village: s.permVillage || '',
+        mandal: s.permMandal || '',
+        district: s.permDistrict || '',
+        state: s.permState || '',
+        mobile: s.permMobile || s.phone || '',
+      },
+      present_address: {
+        door_no: s.presDoorNo || '',
+        street: s.presStreet || '',
+        village: s.presVillage || '',
+        mandal: s.presMandal || '',
+        district: s.presDistrict || '',
+        state: s.presState || '',
+        mobile: s.presMobile || '',
+        telephone: s.telephone || '',
+      },
+      enrolled_at: new Date().toISOString(),
+    },
+  };
+}
+
+// Employee row → the exact payload the /hrms/employees create endpoint accepts.
+function buildEmployeePayload(e: EmployeeImportRow, ctx: ImportCtx, idx: number): any {
+  const empEmail = e.email?.trim() || (e.phone ? `${e.phone}@staff.portal` : `${e.fullName.toLowerCase().replace(/[^a-z0-9]/g, '')}${idx % 100000}@staff.portal`);
+  const parts = e.fullName.trim().split(' ');
+
+  return {
+    full_name: e.fullName.trim(),
+    first_name: parts[0] || e.fullName.trim(),
+    last_name: parts.slice(1).join(' ') || '',
+    email: empEmail.toLowerCase(),
+    phone: e.phone?.trim() || '',
+    designation: e.designation?.trim() || '',
+    department: e.department?.trim() || '',
+    gender: e.gender ? e.gender.trim().toLowerCase() : '',
+    code: e.code ? e.code.trim() : undefined,
+    role: e.role?.trim() || 'STAFF',
+    employment_type: e.employmentType?.trim() || 'Full-Time',
+    joined_date: e.joinedDate?.trim() || '',
+    salary: e.salary ? Number(e.salary) : 0,
+    vahd_branch: e.branch?.trim() || '',
+    branch_id: ctx.defaultBranchId,
+    ho_id: ctx.userHoId,
+    owner_id: ctx.userOwnerId,
+    specialization: e.areaOfService?.trim() || '',
+    aadhar_number: e.aadharNumber?.trim() || '',
+    pan_number: e.panNumber?.trim() || '',
+    account_number: e.accountNumber?.trim() || '',
+    ifsc_code: e.ifscCode?.trim() || '',
+    address: e.presentAddress?.trim() || e.permanentAddress?.trim() || '',
+    emergency_contact: e.emergencyContactNo ? `${e.emergencyName || ''} (${e.emergencyRelationship || ''}): ${e.emergencyContactNo}` : (e.emergencyContactNo || ''),
+    skills: e.technicalSkills ? e.technicalSkills.split(',').map((s) => s.trim()).filter(Boolean) : [],
+    status: e.status?.trim() || 'Active',
+    is_active: e.status ? e.status.toLowerCase() !== 'inactive' : true,
+    meta_data: {
+      form_title: 'PERSONAL DETAILS FORM',
+      employee_code: e.code?.trim() || undefined,
+      father_name: e.fatherName?.trim() || '',
+      dob: e.dob?.trim() || '',
+      age: e.age ? String(e.age) : '',
+      blood_group: e.bloodGroup?.trim() || '',
+      religion: e.religion?.trim() || '',
+      caste: e.caste?.trim() || '',
+      gender: e.gender ? e.gender.trim() : '',
+      marital_status: e.maritalStatus?.trim() || '',
+      work_experience_years: e.workExperienceYears?.trim() || '',
+      area_of_service: e.areaOfService?.trim() || '',
+      present_address: e.presentAddress?.trim() || '',
+      permanent_address: e.permanentAddress?.trim() || '',
+      emergency_details: {
+        name: e.emergencyName?.trim() || '',
+        relationship: e.emergencyRelationship?.trim() || '',
+        address: e.emergencyAddress?.trim() || '',
+        contact_no: e.emergencyContactNo?.trim() || '',
+        note: e.emergencyNote?.trim() || '',
+      },
+      post_details: {
+        location: e.branch?.trim() || '',
+        department: e.department?.trim() || '',
+        designation: e.designation?.trim() || '',
+        joining_date: e.joinedDate?.trim() || '',
+        role: e.role || 'STAFF',
+        technical_skills: e.technicalSkills?.trim() || '',
+      },
+      bank_details: {
+        account_holder_name: e.accountHolderName?.trim() || '',
+        bank_name: e.bankName?.trim() || '',
+        account_number: e.accountNumber?.trim() || '',
+        branch_city: e.bankBranchCity?.trim() || '',
+        account_type: e.bankAccountType?.trim() || 'Savings',
+        ifsc_code: e.ifscCode?.trim() || '',
+        pan_no: e.panNumber?.trim() || '',
+      },
+      reference_contact: {
+        name: e.refName?.trim() || '',
+        company: e.refCompany?.trim() || '',
+        address: e.refAddress?.trim() || '',
+        post: e.refPost?.trim() || '',
+        telephone: e.refTelephone?.trim() || '',
+        contact_no: e.refContactNo?.trim() || '',
+      },
+      enrolled_at: new Date().toISOString(),
+    },
+  };
+}
+
 export function HrmsBulkImportModal({
   isOpen,
   onClose,
@@ -199,188 +373,39 @@ export function HrmsBulkImportModal({
     const total = validRows.length;
 
     try {
-      for (let i = 0; i < total; i++) {
-        const row = validRows[i];
-        if (isStudent) {
-          const s = row as StudentImportRow;
-          const courseStr = s.course?.trim() || '';
-          const mediumStr = s.medium?.trim() || '';
-          const deptStr = s.department?.trim() || '';
-          const cleanParentMobile = s.parentPhone?.trim() || '';
-          const studentEmail = s.email?.trim() || (s.phone ? `${s.phone}@student.portal` : `${s.fullName.toLowerCase().replace(/[^a-z0-9]/g, '')}${Date.now() % 10000}@student.portal`);
+      if (isStudent || isEmployee) {
+        // Fast bulk path: ONE request instead of N. The backend commits in
+        // 2000-row batches; files over 2000 rows run in a background thread
+        // that we poll for progress on the job endpoint.
+        const ctx = { defaultBranchId, userHoId, userOwnerId };
+        const bulkRows = validRows.map((r, idx) =>
+          isStudent
+            ? buildStudentPayload(r as StudentImportRow, ctx, idx)
+            : buildEmployeePayload(r as EmployeeImportRow, ctx, idx),
+        );
+        const endpoint = isStudent ? '/students/bulk-import' : '/hrms/employees/bulk-import';
+        let job: any = await apiClient.post(endpoint, { rows: bulkRows }, { timeout: 300000 });
 
-          const payload = {
-            full_name: s.fullName.toUpperCase().trim(),
-            email: studentEmail.toLowerCase(),
-            phone: s.phone?.trim() || '',
-            parent_phone: cleanParentMobile || undefined,
-            member_code: s.rollNo?.trim() || undefined,
-            roll_no: s.rollNo?.trim() || undefined,
-            qualification: s.qualification?.trim() || undefined,
-            specialization: s.specialization?.trim() || undefined,
-            department: deptStr || undefined,
-            gender: (s.gender || '').toLowerCase(),
-            age: s.age ? Number(s.age) : undefined,
-            role: 'STUDENT',
-            goal: courseStr ? `${courseStr}${mediumStr ? ` (${mediumStr} Medium)` : ''}` : 'Student Admission',
-            status: s.status || 'ACTIVE',
-            branch_id: defaultBranchId,
-            ho_id: userHoId,
-            owner_id: userOwnerId,
-            primary_vahd_location: s.branch?.trim() || undefined,
-            meta_data: {
-              admission_type: 'DEGREE_ADMISSION',
-              course: courseStr,
-              medium: mediumStr,
-              department: deptStr,
-              qualification: s.qualification?.trim() || undefined,
-              specialization: s.specialization?.trim() || undefined,
-              branch_id: defaultBranchId,
-              ho_id: userHoId,
-              owner_id: userOwnerId,
-              academic_year: s.academicYear || `${new Date().getFullYear()} - ${new Date().getFullYear() + 1}`,
-              roll_number: s.rollNo?.trim() || undefined,
-              student_number: s.rollNo?.trim() || undefined,
-              code: s.rollNo?.trim() || undefined,
-              father_name: s.fatherName?.toUpperCase().trim() || '',
-              mother_name: s.motherName?.toUpperCase().trim() || '',
-              parent_phone: cleanParentMobile,
-              parent_occupation: s.parentOccupation || '',
-              annual_income: s.annualIncome || '',
-              blood_group: s.bloodGroup || '',
-              caste: s.caste || '',
-              sub_caste: s.subCaste || '',
-              mother_tongue: s.motherTongue || '',
-              nationality: s.nationality || '',
-              marital_status: s.maritalStatus || '',
-              place_of_birth: s.placeOfBirth || '',
-              identification_marks: [s.identificationMark1 || '', s.identificationMark2 || ''].filter(Boolean),
-              aadhar_number: s.aadharNumber || '',
-              dob: s.dob || '',
-              age: s.age || '',
-              gender: s.gender || '',
-              permanent_address: {
-                door_no: s.permDoorNo || '',
-                street: s.permStreet || '',
-                village: s.permVillage || '',
-                mandal: s.permMandal || '',
-                district: s.permDistrict || '',
-                state: s.permState || '',
-                mobile: s.permMobile || s.phone || '',
-              },
-              present_address: {
-                door_no: s.presDoorNo || '',
-                street: s.presStreet || '',
-                village: s.presVillage || '',
-                mandal: s.presMandal || '',
-                district: s.presDistrict || '',
-                state: s.presState || '',
-                mobile: s.presMobile || '',
-                telephone: s.telephone || '',
-              },
-              enrolled_at: new Date().toISOString(),
-            },
-          };
-
-          await apiClient.post('/students', payload).catch(() => null);
-
-          // Auto-sync student department into backend DB with student classification
-          if (deptStr) {
-            await hrmsApi.createDepartment({
-              name: deptStr,
-              code: deptStr.replace(/[^A-Za-z0-9]/g, '').slice(0, 4).toUpperCase() || 'DEPT',
-              description: `Student Academic Department: ${deptStr}`,
-              is_active: true,
-              extra_info: 'student',
-              department_type: 'student',
-            } as any).catch(() => null);
+        if (job?.background && job?.job_id) {
+          while (job?.status !== 'done' && job?.status !== 'error') {
+            await new Promise((res) => setTimeout(res, 1500));
+            const polled: any = await apiClient.get(`${endpoint}/job/${job.job_id}`, { timeout: 15000 }).catch(() => null);
+            if (!polled) break; // job lost (e.g. server restarted)
+            job = polled;
+            if (job.total) setProgress(Math.min(99, Math.round((job.done / job.total) * 100)));
           }
-        } else if (isEmployee) {
-          const e = row as EmployeeImportRow;
-          const empEmail = e.email?.trim() || (e.phone ? `${e.phone}@staff.portal` : `${e.fullName.toLowerCase().replace(/[^a-z0-9]/g, '')}${Date.now() % 10000}@staff.portal`);
-          const parts = e.fullName.trim().split(' ');
+        } else {
+          setProgress(100);
+        }
 
-          const payload = {
-            full_name: e.fullName.trim(),
-            first_name: parts[0] || e.fullName.trim(),
-            last_name: parts.slice(1).join(' ') || '',
-            email: empEmail.toLowerCase(),
-            phone: e.phone?.trim() || '',
-            designation: e.designation?.trim() || '',
-            department: e.department?.trim() || '',
-            gender: e.gender ? e.gender.trim().toLowerCase() : '',
-            code: e.code ? e.code.trim() : undefined,
-            role: e.role?.trim() || 'STAFF',
-            employment_type: e.employmentType?.trim() || 'Full-Time',
-            joined_date: e.joinedDate?.trim() || '',
-            salary: e.salary ? Number(e.salary) : 0,
-            vahd_branch: e.branch?.trim() || '',
-            branch_id: defaultBranchId,
-            ho_id: userHoId,
-            owner_id: userOwnerId,
-            specialization: e.areaOfService?.trim() || '',
-            aadhar_number: e.aadharNumber?.trim() || '',
-            pan_number: e.panNumber?.trim() || '',
-            account_number: e.accountNumber?.trim() || '',
-            ifsc_code: e.ifscCode?.trim() || '',
-            address: e.presentAddress?.trim() || e.permanentAddress?.trim() || '',
-            emergency_contact: e.emergencyContactNo ? `${e.emergencyName || ''} (${e.emergencyRelationship || ''}): ${e.emergencyContactNo}` : (e.emergencyContactNo || ''),
-            skills: e.technicalSkills ? e.technicalSkills.split(',').map((s) => s.trim()).filter(Boolean) : [],
-            status: e.status?.trim() || 'Active',
-            is_active: e.status ? e.status.toLowerCase() !== 'inactive' : true,
-            meta_data: {
-              form_title: 'PERSONAL DETAILS FORM',
-              employee_code: e.code?.trim() || undefined,
-              father_name: e.fatherName?.trim() || '',
-              dob: e.dob?.trim() || '',
-              age: e.age ? String(e.age) : '',
-              blood_group: e.bloodGroup?.trim() || '',
-              religion: e.religion?.trim() || '',
-              caste: e.caste?.trim() || '',
-              gender: e.gender ? e.gender.trim() : '',
-              marital_status: e.maritalStatus?.trim() || '',
-              work_experience_years: e.workExperienceYears?.trim() || '',
-              area_of_service: e.areaOfService?.trim() || '',
-              present_address: e.presentAddress?.trim() || '',
-              permanent_address: e.permanentAddress?.trim() || '',
-              emergency_details: {
-                name: e.emergencyName?.trim() || '',
-                relationship: e.emergencyRelationship?.trim() || '',
-                address: e.emergencyAddress?.trim() || '',
-                contact_no: e.emergencyContactNo?.trim() || '',
-                note: e.emergencyNote?.trim() || '',
-              },
-              post_details: {
-                location: e.branch?.trim() || '',
-                department: e.department?.trim() || '',
-                designation: e.designation?.trim() || '',
-                joining_date: e.joinedDate?.trim() || '',
-                role: e.role || 'STAFF',
-                technical_skills: e.technicalSkills?.trim() || '',
-              },
-              bank_details: {
-                account_holder_name: e.accountHolderName?.trim() || '',
-                bank_name: e.bankName?.trim() || '',
-                account_number: e.accountNumber?.trim() || '',
-                branch_city: e.bankBranchCity?.trim() || '',
-                account_type: e.bankAccountType?.trim() || 'Savings',
-                ifsc_code: e.ifscCode?.trim() || '',
-                pan_no: e.panNumber?.trim() || '',
-              },
-              reference_contact: {
-                name: e.refName?.trim() || '',
-                company: e.refCompany?.trim() || '',
-                address: e.refAddress?.trim() || '',
-                post: e.refPost?.trim() || '',
-                telephone: e.refTelephone?.trim() || '',
-                contact_no: e.refContactNo?.trim() || '',
-              },
-              enrolled_at: new Date().toISOString(),
-            }
-          };
-
-          await hrmsApi.createEmployee(payload).catch(() => null);
-        } else if (isDepartment) {
+        successCount = (job?.created ?? 0) + (job?.updated ?? 0);
+        if (job?.status === 'error') throw new Error(job?.message || 'Import failed');
+      } else {
+        // Reference-data types (departments, designations, shifts, holidays,
+        // courses) — small files; per-row endpoints are fine here.
+        for (let i = 0; i < total; i++) {
+          const row = validRows[i];
+          if (isDepartment) {
           const d = row as DepartmentImportRow;
           const rawType = ((d as any).type || (d as any).department_type || (d as any).extra_info || '').toLowerCase().trim();
           await hrmsApi.createDepartment({
@@ -450,6 +475,7 @@ export function HrmsBulkImportModal({
 
         successCount++;
         setProgress(Math.round(((i + 1) / total) * 100));
+      }
       }
 
       onSuccess(successCount);

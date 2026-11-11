@@ -150,7 +150,7 @@ function AppRoutes() {
         {/* EMPLOYEE ROUTES */}
         <Route path="/employee" element={<ProtectedRoute><RoleRedirect allowed={['employee']} /></ProtectedRoute>}>
           <Route index element={<EmployeeDashboard />} />
-          <Route path="students" element={<MembersPage />} />
+          <Route path="students" element={<Navigate to="/employee/hrms" replace />} />
           <Route path="hrms" element={<EmployeeHrmsPage />} />
           <Route path="attendance" element={<Navigate to="/employee/hrms?tab=attendance" replace />} />
           <Route path="progress" element={<ProgressPage />} />

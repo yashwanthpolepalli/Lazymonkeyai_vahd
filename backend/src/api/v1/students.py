@@ -9,6 +9,43 @@ from src.models.user import User
 
 router = APIRouter(prefix="/students", tags=["students"])
 
+@router.post("/bulk-import")
+def bulk_import_students(
+    payload: Dict[str, Any] = Body(...),
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user),
+):
+    """Bulk-import students in ONE request instead of one-per-row.
+
+    Body: { "rows": [ <same payload the single /students create endpoint
+    accepts, repeated for each Excel row> ] }
+
+    Returns:
+      * small files (<= 2000 rows) -> { "job_id", "status": "done", ...results }
+      * huge files  (> 2000 rows) -> { "job_id", "status": "running",
+        "background": true } — then poll /students/bulk-import/job/{job_id}
+    """
+    rows = payload.get("rows") or []
+    if not rows:
+        raise HTTPException(status_code=400, detail="No rows to import")
+
+    from src.services import bulk_import_service
+    try:
+        job = bulk_import_service.start_students_import(rows, current_user)
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    return job
+
+
+@router.get("/bulk-import/job/{job_id}")
+def bulk_import_students_job(job_id: str):
+    """Poll a background bulk-import job's progress."""
+    from src.services import bulk_import_service
+    job = bulk_import_service.get_import_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Import job not found")
+    return job
+
 @router.get("")
 def get_students(
     branch: Optional[str] = Query(None),

@@ -69,18 +69,38 @@ class HrmsService:
     # -------------------------------------------------------------
     # 1. EMPLOYEE MANAGEMENT & employeeS MAPPING METHODS
     # -------------------------------------------------------------
+    # Read-path dedupe: the cross-table employee sync is expensive (full-table
+    # loads + reconciles). Runs at most once every _EMP_SYNC_TTL seconds unless
+    # `force=True` (used by write paths that must keep the tables in sync).
+    _LAST_EMP_SYNC_TS = 0.0
+    _EMP_SYNC_TTL = 30.0
+
     @staticmethod
-    def sync_employees_to_employees(db: Session) -> None:
+    def sync_employees_to_employees(db: Session, force: bool = False) -> None:
         """
         Synchronizes all employees and staff from employeeProfile into HRMS Employee records.
         Removes any obsolete or mock employee records that do not belong to actual employees/staff.
+
+        Performance: guarded by a 30s TTL for read paths (get_employees / the
+        attendance matrix call this on every request). Lookups are batched into
+        in-memory maps instead of per-row SQL (N+1 → 3 batched queries).
         """
+        global _LAST_EMP_SYNC_TS
+        import time as _time
+        if not force and (_time.time() - HrmsService._LAST_EMP_SYNC_TS) < HrmsService._EMP_SYNC_TTL:
+            return
+
         employees = db.query(employeeProfile).all()
-        user_employees = db.query(User).filter(
-            func.upper(User.role).in_(["EMPLOYEE", "STAFF", "ADMIN", "OWNER", "SUPER_ADMIN", "HO"])
-        ).all()
-        valid_emails = {t.email.strip().lower() for t in employees if t.email}
-        valid_emails.update({u.email.strip().lower() for u in user_employees if u.email})
+
+        # ── Batched reference loads (replace the old per-row queries) ──
+        all_users = db.query(User).all()
+        user_by_id = {u.id: u for u in all_users if u.id}
+        user_by_email = {u.email.strip().lower(): u for u in all_users if u.email}
+
+        all_branches = db.query(vahdBranch).all()
+        branch_by_id = {b.id: b for b in all_branches if b.id}
+        branch_by_vahd_name = {b.vahd_name: b for b in all_branches if b.vahd_name}
+        branch_by_name = {b.branch_name: b for b in all_branches if b.branch_name}
 
         # 1. Only purge obsolete employees that have no email or are placeholder/mock artifacts
         all_employees = db.query(Employee).all()
@@ -89,6 +109,18 @@ class HrmsService:
             if not emp.email and not emp.code:
                 db.delete(emp)
         db.flush()
+
+        # Batched map so the per-row "existing employee" lookup below is O(1)
+        # (keyed the same way the old query matched: email OR emp_<id>).
+        # Re-query after the purge flush so deleted rows are not in the maps.
+        emp_by_email = {}
+        emp_by_link = {}
+        for _e in db.query(Employee).all():
+            if _e.email:
+                emp_by_email[_e.email.strip().lower()] = _e
+            if _e.id:
+                emp_by_link[_e.id] = _e
+                emp_by_link[_e.id.replace("emp_", "")] = _e
 
         # 2. Upsert each employeeProfile into Employee
         existing_codes = {e.code for e in db.query(Employee.code).all() if e.code}
@@ -108,32 +140,28 @@ class HrmsService:
             salary = float(t.base_monthly_salary or 0.0)
             joined = t.created_at.date() if t.created_at else date.today()
 
-            u = db.query(User).filter(User.id == t.user_id).first() if t.user_id else None
+            # Per-row lookups now use batched in-memory maps (no N+1 SQL).
+            u = user_by_id.get(t.user_id) if t.user_id else None
             if not u and t.email:
-                u = db.query(User).filter(func.lower(User.email) == t.email.strip().lower()).first()
+                u = user_by_email.get(t.email.strip().lower())
 
             b = None
             # Priority 1: Use tenant_id directly (most precise - it's the branch UUID)
             if t.tenant_id:
-                b = db.query(vahdBranch).filter(vahdBranch.id == t.tenant_id).first()
+                b = branch_by_id.get(t.tenant_id)
             # Priority 2: Use primary_vahd_location but only match by vahd_name (unique display name)
             # NEVER match by branch_name alone - multiple branches can share same branch_name (e.g. 'bng')
             if not b and t.primary_vahd_location:
-                b = db.query(vahdBranch).filter(
-                    or_(
-                        vahdBranch.id == t.primary_vahd_location,
-                        vahdBranch.vahd_name == t.primary_vahd_location
-                    )
-                ).first()
+                b = branch_by_id.get(t.primary_vahd_location) or branch_by_vahd_name.get(t.primary_vahd_location)
 
             # Priority: tenant_id from employeeProfile > user.branch_id > branch lookup
             t_branch_id = (b.id if b else None) or (u.branch_id if u and u.branch_id else None)
             t_owner_id = (b.owner_id if b else None) or (u.owner_id if u and u.owner_id else None)
             t_ho_id = (b.ho_id if b else None) or (u.ho_id if u and u.ho_id else None)
 
-            existing_emp = db.query(Employee).filter(
-                (Employee.email.ilike(t.email)) | (Employee.id == f"emp_{t.id}")
-            ).first()
+            # O(1) batched lookup (was one SQL per row). Match by email or by
+            # emp_<profile_id> link, exactly as the old query did.
+            existing_emp = emp_by_email.get((t.email or "").strip().lower()) or emp_by_link.get(f"emp_{t.id}")
 
             if existing_emp:
                 existing_emp.first_name = first_name
@@ -194,31 +222,33 @@ class HrmsService:
 
         # 3. Two-way synchronization: Upsert each HRMS Employee into employeeProfile
         all_hrms_emps = db.query(Employee).all()
+
+        # Batched maps for the per-row lookups below (no N+1 SQL)
+        ep_by_id = {}
+        ep_by_email = {}
+        for ep in employees:
+            if ep.id:
+                ep_by_id[ep.id] = ep
+            if ep.email:
+                ep_by_email[ep.email.strip().lower()] = ep
+
         for emp in all_hrms_emps:
             clean_email = (emp.email or "").strip().lower()
             if not clean_email and not emp.id:
                 continue
 
             tr_id = emp.id.replace("emp_", "")
-            existing_ep = db.query(employeeProfile).filter(
-                or_(
-                    employeeProfile.id == tr_id,
-                    employeeProfile.id == emp.id,
-                    (func.lower(employeeProfile.email) == clean_email if clean_email else False)
-                )
-            ).first()
+            existing_ep = ep_by_id.get(tr_id) or ep_by_id.get(emp.id) or (ep_by_email.get(clean_email) if clean_email else None)
 
-            matched_u = db.query(User).filter(func.lower(User.email) == clean_email).first() if clean_email else None
+            matched_u = user_by_email.get(clean_email) if clean_email else None
             user_id_val = matched_u.id if matched_u else None
 
-            # Determine branch name and id
+            # Determine branch name and id (batched lookups)
             b_obj = None
             if emp.branch_id:
-                b_obj = db.query(vahdBranch).filter(vahdBranch.id == emp.branch_id).first()
+                b_obj = branch_by_id.get(emp.branch_id)
             if not b_obj and emp.vahd_branch:
-                b_obj = db.query(vahdBranch).filter(
-                    or_(vahdBranch.branch_name == emp.vahd_branch, vahdBranch.vahd_name == emp.vahd_branch)
-                ).first()
+                b_obj = branch_by_name.get(emp.vahd_branch) or branch_by_vahd_name.get(emp.vahd_branch)
 
             loc = emp.vahd_branch or (b_obj.branch_name if b_obj else "") or (b_obj.vahd_name if b_obj else "")
             tenant = emp.branch_id or (b_obj.id if b_obj else None) or emp.tenant_id
@@ -226,11 +256,12 @@ class HrmsService:
             if not existing_ep:
                 # Extract any bank details from meta_data if present
                 meta = emp.meta_data or {}
-                bank_info = meta.get("bank_details") if isinstance(meta, dict) else {}
-                bank_acc = bank_info.get("account_number") or ""
-                bank_ifsc = bank_info.get("ifsc_code") or ""
+                bank_info = (meta.get("bank_details") if isinstance(meta, dict) else None) or {}
+                bank_acc = (bank_info.get("account_number") or "") if isinstance(bank_info, dict) else ""
+                bank_ifsc = (bank_info.get("ifsc_code") or "") if isinstance(bank_info, dict) else ""
 
-                emp_role = str(getattr(emp, "role", None) or (emp.meta_data.get("post_details", {}).get("role") if isinstance(emp.meta_data, dict) else None) or "EMPLOYEE").upper()
+                _post_details = (meta.get("post_details") or {}) if isinstance(meta, dict) else {}
+                emp_role = str(getattr(emp, "role", None) or (_post_details.get("role") if isinstance(_post_details, dict) else None) or "EMPLOYEE").upper()
                 emp_spec = emp.designation or emp.department or ""
                 emp_active = (str(emp.status or "").strip().lower() == "active") if emp.status else True
 
@@ -265,6 +296,11 @@ class HrmsService:
                     existing_ep.user_id = user_id_val
 
         db.commit()
+
+        # Mark the sync as done so read paths (get_employees / attendance
+        # matrix) skip it for the next _EMP_SYNC_TTL seconds.
+        global _LAST_EMP_SYNC_TS
+        HrmsService._LAST_EMP_SYNC_TS = _time.time()
 
     @staticmethod
     def get_employees(
@@ -704,7 +740,7 @@ class HrmsService:
             "bank_ifsc": payload.get("ifsc_code") or payload.get("bank_ifsc"),
         })
 
-        HrmsService.sync_employees_to_employees(db)
+        HrmsService.sync_employees_to_employees(db, force=True)
         sec_branches = payload.get("secondary_branches") or []
         if not sec_branches and payload.get("meta_data") and isinstance(payload.get("meta_data"), dict):
             sec_branches = payload["meta_data"].get("secondary_branches") or payload["meta_data"].get("post_details", {}).get("secondary_branches") or []
@@ -5505,6 +5541,23 @@ class HrmsService:
         emp_id_to_profile_id = {}
         all_query_ids = set()
 
+        # Build cross-table lookup maps ONCE (batched) so the per-person pass
+        # below does not run one SQL query per employee/student (N+1 → O(1) lookups).
+        _all_eps = db.query(employeeProfile).all()
+        ep_lookup = {e.id: e for e in _all_eps if e.id}
+        ep_by_email = {}
+        for _e in _all_eps:
+            if _e.email:
+                ep_lookup.setdefault(f"tr_{_e.id}", _e)
+                ep_by_email[_e.email.strip().lower()] = _e
+        from src.models.student import student as _StudentModel
+        _all_sts = db.query(_StudentModel).all()
+        st_lookup = {s.id: s for s in _all_sts if s.id}
+        st_by_email = {}
+        for _s in _all_sts:
+            if _s.email:
+                st_by_email[_s.email.strip().lower()] = _s
+
         # Pass 1: Register exact profile IDs, explicit codes, and emails
         for p in profiles:
             pid = p["id"]
@@ -5532,16 +5585,11 @@ class HrmsService:
                 all_query_ids.add(email.lower())
                 emp_id_to_profile_id[email.lower()] = pid
 
-            # Check linked employeeProfile or student or user for cross-table punch lookup
+            # Check linked employeeProfile or student or user for cross-table punch lookup.
+            # Batched lookups (built once below the loop) instead of one SQL per person.
             if p.get("role_category") != "Student":
                 clean_lookup_id = pid.replace("emp_", "")
-                tr = db.query(employeeProfile).filter(
-                    or_(
-                        employeeProfile.id == clean_lookup_id,
-                        employeeProfile.id == f"tr_{clean_lookup_id}",
-                        employeeProfile.email.ilike(email) if email else False
-                    )
-                ).first()
+                tr = ep_lookup.get(clean_lookup_id) or ep_lookup.get(f"tr_{clean_lookup_id}") or (ep_by_email.get((email or "").lower()) if email else None)
                 if tr:
                     all_query_ids.add(tr.id)
                     emp_id_to_profile_id[tr.id] = pid
@@ -5550,12 +5598,7 @@ class HrmsService:
                         emp_id_to_profile_id[tr.user_id] = pid
             else:
                 from src.models.student import student as StudentModel
-                st = db.query(StudentModel).filter(
-                    or_(
-                        StudentModel.id == pid,
-                        StudentModel.email.ilike(email) if email else False
-                    )
-                ).first()
+                st = st_lookup.get(pid) or (st_by_email.get((email or "").lower()) if email else None)
                 if st and st.user_id:
                     all_query_ids.add(st.user_id)
                     emp_id_to_profile_id[st.user_id] = pid

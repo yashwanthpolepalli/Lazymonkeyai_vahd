@@ -589,6 +589,19 @@ export function StudentManagementTab() {
   const isAllSelected = filteredStudents.length > 0 && selectedIds.size === filteredStudents.length;
   const isPartialSelected = selectedIds.size > 0 && selectedIds.size < filteredStudents.length;
 
+  // ── Pagination (Student Directory) ──────────────────────────────────
+  const STUDENT_ITEMS_PER_PAGE = 15;
+  const [studentPage, setStudentPage] = useState(1);
+  const studentTotalPages = Math.max(1, Math.ceil(filteredStudents.length / STUDENT_ITEMS_PER_PAGE));
+  const safeStudentPage = Math.min(studentPage, studentTotalPages);
+  const studentStartIndex = (safeStudentPage - 1) * STUDENT_ITEMS_PER_PAGE;
+  const paginatedStudents = filteredStudents.slice(studentStartIndex, studentStartIndex + STUDENT_ITEMS_PER_PAGE);
+
+  // Reset to page 1 whenever a filter changes
+  useEffect(() => {
+    setStudentPage(1);
+  }, [search, selectedCourse, selectedBranch, viewMode]);
+
   return (
     <div className="space-y-4 animate-fade-in text-slate-800">
 
@@ -879,12 +892,7 @@ export function StudentManagementTab() {
         </div>
       )}
 
-      {loading ? (
-        <div className="card p-12 text-center text-slate-400 bg-white border border-slate-200/90 rounded-2xl">
-          <div className="w-8 h-8 border-2 border-blue-600/30 border-t-blue-600 rounded-full animate-spin mx-auto mb-2" />
-          <span>Loading Student Directory...</span>
-        </div>
-      ) : filteredStudents.length === 0 ? (
+      {!loading && filteredStudents.length === 0 ? (
         <div className="card p-12 text-center bg-white border border-slate-200/90 rounded-2xl space-y-3">
           <div className="w-14 h-14 rounded-full bg-blue-50 text-blue-600 mx-auto flex items-center justify-center">
             <Icon name="graduation-cap" size={28} />
@@ -959,7 +967,20 @@ export function StudentManagementTab() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium">
-                {filteredStudents.map((s, idx) => {
+                {loading &&
+                  Array.from({ length: 8 }, (_, i) => (
+                    <tr key={`skel-${i}`} className="bg-slate-50/50">
+                      <td colSpan={99} className="px-3.5 py-3.5">
+                        <div className="flex items-center gap-3 animate-pulse">
+                          <div className="w-4 h-4 rounded bg-slate-200" />
+                          <div className="h-3.5 rounded bg-slate-200 flex-1 max-w-[220px]" />
+                          <div className="h-3.5 w-24 rounded bg-slate-200/70" />
+                          <div className="h-3.5 w-32 rounded bg-slate-200/50" />
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                {paginatedStudents.map((s, idx) => {
                   const meta = s.meta_data || {};
                   const sCourse = getStudentCourse(s);
                   const sMedium = getStudentMedium(s);
@@ -1380,12 +1401,67 @@ export function StudentManagementTab() {
                 })}
               </tbody>
             </table>
+            {filteredStudents.length > 0 && (
+              <div className="p-4 bg-slate-50/50 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-semibold text-slate-500">
+                <div>
+                  Showing {studentStartIndex + 1} to {Math.min(studentStartIndex + STUDENT_ITEMS_PER_PAGE, filteredStudents.length)} of {filteredStudents.length} students
+                </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setStudentPage((p) => Math.max(1, p - 1))}
+                    disabled={safeStudentPage === 1}
+                    className="w-8 h-8 rounded-lg border border-slate-200 bg-white flex items-center justify-center text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
+                  >
+                    <Icon name="chevron-left" size={16} />
+                  </button>
+                  {Array.from({ length: studentTotalPages }, (_, i) => i + 1).slice(0, 7).map((pg) => (
+                    <button
+                      key={pg}
+                      onClick={() => setStudentPage(pg)}
+                      className={cn(
+                        'w-8 h-8 rounded-lg font-bold flex items-center justify-center transition-all cursor-pointer text-xs',
+                        safeStudentPage === pg
+                          ? 'bg-blue-600 text-white shadow-xs'
+                          : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                      )}
+                    >
+                      {pg}
+                    </button>
+                  ))}
+                  {studentTotalPages > 7 && <span className="px-1 text-slate-400">…</span>}
+                  <button
+                    onClick={() => setStudentPage((p) => Math.min(studentTotalPages, p + 1))}
+                    disabled={safeStudentPage === studentTotalPages}
+                    className="w-8 h-8 rounded-lg border border-slate-200 bg-white flex items-center justify-center text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
+                  >
+                    <Icon name="chevron-right" size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       ) : (
         /* Grid Cards View */
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredStudents.map((s) => {
+          {loading &&
+            Array.from({ length: 6 }, (_, i) => (
+              <div key={`skel-card-${i}`} className="card p-4 bg-white border border-slate-200/90 rounded-2xl shadow-xs space-y-3 animate-pulse">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-slate-200" />
+                  <div className="space-y-2 flex-1">
+                    <div className="h-3.5 w-2/3 rounded bg-slate-200" />
+                    <div className="h-3 w-1/3 rounded bg-slate-200/70" />
+                  </div>
+                </div>
+                <div className="space-y-2 p-2.5 rounded-xl bg-slate-50">
+                  <div className="h-3 rounded bg-slate-200/80" />
+                  <div className="h-3 rounded bg-slate-200/60" />
+                  <div className="h-3 w-1/2 rounded bg-slate-200/50" />
+                </div>
+              </div>
+            ))}
+          {paginatedStudents.map((s) => {
             const meta = s.meta_data || {};
             const sCourse = getStudentCourse(s);
             const sMedium = meta.medium || '';

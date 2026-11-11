@@ -13,6 +13,68 @@ router = APIRouter(prefix="/hrms", tags=["HRMS"])
 # -------------------------------------------------------------
 # 1. EMPLOYEE MANAGEMENT ENDPOINTS
 # -------------------------------------------------------------
+@router.post("/employees/bulk-import")
+def bulk_import_employees(
+    payload: Dict[str, Any] = Body(...),
+    current_user: Optional[User] = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Bulk-import employees/staff in ONE request instead of one-per-row.
+
+    Body: { "rows": [ <same payload the single /hrms/employees create
+    endpoint accepts, repeated for each Excel row> ] }
+
+    Returns:
+      * small files (<= 2000 rows) -> { "job_id", "status": "done", ...results }
+      * huge files  (> 2000 rows) -> { "job_id", "status": "running",
+        "background": true } — then poll /hrms/employees/bulk-import/job/{job_id}
+    """
+    rows = payload.get("rows") or []
+    if not rows:
+        raise HTTPException(status_code=400, detail="No rows to import")
+
+    # Mirror create_employee's role-based tenant stamping when the row
+    # carries no explicit branch/ho/owner (same rules as the single create).
+    if current_user:
+        u_role = (current_user.role or "").strip().upper()
+        if u_role in ["OWNER"]:
+            default_owner = current_user.id
+            default_ho = current_user.ho_id
+            default_branch = current_user.branch_id
+        elif u_role in ["HEAD_OFFICE", "HO"]:
+            default_owner = None
+            default_ho = current_user.ho_id or current_user.id
+            default_branch = current_user.branch_id
+        else:
+            default_owner = None
+            default_ho = getattr(current_user, "ho_id", None)
+            default_branch = getattr(current_user, "branch_id", None)
+        for r in rows:
+            if not r.get("owner_id"):
+                r["owner_id"] = default_owner
+            if not r.get("ho_id"):
+                r["ho_id"] = default_ho
+            if not r.get("branch_id"):
+                r["branch_id"] = default_branch
+
+    from src.services import bulk_import_service
+    try:
+        job = bulk_import_service.start_employees_import(rows, current_user)
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    return job
+
+
+@router.get("/employees/bulk-import/job/{job_id}")
+def bulk_import_employees_job(job_id: str):
+    """Poll a background bulk-import job's progress."""
+    from src.services import bulk_import_service
+    job = bulk_import_service.get_import_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Import job not found")
+    return job
+
+
 @router.get("/employees")
 def get_employees(
     department: Optional[str] = Query(None),

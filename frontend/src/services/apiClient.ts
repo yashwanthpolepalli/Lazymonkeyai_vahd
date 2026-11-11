@@ -19,6 +19,18 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
     headers['Authorization'] = `Bearer ${token}`;
   }
 
+  // Send the organization selected in the Topbar ribbon (branch/HO id) so the
+  // backend narrows EVERY request to that organization (see api/deps.py
+  // X-Tenant-Id handling). Omitted for 'all' so HQ views still aggregate.
+  try {
+    const selectedOrg = localStorage.getItem('vahd_selected_org_id');
+    if (selectedOrg && selectedOrg !== 'all' && !headers['X-Tenant-Id']) {
+      headers['X-Tenant-Id'] = selectedOrg;
+    }
+  } catch {
+    /* ignore */
+  }
+
   if (options.body instanceof FormData) {
     delete headers['Content-Type'];
   }

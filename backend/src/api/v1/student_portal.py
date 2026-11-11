@@ -253,27 +253,78 @@ def get_student_attendance(
     )
 
     today_logs = [l for l in logs if l.timestamp and l.timestamp >= today_start]
-    is_checked_in = len(today_logs) % 2 == 1 if today_logs else False
-
+    is_checked_in = False
     today_check_in = None
     today_check_out = None
     if today_logs:
-        sorted_today = sorted(today_logs, key=lambda x: x.timestamp)
-        today_check_in = sorted_today[0].timestamp.strftime("%I:%M %p")
-        if len(sorted_today) > 1:
-            today_check_out = sorted_today[-1].timestamp.strftime("%I:%M %p")
+        # Direction-aware today state: replay today's in/out sequence so a
+        # lone CHECK_IN leaves the door "open" (is_checked_in=True) and a
+        # CHECK_OUT closes it — instead of counting raw logs by position.
+        for l in sorted(today_logs, key=lambda x: x.timestamp):
+            direction = (getattr(l, "direction", "IN") or "IN").upper()
+            if direction in ("CHECK_OUT", "OUT"):
+                is_checked_in = False
+            else:
+                is_checked_in = True
+                if today_check_in is None:
+                    today_check_in = l.timestamp.strftime("%I:%M %p")
+        out_logs = [
+            l for l in today_logs
+            if (getattr(l, "direction", "IN") or "IN").upper() in ("CHECK_OUT", "OUT")
+        ]
+        if out_logs:
+            today_check_out = sorted(out_logs, key=lambda x: x.timestamp)[-1].timestamp.strftime("%I:%M %p")
+
+    # Pair raw punch logs into per-day IN/OUT sessions so the history table
+    # shows one row per visit: CHECK-IN = in-time, CHECK-OUT = out-time,
+    # DURATION = out - in. An in/out pair previously rendered as two rows,
+    # each with its own time in the "Check-In" column.
+    def _log_time(l):
+        return l.timestamp.strftime("%I:%M %p") if l.timestamp else None
 
     history = []
-    for log in logs:
+    asc = sorted((l for l in logs if l.timestamp), key=lambda x: x.timestamp)
+    open_in: Optional[Any] = None
+    sessions = []  # each entry: (in_log_or_None, out_log_or_None)
+    for log in asc:
+        direction = (getattr(log, "direction", "IN") or "IN").upper()
+        if direction in ("CHECK_OUT", "OUT"):
+            sessions.append((open_in, log))
+            open_in = None
+        else:
+            if open_in is not None:
+                sessions.append((open_in, None))  # previous visit still open
+            open_in = log
+    if open_in is not None:
+        sessions.append((open_in, None))
+
+    for in_log, out_log in sessions:
+        base = in_log or out_log
+        in_time = _log_time(in_log)
+        out_time = _log_time(out_log)
+        duration = None
+        if in_log and out_log and in_log.timestamp and out_log.timestamp:
+            secs = (out_log.timestamp - in_log.timestamp).total_seconds()
+            if secs >= 0:
+                h = int(secs // 3600)
+                m = int((secs % 3600) // 60)
+                duration = f"{h}h {m:02d}m" if h else f"{m}m"
+        is_open_session = out_log is None and in_log is not None and in_log.timestamp >= today_start
         history.append({
-            "id": log.id,
-            "date": log.timestamp.strftime("%Y-%m-%d") if log.timestamp else None,
-            "time": log.timestamp.strftime("%I:%M %p") if log.timestamp else None,
-            "timestamp": log.timestamp.isoformat() if log.timestamp else None,
+            "id": base.id,
+            "date": base.timestamp.strftime("%Y-%m-%d") if base.timestamp else None,
+            "time": in_time or out_time,
+            "timestamp": base.timestamp.isoformat() if base.timestamp else None,
+            "check_in": in_time,
+            "check_out": out_time,
+            "duration": duration,
+            "is_active": is_open_session,
+            "event_type": (in_log or out_log).event_type,
             "status": "Verified",
-            "device_name": log.device_id or "Main Entrance",
-            "direction": getattr(log, "direction", "IN") or "IN",
+            "device_name": (in_log or out_log).device_name or (in_log or out_log).device_id or "Main Entrance",
+            "direction": "CHECK_IN" if in_log else "CHECK_OUT",
         })
+    history.sort(key=lambda x: x["timestamp"] or "", reverse=True)
 
     last_visit = logs[0].timestamp.strftime("%b %d, %Y at %I:%M %p") if logs else None
 

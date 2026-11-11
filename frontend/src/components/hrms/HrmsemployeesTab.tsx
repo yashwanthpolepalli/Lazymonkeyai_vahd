@@ -13,6 +13,7 @@ import { EmployeeAttendanceReportsModal } from './EmployeeAttendanceReportsModal
 import { TableColumnSettingsPopover, type ColumnGroup } from './TableColumnSettingsPopover';
 import { HrmsImportExportControls } from './HrmsImportExportControls';
 import { PasswordResetModal } from './PasswordResetModal';
+import { printEmployeeServiceRecordForm } from '@/lib/employee-print-helper';
 
 const EMPLOYEE_COLUMN_GROUPS: ColumnGroup[] = [
   {
@@ -156,6 +157,8 @@ interface employeeRowData {
   branch?: string;
   owner_id?: string;
   ho_id?: string;
+  photo?: string | null;
+  rawEmployee?: any;
 }
 
 export function HrmsemployeesTab() {
@@ -170,6 +173,7 @@ export function HrmsemployeesTab() {
   const [enrollOpen, setEnrollOpen] = useState(false);
   const [emailReportsOpen, setEmailReportsOpen] = useState(false);
   const [editingemployee, setEditingemployee] = useState<any>(null);
+  const [selectedEmployeeForView, setSelectedEmployeeForView] = useState<employeeRowData | null>(null);
 
   // Sub-branches belonging specifically to the selected organisation
   const subBranches = useMemo(() => {
@@ -668,6 +672,8 @@ export function HrmsemployeesTab() {
       nativeDistrict,
       permanentAddress,
       temporaryAddress,
+      photo: (t as any).photo || (t as any).avatar || (t as any).profile_image || (t as any).face_image || (t as any).meta_data?.avatar || (t as any).meta_data?.photo || null,
+      rawEmployee: t,
     };
   });
 
@@ -1123,6 +1129,15 @@ export function HrmsemployeesTab() {
                     <span className="font-extrabold text-slate-800 font-mono">{t.phone || '—'}</span>
                     <div className="flex items-center gap-1.5">
                       <button
+                        type="button"
+                        onClick={() => setSelectedEmployeeForView(t)}
+                        className="px-3 py-1.5 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/60 rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                        title="View Full Employee Dossier / Service Form"
+                      >
+                        <Icon name="file-text" size={13} className="text-indigo-600" />
+                        <span>Form</span>
+                      </button>
+                      <button
                         onClick={() => {
                           setEditingemployee(t);
                           setEnrollOpen(true);
@@ -1567,6 +1582,14 @@ export function HrmsemployeesTab() {
                             >
                               <Icon name="key" size={13} className="text-purple-600" />
                               <span>Password</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedEmployeeForView(t)}
+                              className="p-1.5 rounded-xl text-blue-600 hover:text-blue-700 hover:bg-blue-50 border border-blue-200/80 shadow-2xs transition-all active:scale-[0.98] cursor-pointer"
+                              title="View Full Employee Dossier / Service Form"
+                            >
+                              <Icon name="file-text" size={15} />
                             </button>
                             <button
                               type="button"
@@ -2051,6 +2074,335 @@ export function HrmsemployeesTab() {
           targetCode={passwordResetTarget.empNo || passwordResetTarget.id}
           onSuccess={(msg) => alert(msg)}
         />
+      )}
+
+      {/* Full View Employee Service Record & Profile Dossier Modal */}
+      {selectedEmployeeForView && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/70 backdrop-blur-sm overflow-y-auto animate-fade-in">
+          <div className="bg-white border-2 border-slate-300 rounded-3xl w-full max-w-3xl shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col">
+
+            {/* Header */}
+            <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-800 text-white p-4 flex items-center justify-between shadow-md">
+              <div className="flex items-center gap-3">
+                {localStorage.getItem('ssdc_college_logo') ? (
+                  <img
+                    src={localStorage.getItem('ssdc_college_logo')!}
+                    alt="Logo"
+                    className="w-10 h-10 object-contain rounded-xl bg-white/20 p-1 border border-white/20 shrink-0"
+                  />
+                ) : (
+                  <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center border border-white/20 shrink-0">
+                    <Icon name="briefcase" size={20} className="text-white" />
+                  </div>
+                )}
+                <div>
+                  <h3 className="font-black text-sm uppercase">
+                    {selectedEmployeeForView.placeOfWork || localStorage.getItem('ssdc_college_name') || 'Organisation / Institution'}
+                  </h3>
+                  <p className="text-[10px] text-blue-200 font-semibold">
+                    Branch: {selectedEmployeeForView.district || selectedEmployeeForView.branch || 'Main'} • Staff Service Record &amp; Employment Dossier
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    printEmployeeServiceRecordForm({
+                      organisationName: selectedEmployeeForView.placeOfWork,
+                      branchName: selectedEmployeeForView.district || selectedEmployeeForView.branch,
+                      empNo: selectedEmployeeForView.empNo,
+                      fullName: selectedEmployeeForView.name,
+                      department: selectedEmployeeForView.department,
+                      designation: selectedEmployeeForView.designation,
+                      role: selectedEmployeeForView.role,
+                      email: selectedEmployeeForView.email,
+                      phone: selectedEmployeeForView.phone,
+                      gender: selectedEmployeeForView.gender,
+                      dob: selectedEmployeeForView.dob,
+                      maritalStatus: selectedEmployeeForView.maritalStatus,
+                      bloodGroup: selectedEmployeeForView.bloodGroup,
+                      caste: selectedEmployeeForView.caste,
+                      subCaste: selectedEmployeeForView.subCaste,
+                      fatherName: selectedEmployeeForView.fatherName,
+                      motherName: selectedEmployeeForView.motherName,
+                      aadharNumber: selectedEmployeeForView.aadhar,
+                      panNumber: selectedEmployeeForView.pan,
+                      joinedDate: selectedEmployeeForView.joined,
+                      lengthOfService: selectedEmployeeForView.lengthOfService,
+                      retirementDate: selectedEmployeeForView.retirementDate,
+                      stationDate: selectedEmployeeForView.presentStationDate,
+                      district: selectedEmployeeForView.district,
+                      nativeDistrict: selectedEmployeeForView.nativeDistrict,
+                      zone: selectedEmployeeForView.zone,
+                      multiZone: selectedEmployeeForView.multiZone,
+                      sourceMandal: selectedEmployeeForView.sourceMandal,
+                      sourceVillage: selectedEmployeeForView.sourceVillage,
+                      permanentAddress: selectedEmployeeForView.permanentAddress,
+                      temporaryAddress: selectedEmployeeForView.temporaryAddress,
+                      bankAccountNo: selectedEmployeeForView.bank_account_no,
+                      bankIfsc: selectedEmployeeForView.bank_ifsc,
+                      upiId: selectedEmployeeForView.upi_id,
+                      baseMonthlySalary: selectedEmployeeForView.base_monthly_salary,
+                      status: selectedEmployeeForView.status,
+                      photoBase64: selectedEmployeeForView.photo,
+                    });
+                  }}
+                  className="px-3.5 py-1.5 bg-white/20 hover:bg-white/30 rounded-xl text-xs font-black text-white flex items-center gap-1.5 transition shadow-xs cursor-pointer"
+                  title="Print Official Service Form (A4)"
+                >
+                  <Icon name="printer" size={14} /> Print Form
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedEmployeeForView(null)}
+                  className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/25 flex items-center justify-center text-white cursor-pointer"
+                >
+                  <Icon name="x" size={16} />
+                </button>
+              </div>
+            </div>
+
+            {/* Dossier Content */}
+            <div className="p-5 overflow-y-auto space-y-4 text-xs">
+              <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+                <div>
+                  <span className="text-[11px] text-slate-400 font-bold uppercase">Designation &amp; Department:</span>
+                  <div className="text-base font-black text-blue-700">
+                    {selectedEmployeeForView.designation || 'Staff Member'} {selectedEmployeeForView.department ? `— ${selectedEmployeeForView.department}` : ''}
+                  </div>
+                  <span className="text-xs font-semibold text-slate-500">
+                    Emp Code: <span className="font-mono font-bold text-slate-800">{selectedEmployeeForView.empNo || '—'}</span> • Role: {selectedEmployeeForView.role || 'Staff'} {selectedEmployeeForView.joined ? `• Joined: ${selectedEmployeeForView.joined}` : ''}
+                  </span>
+                </div>
+                {selectedEmployeeForView.photo ? (
+                  <img
+                    src={selectedEmployeeForView.photo}
+                    alt="Photo"
+                    className="w-20 h-24 object-cover rounded-xl border-2 border-blue-500 shadow-sm shrink-0"
+                  />
+                ) : (
+                  <div className="w-20 h-24 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 flex flex-col items-center justify-center text-slate-400 shrink-0">
+                    <Icon name="user" size={28} />
+                    <span className="text-[9px] font-bold mt-1">Photo</span>
+                  </div>
+                )}
+              </div>
+
+              {/* 1. Official & Core Details */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+                <div>
+                  <span className="text-slate-400 font-bold block">1. Full Name:</span>
+                  <div className="font-extrabold text-slate-900 uppercase text-xs">{selectedEmployeeForView.name}</div>
+                </div>
+                <div>
+                  <span className="text-slate-400 font-bold block">2. Father's / Husband's Name:</span>
+                  <div className="font-bold text-slate-900 uppercase text-xs">{selectedEmployeeForView.fatherName || 'N/A'}</div>
+                </div>
+                <div>
+                  <span className="text-slate-400 font-bold block">3. Mother's Name:</span>
+                  <div className="font-bold text-slate-900 uppercase text-xs">{selectedEmployeeForView.motherName || 'N/A'}</div>
+                </div>
+                <div className="bg-blue-50/80 p-2 rounded-xl border border-blue-200">
+                  <span className="text-blue-700 font-bold flex items-center gap-1 text-[11px]">
+                    <Icon name="phone" size={12} /> Contact Mobile:
+                  </span>
+                  <div className="font-mono font-black text-blue-900 mt-0.5 text-xs">
+                    {selectedEmployeeForView.phone || 'N/A'}
+                  </div>
+                </div>
+                <div className="bg-purple-50/80 p-2 rounded-xl border border-purple-200">
+                  <span className="text-purple-700 font-bold flex items-center gap-1 text-[11px]">
+                    <Icon name="mail" size={12} /> Email Address:
+                  </span>
+                  <div className="font-mono font-bold text-purple-900 mt-0.5 text-xs truncate" title={selectedEmployeeForView.email}>
+                    {selectedEmployeeForView.email || 'N/A'}
+                  </div>
+                </div>
+                <div>
+                  <span className="text-slate-400 font-bold block">6. Date of Birth:</span>
+                  <div className="font-semibold text-slate-800 text-xs">{selectedEmployeeForView.dob || 'N/A'}</div>
+                </div>
+                <div>
+                  <span className="text-slate-400 font-bold block">7. Gender:</span>
+                  <div className="font-semibold text-slate-800 text-xs">{selectedEmployeeForView.gender || 'N/A'}</div>
+                </div>
+                <div>
+                  <span className="text-slate-400 font-bold block">8. Marital Status:</span>
+                  <div className="font-semibold text-slate-800 text-xs">{selectedEmployeeForView.maritalStatus || 'N/A'}</div>
+                </div>
+                <div>
+                  <span className="text-slate-400 font-bold block">9. Blood Group:</span>
+                  <div className="font-bold text-rose-600 text-xs">{selectedEmployeeForView.bloodGroup || 'N/A'}</div>
+                </div>
+                <div>
+                  <span className="text-slate-400 font-bold block">10. Caste &amp; Sub Caste:</span>
+                  <div className="font-semibold text-slate-800 text-xs">{selectedEmployeeForView.caste || 'OC'} ({selectedEmployeeForView.subCaste || 'Gen'})</div>
+                </div>
+                <div>
+                  <span className="text-slate-400 font-bold block">11. Aadhar Number:</span>
+                  <div className="font-mono font-bold text-slate-900 text-xs">{selectedEmployeeForView.aadhar || 'N/A'}</div>
+                </div>
+                <div>
+                  <span className="text-slate-400 font-bold block">12. PAN Number:</span>
+                  <div className="font-mono font-bold text-slate-900 text-xs">{selectedEmployeeForView.pan || 'N/A'}</div>
+                </div>
+              </div>
+
+              {/* 2. Employment & Service Grid */}
+              <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+                <span className="text-slate-500 font-bold uppercase text-[11px] block mb-2">Service &amp; Posting Details:</span>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div>
+                    <span className="text-slate-400 font-medium block">Organisation:</span>
+                    <span className="font-bold text-slate-900">{selectedEmployeeForView.placeOfWork || '—'}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 font-medium block">Branch / District:</span>
+                    <span className="font-bold text-slate-900">{selectedEmployeeForView.district || '—'}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 font-medium block">Date of Joining:</span>
+                    <span className="font-bold text-slate-900">{selectedEmployeeForView.joined || '—'}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 font-medium block">Length of Service:</span>
+                    <span className="font-bold text-slate-900">{selectedEmployeeForView.lengthOfService || '—'}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 font-medium block">Retirement Date:</span>
+                    <span className="font-bold text-slate-900">{selectedEmployeeForView.retirementDate || '—'}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 font-medium block">Station Date:</span>
+                    <span className="font-bold text-slate-900">{selectedEmployeeForView.presentStationDate || '—'}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 font-medium block">Zone / Multi-Zone:</span>
+                    <span className="font-bold text-slate-900">{selectedEmployeeForView.zone || '—'} / {selectedEmployeeForView.multiZone || '—'}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 font-medium block">Today Attendance:</span>
+                    <span className={cn(
+                      'font-bold px-2 py-0.5 rounded-md text-[10px] inline-block mt-0.5',
+                      selectedEmployeeForView.todayPunch.status === 'Present'
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : 'bg-rose-100 text-rose-800'
+                    )}>
+                      {selectedEmployeeForView.todayPunch.status}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. Address Section */}
+              {(selectedEmployeeForView.permanentAddress || selectedEmployeeForView.temporaryAddress) && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {selectedEmployeeForView.permanentAddress && (
+                    <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+                      <span className="text-slate-500 font-bold uppercase text-[11px] block mb-1">Permanent Address:</span>
+                      <div className="text-slate-800 font-medium">{selectedEmployeeForView.permanentAddress}</div>
+                    </div>
+                  )}
+                  {selectedEmployeeForView.temporaryAddress && (
+                    <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+                      <span className="text-slate-500 font-bold uppercase text-[11px] block mb-1">Temporary / Present Address:</span>
+                      <div className="text-slate-800 font-medium">{selectedEmployeeForView.temporaryAddress}</div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* 4. Banking Information */}
+              {(selectedEmployeeForView.bank_account_no || selectedEmployeeForView.bank_ifsc || selectedEmployeeForView.upi_id || (selectedEmployeeForView.base_monthly_salary && selectedEmployeeForView.base_monthly_salary > 0)) && (
+                <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+                  <span className="text-slate-500 font-bold uppercase text-[11px] block mb-2">Salary &amp; Bank Account:</span>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono text-xs">
+                    <div>
+                      <span className="text-slate-400 font-sans block text-[10px]">A/C Number:</span>
+                      <span className="font-bold text-slate-900">{selectedEmployeeForView.bank_account_no || '—'}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 font-sans block text-[10px]">IFSC Code:</span>
+                      <span className="font-bold text-slate-900">{selectedEmployeeForView.bank_ifsc || '—'}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 font-sans block text-[10px]">UPI ID:</span>
+                      <span className="font-bold text-slate-900">{selectedEmployeeForView.upi_id || '—'}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 font-sans block text-[10px]">Monthly Base:</span>
+                      <span className="font-bold text-emerald-700">
+                        {selectedEmployeeForView.base_monthly_salary ? `₹ ${Number(selectedEmployeeForView.base_monthly_salary).toLocaleString('en-IN')}` : '—'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer Actions */}
+            <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  printEmployeeServiceRecordForm({
+                    organisationName: selectedEmployeeForView.placeOfWork,
+                    branchName: selectedEmployeeForView.district || selectedEmployeeForView.branch,
+                    empNo: selectedEmployeeForView.empNo,
+                    fullName: selectedEmployeeForView.name,
+                    department: selectedEmployeeForView.department,
+                    designation: selectedEmployeeForView.designation,
+                    role: selectedEmployeeForView.role,
+                    email: selectedEmployeeForView.email,
+                    phone: selectedEmployeeForView.phone,
+                    gender: selectedEmployeeForView.gender,
+                    dob: selectedEmployeeForView.dob,
+                    maritalStatus: selectedEmployeeForView.maritalStatus,
+                    bloodGroup: selectedEmployeeForView.bloodGroup,
+                    caste: selectedEmployeeForView.caste,
+                    subCaste: selectedEmployeeForView.subCaste,
+                    fatherName: selectedEmployeeForView.fatherName,
+                    motherName: selectedEmployeeForView.motherName,
+                    aadharNumber: selectedEmployeeForView.aadhar,
+                    panNumber: selectedEmployeeForView.pan,
+                    joinedDate: selectedEmployeeForView.joined,
+                    lengthOfService: selectedEmployeeForView.lengthOfService,
+                    retirementDate: selectedEmployeeForView.retirementDate,
+                    stationDate: selectedEmployeeForView.presentStationDate,
+                    district: selectedEmployeeForView.district,
+                    nativeDistrict: selectedEmployeeForView.nativeDistrict,
+                    zone: selectedEmployeeForView.zone,
+                    multiZone: selectedEmployeeForView.multiZone,
+                    sourceMandal: selectedEmployeeForView.sourceMandal,
+                    sourceVillage: selectedEmployeeForView.sourceVillage,
+                    permanentAddress: selectedEmployeeForView.permanentAddress,
+                    temporaryAddress: selectedEmployeeForView.temporaryAddress,
+                    bankAccountNo: selectedEmployeeForView.bank_account_no,
+                    bankIfsc: selectedEmployeeForView.bank_ifsc,
+                    upiId: selectedEmployeeForView.upi_id,
+                    baseMonthlySalary: selectedEmployeeForView.base_monthly_salary,
+                    status: selectedEmployeeForView.status,
+                    photoBase64: selectedEmployeeForView.photo,
+                  });
+                }}
+                className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition cursor-pointer"
+              >
+                <Icon name="printer" size={14} />
+                <span>Print Official Form</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSelectedEmployeeForView(null)}
+                className="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+
+          </div>
+        </div>
       )}
     </div>
   );

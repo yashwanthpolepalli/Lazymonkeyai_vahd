@@ -425,11 +425,7 @@ class HrmsService:
         branches_dict = {b.id: b for b in branches}
         branches_name_dict = {b.branch_name: b for b in branches if b.branch_name}
         vahd_name_dict = {b.vahd_name: b for b in branches if b.vahd_name}
-        default_inst = (
-            (branches[0].vahd_name if (branches and getattr(branches[0], "vahd_name", None)) else None)
-            or (branches[0].branch_name if branches else None)
-            or "Main Institute"
-        )
+        default_inst = ""
         result = []
         for e in employees:
             full_name = f"{e.first_name} {e.last_name or ''}".strip()
@@ -682,15 +678,23 @@ class HrmsService:
         if not branch_id:
             if owner_id:
                 matched_b = db.query(vahdBranch).filter(vahdBranch.owner_id == owner_id).first()
+                if matched_b:
+                    branch_id = matched_b.id
+                    vahd_branch = vahd_branch or matched_b.branch_name or matched_b.vahd_name
+                    if not ho_id and matched_b.ho_id:
+                        ho_id = matched_b.ho_id
             else:
-                matched_b = db.query(vahdBranch).filter(vahdBranch.is_active == True).first() or db.query(vahdBranch).first()
-            if matched_b:
-                branch_id = matched_b.id
-                vahd_branch = vahd_branch or matched_b.branch_name or matched_b.vahd_name
-                if not ho_id and matched_b.ho_id:
-                    ho_id = matched_b.ho_id
-                if not owner_id and matched_b.owner_id:
-                    owner_id = matched_b.owner_id
+                from src.api.deps import current_tenant_scope
+                scope = current_tenant_scope()
+                if scope and len(scope) == 1:
+                    matched_b = db.query(vahdBranch).filter(vahdBranch.id == scope[0]).first()
+                    if matched_b:
+                        branch_id = matched_b.id
+                        vahd_branch = vahd_branch or matched_b.branch_name or matched_b.vahd_name
+                        if not ho_id and matched_b.ho_id:
+                            ho_id = matched_b.ho_id
+                        if not owner_id and matched_b.owner_id:
+                            owner_id = matched_b.owner_id
 
         if not ho_id and owner_id:
             owner_u = db.query(User).filter(User.id == owner_id).first()
@@ -3231,33 +3235,46 @@ class HrmsService:
         leaves = query.order_by(LeaveRequest.created_at.desc()).all()
         result = []
         for l in leaves:
-            emp = db.query(Employee).filter(Employee.id == l.employee_id).first()
+            is_student_record = (getattr(l, "user_type", None) or "").strip().lower() == "student"
+            emp = None
             employee = None
             stu = None
-            if not emp:
-                clean_id = l.employee_id.replace("emp_", "")
-                employee = db.query(employeeProfile).filter(
-                    (employeeProfile.id == l.employee_id) | (employeeProfile.id == clean_id)
-                ).first()
-                if employee:
-                    emp = db.query(Employee).filter(Employee.id == f"emp_{employee.id}").first()
-                else:
-                    stu = db.query(student).filter(
-                        (student.id == l.employee_id) | (student.member_code == l.employee_id)
-                    ).first()
-            else:
-                if emp.designation == "Student" or str(emp.id).startswith("cust_") or str(emp.id).startswith("stu_"):
-                    stu = db.query(student).filter(student.id == emp.id).first()
 
-            is_student_record = bool(
-                stu or
-                (emp and emp.designation == "Student") or
-                str(l.employee_id).startswith("cust_") or
-                str(l.employee_id).startswith("stu_")
-            )
+            if is_student_record:
+                stu = db.query(student).filter(
+                    (student.id == l.employee_id) |
+                    (student.user_id == l.employee_id) |
+                    (student.member_code == l.employee_id)
+                ).first()
+                if not stu:
+                    emp = db.query(Employee).filter(Employee.id == l.employee_id).first()
+            else:
+                emp = db.query(Employee).filter(Employee.id == l.employee_id).first()
+                if not emp:
+                    clean_id = l.employee_id.replace("emp_", "")
+                    employee = db.query(employeeProfile).filter(
+                        (employeeProfile.id == l.employee_id) | (employeeProfile.id == clean_id)
+                    ).first()
+                    if employee:
+                        emp = db.query(Employee).filter(Employee.id == f"emp_{employee.id}").first()
+                    else:
+                        stu = db.query(student).filter(
+                            (student.id == l.employee_id) |
+                            (student.user_id == l.employee_id) |
+                            (student.member_code == l.employee_id)
+                        ).first()
+                else:
+                    if emp.designation == "Student" or str(emp.id).startswith("cust_") or str(emp.id).startswith("stu_"):
+                        stu = db.query(student).filter(
+                            (student.id == emp.id) | (student.user_id == emp.id)
+                        ).first()
+
+            if stu or (emp and emp.designation == "Student") or str(l.employee_id).startswith("cust_") or str(l.employee_id).startswith("stu_"):
+                is_student_record = True
+
             row_user_type = "student" if is_student_record else "employee"
 
-            # Filter by user_type ('student' vs 'employee')
+            # Strict filter by user_type ('student' vs 'employee')
             if user_type and user_type.lower() != "all":
                 if row_user_type != user_type.lower():
                     continue
@@ -3289,9 +3306,10 @@ class HrmsService:
                 (employee.primary_vahd_location if employee and employee.primary_vahd_location else "")
             )
             designation = (
+                ("Student" if is_student_record else None) or
                 (emp.designation if emp and emp.designation else None) or
                 (employee.role if employee and employee.role else None) or
-                ("Student" if is_student_record else "")
+                ""
             )
 
             # Match leave policy for code / paid status
@@ -3340,41 +3358,66 @@ class HrmsService:
         if not emp_id:
             raise ValueError("Employee / student ID is required.")
 
-        # Ensure employee exists or resolve employee / student
-        emp = db.query(Employee).filter((Employee.id == emp_id) | (Employee.code == emp_id) | (Employee.email.ilike(emp_id))).first()
-        if not emp:
-            # Check if applicant is a student
+        user_type_hint = str(payload.get("user_type") or payload.get("scope") or "").strip().lower()
+        stu = None
+        emp = None
+        resolved_user_type = "employee"
+
+        if user_type_hint == "student":
             stu = db.query(student).filter(
-                (student.id == emp_id) | (student.member_code.ilike(emp_id)) | (student.email.ilike(emp_id))
+                (student.id == emp_id) |
+                (student.user_id == emp_id) |
+                (student.member_code.ilike(emp_id)) |
+                (student.email.ilike(emp_id))
             ).first()
             if stu:
                 emp_id = stu.id
-                # Do NOT create an HRMS Employee row for students: leave the
-                # application pointing at the student's own id. get_leaves
-                # resolves the applicant name via its student fallback, and
-                # the absence of an Employee row keeps students out of the
-                # Employee Directory.
+                resolved_user_type = "student"
             else:
-                clean_tid = emp_id.replace("emp_", "")
-                employee = db.query(employeeProfile).filter((employeeProfile.id == emp_id) | (employeeProfile.id == clean_tid) | (employeeProfile.email.ilike(emp_id))).first()
-                if employee:
-                    emp_id = f"emp_{employee.id}"
-                    emp = db.query(Employee).filter(Employee.id == emp_id).first()
-                    if not emp:
-                        emp = Employee(
-                            id=emp_id,
-                            code=f"TR-{employee.id.replace('tr_', '').upper()}",
-                            first_name=employee.full_name,
-                            email=employee.email,
-                            phone=employee.phone or "",
-                            gender=employee.gender or "Male",
-                            designation=employee.role or employee.specialization or "",
-                            department=employee.primary_vahd_location or "",
-                            status="Active",
-                            salary=float(employee.base_monthly_salary or 0.0)
-                        )
-                        db.add(emp)
-                        db.flush()
+                emp = db.query(Employee).filter((Employee.id == emp_id) | (Employee.code == emp_id) | (Employee.email.ilike(emp_id))).first()
+                if emp and (emp.designation == "Student" or str(emp.id).startswith("cust_") or str(emp.id).startswith("stu_")):
+                    resolved_user_type = "student"
+                else:
+                    resolved_user_type = "student"
+        else:
+            emp = db.query(Employee).filter((Employee.id == emp_id) | (Employee.code == emp_id) | (Employee.email.ilike(emp_id))).first()
+            if not emp:
+                stu = db.query(student).filter(
+                    (student.id == emp_id) |
+                    (student.user_id == emp_id) |
+                    (student.member_code.ilike(emp_id)) |
+                    (student.email.ilike(emp_id))
+                ).first()
+                if stu:
+                    emp_id = stu.id
+                    resolved_user_type = "student"
+                else:
+                    clean_tid = emp_id.replace("emp_", "")
+                    employee = db.query(employeeProfile).filter((employeeProfile.id == emp_id) | (employeeProfile.id == clean_tid) | (employeeProfile.email.ilike(emp_id))).first()
+                    if employee:
+                        emp_id = f"emp_{employee.id}"
+                        emp = db.query(Employee).filter(Employee.id == emp_id).first()
+                        if not emp:
+                            emp = Employee(
+                                id=emp_id,
+                                code=f"TR-{employee.id.replace('tr_', '').upper()}",
+                                first_name=employee.full_name,
+                                email=employee.email,
+                                phone=employee.phone or "",
+                                gender=employee.gender or "Male",
+                                designation=employee.role or employee.specialization or "",
+                                department=employee.primary_vahd_location or "",
+                                status="Active",
+                                salary=float(employee.base_monthly_salary or 0.0)
+                            )
+                            db.add(emp)
+                            db.flush()
+                        resolved_user_type = "employee"
+            else:
+                if emp.designation == "Student" or str(emp.id).startswith("cust_") or str(emp.id).startswith("stu_"):
+                    resolved_user_type = "student"
+                else:
+                    resolved_user_type = "employee"
 
         start_str = payload.get("start_date")
         end_str = payload.get("end_date")
@@ -3405,13 +3448,10 @@ class HrmsService:
         paid_type = lt.paid_type if lt else ("PAID" if payload.get("is_paid", True) else "UNPAID")
         is_paid = lt.is_paid if lt else (paid_type != "UNPAID")
 
-        # Optional policy checks
-        if lt:
-            pass
-
         leave = LeaveRequest(
             id=f"leave_{uuid.uuid4().hex[:8]}",
-            employee_id=emp.id if emp else emp_id,
+            employee_id=emp.id if (emp and resolved_user_type == "employee") else (stu.id if stu else emp_id),
+            user_type=resolved_user_type,
             leave_type_id=leave_type_id,
             leave_type=leave_type_name,
             paid_type=paid_type,

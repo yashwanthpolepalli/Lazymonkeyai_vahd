@@ -985,9 +985,9 @@ export function StudentManagementTab() {
                   const sCourse = getStudentCourse(s);
                   const sMedium = getStudentMedium(s);
                   const sRole = meta.batch || meta.category || 'Student';
-                  const matchedBranch = branchesList.find(b => b.id === s.branch_id || b.id === (s as any).tenant_id || b.id === meta.branch_id);
+                  const matchedBranch = branchesList.find(b => b.id === s.branch_id || b.id === (s as any).tenant_id || b.id === meta.branch_id || (b.vahd_name && s.primary_vahd_location && String(b.vahd_name).toLowerCase() === String(s.primary_vahd_location).toLowerCase()));
                   const sDistrict = matchedBranch?.branch_name || matchedBranch?.city || meta.district || meta.city || meta.permanent_address?.district || '—';
-                  const sPlaceOfWork = matchedBranch?.vahd_name || meta.organisation_name || (branchesList.length === 1 ? (branchesList[0] as any).vahd_name || branchesList[0].branch_name : '—');
+                  const sPlaceOfWork = matchedBranch?.vahd_name || meta.organisation_name || s.primary_vahd_location || (s as any).organisation || '—';
                   const isSelected = selectedIds.has(s.id);
                   const studentNo = s.member_code || s.code || `STU-${String(idx + 1).padStart(3, '0')}`;
 

@@ -5,7 +5,7 @@ import calendar
 import logging
 from typing import Dict, Any, List, Optional
 from datetime import datetime, date, timedelta
-from fastapi import APIRouter, Depends, HTTPException, Query, Body, status, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Body, status, Response, BackgroundTasks
 from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, and_, func, desc, String, cast
@@ -212,6 +212,7 @@ def toggle_branch_geofence_portal(
 
 @router.post("/onboard-owner")
 def onboard_owner(
+    background_tasks: BackgroundTasks,
     payload: Dict[str, Any] = Body(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -343,16 +344,17 @@ def onboard_owner(
     db.add(audit)
     db.commit()
 
-    # 4. Attempt to send onboarding email
+    # 4. Asynchronously queue onboarding email in background
     try:
-        send_enrollment_email(
+        background_tasks.add_task(
+            send_enrollment_email,
             to_email=raw_email,
             full_name=owner_name,
             password=password,
             role="OWNER"
         )
     except Exception as e:
-        print(f"Warning: Failed to dispatch onboarding email: {e}")
+        logger.warning(f"Failed to queue onboarding email: {e}")
 
     return {
         "success": True,

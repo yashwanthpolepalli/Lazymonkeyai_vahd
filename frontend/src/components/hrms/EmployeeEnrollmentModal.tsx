@@ -486,7 +486,7 @@ export function EmployeeEnrollmentModal({
       if (allBranches.length > 0) {
         const activeOrgId = localStorage.getItem('vahd_selected_org_id');
         const matchedActive = activeOrgId && activeOrgId !== 'all' ? allBranches.find((b) => b.id === activeOrgId) : null;
-        const target = matchedActive || (employeeToEdit ? allBranches.find((b) => b.id === (employeeToEdit.branch_id || employeeToEdit.meta_data?.branch_id)) : null) || allBranches[0];
+        const target = matchedActive || (employeeToEdit ? allBranches.find((b) => b.id === (employeeToEdit.branch_id || employeeToEdit.meta_data?.branch_id)) : null);
 
         if (target && !selectedBranchId) {
           setSelectedBranchId(target.id);

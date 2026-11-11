@@ -419,35 +419,33 @@ export function HrmsemployeesTab() {
         if (Array.isArray(bList)) setBranchesList(bList);
 
         const combinedMap = new Map<string, any>();
+        // 1. First populate legacy trainers / personnel
         (Array.isArray(tList) ? tList : []).forEach((item: any) => {
           const key = (item.email || item.id || '').toLowerCase().trim();
           if (key) combinedMap.set(key, item);
         });
 
+        // 2. Overlay canonical HRMS employees (hItem from hrms_employees takes highest priority)
         (Array.isArray(hList) ? hList : []).forEach((hItem: any) => {
           const key = (hItem.email || hItem.id || '').toLowerCase().trim();
           const cleanId = (hItem.id || '').replace(/^emp_/, '').toLowerCase().trim();
           const existing = combinedMap.get(key) || (cleanId ? combinedMap.get(cleanId) : undefined);
-          if (existing) {
-            Object.assign(existing, {
-              ...hItem,
-              ...existing,
-              branch_id: existing.branch_id || hItem.branch_id,
-              vahd_branch: existing.vahd_branch || hItem.vahd_branch,
-              department: existing.department || hItem.department,
-              designation: existing.designation || hItem.designation,
-              code: existing.code || hItem.code,
-              meta_data: hItem.meta_data || existing.meta_data,
-            });
-          } else {
-            combinedMap.set(key || cleanId, {
-              ...hItem,
-              full_name: hItem.full_name || `${hItem.first_name || ''} ${hItem.last_name || ''}`.trim(),
-              name: hItem.full_name || `${hItem.first_name || ''} ${hItem.last_name || ''}`.trim(),
-              base_monthly_salary: hItem.salary ?? 0,
-              is_active: (hItem.status || 'Active').toLowerCase() === 'active',
-            });
-          }
+          const merged = {
+            ...(existing || {}),
+            ...hItem,
+            id: hItem.id || existing?.id,
+            name: hItem.full_name || hItem.name || existing?.name || `${hItem.first_name || ''} ${hItem.last_name || ''}`.trim(),
+            full_name: hItem.full_name || hItem.name || existing?.name || `${hItem.first_name || ''} ${hItem.last_name || ''}`.trim(),
+            code: hItem.code || existing?.code || existing?.emp_no || '',
+            department: hItem.department || existing?.department || '',
+            designation: hItem.designation || existing?.designation || existing?.specialization || '',
+            branch_id: hItem.branch_id || existing?.branch_id || '',
+            vahd_branch: hItem.vahd_branch || existing?.vahd_branch || existing?.branch || '',
+            meta_data: { ...(existing?.meta_data || {}), ...(hItem.meta_data || {}) },
+            base_monthly_salary: hItem.salary ?? existing?.base_monthly_salary ?? 0,
+            is_active: (hItem.status || existing?.status || 'Active').toLowerCase() === 'active',
+          };
+          combinedMap.set(key || cleanId, merged);
         });
 
         setemployees(Array.from(combinedMap.values()));
@@ -505,23 +503,26 @@ export function HrmsemployeesTab() {
   ];
 
   const allDisplayemployees: employeeRowData[] = employees.map((t, idx) => {
+    const meta = (t as any).meta_data || {};
+    const post = meta.post_details || {};
+    const bank = meta.bank_details || {};
     const name = t.name || t.full_name || '';
     const email = t.email || (t as any).personal_email || '';
-    const phone = (t as any).phone || (t as any).contact_no || '';
-    const department = (t as any).department || '';
-    const specialization = t.specialization || t.specialty || (t as any).job_designation || '';
-    const empNo = (t as any).employee_code || (t as any).emp_no || (t as any).code || '';
-    const designation = (t as any).job_designation || (t as any).designation || specialization || '';
-    const role = (t as any).role || department || '';
-    const empBranchId = (t as any).branch_id || (t as any).tenant_id || '';
+    const phone = t.phone || (t as any).phone || (t as any).contact_no || meta.phone || '';
+    const department = t.department || post.department || (t as any).department || '';
+    const specialization = t.specialization || t.specialty || post.designation || (t as any).job_designation || '';
+    const empNo = t.code || (t as any).employee_code || meta.employee_code || (t as any).emp_no || '';
+    const designation = t.designation || post.designation || (t as any).job_designation || specialization || '';
+    const role = (t as any).role || post.role || (t as any).role_title || department || 'Staff';
+    const empBranchId = (t as any).branch_id || (t as any).tenant_id || meta.branch_id || '';
     const matchedBranch = branchesList.find(b => b.id === empBranchId) ||
       branchesList.find(b => (b as any).vahd_name && (t as any).vahd_name && String((b as any).vahd_name).toLowerCase() === String((t as any).vahd_name).toLowerCase());
     const branchId = empBranchId || matchedBranch?.id || '';
-    const vahdBranch = matchedBranch?.vahd_name || (t as any).organisation || (t as any).vahd_name || '';
+    const vahdBranch = (t as any).organization_name || (t as any).institute_name || matchedBranch?.vahd_name || (t as any).organisation || (t as any).vahd_name || '';
     const ownerId = (t as any).owner_id || (matchedBranch as any)?.owner_id || '';
     const hoId = (t as any).ho_id || (matchedBranch as any)?.ho_id || '';
     const district = matchedBranch?.branch_name || matchedBranch?.city || (t as any).district || (t as any).location || (t as any).city || '—';
-    const placeOfWork = matchedBranch?.vahd_name || (t as any).organisation || (t as any).organisation_name || (t as any).place_of_work || (branchesList.length === 1 ? (branchesList[0] as any).vahd_name || branchesList[0].branch_name : '—');
+    const placeOfWork = (t as any).organization_name || (t as any).institute_name || (t as any).organisation_name || (t as any).organisation || matchedBranch?.vahd_name || matchedBranch?.branch_name || (t as any).place_of_work || '—';
 
     const assignedMembers = members.filter(
       (m) =>
@@ -595,26 +596,26 @@ export function HrmsemployeesTab() {
       time: punchDetails,
     };
 
-    const gender = (t as any).gender || '';
-    const dob = (t as any).dob || (t as any).date_of_birth || '';
-    const zone = (t as any).zone || '';
-    const multiZone = (t as any).multi_zone || (t as any).multiZone || '';
-    const sourceMandal = (t as any).source_mandal || (t as any).sourceMandal || '';
-    const sourceVillage = (t as any).source_village || (t as any).sourceVillage || '';
-    const retirementDate = (t as any).retirement_date || (t as any).retirementDate || '';
-    const presentStationDate = (t as any).present_station_date || (t as any).presentStationDate || '';
-    const lengthOfService = (t as any).length_of_service || (t as any).lengthOfService || '';
-    const aadhar = (t as any).aadhar || (t as any).aadhar_no || (t as any).aadharNo || '';
-    const pan = (t as any).pan || (t as any).pan_no || (t as any).panNo || '';
-    const caste = (t as any).caste || '';
-    const subCaste = (t as any).sub_caste || (t as any).subCaste || '';
-    const bloodGroup = (t as any).blood_group || (t as any).bloodGroup || '';
-    const fatherName = (t as any).father_name || (t as any).fatherName || '';
-    const motherName = (t as any).mother_name || (t as any).motherName || '';
-    const maritalStatus = (t as any).marital_status || (t as any).maritalStatus || '';
-    const nativeDistrict = (t as any).native_district || (t as any).nativeDistrict || district || '';
-    const permanentAddress = (t as any).permanent_address || (t as any).permanentAddress || (t as any).address || '';
-    const temporaryAddress = (t as any).temporary_address || (t as any).present_address || (t as any).temporaryAddress || '';
+    const gender = t.gender || meta.gender || (t as any).gender || '';
+    const dob = meta.dob || (t as any).dob || (t as any).date_of_birth || '';
+    const zone = (t as any).zone || meta.zone || '';
+    const multiZone = (t as any).multi_zone || (t as any).multiZone || meta.multi_zone || '';
+    const sourceMandal = (t as any).source_mandal || (t as any).sourceMandal || meta.source_mandal || '';
+    const sourceVillage = (t as any).source_village || (t as any).sourceVillage || meta.source_village || '';
+    const retirementDate = (t as any).retirement_date || (t as any).retirementDate || meta.retirement_date || '';
+    const presentStationDate = (t as any).present_station_date || (t as any).presentStationDate || meta.present_station_date || '';
+    const lengthOfService = (t as any).length_of_service || (t as any).lengthOfService || meta.work_experience_years || meta.length_of_service || '';
+    const aadhar = (t as any).aadhar || (t as any).aadhar_no || (t as any).aadharNo || meta.aadhar || '';
+    const pan = bank.pan_no || (t as any).pan || (t as any).pan_no || (t as any).panNo || meta.pan || '';
+    const caste = meta.caste || (t as any).caste || '';
+    const subCaste = meta.sub_caste || (t as any).sub_caste || (t as any).subCaste || '';
+    const bloodGroup = meta.blood_group || (t as any).blood_group || (t as any).bloodGroup || '';
+    const fatherName = meta.father_name || (t as any).father_name || (t as any).fatherName || '';
+    const motherName = meta.mother_name || (t as any).mother_name || (t as any).motherName || '';
+    const maritalStatus = meta.marital_status || (t as any).marital_status || (t as any).maritalStatus || '';
+    const nativeDistrict = (t as any).native_district || (t as any).nativeDistrict || meta.native_district || district || '';
+    const permanentAddress = meta.permanent_address || (t as any).permanent_address || (t as any).permanentAddress || t.address || '';
+    const temporaryAddress = meta.present_address || (t as any).temporary_address || (t as any).present_address || (t as any).temporaryAddress || '';
 
     return {
       id: t.id || `tr_${idx}`,
@@ -658,9 +659,9 @@ export function HrmsemployeesTab() {
         ? t.base_monthly_salary
         : (parseFloat((t as any).base_monthly_salary) || parseFloat((t as any).monthly_base_salary) || parseFloat((t as any).salary) || 0),
       pt_session_rate: (t as any).pt_session_rate || 0,
-      bank_account_no: (t as any).bank_account_no,
-      bank_ifsc: (t as any).bank_ifsc,
-      upi_id: (t as any).upi_id,
+      bank_account_no: (t as any).bank_account_no || bank.account_number,
+      bank_ifsc: (t as any).bank_ifsc || bank.ifsc_code,
+      upi_id: (t as any).upi_id || bank.upi_id,
       aadhar,
       pan,
       caste,

@@ -505,6 +505,8 @@ export const hrmsApi = {
     end_date: string;
     reason: string;
     attachment_url?: string;
+    user_type?: string;
+    scope?: string;
   }) =>
     apiClient.post<{ message: string; id: string; days: number; leave_type: string }>('/hrms/leaves', payload),
   updateLeaveStatus: (leaveId: string, payload: { status: string; reviewer?: string; rejection_reason?: string }) =>

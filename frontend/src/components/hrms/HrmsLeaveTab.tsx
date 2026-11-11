@@ -315,8 +315,11 @@ export function HrmsLeaveTab({ onSuccessToast, scope }: HrmsLeaveTabProps) {
       setRejectingLeaveId(null);
       setRejectionReason('');
       // Refresh
+      const bId = selectedBranch;
+      const branchFilter = bId && bId !== 'all' ? bId : undefined;
+      const targetScope = scope || leaveScope;
       const [updatedLeaves, updatedBals] = await Promise.all([
-        hrmsApi.getLeaves(),
+        hrmsApi.getLeaves(undefined, branchFilter, targetScope),
         hrmsApi.getLeaveBalances(),
       ]);
       setLeaves(updatedLeaves || []);
@@ -350,6 +353,7 @@ export function HrmsLeaveTab({ onSuccessToast, scope }: HrmsLeaveTabProps) {
     }
 
     setSubmittingApply(true);
+    const targetScope = scope || leaveScope;
     try {
       await hrmsApi.applyLeave({
         employee_id: formEmployeeId,
@@ -358,6 +362,8 @@ export function HrmsLeaveTab({ onSuccessToast, scope }: HrmsLeaveTabProps) {
         end_date: formEndDate,
         reason: formReason.trim(),
         attachment_url: formAttachmentUrl.trim() || undefined,
+        user_type: targetScope,
+        scope: targetScope,
       });
       onSuccessToast?.('Leave application recorded successfully!');
       setShowApplyModal(false);
@@ -366,8 +372,11 @@ export function HrmsLeaveTab({ onSuccessToast, scope }: HrmsLeaveTabProps) {
       setFormAttachmentName('');
       setFormAttachmentSize('');
       // Refresh
+      const bId = selectedBranch;
+      const branchFilter = bId && bId !== 'all' ? bId : undefined;
+      const targetScope = scope || leaveScope;
       const [updatedLeaves, updatedBals] = await Promise.all([
-        hrmsApi.getLeaves(),
+        hrmsApi.getLeaves(undefined, branchFilter, targetScope),
         hrmsApi.getLeaveBalances(),
       ]);
       setLeaves(updatedLeaves || []);

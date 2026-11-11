@@ -135,14 +135,15 @@ export function StudentEnrollmentModal({
       const match = branchesList.find((b) => b.id === savedOrgId);
       if (match) return match;
     }
-    return branchesList.length > 0 ? branchesList[0] : null;
+    return null;
   }, [branchesList, selectedBranchId]);
 
   useEffect(() => {
     if (currentOrg && currentOrg.id !== selectedBranchId) {
       setSelectedBranchId(currentOrg.id);
+      setCollegeName(getOrgDisplayName(currentOrg));
     }
-  }, [currentOrg, selectedBranchId]);
+  }, [currentOrg]);
 
   useEffect(() => {
     const handleOrgChanged = (e: any) => {
@@ -740,8 +741,7 @@ export function StudentEnrollmentModal({
       const matched = savedOrgId && savedOrgId !== 'all' ? branchesList.find((b) => b.id === savedOrgId) : null;
       if (matched) {
         setSelectedBranchId(matched.id);
-      } else if (branchesList.length > 0) {
-        setSelectedBranchId(branchesList[0].id);
+        setCollegeName(getOrgDisplayName(matched));
       } else {
         setSelectedBranchId('');
       }
@@ -1246,6 +1246,7 @@ export function StudentEnrollmentModal({
                       }}
                       className="px-2 py-1 bg-white border border-slate-300 rounded-lg text-xs font-black text-blue-700 shadow-2xs uppercase cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500 max-w-[220px] truncate"
                     >
+                      <option value="">-- Select Institution --</option>
                       {branchesList.map((b) => (
                         <option key={b.id} value={b.id}>
                           {getOrgDisplayName(b)}

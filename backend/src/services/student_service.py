@@ -102,7 +102,7 @@ class studentService:
         return new_code
 
     @staticmethod
-    def _format_student(c: student, db: Session) -> dict:
+    def _format_student(c: student, db: Session, preloaded_today_logs: Optional[List] = None) -> dict:
         now = now_ist_naive()
 
         # employee Name Lookup from DB
@@ -150,11 +150,14 @@ class studentService:
             EmployeeAttendance.date == today_date
         ).first()
 
-        # Query all biometric logs for today
-        raw_today_logs = db.query(BiometricLog).filter(
-            BiometricLog.timestamp >= today_start,
-            BiometricLog.timestamp <= today_end
-        ).order_by(BiometricLog.timestamp.asc()).all()
+        # Query all biometric logs for today (or reuse preloaded list for batch performance)
+        if preloaded_today_logs is not None:
+            raw_today_logs = preloaded_today_logs
+        else:
+            raw_today_logs = db.query(BiometricLog).filter(
+                BiometricLog.timestamp >= today_start,
+                BiometricLog.timestamp <= today_end
+            ).order_by(BiometricLog.timestamp.asc()).all()
 
         today_logs = []
         for l in raw_today_logs:
@@ -545,7 +548,13 @@ class studentService:
                     query = query.filter(or_(*conds))
 
         students = query.order_by(student.created_at.desc()).all()
-        return [studentService._format_student(c, db) for c in students]
+        today_start = today_ist_start()
+        today_end = today_ist_end()
+        raw_today_logs = db.query(BiometricLog).filter(
+            BiometricLog.timestamp >= today_start,
+            BiometricLog.timestamp <= today_end
+        ).order_by(BiometricLog.timestamp.asc()).all()
+        return [studentService._format_student(c, db, preloaded_today_logs=raw_today_logs) for c in students]
 
     @staticmethod
     def sync_student_biometric(db: Session, student_id: str, data: Optional[dict] = None) -> dict:
@@ -742,12 +751,15 @@ class studentService:
                     resolved_branch_name = b_fb.branch_name or b_fb.vahd_name
                     resolved_ho_id = resolved_ho_id or b_fb.ho_id
             if not resolved_branch_id:
-                b_fb = db.query(vahdBranch).filter(vahdBranch.is_active == True).first() or db.query(vahdBranch).first()
-                if b_fb:
-                    resolved_branch_id = b_fb.id
-                    resolved_branch_name = b_fb.branch_name or b_fb.vahd_name
-                    resolved_owner_id = resolved_owner_id or b_fb.owner_id
-                    resolved_ho_id = resolved_ho_id or b_fb.ho_id
+                from src.api.deps import current_tenant_scope
+                scope = current_tenant_scope()
+                if scope and len(scope) == 1:
+                    b_fb = db.query(vahdBranch).filter(vahdBranch.id == scope[0]).first()
+                    if b_fb:
+                        resolved_branch_id = b_fb.id
+                        resolved_branch_name = b_fb.branch_name or b_fb.vahd_name
+                        resolved_owner_id = resolved_owner_id or b_fb.owner_id
+                        resolved_ho_id = resolved_ho_id or b_fb.ho_id
 
         if not resolved_ho_id and resolved_owner_id:
             owner_u = db.query(User).filter(User.id == resolved_owner_id).first()

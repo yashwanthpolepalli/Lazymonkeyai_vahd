@@ -210,7 +210,7 @@ export const HoOrganisationsPage: React.FC = () => {
       {/* ── HO PORTAL TAB SWITCHER ────────────────────────────────────────── */}
       <div className="flex items-center gap-2.5 overflow-x-auto no-scrollbar pt-1">
         <button
-          onClick={() => navigate('/ho')}
+          onClick={() => navigate('/ho?tab=overview')}
           className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer bg-white text-slate-700 hover:bg-slate-50 border border-slate-200/90 shadow-2xs"
         >
           <Icon name="layout-grid" size={14} className="text-slate-500" />

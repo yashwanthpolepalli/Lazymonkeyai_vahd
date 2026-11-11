@@ -180,6 +180,7 @@ class LeaveRequest(Base):
     # so no hard FK to hrms_employees (mirrors EmployeeAttendance /
     # EmployeeShiftRoster).
     employee_id = Column(String, nullable=False, index=True)
+    user_type = Column(String, nullable=True, default="employee", index=True)  # 'employee' | 'student'
     leave_type_id = Column(String, nullable=True)
     leave_type = Column(String, nullable=False)
     paid_type = Column(String, nullable=True)

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Icon } from '@/components/ui/Icon';
 import { apiClient } from '@/services/apiClient';
@@ -131,8 +131,23 @@ export const HoDashboard: React.FC = () => {
   }>({ open: false, owners: [] });
   const [deletingOwner, setDeletingOwner] = useState(false);
 
-  // Tab State: Dashboard vs Branch Attendance Reports
-  const [hoTab, setHoTab] = useState<'overview' | 'attendance_reports'>('overview');
+  // Tab State: Dashboard vs Branch Attendance Reports (synchronized with URL query)
+  const [searchParams, setSearchParams] = useSearchParams();
+  const rawTab = searchParams.get('tab');
+  const [hoTab, setHoTab] = useState<'overview' | 'attendance_reports'>(() => {
+    return rawTab === 'attendance_reports' ? 'attendance_reports' : 'overview';
+  });
+
+  useEffect(() => {
+    if (rawTab === 'matrix') {
+      navigate('/ho/organisations', { replace: true });
+    } else if (rawTab === 'attendance_reports' && hoTab !== 'attendance_reports') {
+      setHoTab('attendance_reports');
+    } else if ((!rawTab || rawTab === 'overview') && hoTab !== 'overview') {
+      setHoTab('overview');
+    }
+  }, [rawTab, hoTab, navigate]);
+
   const [repYear, setRepYear] = useState<number>(new Date().getFullYear());
   const [repMonth, setRepMonth] = useState<number>(new Date().getMonth() + 1);
   const [repCategory, setRepCategory] = useState<'all' | 'employees' | 'students'>('all');
@@ -546,7 +561,10 @@ export const HoDashboard: React.FC = () => {
       {/* ── HO PORTAL TAB SWITCHER ────────────────────────────────────────── */}
       <div className="flex items-center gap-2.5 overflow-x-auto no-scrollbar pt-1">
         <button
-          onClick={() => setHoTab('overview')}
+          onClick={() => {
+            setHoTab('overview');
+            setSearchParams({ tab: 'overview' }, { replace: true });
+          }}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
             hoTab === 'overview'
               ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-orange-500 text-white shadow-md shadow-blue-500/20'
@@ -567,7 +585,10 @@ export const HoDashboard: React.FC = () => {
         </button>
 
         <button
-          onClick={() => setHoTab('attendance_reports')}
+          onClick={() => {
+            setHoTab('attendance_reports');
+            setSearchParams({ tab: 'attendance_reports' }, { replace: true });
+          }}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
             hoTab === 'attendance_reports'
               ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-orange-500 text-white shadow-md shadow-blue-500/20'

@@ -132,12 +132,13 @@ export function HrmsPage() {
       setViewMode('employees');
     } else if (!canViewEmployees && canViewStudents && viewMode === 'employees') {
       setViewMode('students');
-    }
-    if (rawView === 'students' || rawTab === 'students') {
+    } else if (rawView === 'students' || rawTab === 'students') {
       if (canViewStudents) setViewMode('students');
+    } else if (rawView === 'employees' || rawTab === 'employees') {
+      if (canViewEmployees) setViewMode('employees');
     }
 
-    if (viewMode === 'students' || rawView === 'students') {
+    if (rawView === 'students' || viewMode === 'students') {
       if (rawTab === 'leave') {
         setStudentCategory('Leave');
       } else if (
@@ -150,26 +151,26 @@ export function HrmsPage() {
       }
     }
 
-    if (initialTab) {
-      const normalizedTab = initialTab === 'employees'
+    if (rawTab) {
+      const normalizedTab = rawTab === 'employees'
         ? 'employees'
-        : (initialTab === 'biometric' || initialTab === 'biometrics' || initialTab === 'attendance_settings' || initialTab === 'work_calendars')
-        ? 'attendance'
-        : initialTab;
+        : (rawTab === 'biometric' || rawTab === 'biometrics' || rawTab === 'attendance_settings' || rawTab === 'work_calendars')
+          ? 'attendance'
+          : rawTab;
       setActiveSubTab(normalizedTab);
-      if (['employees', 'departments', 'designations', 'teams', 'documents', 'profile'].includes(initialTab)) {
+      if (['employees', 'departments', 'designations', 'teams', 'documents', 'profile'].includes(rawTab)) {
         setActiveCategory('Employee Management');
-      } else if (['attendance', 'attendance_settings', 'work_calendars', 'geofence', 'geofence_portal', 'daily_attendance', 'face_recognition', 'gps_attendance', 'shift_attendance', 'corrections', 'biometric', 'biometrics'].includes(initialTab)) {
+      } else if (['attendance', 'attendance_settings', 'work_calendars', 'geofence', 'geofence_portal', 'daily_attendance', 'face_recognition', 'gps_attendance', 'shift_attendance', 'corrections', 'biometric', 'biometrics'].includes(rawTab)) {
         setActiveCategory('Attendance');
-      } else if (initialTab === 'leave') {
+      } else if (rawTab === 'leave') {
         setActiveCategory('Leave');
-      } else if (initialTab === 'payroll') {
+      } else if (rawTab === 'payroll') {
         setActiveCategory('Payroll');
-      } else if (initialTab === 'exit') {
+      } else if (rawTab === 'exit') {
         setActiveCategory('Exit Management');
       }
     }
-  }, [initialTab, rawView, rawTab, canViewStudents, canViewEmployees, viewMode]);
+  }, [rawView, rawTab, canViewStudents, canViewEmployees]);
 
   const switchTab = (cat: HrmsCategory, sub?: string) => {
     setActiveCategory(cat);
@@ -231,7 +232,7 @@ export function HrmsPage() {
               onClick={() => {
                 setViewMode('students');
                 const targetTab = studentCategory === 'Attendance' ? (studentSubTab || 'attendance') : studentCategory === 'Leave' ? 'leave' : 'directory';
-                setSearchParams({ view: 'students', tab: targetTab });
+                setSearchParams({ view: 'students', tab: targetTab }, { replace: true });
               }}
               className={cn(
                 'flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all duration-150 cursor-pointer shadow-2xs',
@@ -249,7 +250,7 @@ export function HrmsPage() {
               type="button"
               onClick={() => {
                 setViewMode('employees');
-                setSearchParams({ view: 'employees', tab: activeSubTab || 'employees' });
+                setSearchParams({ view: 'employees', tab: activeSubTab || 'employees' }, { replace: true });
               }}
               className={cn(
                 'flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all duration-150 cursor-pointer shadow-2xs',
@@ -286,11 +287,10 @@ export function HrmsPage() {
                 <button
                   key={cat.id}
                   onClick={() => switchStudentTab(cat.id as StudentCategory)}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-                    studentCategory === cat.id
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${studentCategory === cat.id
                       ? 'bg-purple-50 text-purple-700 border border-purple-200/80 shadow-2xs'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                  }`}
+                    }`}
                 >
                   <Icon name={cat.icon} size={15} className={studentCategory === cat.id ? 'text-purple-600' : 'text-slate-400'} />
                   <span>{cat.label}</span>
@@ -330,11 +330,10 @@ export function HrmsPage() {
                         setStudentSubTab(sub.id);
                         setSearchParams({ view: 'students', tab: sub.id });
                       }}
-                      className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap shadow-2xs ${
-                        isSelected
+                      className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap shadow-2xs ${isSelected
                           ? 'bg-purple-600 text-white shadow-md shadow-purple-600/25 ring-2 ring-purple-300/40'
                           : 'bg-white hover:bg-slate-50 text-slate-600 border border-slate-200/80'
-                      }`}
+                        }`}
                     >
                       <Icon name={sub.icon} size={14} />
                       <span>{sub.label}</span>
@@ -405,11 +404,10 @@ export function HrmsPage() {
                 <button
                   key={cat.id}
                   onClick={() => switchTab(cat.id as HrmsCategory)}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-                    activeCategory === cat.id
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${activeCategory === cat.id
                       ? 'bg-purple-50 text-purple-700 border border-purple-200/80 shadow-2xs'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                  }`}
+                    }`}
                 >
                   <Icon name={cat.icon} size={15} className={activeCategory === cat.id ? 'text-purple-600' : 'text-slate-400'} />
                   <span>{cat.label}</span>

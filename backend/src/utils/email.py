@@ -221,11 +221,11 @@ def send_enrollment_email(to_email: str, full_name: str, password: str, role: st
 
             try:
                 if int(smtp_port) == 465:
-                    with smtplib.SMTP_SSL(smtp_host, 465, timeout=15) as server:
+                    with smtplib.SMTP_SSL(smtp_host, 465, timeout=5) as server:
                         server.login(smtp_user, smtp_pass)
                         server.sendmail(from_email or smtp_user, to_email, msg.as_string())
                 else:
-                    with smtplib.SMTP(smtp_host, int(smtp_port), timeout=15) as server:
+                    with smtplib.SMTP(smtp_host, int(smtp_port), timeout=5) as server:
                         server.ehlo()
                         server.starttls()
                         server.ehlo()
@@ -233,7 +233,7 @@ def send_enrollment_email(to_email: str, full_name: str, password: str, role: st
                         server.sendmail(from_email or smtp_user, to_email, msg.as_string())
             except Exception:
                 # SSL port 465 fallback if port 587 connection was closed by ISP/network
-                with smtplib.SMTP_SSL(smtp_host, 465, timeout=15) as server:
+                with smtplib.SMTP_SSL(smtp_host, 465, timeout=5) as server:
                     server.login(smtp_user, smtp_pass)
                     server.sendmail(from_email or smtp_user, to_email, msg.as_string())
             print(f"✅ SMTP email successfully sent to {to_email}")

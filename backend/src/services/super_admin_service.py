@@ -850,6 +850,11 @@ class SuperAdminService:
         db.execute(text("DELETE FROM student_attendance_report_logs WHERE branch_id = :bid"), {"bid": clean_id})
         db.execute(text("DELETE FROM hrms_shift_templates WHERE branch_id = :bid"), {"bid": clean_id})
         db.execute(text("DELETE FROM membership_plans WHERE branch_id = :bid"), {"bid": clean_id})
+        # NOTE: student_courses has NO branch_id column (it is keyed by
+        # student_id + tenant_id), so it is purged via the ORM paths above
+        # (step 1: by the branch's students, and the 4.5 safety net: by
+        # tenant_id) — a raw "WHERE branch_id" delete here crashed the whole
+        # organization deletion with UndefinedColumn.
         db.execute(text("DELETE FROM students WHERE branch_id = :bid"), {"bid": clean_id})
         db.execute(text("UPDATE users SET branch_id = NULL WHERE branch_id = :bid"), {"bid": clean_id})
 

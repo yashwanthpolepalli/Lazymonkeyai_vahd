@@ -693,7 +693,12 @@ def _run_employees_import(db: Session, rows: List[Dict[str, Any]], job: Dict[str
 
     users_by_email = {u.email.strip().lower(): u for u in db.query(User).all() if u.email}
     profiles_by_email = {p.email.strip().lower(): p for p in db.query(employeeProfile).all() if p.email}
+    # The real identity link is user_id — employee_profiles.user_id is UNIQUE,
+    # so matching profiles by email alone is what caused the production
+    # "duplicate key violates employee_profiles_user_id_key" failure.
+    profiles_by_user = {p.user_id: p for p in db.query(employeeProfile).all() if p.user_id}
     emps_by_email = {e.email.strip().lower(): e for e in db.query(Employee).all() if e.email}
+    emps_by_user = {e.user_id: e for e in db.query(Employee).all() if e.user_id}
     branches = _branch_maps(db, current_user=current_user)
 
     masters = _load_master_validation_sets(db, tenant_id=branches.get("user_branch_id"))

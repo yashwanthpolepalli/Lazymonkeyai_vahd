@@ -5,6 +5,7 @@ import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/utils/cn';
 import { hrmsApi } from '@/services/hrmsApi';
 import { masterDataApi } from '@/services/masterDataApi';
+import { apiClient } from '@/services/apiClient';
 import { useAuth } from '@/context/AuthContext';
 
 export interface MasterDataItem {
@@ -22,6 +23,12 @@ export interface MasterDataItem {
   description?: string;
   days?: number | string;
   created_at?: string;
+  /**
+   * Provenance: null/empty = platform-wide (shared) row, truthy = row owned
+   * by a specific organization (the tenant branch id it was stamped under).
+   */
+  tenant_id?: string | null;
+  [key: string]: unknown;
 }
 
 export interface MasterCategory {

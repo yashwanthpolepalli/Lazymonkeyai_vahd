@@ -3,7 +3,9 @@ from fastapi import APIRouter, Depends, HTTPException, Body, Query, Response, Up
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from src.database.session import get_db
+from src.database.tenant_session import get_tenant_scope
 from src.services.settings_service import SettingsService
+from src.services.settings_seed_service import ensure_org_settings
 from src.services.hrms_service import HrmsService
 from src.api.deps import get_current_user
 from src.models.user import User
@@ -29,6 +31,43 @@ def get_branch_geofence_status(
         "branch_name": branch.branch_name,
         "vahd_name": branch.vahd_name,
         "geofence_portal_enabled": bool(branch.geofence_portal_enabled)
+    }
+
+
+@router.post("/settings/ensure-organization-settings")
+def ensure_organization_settings(
+    payload: dict = Body({}),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Seed the starter settings set owned by an organization (idempotent).
+
+    When opened from a Settings screen the ribbon has a selected organization,
+    so we self-heal that org's settings. Accepts an optional
+    `{ organization_id }`:
+      - if provided  -> seed that specific org,
+      - if omitted   -> seed the request's active tenant scope (the currently
+                        selected organization), e.g. scope[0].
+
+    This is what the Settings tab calls on mount so existing orgs get the
+    same starter rows new HO orgs receive.
+    """
+    target_org_id = (str(payload.get("organization_id") or "").strip() or None) if payload else None
+
+    if target_org_id:
+        # Seed the explicitly requested organization.
+        result = ensure_org_settings(db, target_org_id, current_user=current_user)
+    else:
+        # Seed the currently-selected organization from the active request scope.
+        scope = get_tenant_scope()
+        target_org_id = (scope[0] if scope else None)
+        result = ensure_org_settings(db, target_org_id, current_user=current_user)
+
+    return {
+        "success": True,
+        "organization_id": target_org_id,
+        **result,
     }
 
 

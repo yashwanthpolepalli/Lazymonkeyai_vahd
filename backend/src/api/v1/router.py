@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from src.database.session import get_db
 from src.models.settings import vahdBranch
 from src.api.v1.auth import router as auth_router
-from src.api.v1.students import router as students_main_router, members_router, crm_students_router, students_router as students_reports_router
+from src.api.v1.students import router as students_main_router, members_router, crm_students_router
 from src.api.v1.courses import router as courses_router
 from src.api.v1.biometrics import router as biometrics_router
 from src.api.v1.super_admin import router as super_admin_router
@@ -36,10 +36,13 @@ from src.api.deps import apply_tenant_scope
 api_router = APIRouter(dependencies=[Depends(apply_tenant_scope)])
 api_router.include_router(ho_router)
 api_router.include_router(auth_router)
+# NOTE: the student attendance-report routes were previously registered
+# three extra times (an alias `students_reports_router` plus two
+# `prefix="/students"` re-includes that produced dead /students/students/*
+# paths). All of those have been removed; `students_main_router` (which
+# already carries prefix="/students" and exposes the report endpoints) is
+# the single source of truth for /students/*.
 api_router.include_router(students_main_router)
-api_router.include_router(students_reports_router)
-api_router.include_router(students_main_router, prefix="/students")
-api_router.include_router(students_reports_router, prefix="/students")
 api_router.include_router(crm_students_router)
 api_router.include_router(members_router)
 api_router.include_router(courses_router)

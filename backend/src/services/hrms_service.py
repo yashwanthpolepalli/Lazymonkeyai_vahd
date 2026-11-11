@@ -18,9 +18,85 @@ from src.models.payroll import PayrollInvoice
 from src.models.student import student
 from src.models.user import User
 from src.models.biometric import BiometricLog
+from fastapi import HTTPException
 from src.models.settings import Branch as vahdBranch, Setting as vahdSetting, MasterData
 
 IST = timezone(timedelta(hours=5, minutes=30))
+
+# -------------------------------------------------------------
+# TENANT-SCOPED SETTINGS WRITES (isolation + copy-on-write)
+# -------------------------------------------------------------
+# Shared-master model: a NULL tenant_id row is a platform-wide item; an
+# org-owned row carries the branch id of the organization that owns it.
+# Scoped requests (an organization selected in the ribbon) must never
+# mutate the global rows — they operate on their own rows, and copy a
+# global row on write instead of touching it. Unscoped requests
+# (super-admin / platform, scope=None) keep managing the global set.
+
+def _tenant_context(db: Session = None):
+    """Central tenant-scope helper.
+
+    Returns (is_scoped, home_tenant):
+      * is_scoped     -> True when the request runs in an org scope
+      * home_tenant   -> the selected organization's branch id (scope[0]),
+                        or None when unscoped (super-admin / platform).
+    """
+    try:
+        from src.database.tenant_session import get_tenant_scope
+        scope = get_tenant_scope()
+    except Exception:
+        scope = None
+    is_scoped = scope is not None and len(scope) > 0
+    home_tenant = scope[0] if is_scoped else None
+    return (is_scoped, home_tenant)
+
+
+def _tenant_guard(db: Session, row, model, *extra_filters):
+    """Copy-on-write guard: a scoped request never mutates a global row.
+
+    `row` may be None, an org-owned row, or a global (tenant_id IS NULL)
+    row. Org-owned rows are returned as-is; global rows are copied into
+    the request's org (tenant_id = home tenant) before any modification.
+    Unscoped requests (super-admin) return the row unchanged.
+    """
+    if row is None:
+        return None
+    is_scoped, home_tenant = _tenant_context(db)
+    if not is_scoped or getattr(row, "tenant_id", None) is not None:
+        return row
+    # The row is a shared/platform item and the request is scoped:
+    # copy-on-write so the global row stays untouched. The copy gets its
+    # own row id; name/code values may be shared with the global row
+    # because the unique constraints include tenant_id (NULL != org id).
+    copy = type(row)(
+        id=f"{getattr(row, 'id', '') or 'row'}_{uuid.uuid4().hex[:6]}",
+    )
+    for attr in ("name", "code", "description", "head_name", "is_active",
+                 "title", "department", "level", "category", "paid_type",
+                 "is_paid", "gender_eligibility", "employment_types",
+                 "applicable_departments", "applicable_designations",
+                 "min_service_days", "annual_quota", "max_consecutive_days",
+                 "carry_forward_allowed", "max_carry_forward_days",
+                 "encashment_allowed", "max_encashment_days",
+                 "attachment_required", "parent_id", "parent_name",
+                 "extra_info", "extra", "display_order", "updated_at",
+                 "created_at"):
+        val = getattr(row, attr, None)
+        if val is not None:
+            # JSON/JSONB list columns: hand the copy its own list object
+            # so in-place edits never alias the source row's value.
+            setattr(copy, attr, list(val) if isinstance(val, (list, tuple)) else val)
+    copy.tenant_id = home_tenant
+    db.add(copy)
+    return copy
+
+
+def _platform_item_conflict():
+    """409 raised when an org-scoped request tries to delete a global item."""
+    return HTTPException(
+        status_code=409,
+        detail="This is a platform-wide item — manage it as super-admin",
+    )
 
 def infer_dept_type(dept_name: str, cur_extra: str = "") -> str:
     """Helper to classify departments dynamically into student, employee, or both."""
@@ -851,7 +927,33 @@ class HrmsService:
         employees = db.query(Employee).all()
         employee_profiles = db.query(employeeProfile).all()
         students = db.query(student).all()
-        master_depts = {m.name.strip().lower(): m for m in db.query(MasterData).filter(MasterData.category == "departments").all() if m.name}
+        # MasterData mirrors are tenant-scoped: for a given department name
+        # prefer the mirror that belongs to the same tenant, then any
+        # org-owned mirror, then the global (shared) one.
+        master_dept_lists: Dict[str, List[MasterData]] = {}
+        for m in db.query(MasterData).filter(MasterData.category == "departments").all():
+            if m.name:
+                master_dept_lists.setdefault(m.name.strip().lower(), []).append(m)
+        master_depts = {}
+        _is_scoped_md, _home_tenant_md = _tenant_context(db)
+
+        def _pick_master_dept(name_lower: str, tenant_id=None):
+            lst = master_dept_lists.get(name_lower, [])
+            if not lst:
+                return None
+            # exact tenant match first
+            for m in lst:
+                if m.tenant_id == tenant_id:
+                    return m
+            # org-owned mirrors (or any scoped-visible row) over the global one
+            if _is_scoped_md:
+                for m in lst:
+                    if m.tenant_id is not None:
+                        return m
+            for m in lst:
+                if m.tenant_id is None:
+                    return m
+            return lst[0]
         
         result = []
         for d in depts:
@@ -916,7 +1018,7 @@ class HrmsService:
             stud_cnt = len(mapped_stud)
 
             # Determine department audience type
-            md_entry = master_depts.get(dept_name_lower)
+            md_entry = _pick_master_dept(dept_name_lower, getattr(d, "tenant_id", None))
             explicit_type = (md_entry.extra_info or "").strip().lower() if md_entry else ""
             if explicit_type in ("student", "students", "academic"):
                 dept_type = "student"
@@ -959,6 +1061,7 @@ class HrmsService:
             
             result.append({
                 "id": d.id,
+                "tenant_id": getattr(d, "tenant_id", None),
                 "name": d.name,
                 "code": d.code or "",
                 "description": d.description or "",
@@ -984,44 +1087,47 @@ class HrmsService:
         if raw_type not in ("student", "employee", "both"):
             raw_type = infer_dept_type(dept_name)
 
-        dept = db.query(Department).filter(func.lower(Department.name) == dept_name.lower()).first()
+        _is_scoped, _home_tenant = _tenant_context(db)
+
+        # Match the request's OWN row first; fall back to a shared/global row.
+        q = db.query(Department).filter(func.lower(Department.name) == dept_name.lower())
+        if _is_scoped:
+            q = q.filter(Department.tenant_id == _home_tenant)
+        dept = q.first()
+
         if not dept:
-            dept = Department(
-                id=f"dept_{uuid.uuid4().hex[:8]}",
-                name=dept_name,
-                code=dept_code or dept_name[:4].upper(),
-                description=dept_desc,
-                head_name=dept_head,
-                is_active=dept_active
-            )
-            db.add(dept)
+            global_dept = None
+            if _is_scoped:
+                gq = db.query(Department).filter(func.lower(Department.name) == dept_name.lower())
+                gq = gq.filter(Department.tenant_id.is_(None))
+                global_dept = gq.first()
+            if global_dept:
+                # COPY-ON-WRITE: org gets its own row; the global row stays untouched.
+                dept = _tenant_guard(db, global_dept, Department)
+                if dept_code: dept.code = f"{dept_code}_{uuid.uuid4().hex[:4].upper()}"
+                if dept_desc: dept.description = dept_desc
+                if dept_head: dept.head_name = dept_head
+                dept.is_active = dept_active
+            else:
+                dept = Department(
+                    id=f"dept_{uuid.uuid4().hex[:8]}",
+                    name=dept_name,
+                    code=dept_code or dept_name[:4].upper(),
+                    description=dept_desc,
+                    head_name=dept_head,
+                    is_active=dept_active,
+                    tenant_id=_home_tenant if _is_scoped else None,
+                )
+                db.add(dept)
         else:
             if dept_code: dept.code = dept_code
             if dept_desc: dept.description = dept_desc
             if dept_head: dept.head_name = dept_head
             dept.is_active = dept_active
 
-        # Synchronize with MasterData
-        md = db.query(MasterData).filter(
-            MasterData.category == "departments",
-            func.lower(MasterData.name) == dept_name.lower()
-        ).first()
-        if not md:
-            md = MasterData(
-                id=f"mdata_{uuid.uuid4().hex[:8]}",
-                category="departments",
-                name=dept_name,
-                code=dept.code or dept_name[:4].upper(),
-                description=dept.description or "",
-                extra_info=raw_type,
-                is_active=dept.is_active
-            )
-            db.add(md)
-        else:
-            md.code = dept.code
-            md.description = dept.description
-            md.extra_info = raw_type
-            md.is_active = dept.is_active
+        # Synchronize with MasterData — the mirror must carry the SAME tenant
+        # as the HRMS row it mirrors (never leave an org mirror global).
+        _sync_department_master_data(db, dept, raw_type)
 
         db.commit()
         return {"message": "Department created successfully", "id": dept.id, "name": dept.name, "extra_info": raw_type, "department_type": raw_type}

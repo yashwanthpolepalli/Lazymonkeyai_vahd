@@ -121,7 +121,7 @@ def onboard_student(
 
     # Resolve branch from database to ensure branch_name and hierarchy match
     from src.models.settings import Branch as vahdBranch
-    from sqlalchemy import or_
+    from sqlalchemy import or_, func
     b_ref = data.get("branch_id") or data.get("branch") or data.get("primary_vahd_location")
     if b_ref:
         b_obj = db.query(vahdBranch).filter(vahdBranch.id == b_ref).first()
@@ -301,36 +301,11 @@ def delete_student(student_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Failed to delete student: {str(e)}")
 
 
-# Alias router for /students
-students_router = APIRouter(prefix="/students", tags=["Students"])
-
-@students_router.get("/attendance-reports/overview")
-def get_students_attendance_overview(year: Optional[int] = Query(None), month: Optional[int] = Query(None), branch_id: Optional[str] = Query(None), current_user: Optional[User] = Depends(get_current_user), db: Session = Depends(get_db)):
-    return get_attendance_reports_overview(year=year, month=month, branch_id=branch_id, current_user=current_user, db=db)
-
-@students_router.get("/attendance-reports/logs")
-def get_students_attendance_logs(year: Optional[int] = Query(None), month: Optional[int] = Query(None), branch_id: Optional[str] = Query(None), limit: int = Query(100), db: Session = Depends(get_db)):
-    return get_attendance_report_logs(year=year, month=month, branch_id=branch_id, limit=limit, db=db)
-
-@students_router.post("/attendance-reports/dispatch-monthly")
-def dispatch_students_monthly_attendance(payload: Dict[str, Any] = Body(default={}), current_user: Optional[User] = Depends(get_current_user), db: Session = Depends(get_db)):
-    return dispatch_all_monthly_attendance_reports(payload=payload, current_user=current_user, db=db)
-
-@students_router.get("/{student_id}/attendance-report")
-def get_student_monthly_attendance(student_id: str, year: Optional[int] = Query(None), month: Optional[int] = Query(None), db: Session = Depends(get_db)):
-    return get_student_monthly_attendance_report(student_id, year=year, month=month, db=db)
-
-@students_router.get("/{student_id}/attendance-report/csv")
-def get_student_attendance_csv(student_id: str, year: Optional[int] = Query(None), month: Optional[int] = Query(None), db: Session = Depends(get_db)):
-    return get_student_attendance_report_csv(student_id, year=year, month=month, db=db)
-
-@students_router.get("/{student_id}/attendance-report/pdf")
-def get_student_attendance_pdf(student_id: str, year: Optional[int] = Query(None), month: Optional[int] = Query(None), db: Session = Depends(get_db)):
-    return get_student_attendance_report_printable_html(student_id, year=year, month=month, db=db)
-
-@students_router.post("/{student_id}/attendance-report/send-whatsapp")
-def send_student_monthly_attendance(student_id: str, payload: Dict[str, Any] = Body(default={}), db: Session = Depends(get_db)):
-    return send_student_monthly_attendance_whatsapp(student_id, payload=payload, db=db)
+# NOTE: the former `students_router` alias (a second registration of the
+# attendance-report routes under the same /students prefix) was removed —
+# it produced shadowed duplicate route registrations that confused the
+# OpenAPI docs and doubled the route table. The main `router` above already
+# exposes all seven attendance-report endpoints.
 
 
 # Alias router for /members

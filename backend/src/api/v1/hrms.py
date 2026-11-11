@@ -34,7 +34,11 @@ def bulk_import_employees(
         raise HTTPException(status_code=400, detail="No rows to import")
 
     # Mirror create_employee's role-based tenant stamping when the row
-    # carries no explicit branch/ho/owner (same rules as the single create).
+    # carries no explicit branch/ho/owner (same rules as the single create),
+    # but default the branch to the organization the user is CURRENTLY
+    # viewing (the topbar ribbon -> X-Tenant-Id -> tenant scope), so the
+    # imported employees show up under the org they're importing into — not
+    # the user's home branch.
     if current_user:
         u_role = (current_user.role or "").strip().upper()
         if u_role in ["OWNER"]:
@@ -49,6 +53,17 @@ def bulk_import_employees(
             default_owner = None
             default_ho = getattr(current_user, "ho_id", None)
             default_branch = getattr(current_user, "branch_id", None)
+
+        # Honor the selected organization for rows with no explicit branch.
+        try:
+            from src.api.deps import current_tenant_scope
+            scope = current_tenant_scope()
+            if scope and len(scope) == 1 and scope[0]:
+                # Single-org view: every un-stamped row belongs to that org.
+                default_branch = scope[0]
+        except Exception:
+            pass
+
         for r in rows:
             if not r.get("owner_id"):
                 r["owner_id"] = default_owner

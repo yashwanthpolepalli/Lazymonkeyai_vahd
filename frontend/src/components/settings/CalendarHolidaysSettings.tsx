@@ -464,6 +464,7 @@ export function CalendarHolidaysSettings({ onBack }: CalendarHolidaysSettingsPro
       showToast(msg);
       setShowUploadModal(false);
       setUploadFile(null);
+      fetchHolidays();
       const resYears: number[] = res?.years || res?.data?.years || [];
       if (resYears.length > 0 && !resYears.includes(selectedYear)) {
         setSelectedYear(resYears[0]);
@@ -552,14 +553,14 @@ export function CalendarHolidaysSettings({ onBack }: CalendarHolidaysSettingsPro
           {days.map((d) => {
             const dateStr = `${selectedYear}-${String(monthIndex + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
             const dayHolidays = holidayMap[dateStr] || [];
-            const holiday = dayHolidays[0];
+            const primaryHoliday = dayHolidays[0];
 
             return (
               <div
                 key={`day-${d}`}
                 onClick={() => {
-                  if (holiday) {
-                    handleOpenEdit(holiday);
+                  if (primaryHoliday) {
+                    handleOpenEdit(primaryHoliday);
                   } else {
                     handleOpenAdd(dateStr);
                   }
@@ -571,9 +572,9 @@ export function CalendarHolidaysSettings({ onBack }: CalendarHolidaysSettingsPro
                 }
                 className={cn(
                   'h-7 rounded-md text-[11px] font-semibold flex items-center justify-center cursor-pointer transition-all relative',
-                  holiday &&
-                    'bg-amber-500 text-white font-black shadow-xs hover:bg-amber-600 scale-[1.03] ring-1 ring-amber-600/30',
-                  !holiday && 'text-slate-700 hover:bg-slate-100'
+                  primaryHoliday
+                    ? 'bg-amber-500 text-white font-black shadow-xs hover:bg-amber-600 scale-[1.03] ring-1 ring-amber-600/30'
+                    : 'text-slate-700 hover:bg-slate-100'
                 )}
               >
                 {d}

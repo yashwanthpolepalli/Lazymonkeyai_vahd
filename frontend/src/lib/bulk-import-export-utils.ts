@@ -1223,8 +1223,19 @@ export function normalizeCourseImportRow(raw: any): CourseImportRow {
     return '';
   };
 
-  const name = findVal('courseprogramname', 'coursename', 'programname', 'name', 'title');
-  const code = findVal('coursecode', 'code', 'categorydepartment', 'category', 'badge');
+  const name = findVal(
+    'courseprogramname',
+    'courseprogram',
+    'coursename',
+    'programname',
+    'course',
+    'program',
+    'degree',
+    'degrees',
+    'name',
+    'title'
+  );
+  const code = findVal('coursecode', 'code', 'categorydepartment', 'category', 'badge', 'programcode', 'subjectcode');
   const category = code;
   const degreeType = findVal('classificationdegreetype', 'classification', 'degreetype', 'type');
   const duration = findVal('duration', 'period', 'courseduration');

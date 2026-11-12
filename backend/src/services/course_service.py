@@ -2,7 +2,7 @@ from src.utils.timezone import now_ist_naive
 import uuid
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
-from sqlalchemy import text, or_
+from sqlalchemy import text, or_, func
 from src.models.course import Course, CourseLanguage, CourseClassification, CourseDurationTier
 from src.models.plan import MembershipPlan
 from src.models.membership import Membership
@@ -66,7 +66,12 @@ class CourseService:
         if owner_id:
             query = query.filter(or_(Course.owner_id == owner_id, Course.owner_id.is_(None)))
         if branch_id:
-            query = query.filter(or_(Course.branch_id == branch_id, Course.branch_id.is_(None)))
+            query = query.filter(or_(
+                Course.branch_id == branch_id,
+                Course.tenant_id == branch_id,
+                Course.branch_id.is_(None),
+                Course.tenant_id.is_(None),
+            ))
         courses = query.order_by(Course.created_at.asc()).all()
 
         result = []
@@ -160,42 +165,109 @@ class CourseService:
         cid = f"crs_{uuid.uuid4().hex[:10]}"
 
         resolved_owner = owner_id or payload.get("owner_id")
-        resolved_branch = branch_id or payload.get("branch_id")
+        resolved_branch = branch_id or payload.get("branch_id") or payload.get("tenant_id")
+        if not resolved_branch:
+            try:
+                from src.database.tenant_session import get_tenant_scope
+                scope = get_tenant_scope()
+                if scope and len(scope) == 1 and scope[0]:
+                    resolved_branch = scope[0]
+            except Exception:
+                pass
 
-        # 1. Store directly in courses table
-        new_course = Course(
-            id=cid,
-            tenant_id=resolved_branch,
-            owner_id=resolved_owner,
-            branch_id=resolved_branch,
-            name=name,
-            category=code,
-            badge=code,
-            department=dept,
-            degree_type=deg_type,
-            price=price,
-            duration_days=duration_days,
-            description=description,
-            is_active=is_active,
-        )
-        db.add(new_course)
+        # 1. Check if course already exists under this tenant
+        existing_course = None
+        if resolved_branch:
+            existing_course = db.query(Course).filter(
+                func.lower(Course.name) == name.lower(),
+                or_(Course.tenant_id == resolved_branch, Course.branch_id == resolved_branch, Course.tenant_id.is_(None))
+            ).first()
+        else:
+            existing_course = db.query(Course).filter(func.lower(Course.name) == name.lower()).first()
 
-        # 2. Mirror into membership_plans table with same id and tenant
-        new_plan = MembershipPlan(
-            id=cid,
-            tenant_id=resolved_branch,
-            owner_id=resolved_owner,
-            branch_id=resolved_branch,
-            name=name,
-            category=code,
-            badge=code,
-            price=price,
-            duration_days=duration_days,
-            description=description,
-            is_active=is_active,
-        )
-        db.add(new_plan)
-        db.commit()
+        if existing_course:
+            cid = existing_course.id
+            existing_course.price = price
+            existing_course.duration_days = duration_days
+            existing_course.category = code
+            existing_course.badge = code
+            existing_course.description = description
+            existing_course.is_active = is_active
+            if dept:
+                existing_course.department = dept
+            if deg_type:
+                existing_course.degree_type = deg_type
+            if resolved_branch and not existing_course.tenant_id:
+                existing_course.tenant_id = resolved_branch
+                existing_course.branch_id = resolved_branch
+            if resolved_owner and not existing_course.owner_id:
+                existing_course.owner_id = resolved_owner
+
+            existing_plan = db.query(MembershipPlan).filter(MembershipPlan.id == cid).first()
+            if not existing_plan:
+                existing_plan = db.query(MembershipPlan).filter(func.lower(MembershipPlan.name) == name.lower()).first()
+            if existing_plan:
+                existing_plan.price = price
+                existing_plan.duration_days = duration_days
+                existing_plan.category = code
+                existing_plan.badge = code
+                existing_plan.description = description
+                existing_plan.is_active = is_active
+                if resolved_branch and not existing_plan.tenant_id:
+                    existing_plan.tenant_id = resolved_branch
+                    existing_plan.branch_id = resolved_branch
+            else:
+                new_plan = MembershipPlan(
+                    id=cid,
+                    tenant_id=resolved_branch,
+                    owner_id=resolved_owner,
+                    branch_id=resolved_branch,
+                    name=name,
+                    category=code,
+                    badge=code,
+                    price=price,
+                    duration_days=duration_days,
+                    description=description,
+                    is_active=is_active,
+                )
+                db.add(new_plan)
+            db.commit()
+        else:
+            cid = f"crs_{uuid.uuid4().hex[:10]}"
+            # 1. Store directly in courses table
+            new_course = Course(
+                id=cid,
+                tenant_id=resolved_branch,
+                owner_id=resolved_owner,
+                branch_id=resolved_branch,
+                name=name,
+                category=code,
+                badge=code,
+                department=dept,
+                degree_type=deg_type,
+                price=price,
+                duration_days=duration_days,
+                description=description,
+                is_active=is_active,
+            )
+            db.add(new_course)
+
+            # 2. Mirror into membership_plans table with same id and tenant
+            new_plan = MembershipPlan(
+                id=cid,
+                tenant_id=resolved_branch,
+                owner_id=resolved_owner,
+                branch_id=resolved_branch,
+                name=name,
+                category=code,
+                badge=code,
+                price=price,
+                duration_days=duration_days,
+                description=description,
+                is_active=is_active,
+            )
+            db.add(new_plan)
+            db.commit()
 
         return {
             "id": cid,
@@ -354,32 +426,64 @@ class CourseService:
     @staticmethod
     def add_language(db: Session, lang_name: str, tenant_id: Optional[str] = None) -> Dict[str, Any]:
         """
-        Adds a new language / medium of instruction directly in database.
+        Adds a new language / medium of instruction directly in database with safe upsert.
         """
         name = lang_name.strip()
         if not name:
             raise ValueError("Medium name is required")
+
+        if not tenant_id:
+            try:
+                from src.database.tenant_session import get_tenant_scope
+                scope = get_tenant_scope()
+                if scope and len(scope) == 1 and scope[0]:
+                    tenant_id = scope[0]
+            except Exception:
+                pass
+
         try:
             from src.database.session import engine
             CourseLanguage.__table__.create(bind=engine, checkfirst=True)
+            from src.database.tenant_session import run_in_resolving
+            from sqlalchemy.exc import IntegrityError
 
-            existing = db.query(CourseLanguage).filter(CourseLanguage.name.ilike(name)).first()
+            def _find():
+                q = db.query(CourseLanguage).filter(func.lower(CourseLanguage.name) == name.lower())
+                if tenant_id:
+                    q = q.filter(CourseLanguage.tenant_id == tenant_id)
+                else:
+                    q = q.filter(CourseLanguage.tenant_id.is_(None))
+                return q.first()
+
+            existing = run_in_resolving(_find)
             if existing:
+                res_id, res_name = existing.id, existing.name
                 if not existing.is_active:
                     existing.is_active = True
                     db.commit()
-                return {"id": existing.id, "name": existing.name, "is_active": existing.is_active}
-            else:
-                row = CourseLanguage(
-                    id=f"lang_{uuid.uuid4().hex[:8]}",
-                    tenant_id=tenant_id,
-                    name=name,
-                    is_active=True
-                )
-                db.add(row)
+                return {"id": res_id, "name": res_name, "is_active": True}
+
+            lid = f"lang_{uuid.uuid4().hex[:8]}"
+            row = CourseLanguage(
+                id=lid,
+                tenant_id=tenant_id,
+                name=name,
+                is_active=True
+            )
+            db.add(row)
+            try:
                 db.commit()
-                db.refresh(row)
-                return {"id": row.id, "name": row.name, "is_active": row.is_active}
+                return {"id": lid, "name": name, "is_active": True}
+            except IntegrityError:
+                db.rollback()
+                existing = run_in_resolving(_find)
+                if existing:
+                    res_id, res_name = existing.id, existing.name
+                    if not existing.is_active:
+                        existing.is_active = True
+                        db.commit()
+                    return {"id": res_id, "name": res_name, "is_active": True}
+                raise
         except Exception as e:
             db.rollback()
             raise e
@@ -436,7 +540,7 @@ class CourseService:
     @staticmethod
     def create_duration_tier(db: Session, payload: Dict[str, Any], tenant_id: Optional[str] = None) -> Dict[str, Any]:
         """
-        Creates or updates a duration tier in the database.
+        Creates or updates a duration tier in the database with safe upsert.
         """
         from src.database.session import engine
         CourseDurationTier.__table__.create(bind=engine, checkfirst=True)
@@ -448,8 +552,29 @@ class CourseService:
         multiplier = float(payload.get("multiplier") or 1.0)
         suffix = str(payload.get("suffix") or "").strip() or f"{unit_count}{unit_type[:1].upper()}"
 
-        existing = db.query(CourseDurationTier).filter(CourseDurationTier.name.ilike(name)).first()
+        if not tenant_id:
+            try:
+                from src.database.tenant_session import get_tenant_scope
+                scope = get_tenant_scope()
+                if scope and len(scope) == 1 and scope[0]:
+                    tenant_id = scope[0]
+            except Exception:
+                pass
+
+        from src.database.tenant_session import run_in_resolving
+        from sqlalchemy.exc import IntegrityError
+
+        def _find_tier():
+            q = db.query(CourseDurationTier).filter(func.lower(CourseDurationTier.name) == name.lower())
+            if tenant_id:
+                q = q.filter(CourseDurationTier.tenant_id == tenant_id)
+            else:
+                q = q.filter(CourseDurationTier.tenant_id.is_(None))
+            return q.first()
+
+        existing = run_in_resolving(_find_tier)
         if existing:
+            res_id, res_name = existing.id, existing.name
             existing.days = days
             existing.unit_count = unit_count
             existing.unit_type = unit_type
@@ -458,14 +583,14 @@ class CourseService:
             existing.is_active = True
             db.commit()
             return {
-                "id": existing.id,
-                "name": existing.name,
-                "days": existing.days,
-                "unitCount": existing.unit_count,
-                "unitType": existing.unit_type,
-                "multiplier": existing.multiplier,
-                "suffix": existing.suffix,
-                "is_active": existing.is_active,
+                "id": res_id,
+                "name": res_name,
+                "days": days,
+                "unitCount": unit_count,
+                "unitType": unit_type,
+                "multiplier": multiplier,
+                "suffix": suffix,
+                "is_active": True,
             }
 
         tid = f"tier_{uuid.uuid4().hex[:8]}"
@@ -481,17 +606,41 @@ class CourseService:
             is_active=True,
         )
         db.add(row)
-        db.commit()
-        return {
-            "id": tid,
-            "name": name,
-            "days": days,
-            "unitCount": unit_count,
-            "unitType": unit_type,
-            "multiplier": multiplier,
-            "suffix": suffix,
-            "is_active": True,
-        }
+        try:
+            db.commit()
+            return {
+                "id": tid,
+                "name": name,
+                "days": days,
+                "unitCount": unit_count,
+                "unitType": unit_type,
+                "multiplier": multiplier,
+                "suffix": suffix,
+                "is_active": True,
+            }
+        except IntegrityError:
+            db.rollback()
+            existing = run_in_resolving(_find_tier)
+            if existing:
+                res_id, res_name = existing.id, existing.name
+                existing.days = days
+                existing.unit_count = unit_count
+                existing.unit_type = unit_type
+                existing.multiplier = multiplier
+                existing.suffix = suffix
+                existing.is_active = True
+                db.commit()
+                return {
+                    "id": res_id,
+                    "name": res_name,
+                    "days": days,
+                    "unitCount": unit_count,
+                    "unitType": unit_type,
+                    "multiplier": multiplier,
+                    "suffix": suffix,
+                    "is_active": True,
+                }
+            raise
 
     @staticmethod
     def update_duration_tier(db: Session, tier_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:

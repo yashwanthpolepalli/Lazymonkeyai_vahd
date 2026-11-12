@@ -82,6 +82,21 @@ def update_course_language(lang_id: str, payload: dict, db: Session = Depends(ge
     return CourseService.update_language(db, lang_id, payload)
 
 
+def _resolve_course_tenant_id(payload: dict, current_user: Optional[User]) -> Optional[str]:
+    """Resolve active tenant/branch id from payload, X-Tenant-Id scope, or user's home branch."""
+    tid = payload.get("tenant_id") or payload.get("branch_id")
+    if tid:
+        return tid
+    try:
+        from src.database.tenant_session import get_tenant_scope
+        scope = get_tenant_scope()
+        if scope and len(scope) == 1 and scope[0]:
+            return scope[0]
+    except Exception:
+        pass
+    return current_user.branch_id if current_user else None
+
+
 @router.post("/languages")
 def add_course_language(
     payload: dict,
@@ -94,7 +109,7 @@ def add_course_language(
     lang_name = payload.get("name") or payload.get("language") or ""
     if not lang_name.strip():
         raise HTTPException(status_code=400, detail="Language name is required")
-    tenant_id = current_user.branch_id if current_user else None
+    tenant_id = _resolve_course_tenant_id(payload, current_user)
     return CourseService.add_language(db, lang_name, tenant_id=tenant_id)
 
 
@@ -129,7 +144,7 @@ def create_duration_tier(
     """
     if not payload.get("name"):
         raise HTTPException(status_code=400, detail="Duration tier name is required")
-    tenant_id = current_user.branch_id if current_user else None
+    tenant_id = _resolve_course_tenant_id(payload, current_user)
     return CourseService.create_duration_tier(db, payload, tenant_id=tenant_id)
 
 
@@ -210,6 +225,8 @@ def delete_classification(class_id: str, db: Session = Depends(get_db)):
 # COURSES / DEGREE PLANS
 # ============================================================
 
+@router.get("")
+@router.get("/")
 @router.get("/plans")
 def list_courses(
     branch_id: Optional[str] = Query(None),
@@ -224,8 +241,16 @@ def list_courses(
     resolved_branch_id = branch_id
 
     if current_user and not current_user.is_platform_admin and current_user.role != 'SUPER_ADMIN':
-        resolved_owner_id = resolved_owner_id or current_user.owner_id or current_user.id
-        if not resolved_branch_id and current_user.branch_id:
+        if not resolved_branch_id:
+            try:
+                from src.database.tenant_session import get_tenant_scope
+                scope = get_tenant_scope()
+                if scope and len(scope) == 1 and scope[0]:
+                    resolved_branch_id = scope[0]
+            except Exception:
+                pass
+        u_role = (current_user.role or "").strip().upper()
+        if not resolved_branch_id and u_role not in ("HEAD_OFFICE", "HO") and current_user.branch_id:
             resolved_branch_id = current_user.branch_id
 
     return CourseService.get_all_courses(db, owner_id=resolved_owner_id, branch_id=resolved_branch_id)
@@ -241,12 +266,22 @@ def create_course(
     Creates a new course or degree program in the database.
     """
     resolved_owner_id = payload.get("owner_id")
-    resolved_branch_id = payload.get("branch_id")
+    resolved_branch_id = payload.get("branch_id") or payload.get("tenant_id")
 
     if current_user and not current_user.is_platform_admin and current_user.role != 'SUPER_ADMIN':
         resolved_owner_id = resolved_owner_id or current_user.owner_id or current_user.id
+        if not resolved_branch_id:
+            try:
+                from src.database.tenant_session import get_tenant_scope
+                scope = get_tenant_scope()
+                if scope and len(scope) == 1 and scope[0]:
+                    resolved_branch_id = scope[0]
+            except Exception:
+                pass
         if not resolved_branch_id and current_user.branch_id:
             resolved_branch_id = current_user.branch_id
+        elif not resolved_branch_id and getattr(current_user, "ho_id", None):
+            resolved_branch_id = current_user.ho_id
 
     try:
         return CourseService.create_course(db, payload, owner_id=resolved_owner_id, branch_id=resolved_branch_id)
@@ -265,12 +300,22 @@ def update_course(
     Updates an existing course or degree program.
     """
     resolved_owner_id = payload.get("owner_id")
-    resolved_branch_id = payload.get("branch_id")
+    resolved_branch_id = payload.get("branch_id") or payload.get("tenant_id")
 
     if current_user and not current_user.is_platform_admin and current_user.role != 'SUPER_ADMIN':
         resolved_owner_id = resolved_owner_id or current_user.owner_id or current_user.id
         if not resolved_branch_id and current_user.branch_id:
             resolved_branch_id = current_user.branch_id
+        if not resolved_branch_id:
+            try:
+                from src.database.tenant_session import get_tenant_scope
+                scope = get_tenant_scope()
+                if scope and len(scope) == 1 and scope[0]:
+                    resolved_branch_id = scope[0]
+                elif getattr(current_user, "ho_id", None):
+                    resolved_branch_id = current_user.ho_id
+            except Exception:
+                pass
 
     try:
         return CourseService.update_course(db, course_id, payload, owner_id=resolved_owner_id, branch_id=resolved_branch_id)

@@ -276,21 +276,37 @@ def _load_master_validation_sets(db: Session, tenant_ids: Optional[List[str]] = 
         if len(row) > 2 and row[2]:
             valid_courses.add(row[2].strip().lower())
 
+    course_streams: Set[str] = set()
+    course_degrees: Set[str] = set()
     try:
-        from src.models.course import Course, CourseLanguage
-        c_query = db.query(Course.name, Course.code, Course.category, Course.badge).filter(Course.is_active != False)
+        from src.models.course import Course
+        c_query = db.query(Course.name, Course.category, Course.badge, Course.department, Course.degree_type).filter(Course.is_active != False)
         if tenant_ids:
             c_query = c_query.filter(or_(Course.tenant_id.in_(tenant_ids), Course.tenant_id.is_(None)))
-        for cn, cc, ccat, cbadge in c_query.all():
+        for cn, ccat, cbadge, cdept, cdeg in c_query.all():
             if cn:
-                valid_courses.add(cn.strip().lower())
-            if cc:
-                valid_courses.add(cc.strip().lower())
+                cn_low = cn.strip().lower()
+                valid_courses.add(cn_low)
+                if " in " in cn_low:
+                    deg_part, stream_part = cn_low.split(" in ", 1)
+                    if deg_part.strip():
+                        course_degrees.add(deg_part.strip())
+                    if stream_part.strip():
+                        course_streams.add(stream_part.strip())
             if ccat:
                 valid_courses.add(ccat.strip().lower())
             if cbadge:
                 valid_courses.add(cbadge.strip().lower())
-        
+            if cdept:
+                course_streams.add(cdept.strip().lower())
+            if cdeg:
+                course_degrees.add(cdeg.strip().lower())
+    except Exception:
+        pass
+
+    valid_mediums: Set[str] = set()
+    try:
+        from src.models.course import CourseLanguage
         med_query = db.query(CourseLanguage.name).filter(CourseLanguage.is_active != False)
         if tenant_ids:
             med_query = med_query.filter(or_(CourseLanguage.tenant_id.in_(tenant_ids), CourseLanguage.tenant_id.is_(None)))
@@ -298,8 +314,8 @@ def _load_master_validation_sets(db: Session, tenant_ids: Optional[List[str]] = 
     except Exception:
         valid_mediums = set()
 
-    valid_emp_roles = {"STAFF", "FACULTY", "TRAINER", "EMPLOYEE", "ADMIN", "MANAGER", "INSTRUCTOR", "TEACHER", "COORDINATOR", "OFFICE_STAFF"}
-    valid_stu_roles = {"STUDENT", "MEMBER"}
+    valid_emp_roles: Set[str] = set()
+    valid_stu_roles: Set[str] = set()
     valid_qualifications: Set[str] = set()
     valid_specializations: Set[str] = set()
 
@@ -355,6 +371,8 @@ def _load_master_validation_sets(db: Session, tenant_ids: Optional[List[str]] = 
         "roles": valid_emp_roles,
         "student_roles": valid_stu_roles,
         "courses": valid_courses,
+        "course_streams": course_streams,
+        "course_degrees": course_degrees,
         "mediums": valid_mediums,
         "qualifications": valid_qualifications,
         "specializations": valid_specializations,
@@ -388,7 +406,7 @@ def _run_students_import(db: Session, rows: List[Dict[str, Any]], job: Dict[str,
     valid_departments = masters["departments"]
     valid_courses = masters["courses"]
     valid_mediums = masters.get("mediums", set())
-    valid_student_roles = masters.get("student_roles", {"STUDENT", "MEMBER"}) | {"STUDENT", "MEMBER"}
+    valid_student_roles = masters.get("student_roles", set())
     valid_qualifications = masters.get("qualifications", set())
     valid_specializations = masters.get("specializations", set())
 
@@ -493,13 +511,13 @@ def _run_students_import(db: Session, rows: List[Dict[str, Any]], job: Dict[str,
                     sp.commit()
                 continue
 
-            masters = get_masters(branch_id)
-            valid_departments = masters["departments"]
+            masters = _load_master_validation_sets(db, tenant_ids=[branch_id] if branch_id else _tids)
+            valid_departments = masters["departments"] | masters.get("course_streams", set())
             valid_courses = masters["courses"]
             valid_mediums = masters.get("mediums", set())
-            valid_student_roles = masters.get("student_roles", {"STUDENT", "MEMBER"}) | {"STUDENT", "MEMBER"}
-            valid_qualifications = masters.get("qualifications", set())
-            valid_specializations = masters.get("specializations", set())
+            valid_student_roles = masters.get("student_roles", set())
+            valid_qualifications = masters.get("qualifications", set()) | masters.get("course_degrees", set())
+            valid_specializations = masters.get("specializations", set()) | valid_courses | masters.get("course_streams", set())
 
             # Master-data database existence checks:
             # 1. Course must exist in DB for this branch
@@ -543,9 +561,9 @@ def _run_students_import(db: Session, rows: List[Dict[str, Any]], job: Dict[str,
                     sp.commit()
                 continue
 
-            # 4. Role check for student
+            # 4. Role check for student (only enforce if roles are configured in DB)
             raw_stu_role = str(clean_row.get("role") or "").strip().upper()
-            if raw_stu_role and raw_stu_role not in valid_student_roles:
+            if raw_stu_role and valid_student_roles and raw_stu_role not in valid_student_roles:
                 job["failed"] += 1
                 if len(job.setdefault("row_errors", [])) < 100:
                     job["row_errors"].append({
@@ -559,7 +577,9 @@ def _run_students_import(db: Session, rows: List[Dict[str, Any]], job: Dict[str,
 
             # 5. Qualification check (if specified and qualifications configured in DB)
             qual = str(clean_row.get("qualification") or meta.get("qualification") or "").strip()
-            if qual and valid_qualifications and qual.lower() not in valid_qualifications:
+            qual_low = qual.lower()
+            qual_base = re.split(r"\s*[-:(]\s*", qual_low, maxsplit=1)[0].strip() if qual_low else ""
+            if qual and valid_qualifications and qual_low not in valid_qualifications and qual_base not in valid_qualifications:
                 job["failed"] += 1
                 if len(job.setdefault("row_errors", [])) < 100:
                     job["row_errors"].append({
@@ -926,7 +946,7 @@ def _run_employees_import(db: Session, rows: List[Dict[str, Any]], job: Dict[str
                     sp.commit()
                 continue
 
-            masters = get_masters(branch_id)
+            masters = _load_master_validation_sets(db, tenant_ids=[branch_id] if branch_id else _tids)
             valid_departments = masters["departments"]
             valid_designations = masters["designations"]
             valid_roles = masters["roles"]
@@ -934,34 +954,34 @@ def _run_employees_import(db: Session, rows: List[Dict[str, Any]], job: Dict[str
             valid_specializations = masters.get("specializations", set())
 
             # Master-data database existence checks:
-            # 1. Designation must exist in DB for this branch
-            if not valid_designations or designation.lower() not in valid_designations:
+            # 1. Designation must exist in DB for this branch (only enforce if designations are configured)
+            if designation and valid_designations and designation.lower() not in valid_designations:
                 job["failed"] += 1
                 if len(job.setdefault("row_errors", [])) < 100:
                     job["row_errors"].append({
                         "row": i + 1,
                         "name": full_name or f"Row {i + 1}",
-                        "error": f"Designation '{designation}' not found in database for the active organization '{org_name or branch_id}'"
+                        "error": f"Designation '{designation}' not found in database for the active organization '{org_name or branch_id}'. Allowed: {', '.join(sorted(list(valid_designations))[:10])}"
                     })
                 if sp is not None:
                     sp.commit()
                 continue
 
-            # 2. Department must exist in DB for this branch
-            if not valid_departments or department.lower() not in valid_departments:
+            # 2. Department must exist in DB for this branch (only enforce if departments are configured)
+            if department and valid_departments and department.lower() not in valid_departments:
                 job["failed"] += 1
                 if len(job.setdefault("row_errors", [])) < 100:
                     job["row_errors"].append({
                         "row": i + 1,
                         "name": full_name or f"Row {i + 1}",
-                        "error": f"Department '{department}' not found in database for the active organization '{org_name or branch_id}'"
+                        "error": f"Department '{department}' not found in database for the active organization '{org_name or branch_id}'. Allowed: {', '.join(sorted(list(valid_departments))[:10])}"
                     })
                 if sp is not None:
                     sp.commit()
                 continue
 
-            # 3. Role must be configured in DB
-            if raw_role and raw_role not in valid_roles:
+            # 3. Role must be configured in DB (only enforce if roles are configured in DB)
+            if raw_role and valid_roles and raw_role not in valid_roles:
                 job["failed"] += 1
                 if len(job.setdefault("row_errors", [])) < 100:
                     job["row_errors"].append({

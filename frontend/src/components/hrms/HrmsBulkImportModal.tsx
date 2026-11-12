@@ -445,103 +445,154 @@ export function HrmsBulkImportModal({
       } else {
         // Reference-data types (departments, designations, shifts, holidays,
         // courses) — small files; per-row endpoints are fine here.
+        const referenceRowErrors: any[] = [];
         for (let i = 0; i < total; i++) {
           const row = validRows[i];
           if (isDepartment) {
-          const d = row as DepartmentImportRow;
-          const rawType = ((d as any).type || (d as any).department_type || (d as any).extra_info || '').toLowerCase().trim();
-          await hrmsApi.createDepartment({
-            name: d.name.trim(),
-            code: d.code?.trim() || '',
-            head_name: d.headName?.trim() || '',
-            description: d.description?.trim() || '',
-            is_active: d.status ? d.status.toLowerCase() !== 'inactive' : true,
-            department_type: rawType || undefined,
-            extra_info: rawType || undefined,
-          } as any).catch(() => null);
-        } else if (isDesignation) {
-          const desg = row as DesignationImportRow;
-          await hrmsApi.createDesignation({
-            title: desg.title.trim(),
-            department: desg.department?.trim() || '',
-            level: desg.level?.trim() || '',
-            description: desg.description?.trim() || '',
-          }).catch(() => null);
-        } else if (isShiftTemplate) {
-          const st = row as ShiftTemplateImportRow;
-          await hrmsApi.saveShiftTemplate({
-            code: st.code.trim().toUpperCase(),
-            name: st.name.trim(),
-            start_time: st.start_time?.trim() || '',
-            end_time: st.end_time?.trim() || '',
-            break_mins: st.break_mins !== undefined && st.break_mins !== null && (st.break_mins as any) !== '' ? Number(st.break_mins) : 0,
-            grace_period_mins: st.grace_period_mins !== undefined && st.grace_period_mins !== null && (st.grace_period_mins as any) !== '' ? Number(st.grace_period_mins) : 0,
-            is_night_shift: Boolean(st.is_night_shift),
-            color: st.color?.trim() || '',
-          }).catch(() => null);
-        } else if (isHoliday) {
-          const h = row as HolidayImportRow;
-          const year = parseInt(h.date.split('-')[0], 10) || (h.date ? new Date(h.date).getFullYear() : undefined);
-          await hrmsApi.saveHoliday({
-            name: h.name.trim(),
-            date: h.date.trim(),
-            year: year,
-            holiday_type: h.holiday_type?.trim() || '',
-            description: h.description?.trim() || undefined,
-          }).catch(() => null);
-        } else {
-          const c = row as CourseImportRow;
-          const courseCode = (c.code || c.category || 'CRS').trim().toUpperCase();
-          let durationStr = c.duration?.trim() || '';
-          let durationVal = 4;
-          let durationUnit = 'Years';
-          let durationDays = 1460;
-
-          if (c.durationYears && Number(c.durationYears) > 0) {
-            durationVal = Number(c.durationYears);
-            durationUnit = 'Years';
-            durationStr = `${durationVal} Year${durationVal > 1 ? 's' : ''}`;
-            durationDays = durationVal * 365;
-          } else if (c.durationMonths && Number(c.durationMonths) > 0) {
-            durationVal = Number(c.durationMonths);
-            durationUnit = 'Months';
-            durationStr = `${durationVal} Month${durationVal > 1 ? 's' : ''}`;
-            durationDays = durationVal * 30;
-          } else if (durationStr) {
-            const numMatch = durationStr.match(/\d+/);
-            const num = numMatch ? parseInt(numMatch[0], 10) : 1;
-            const durLow = durationStr.toLowerCase();
-            if (durLow.includes('month')) {
-              durationDays = num * 30;
-            } else if (durLow.includes('sem')) {
-              durationDays = num * 180;
-            } else if (durLow.includes('day')) {
-              durationDays = num;
-            } else if (durLow.includes('year') || num > 0) {
-              durationDays = num * 365;
+            const d = row as DepartmentImportRow;
+            const rawType = ((d as any).type || (d as any).department_type || (d as any).extra_info || '').toLowerCase().trim();
+            try {
+              await hrmsApi.createDepartment({
+                name: d.name.trim(),
+                code: d.code?.trim() || '',
+                head_name: d.headName?.trim() || '',
+                description: d.description?.trim() || '',
+                is_active: d.status ? d.status.toLowerCase() !== 'inactive' : true,
+                department_type: rawType || undefined,
+                extra_info: rawType || undefined,
+              } as any);
+              successCount++;
+            } catch (err: any) {
+              referenceRowErrors.push({
+                row: i + 1,
+                name: d.name.trim() || `Row ${i + 1}`,
+                error: err?.message || 'Failed to create department',
+              });
+            }
+          } else if (isDesignation) {
+            const desg = row as DesignationImportRow;
+            try {
+              await hrmsApi.createDesignation({
+                title: desg.title.trim(),
+                department: desg.department?.trim() || '',
+                level: desg.level?.trim() || '',
+                description: desg.description?.trim() || '',
+              });
+              successCount++;
+            } catch (err: any) {
+              referenceRowErrors.push({
+                row: i + 1,
+                name: desg.title.trim() || `Row ${i + 1}`,
+                error: err?.message || 'Failed to create designation',
+              });
+            }
+          } else if (isShiftTemplate) {
+            const st = row as ShiftTemplateImportRow;
+            try {
+              await hrmsApi.saveShiftTemplate({
+                code: st.code.trim().toUpperCase(),
+                name: st.name.trim(),
+                start_time: st.start_time?.trim() || '',
+                end_time: st.end_time?.trim() || '',
+                break_mins: st.break_mins !== undefined && st.break_mins !== null && (st.break_mins as any) !== '' ? Number(st.break_mins) : 0,
+                grace_period_mins: st.grace_period_mins !== undefined && st.grace_period_mins !== null && (st.grace_period_mins as any) !== '' ? Number(st.grace_period_mins) : 0,
+                is_night_shift: Boolean(st.is_night_shift),
+                color: st.color?.trim() || '',
+              });
+              successCount++;
+            } catch (err: any) {
+              referenceRowErrors.push({
+                row: i + 1,
+                name: st.name.trim() || `Row ${i + 1}`,
+                error: err?.message || 'Failed to save shift template',
+              });
+            }
+          } else if (isHoliday) {
+            const h = row as HolidayImportRow;
+            const year = parseInt(h.date.split('-')[0], 10) || (h.date ? new Date(h.date).getFullYear() : undefined);
+            try {
+              await hrmsApi.saveHoliday({
+                name: h.name.trim(),
+                date: h.date.trim(),
+                year: year,
+                holiday_type: h.holiday_type?.trim() || '',
+                description: h.description?.trim() || undefined,
+              });
+              successCount++;
+            } catch (err: any) {
+              referenceRowErrors.push({
+                row: i + 1,
+                name: h.name.trim() || `Row ${i + 1}`,
+                error: err?.message || 'Failed to save holiday',
+              });
             }
           } else {
-            durationStr = '';
-            durationDays = 0;
+            const c = row as CourseImportRow;
+            const courseCode = (c.code || c.category || 'CRS').trim().toUpperCase();
+            let durationStr = c.duration?.trim() || '';
+            let durationVal = 4;
+            let durationUnit = 'Years';
+            let durationDays = 1460;
+
+            if (c.durationYears && Number(c.durationYears) > 0) {
+              durationVal = Number(c.durationYears);
+              durationUnit = 'Years';
+              durationStr = `${durationVal} Year${durationVal > 1 ? 's' : ''}`;
+              durationDays = durationVal * 365;
+            } else if (c.durationMonths && Number(c.durationMonths) > 0) {
+              durationVal = Number(c.durationMonths);
+              durationUnit = 'Months';
+              durationStr = `${durationVal} Month${durationVal > 1 ? 's' : ''}`;
+              durationDays = durationVal * 30;
+            } else if (durationStr) {
+              const numMatch = durationStr.match(/\d+/);
+              const num = numMatch ? parseInt(numMatch[0], 10) : 1;
+              const durLow = durationStr.toLowerCase();
+              if (durLow.includes('month')) {
+                durationDays = num * 30;
+              } else if (durLow.includes('sem')) {
+                durationDays = num * 180;
+              } else if (durLow.includes('day')) {
+                durationDays = num;
+              } else if (durLow.includes('year') || num > 0) {
+                durationDays = num * 365;
+              }
+            } else {
+              durationStr = '';
+              durationDays = 0;
+            }
+
+            const payload = {
+              name: c.name.trim(),
+              category: courseCode,
+              badge: courseCode,
+              code: courseCode,
+              period: durationStr,
+              duration_days: durationDays,
+              price: Number(c.price) || 0,
+              description: c.description?.trim() || '',
+              is_active: c.status ? c.status.toLowerCase() !== 'inactive' : true,
+              branch_id: defaultBranchId,
+              tenant_id: defaultBranchId,
+              degree_type: c.degreeType?.trim() || undefined,
+              department: c.degreeType?.trim() || undefined,
+            };
+            try {
+              await apiClient.post('/courses/plans', payload);
+              successCount++;
+            } catch (err: any) {
+              referenceRowErrors.push({
+                row: i + 1,
+                name: c.name.trim() || `Row ${i + 1}`,
+                error: err?.message || 'Failed to save course',
+              });
+            }
           }
 
-          const payload = {
-            name: c.name.trim(),
-            category: courseCode,
-            badge: courseCode,
-            code: courseCode,
-            period: durationStr,
-            duration_days: durationDays,
-            price: Number(c.price) || 0,
-            description: c.description?.trim() || '',
-            is_active: c.status ? c.status.toLowerCase() !== 'inactive' : true,
-          };
-          await apiClient.post('/courses/plans', payload).catch(() => null);
+          setProgress(Math.round(((i + 1) / total) * 100));
         }
 
-        successCount++;
-        setProgress(Math.round(((i + 1) / total) * 100));
-      }
+        (job as any) = { row_errors: referenceRowErrors };
       }
 
       const serverErrors = job?.row_errors || [];

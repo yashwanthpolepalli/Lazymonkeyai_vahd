@@ -24,7 +24,6 @@ from src.api.deps import get_current_user, current_tenant_scope
 from src.utils.security import hash_password
 from src.utils.timezone import now_ist_naive, IST
 from src.utils.email import send_enrollment_email
-from src.services.settings_seed_service import ensure_org_settings
 from src.services.employee_attendance_report_service import EmployeeAttendanceReportService
 from src.services.student_attendance_report_service import StudentAttendanceReportService
 
@@ -322,16 +321,6 @@ def onboard_owner(
     db.commit()
     db.refresh(branch)
     db.refresh(owner_user)
-
-    # Seed the starter settings set owned by this organization (idempotent —
-    # harmless on the existing-branch path, essential for new branches).
-    # A seeding failure must never break onboarding.
-    try:
-        seed_result = ensure_org_settings(db, branch.id, ho_id=ho_id, current_user=current_user)
-        logger.info(f"Settings seed for org {branch.id}: {seed_result}")
-    except Exception as seed_err:
-        db.rollback()
-        logger.warning(f"Warning: failed to seed starter settings for organization {branch.id}: {seed_err}")
 
     # 3. Audit Log
     audit = PlatformAuditLog(

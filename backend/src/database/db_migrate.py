@@ -23,9 +23,6 @@ import src.models  # noqa: F401
 
 logger = logging.getLogger("VAHD_DB_MIGRATE")
 
-# Tables explicitly protected from any drop operation
-PROTECTED_TABLES: Set[str] = {"users", "alembic_version", "sqlite_sequence"}
-
 
 def seed_default_leave_types(db) -> None:
     """Seeds canonical enterprise leave types for HRMS if not present."""
@@ -385,27 +382,21 @@ def _backfill_tenant_scoping(conn, inspector) -> None:
 
 def run_database_migrations() -> None:
     """
-    Ensures all 78 canonical tables and missing columns exist in the database.
+    Ensures all canonical tables and missing columns exist in the database.
     Compatible with both SQLite and PostgreSQL.
     Dynamically introspects all registered SQLAlchemy models in Base.metadata.
-    Safely drops any non-canonical tables while preserving user logins and core data.
+    Never drops tables automatically on startup; obsolete tables must be
+    reviewed and removed through an explicit, approved migration.
     """
     try:
-        # 1. Create all 78 canonical tables from Base.metadata if any are missing
+        # 1. Create all canonical tables from Base.metadata if any are missing
         Base.metadata.create_all(bind=engine)
 
         inspector = inspect(engine)
         existing_tables: Set[str] = set(inspector.get_table_names())
         canonical_tables: Set[str] = set(Base.metadata.tables.keys())
 
-        # Automatically detect any table in the DB that is not part of the canonical 78 models
-        obsolete_tables = [
-            tbl for tbl in existing_tables
-            if tbl not in canonical_tables and tbl not in PROTECTED_TABLES
-        ]
-
         added_columns_count = 0
-        dropped_tables_count = 0
 
         with engine.connect() as conn:
             # 1.5 Safely drop obsolete foreign keys that restrict employee_id to hrms_employees only
@@ -430,19 +421,7 @@ def run_database_migrations() -> None:
             except Exception as fkey_err:
                 conn.rollback()
 
-            # 2. Safely drop any non-canonical tables detected in the database
-            for tbl in obsolete_tables:
-                try:
-                    conn.execute(text(f'DROP TABLE IF EXISTS "{tbl}" CASCADE;'))
-                    conn.commit()
-                    existing_tables.discard(tbl)
-                    dropped_tables_count += 1
-                    print(f"[DB Migration Notice] Safely dropped obsolete non-canonical table: {tbl}")
-                except Exception as drop_err:
-                    conn.rollback()
-                    print(f"[DB Migration Notice] Could not drop table {tbl}: {drop_err}")
-
-            # 3. Introspect all registered SQLAlchemy models in Base.metadata.tables and add missing columns
+            # 2. Introspect all registered SQLAlchemy models in Base.metadata.tables and add missing columns
             for table_name, table_obj in Base.metadata.tables.items():
                 if table_name not in existing_tables:
                     continue
@@ -475,7 +454,7 @@ def run_database_migrations() -> None:
 
         print(
             f"✅ Database Schema Migration Completed ({len(canonical_tables)} canonical tables verified, "
-            f"{dropped_tables_count} obsolete tables dropped, {added_columns_count} missing columns added)!"
+            f"{added_columns_count} missing columns added)!"
         )
 
     except Exception as e:

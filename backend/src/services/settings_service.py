@@ -1,6 +1,7 @@
 import uuid
 from typing import List, Dict, Any, Optional
-from sqlalchemy import or_
+from fastapi import HTTPException
+from sqlalchemy import or_, func
 from sqlalchemy.orm import Session
 from src.models.settings import vahdBranch, vahdSetting, PaymentMethod, MasterData
 from src.models.hrms import Department, Designation, Employee
@@ -273,17 +274,21 @@ class SettingsService:
         return new_pm
 
     @staticmethod
-    def get_master_data(db: Session, category: Optional[str] = None) -> Any:
+    def get_master_data(db: Session, category: Optional[str] = None, tenant_id: Optional[str] = None) -> Any:
         query = db.query(MasterData)
         if category:
             query = query.filter(MasterData.category == category)
+        if tenant_id and tenant_id.strip() and tenant_id.strip().lower() not in ("all", ""):
+            query = query.filter(or_(MasterData.tenant_id == tenant_id.strip(), MasterData.tenant_id.is_(None)))
         items = query.order_by(MasterData.display_order.asc(), MasterData.name.asc()).all()
 
         item_dicts = []
+        seen_names = {}
         for it in items:
-            item_dicts.append({
+            it_name = (it.name or "").strip().lower()
+            dict_item = {
                 "id": it.id,
-                "tenant_id": getattr(it, "tenant_id", None),
+                "tenant_id": getattr(it, "tenant_id", None) or "",
                 "category": it.category,
                 "name": it.name,
                 "code": it.code or "",
@@ -295,7 +300,15 @@ class SettingsService:
                 "level": it.level or "",
                 "display_order": it.display_order or 0,
                 "created_at": it.created_at.isoformat() if it.created_at else None,
-            })
+            }
+            cat_key = (it.category, it_name)
+            if cat_key in seen_names:
+                prev_idx = seen_names[cat_key]
+                if it.tenant_id:
+                    item_dicts[prev_idx] = dict_item
+            else:
+                seen_names[cat_key] = len(item_dicts)
+                item_dicts.append(dict_item)
 
         # Helper to classify departments dynamically
         def infer_dept_type(dept_name: str, cur_extra: str = "") -> str:
@@ -333,7 +346,10 @@ class SettingsService:
         # Calculate employee and student counts per department
         dept_emp_counts: Dict[str, int] = {}
         try:
-            for e in db.query(Employee).all():
+            emp_q = db.query(Employee)
+            if effective_tenant:
+                emp_q = emp_q.filter(or_(Employee.branch_id == effective_tenant, Employee.tenant_id == effective_tenant))
+            for e in emp_q.all():
                 ed = (getattr(e, "department", None) or "").strip().lower()
                 if ed:
                     dept_emp_counts[ed] = dept_emp_counts.get(ed, 0) + 1
@@ -342,7 +358,10 @@ class SettingsService:
 
         dept_stud_counts: Dict[str, int] = {}
         try:
-            for s in db.query(student).all():
+            stud_q = db.query(student)
+            if effective_tenant:
+                stud_q = stud_q.filter(or_(student.branch_id == effective_tenant, student.tenant_id == effective_tenant))
+            for s in stud_q.all():
                 sm = s.meta_data if isinstance(s.meta_data, dict) else {}
                 sd = (sm.get("department") or sm.get("dept") or sm.get("branchdept") or getattr(s, "specialization", None) or "").strip().lower()
                 if sd:
@@ -377,7 +396,10 @@ class SettingsService:
         # Also merge departments from hrms_departments if category is 'departments' or all
         if not category or category == "departments":
             existing_dept_names = {d["name"].lower() for d in item_dicts if d["category"] == "departments"}
-            db_depts = db.query(Department).all()
+            dept_q = db.query(Department)
+            if tenant_id and tenant_id.strip() and tenant_id.strip().lower() not in ("all", ""):
+                dept_q = dept_q.filter(or_(Department.tenant_id == tenant_id.strip(), Department.tenant_id.is_(None)))
+            db_depts = dept_q.all()
             for d in db_depts:
                 if d.name and d.name.lower() not in existing_dept_names:
                     existing_dept_names.add(d.name.lower())
@@ -395,6 +417,7 @@ class SettingsService:
 
                     item_dicts.append({
                         "id": d.id,
+                        "tenant_id": d.tenant_id or "",
                         "category": "departments",
                         "name": d.name,
                         "code": d.code or "",
@@ -413,12 +436,16 @@ class SettingsService:
         # Also merge designations from hrms_designations if category is 'designations' or all
         if not category or category == "designations":
             existing_desg_names = {d["name"].lower() for d in item_dicts if d["category"] == "designations"}
-            db_desgs = db.query(Designation).all()
+            desg_q = db.query(Designation)
+            if tenant_id and tenant_id.strip() and tenant_id.strip().lower() not in ("all", ""):
+                desg_q = desg_q.filter(or_(Designation.tenant_id == tenant_id.strip(), Designation.tenant_id.is_(None)))
+            db_desgs = desg_q.all()
             for d in db_desgs:
                 if d.title and d.title.lower() not in existing_desg_names:
                     existing_desg_names.add(d.title.lower())
                     item_dicts.append({
                         "id": d.id,
+                        "tenant_id": d.tenant_id or "",
                         "category": "designations",
                         "name": d.title,
                         "code": "",
@@ -445,7 +472,8 @@ class SettingsService:
         return grouped
 
     @staticmethod
-    def create_master_data_item(db: Session, category: str, data: Dict[str, Any]) -> Dict[str, Any]:
+    def create_master_data_item(db: Session, category: str, data: Dict[str, Any], tenant_id: Optional[str] = None) -> Dict[str, Any]:
+        effective_tenant = tenant_id or data.get("tenant_id") or None
         name = str(data.get("name") or "").strip()
         if not name:
             raise ValueError("Item name is required")
@@ -468,19 +496,21 @@ class SettingsService:
         # settings helpers): an org-scoped request operates on its OWN rows
         # and copies a global row on write instead of mutating it.
         _is_scoped, _home_tenant = _tenant_context(db)
+        if not effective_tenant and _is_scoped:
+            effective_tenant = _home_tenant
 
         # Check if already exists in MasterData (own tenant's row first)
         q = db.query(MasterData).filter(
             MasterData.category == category,
-            or_(MasterData.id == item_id, MasterData.name.ilike(name))
+            or_(MasterData.id == item_id, func.lower(MasterData.name) == name.lower())
         )
-        if _is_scoped:
-            q = q.filter(MasterData.tenant_id == _home_tenant)
+        if effective_tenant:
+            q = q.filter(MasterData.tenant_id == effective_tenant)
         existing = q.first()
-        if not existing and _is_scoped:
+        if not existing and effective_tenant:
             gq = db.query(MasterData).filter(
                 MasterData.category == category,
-                or_(MasterData.id == item_id, MasterData.name.ilike(name)),
+                or_(MasterData.id == item_id, func.lower(MasterData.name) == name.lower()),
                 MasterData.tenant_id.is_(None),
             )
             global_existing = gq.first()
@@ -489,18 +519,40 @@ class SettingsService:
                 existing = _tenant_guard(db, global_existing, MasterData)
 
         if existing:
-            existing.name = name
-            if code: existing.code = code
-            if description is not None: existing.description = description
-            existing.is_active = is_active
-            if parent_id is not None: existing.parent_id = parent_id
-            if parent_name is not None: existing.parent_name = parent_name
-            if extra_info is not None: existing.extra_info = extra_info
-            if level is not None: existing.level = level
-            target_obj = existing
+            if existing.tenant_id is None and effective_tenant:
+                # Copy on write into tenant's scope
+                new_item = MasterData(
+                    id=item_id if item_id != existing.id else f"{category[:3].lower()}_{uuid.uuid4().hex[:8]}",
+                    tenant_id=effective_tenant,
+                    category=category,
+                    name=name,
+                    code=code or existing.code,
+                    description=description if description is not None else existing.description,
+                    is_active=is_active,
+                    parent_id=parent_id or existing.parent_id,
+                    parent_name=parent_name or existing.parent_name,
+                    extra_info=extra_info or existing.extra_info,
+                    level=level or existing.level,
+                    display_order=display_order,
+                )
+                db.add(new_item)
+                target_obj = new_item
+            else:
+                existing.name = name
+                if effective_tenant and not existing.tenant_id:
+                    existing.tenant_id = effective_tenant
+                if code: existing.code = code
+                if description is not None: existing.description = description
+                existing.is_active = is_active
+                if parent_id is not None: existing.parent_id = parent_id
+                if parent_name is not None: existing.parent_name = parent_name
+                if extra_info is not None: existing.extra_info = extra_info
+                if level is not None: existing.level = level
+                target_obj = existing
         else:
             new_item = MasterData(
                 id=item_id,
+                tenant_id=effective_tenant,
                 category=category,
                 name=name,
                 code=code,
@@ -511,54 +563,79 @@ class SettingsService:
                 extra_info=extra_info,
                 level=level,
                 display_order=display_order,
-                tenant_id=_home_tenant if _is_scoped else None,
             )
             db.add(new_item)
             target_obj = new_item
 
         # Synchronize with Department table if category is departments
         if category == "departments":
-            dept = db.query(Department).filter(
-                or_(Department.id == item_id, Department.name.ilike(name))
-            ).first()
+            dept_conds = [or_(Department.id == item_id, func.lower(Department.name) == name.lower())]
+            if effective_tenant:
+                dept_conds.append(or_(Department.tenant_id == effective_tenant, Department.tenant_id.is_(None)))
+            dept = db.query(Department).filter(*dept_conds).first()
             if dept:
-                dept.name = name
-                if code: dept.code = code
-                if description: dept.description = description
-                dept.is_active = is_active
+                if dept.tenant_id is None and effective_tenant:
+                    db.add(Department(
+                        id=f"dept_{uuid.uuid4().hex[:8]}",
+                        name=name,
+                        code=code or dept.code or name[:4].upper(),
+                        description=description if description is not None else dept.description,
+                        is_active=is_active,
+                        tenant_id=effective_tenant
+                    ))
+                else:
+                    dept.name = name
+                    if effective_tenant: dept.tenant_id = effective_tenant
+                    if code: dept.code = code
+                    if description: dept.description = description
+                    dept.is_active = is_active
             else:
                 db.add(Department(
                     id=item_id if item_id.startswith("dept_") else f"dept_{uuid.uuid4().hex[:8]}",
                     name=name,
                     code=code or name[:4].upper(),
                     description=description or "",
-                    is_active=is_active
+                    is_active=is_active,
+                    tenant_id=effective_tenant
                 ))
 
         # Synchronize with Designation table if category is designations
         if category == "designations":
-            desg = db.query(Designation).filter(
-                or_(Designation.id == item_id, Designation.title.ilike(name))
-            ).first()
+            desg_conds = [or_(Designation.id == item_id, func.lower(Designation.title) == name.lower())]
+            if effective_tenant:
+                desg_conds.append(or_(Designation.tenant_id == effective_tenant, Designation.tenant_id.is_(None)))
+            desg = db.query(Designation).filter(*desg_conds).first()
             if desg:
-                desg.title = name
-                if parent_name: desg.department = parent_name
-                if level: desg.level = level
-                if description: desg.description = description
+                if desg.tenant_id is None and effective_tenant:
+                    db.add(Designation(
+                        id=f"desg_{uuid.uuid4().hex[:8]}",
+                        title=name,
+                        department=parent_name or desg.department or "ALL",
+                        level=level or desg.level or "",
+                        description=description if description is not None else desg.description,
+                        tenant_id=effective_tenant
+                    ))
+                else:
+                    desg.title = name
+                    if effective_tenant: desg.tenant_id = effective_tenant
+                    if parent_name: desg.department = parent_name
+                    if level: desg.level = level
+                    if description: desg.description = description
             else:
                 db.add(Designation(
                     id=item_id if item_id.startswith("desg_") else f"desg_{uuid.uuid4().hex[:8]}",
                     title=name,
                     department=parent_name or "ALL",
                     level=level or "",
-                    description=description or ""
+                    description=description or "",
+                    tenant_id=effective_tenant
                 ))
 
         db.commit()
         db.refresh(target_obj)
         return {
             "id": target_obj.id,
-            "tenant_id": getattr(target_obj, "tenant_id", None),
+            "tenant_id": getattr(target_obj, "tenant_id", None) or "",
             "category": target_obj.category,
             "name": target_obj.name,
             "code": target_obj.code or "",
@@ -573,23 +650,28 @@ class SettingsService:
         }
 
     @staticmethod
-    def update_master_data_item(db: Session, category: str, item_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
+    def update_master_data_item(db: Session, category: str, item_id: str, data: Dict[str, Any], tenant_id: Optional[str] = None) -> Dict[str, Any]:
         # Same scoped semantics as create: an org-scoped request edits its OWN
         # row; a global match is copied into the org (copy-on-write) so the
         # platform-wide row is never mutated.
         _is_scoped, _home_tenant = _tenant_context(db)
+        effective_tenant = tenant_id or data.get("tenant_id") or (_home_tenant if _is_scoped else None)
         _match_filter = or_(MasterData.id == item_id, MasterData.code.ilike(item_id), MasterData.name.ilike(item_id))
         q = db.query(MasterData).filter(MasterData.category == category, _match_filter)
-        if _is_scoped:
-            q = q.filter(MasterData.tenant_id == _home_tenant)
+        if effective_tenant:
+            q = q.filter(MasterData.tenant_id == effective_tenant)
         item = q.first()
-        if item is None and _is_scoped:
+        if item is None and effective_tenant:
             gq = db.query(MasterData).filter(
                 MasterData.category == category, _match_filter, MasterData.tenant_id.is_(None)
             )
             global_item = gq.first()
             if global_item is not None:
                 item = _tenant_guard(db, global_item, MasterData)
+
+        # Prevent cross-tenant mutation
+        if item and item.tenant_id and effective_tenant and item.tenant_id != effective_tenant:
+            raise HTTPException(status_code=403, detail="Cross-tenant modification not allowed: record belongs to another organization")
 
         name = str(data.get("name") or (item.name if item else "")).strip()
         code = str(data.get("code") or (item.code if item else "")).strip() or None
@@ -601,8 +683,27 @@ class SettingsService:
         level = str(data.get("level") or (item.level if item else "")).strip() or None
 
         if not item:
+            from src.database.tenant_session import _resolving
+            token = _resolving.set(True)
+            try:
+                unscoped = db.query(MasterData).filter(
+                    MasterData.category == category,
+                    or_(MasterData.id == item_id, MasterData.code.ilike(item_id), MasterData.name.ilike(item_id))
+                ).first()
+                if not unscoped:
+                    unscoped = db.query(MasterData).filter(MasterData.id == item_id).first()
+            finally:
+                _resolving.reset(token)
+
+            if unscoped:
+                if unscoped.tenant_id and effective_tenant and unscoped.tenant_id != effective_tenant:
+                    raise HTTPException(status_code=403, detail="Cross-tenant modification not allowed: record belongs to another organization")
+                if unscoped.id == item_id and unscoped.tenant_id != effective_tenant:
+                    raise HTTPException(status_code=403, detail="Cross-tenant modification not allowed: record belongs to another organization")
+
             item = MasterData(
                 id=item_id,
+                tenant_id=effective_tenant,
                 category=category,
                 name=name or item_id,
                 code=code,
@@ -612,10 +713,11 @@ class SettingsService:
                 parent_name=parent_name,
                 extra_info=extra_info,
                 level=level,
-                tenant_id=_home_tenant if _is_scoped else None,
             )
             db.add(item)
         else:
+            if effective_tenant and not item.tenant_id:
+                item.tenant_id = effective_tenant
             if "name" in data and data["name"]:
                 item.name = name
             if "code" in data:
@@ -639,10 +741,14 @@ class SettingsService:
                 or_(Department.id == item_id, Department.name.ilike(name))
             ).first()
             if dept:
-                dept.name = name
-                if code: dept.code = code
-                if description: dept.description = description
-                dept.is_active = is_active
+                if dept.tenant_id and effective_tenant and dept.tenant_id != effective_tenant:
+                    pass
+                else:
+                    dept.name = name
+                    if effective_tenant: dept.tenant_id = effective_tenant
+                    if code: dept.code = code
+                    if description: dept.description = description
+                    dept.is_active = is_active
 
         # Sync designation if category is designations
         if category == "designations":
@@ -650,16 +756,20 @@ class SettingsService:
                 or_(Designation.id == item_id, Designation.title.ilike(name))
             ).first()
             if desg:
-                desg.title = name
-                if parent_name: desg.department = parent_name
-                if level: desg.level = level
-                if description: desg.description = description
+                if desg.tenant_id and effective_tenant and desg.tenant_id != effective_tenant:
+                    pass
+                else:
+                    desg.title = name
+                    if effective_tenant: desg.tenant_id = effective_tenant
+                    if parent_name: desg.department = parent_name
+                    if level: desg.level = level
+                    if description: desg.description = description
 
         db.commit()
         db.refresh(item)
         return {
             "id": item.id,
-            "tenant_id": getattr(item, "tenant_id", None),
+            "tenant_id": getattr(item, "tenant_id", None) or "",
             "category": item.category,
             "name": item.name,
             "code": item.code or "",
@@ -674,11 +784,15 @@ class SettingsService:
         }
 
     @staticmethod
-    def delete_master_data_item(db: Session, category: str, item_id: str) -> bool:
+    def delete_master_data_item(db: Session, category: str, item_id: str, tenant_id: Optional[str] = None) -> bool:
         # A scoped request may only delete its OWN row. A global (shared) row
         # is platform data — deleting it would break every other org, so it
         # is refused with a 409 ("manage it as super-admin").
         _is_scoped, _home_tenant = _tenant_context(db)
+        if tenant_id and not _is_scoped:
+            _is_scoped = True
+            _home_tenant = tenant_id
+
         _match_filter = or_(MasterData.id == item_id, MasterData.code.ilike(item_id), MasterData.name.ilike(item_id))
         q = db.query(MasterData).filter(MasterData.category == category, _match_filter)
         if _is_scoped:
@@ -694,13 +808,14 @@ class SettingsService:
                 if gq.first() is not None:
                     raise _platform_item_conflict()
             return True
+
         db.delete(item)
 
         # Mirror rows: only the request's OWN mirrors are removed — a scoped
         # request must never delete a global or other-org mirror row.
         if category == "departments":
             dq = db.query(Department).filter(
-                or_(Department.id == item_id, Department.name.ilike(item_id))
+                or_(Department.id == item_id, Department.name.ilike(item.name if hasattr(item, 'name') and item.name else item_id))
             )
             if _is_scoped:
                 dq = dq.filter(Department.tenant_id == _home_tenant)
@@ -710,7 +825,7 @@ class SettingsService:
 
         if category == "designations":
             sq = db.query(Designation).filter(
-                or_(Designation.id == item_id, Designation.title.ilike(item_id))
+                or_(Designation.id == item_id, Designation.title.ilike(item.name if hasattr(item, 'name') and item.name else item_id))
             )
             if _is_scoped:
                 sq = sq.filter(Designation.tenant_id == _home_tenant)

@@ -823,7 +823,7 @@ class studentService:
             or ""
         ).strip()
 
-        # Validate department strictly against database (no auto-creation)
+        # Validate department strictly against database scoped by active organization (no auto-creation)
         dept_candidate = (
             data.get("department")
             or (meta_data_payload.get("department") if isinstance(meta_data_payload, dict) else None)
@@ -838,35 +838,47 @@ class studentService:
             from src.models.hrms import Department
             from src.models.settings import MasterData
             clean_d = dept_candidate
-            existing_dept = db.query(Department).filter(
+            dept_filter = [
                 func.lower(Department.name) == clean_d.lower(),
                 Department.is_active != False
-            ).first()
+            ]
+            if resolved_branch_id:
+                dept_filter.append(or_(Department.tenant_id == resolved_branch_id, Department.tenant_id.is_(None)))
+            existing_dept = db.query(Department).filter(*dept_filter).first()
             if not existing_dept:
-                existing_md = db.query(MasterData).filter(
+                md_filter = [
                     MasterData.category == "departments",
                     func.lower(MasterData.name) == clean_d.lower(),
                     MasterData.is_active != False
-                ).first()
+                ]
+                if resolved_branch_id:
+                    md_filter.append(or_(MasterData.tenant_id == resolved_branch_id, MasterData.tenant_id.is_(None)))
+                existing_md = db.query(MasterData).filter(*md_filter).first()
                 if not existing_md:
-                    raise ValueError(f"Department '{dept_candidate}' not found in database. Please configure it in Settings first.")
+                    raise ValueError(f"Department '{dept_candidate}' not found in database for the active organization.")
 
-        # Validate course / membership plan strictly against database (no auto-creation)
+        # Validate course / membership plan strictly against database scoped by active organization (no auto-creation)
         if membership_plan and str(membership_plan).strip():
             from src.models.plan import MembershipPlan
             from src.models.course import Course
             clean_plan = str(membership_plan).strip()
-            plan_exists = db.query(MembershipPlan).filter(
+            plan_filter = [
                 func.lower(MembershipPlan.name) == clean_plan.lower(),
                 MembershipPlan.is_active != False
-            ).first()
+            ]
+            if resolved_branch_id:
+                plan_filter.append(or_(MembershipPlan.tenant_id == resolved_branch_id, MembershipPlan.tenant_id.is_(None)))
+            plan_exists = db.query(MembershipPlan).filter(*plan_filter).first()
             if not plan_exists:
-                plan_exists = db.query(Course).filter(
+                course_filter = [
                     func.lower(Course.name) == clean_plan.lower(),
                     Course.is_active != False
-                ).first()
+                ]
+                if resolved_branch_id:
+                    course_filter.append(or_(Course.tenant_id == resolved_branch_id, Course.tenant_id.is_(None)))
+                plan_exists = db.query(Course).filter(*course_filter).first()
             if not plan_exists:
-                raise ValueError(f"Course / Program '{clean_plan}' not found in database. Please configure it in Course & Medium Settings first.")
+                raise ValueError(f"Course / Program '{clean_plan}' not found in database for the active organization.")
 
         req_code = data.get("roll_no") or data.get("roll_number") or data.get("member_code") or data.get("student_number") or data.get("code")
         assigned_roll_code = studentService.generate_sequential_student_code(db, requested_code=req_code)
@@ -977,6 +989,8 @@ class studentService:
 
             mem = Membership(
                 id=mem_id,
+                tenant_id=getattr(cust, "tenant_id", None) or getattr(cust, "branch_id", None),
+                customer_id=cust.id,
                 student_id=cust.id,
                 plan_name=membership_plan,
                 plan_type=plan_type,

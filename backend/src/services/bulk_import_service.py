@@ -24,7 +24,7 @@ import secrets
 import threading
 import uuid
 from concurrent.futures import ThreadPoolExecutor
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 import bcrypt
@@ -38,7 +38,9 @@ from src.models.employee import employeeProfile
 from src.models.hrms import Employee, Department, Designation
 from src.models.settings import Branch as vahdBranch, MasterData
 from src.models.plan import MembershipPlan
+from src.models.membership import Membership
 from src.utils.email import generate_enrollment_password
+from src.utils.timezone import now_ist_naive
 
 BATCH_SIZE = int(os.getenv("BULK_IMPORT_BATCH_SIZE", "2000"))
 INLINE_LIMIT = int(os.getenv("BULK_IMPORT_INLINE_LIMIT", "2000"))
@@ -147,9 +149,21 @@ def _resolve_branch(row: Dict[str, Any], m: Dict[str, Any]) -> Tuple[Optional[st
     """Mirror create_student / create_employee branch priority, map-backed with strict tenant isolation.
 
     Returns (branch_id, ho_id, owner_id, org_name, branch_name).
-    Never silently falls back to an arbitrary active branch from another tenant.
+    Never silently falls back to an arbitrary active branch from another tenant when an explicit location is provided.
     """
-    explicit = str(row.get("branch_id") or row.get("branch") or row.get("primary_vahd_location") or row.get("branch_name") or "").strip()
+    explicit = str(
+        row.get("branch_id")
+        or row.get("branch")
+        or row.get("Branch / Campus Location")
+        or row.get("branch_campus_location")
+        or row.get("branch_location")
+        or row.get("campus_location")
+        or row.get("location")
+        or row.get("campus")
+        or row.get("primary_vahd_location")
+        or row.get("branch_name")
+        or ""
+    ).strip()
     owner_hint = row.get("owner_id")
     row_ho = row.get("ho_id") or m.get("user_ho_id")
 
@@ -160,6 +174,22 @@ def _resolve_branch(row: Dict[str, Any], m: Dict[str, Any]) -> Tuple[Optional[st
             b = m["by_vahd_name"].get(explicit.lower())
         if b is None:
             b = m["by_branch_name"].get(explicit.lower())
+        if b is None:
+            # Composite branch string check: e.g. "klu - bng", "klu-bng", "klu / bng", "klu · bng"
+            delims = [" - ", "-", "·", "/", "•", "|", ","]
+            for d in delims:
+                if d in explicit:
+                    parts = [p.strip().lower() for p in explicit.split(d) if p.strip()]
+                    if len(parts) >= 2:
+                        p1, p2 = parts[0], parts[1]
+                        for candidate in m["by_id"].values():
+                            c_v = (candidate.vahd_name or "").strip().lower()
+                            c_b = (candidate.branch_name or "").strip().lower()
+                            if (c_v == p1 and c_b == p2) or (c_v == p2 and c_b == p1):
+                                b = candidate
+                                break
+                    if b is not None:
+                        break
         if b is None:
             key = f"{owner_hint}:{explicit}"
             if key in m["memo"]:
@@ -175,7 +205,11 @@ def _resolve_branch(row: Dict[str, Any], m: Dict[str, Any]) -> Tuple[Optional[st
                 b = hit
                 m["memo"][key] = (hit.id, hit.ho_id, hit.owner_id, hit.vahd_name or "", hit.branch_name or "")
 
-    # Fallback only to current authenticated user's assigned branch or owner association
+        if b is None:
+            # Explicit location given but could not be resolved — DO NOT fall back to uploader's home branch
+            raise ValueError(f"Branch / Location '{explicit}' could not be resolved to a valid organization in database")
+
+    # Fallback only when NO explicit branch was given in row
     if b is None and m.get("user_branch_id"):
         b = m["by_id"].get(m["user_branch_id"])
 
@@ -258,8 +292,8 @@ def _load_master_validation_sets(db: Session, tenant_ids: Optional[List[str]] = 
                 valid_courses.add(cbadge.strip().lower())
         
         med_query = db.query(CourseLanguage.name).filter(CourseLanguage.is_active != False)
-        if tenant_id:
-            med_query = med_query.filter(or_(CourseLanguage.tenant_id == tenant_id, CourseLanguage.tenant_id == None))
+        if tenant_ids:
+            med_query = med_query.filter(or_(CourseLanguage.tenant_id.in_(tenant_ids), CourseLanguage.tenant_id.is_(None)))
         valid_mediums = {m[0].strip().lower() for m in med_query.all() if m[0]}
     except Exception:
         valid_mediums = set()
@@ -410,11 +444,18 @@ def _run_students_import(db: Session, rows: List[Dict[str, Any]], job: Dict[str,
         row_updated = False
         try:
             sp = db.begin_nested()
-            full_name = str(row.get("full_name") or row.get("name") or "").strip()
-            email = str(row.get("email") or "").strip().lower()
-            phone = str(row.get("phone") or "").strip()
-            meta = row.get("meta_data") if isinstance(row.get("meta_data"), dict) else {}
-            course_val = str(row.get("course") or row.get("program") or meta.get("course") or "").strip()
+            # Normalize headers stripping trailing asterisks and whitespace
+            clean_row: Dict[str, Any] = {}
+            for k, v in row.items():
+                clean_k = re.sub(r"\s*\*+\s*$", "", str(k)).strip()
+                clean_row[clean_k] = v
+                clean_row[re.sub(r"[^a-zA-Z0-9]+", "_", clean_k.lower()).strip("_")] = v
+
+            full_name = str(clean_row.get("full_name") or clean_row.get("name") or "").strip()
+            email = str(clean_row.get("email") or clean_row.get("personal_email") or "").strip().lower()
+            phone = str(clean_row.get("phone") or clean_row.get("contact_number_mobile") or clean_row.get("mobile") or "").strip()
+            meta = clean_row.get("meta_data") if isinstance(clean_row.get("meta_data"), dict) else {}
+            course_val = str(clean_row.get("course") or clean_row.get("program") or clean_row.get("course_program") or clean_row.get("Course / Program") or clean_row.get("membership_plan") or meta.get("course") or "").strip()
 
             missing_fields: List[str] = []
             if not full_name:
@@ -437,36 +478,59 @@ def _run_students_import(db: Session, rows: List[Dict[str, Any]], job: Dict[str,
                     sp.commit()
                 continue
 
+            # Resolve branch scoped to this row first
+            try:
+                branch_id, ho_id, owner_id, org_name, branch_name = _resolve_branch(clean_row, branches)
+            except ValueError as b_err:
+                job["failed"] += 1
+                if len(job.setdefault("row_errors", [])) < 100:
+                    job["row_errors"].append({
+                        "row": i + 1,
+                        "name": full_name or email or f"Row {i + 1}",
+                        "error": str(b_err)
+                    })
+                if sp is not None:
+                    sp.commit()
+                continue
+
+            masters = get_masters(branch_id)
+            valid_departments = masters["departments"]
+            valid_courses = masters["courses"]
+            valid_mediums = masters.get("mediums", set())
+            valid_student_roles = masters.get("student_roles", {"STUDENT", "MEMBER"}) | {"STUDENT", "MEMBER"}
+            valid_qualifications = masters.get("qualifications", set())
+            valid_specializations = masters.get("specializations", set())
+
             # Master-data database existence checks:
-            # 1. Course must exist in DB
+            # 1. Course must exist in DB for this branch
             if not valid_courses or course_val.lower() not in valid_courses:
                 job["failed"] += 1
                 if len(job.setdefault("row_errors", [])) < 100:
                     job["row_errors"].append({
                         "row": i + 1,
                         "name": full_name or email or f"Row {i + 1}",
-                        "error": f"Course / Program '{course_val}' not found in database (please create or configure it in Course & Medium Settings first)"
+                        "error": f"Course / Program '{course_val}' not found in database for the active organization '{org_name or branch_id}'"
                     })
                 if sp is not None:
                     sp.commit()
                 continue
 
             # 2. Department must exist in DB (if specified)
-            dept = str(row.get("department") or meta.get("department") or "").strip()
+            dept = str(clean_row.get("department") or clean_row.get("dept") or meta.get("department") or "").strip()
             if dept and (not valid_departments or dept.lower() not in valid_departments):
                 job["failed"] += 1
                 if len(job.setdefault("row_errors", [])) < 100:
                     job["row_errors"].append({
                         "row": i + 1,
                         "name": full_name or email or f"Row {i + 1}",
-                        "error": f"Department '{dept}' not found in database (please create or import it in Settings first)"
+                        "error": f"Department '{dept}' not found in database for the active organization '{org_name or branch_id}'"
                     })
                 if sp is not None:
                     sp.commit()
                 continue
 
             # 3. Medium must exist in DB (if specified)
-            medium_val = str(row.get("medium") or meta.get("medium") or "").strip()
+            medium_val = str(clean_row.get("medium") or meta.get("medium") or "").strip()
             if medium_val and (not valid_mediums or medium_val.lower() not in valid_mediums):
                 job["failed"] += 1
                 if len(job.setdefault("row_errors", [])) < 100:
@@ -480,7 +544,7 @@ def _run_students_import(db: Session, rows: List[Dict[str, Any]], job: Dict[str,
                 continue
 
             # 4. Role check for student
-            raw_stu_role = str(row.get("role") or "").strip().upper()
+            raw_stu_role = str(clean_row.get("role") or "").strip().upper()
             if raw_stu_role and raw_stu_role not in valid_student_roles:
                 job["failed"] += 1
                 if len(job.setdefault("row_errors", [])) < 100:
@@ -494,7 +558,7 @@ def _run_students_import(db: Session, rows: List[Dict[str, Any]], job: Dict[str,
                 continue
 
             # 5. Qualification check (if specified and qualifications configured in DB)
-            qual = str(row.get("qualification") or meta.get("qualification") or "").strip()
+            qual = str(clean_row.get("qualification") or meta.get("qualification") or "").strip()
             if qual and valid_qualifications and qual.lower() not in valid_qualifications:
                 job["failed"] += 1
                 if len(job.setdefault("row_errors", [])) < 100:
@@ -508,7 +572,7 @@ def _run_students_import(db: Session, rows: List[Dict[str, Any]], job: Dict[str,
                 continue
 
             # 6. Specialization check (if specified and specializations configured in DB)
-            spec = str(row.get("specialization") or meta.get("specialization") or "").strip()
+            spec = str(clean_row.get("specialization") or meta.get("specialization") or "").strip()
             if spec and valid_specializations and spec.lower() not in valid_specializations:
                 job["failed"] += 1
                 if len(job.setdefault("row_errors", [])) < 100:
@@ -529,21 +593,18 @@ def _run_students_import(db: Session, rows: List[Dict[str, Any]], job: Dict[str,
                     clean_name = re.sub(r"[^a-zA-Z0-9]", "", full_name).lower()
                     email = f"{clean_name}{i + 1}@student.portal"
 
-            meta = row.get("meta_data") if isinstance(row.get("meta_data"), dict) else {}
-            branch_id, ho_id, owner_id, org_name, branch_name = _resolve_branch(row, branches)
             display_location = (
                 f"{org_name} - {branch_name}"
                 if org_name and branch_name and org_name.lower() != branch_name.lower()
                 else (org_name or branch_name or "")
             )
-            dept = str(row.get("department") or meta.get("department") or "").strip()
             if dept:
                 meta["department"] = dept
             meta["roll_number"] = codes[i]
             meta["student_number"] = codes[i]
             meta["code"] = codes[i]
 
-            raw_stu_role = str(row.get("role") or "STUDENT").strip().upper()
+            raw_stu_role = str(clean_row.get("role") or "STUDENT").strip().upper()
             student_role = raw_stu_role if raw_stu_role in ALLOWED_STUDENT_ROLES else "STUDENT"
 
             user = users_by_email.get(email)
@@ -580,10 +641,10 @@ def _run_students_import(db: Session, rows: List[Dict[str, Any]], job: Dict[str,
                 chunk_hashes.append(password)
 
             existing_stu = students_by_user.get(user.id)
-            parent_phone = str(row.get("parent_phone") or row.get("parent_mobile") or meta.get("parent_phone") or meta.get("parent_mobile") or "")
-            gender = str(row.get("gender") or meta.get("gender") or "").strip()
-            qual = str(row.get("qualification") or meta.get("qualification") or "").strip()
-            spec = str(row.get("specialization") or meta.get("specialization") or "").strip()
+            parent_phone = str(clean_row.get("parent_phone") or clean_row.get("parent_mobile") or meta.get("parent_phone") or meta.get("parent_mobile") or "")
+            gender = str(clean_row.get("gender") or meta.get("gender") or "").strip()
+            qual = str(clean_row.get("qualification") or meta.get("qualification") or "").strip()
+            spec = str(clean_row.get("specialization") or meta.get("specialization") or "").strip()
 
             if existing_stu:
                 c = existing_stu
@@ -596,12 +657,12 @@ def _run_students_import(db: Session, rows: List[Dict[str, Any]], job: Dict[str,
                     c.parent_phone = parent_phone
                 if gender:
                     c.gender = gender
-                if row.get("status"):
-                    raw_stu_status = str(row.get("status")).strip().upper()
+                if clean_row.get("status"):
+                    raw_stu_status = str(clean_row.get("status")).strip().upper()
                     if raw_stu_status in ALLOWED_STUDENT_STATUSES:
                         c.status = raw_stu_status
-                if row.get("profile_image"):
-                    c.profile_image = row.get("profile_image")
+                if clean_row.get("profile_image"):
+                    c.profile_image = clean_row.get("profile_image")
                 if qual:
                     c.qualification = qual
                 if spec:
@@ -634,12 +695,38 @@ def _run_students_import(db: Session, rows: List[Dict[str, Any]], job: Dict[str,
                     tenant_id=branch_id,
                     ho_id=ho_id,
                     primary_vahd_location=display_location or org_name or branch_name or None,
-                    status=str(row.get("status") or "ACTIVE").strip().upper() if str(row.get("status") or "").strip().upper() in ALLOWED_STUDENT_STATUSES else "ACTIVE",
+                    status=str(clean_row.get("status") or "ACTIVE").strip().upper() if str(clean_row.get("status") or "").strip().upper() in ALLOWED_STUDENT_STATUSES else "ACTIVE",
                 )
                 db.add(c)
                 students_by_user[user.id] = c
                 new_stu_user_id = user.id
                 row_created = True
+
+            # Insert / update active Membership in public.memberships
+            if course_val:
+                mem_exists = db.query(Membership).filter(
+                    Membership.student_id == c.id,
+                    func.lower(Membership.plan_name) == course_val.lower()
+                ).first()
+                if not mem_exists:
+                    mem_id = f"mem_{uuid.uuid4().hex[:8]}"
+                    new_mem = Membership(
+                        id=mem_id,
+                        tenant_id=branch_id,
+                        customer_id=c.id,
+                        student_id=c.id,
+                        plan_name=course_val,
+                        plan_type="ANNUAL",
+                        status="ACTIVE",
+                        start_date=now_ist_naive(),
+                        expiry_date=now_ist_naive() + timedelta(days=365),
+                        price=0.0,
+                        paid_amount=0.0,
+                        due_amount=0.0,
+                        payment_method="System / Bulk Enrollment",
+                        invoice_number=f"INV-BULK-{mem_id[-6:].upper()}"
+                    )
+                    db.add(new_mem)
 
             job["done"] = i + 1
             sp.commit()  # persist this row only; batch commit happens below
@@ -783,15 +870,23 @@ def _run_employees_import(db: Session, rows: List[Dict[str, Any]], job: Dict[str
         row_updated = 0
         try:
             sp = db.begin_nested()
-            first_name = str(row.get("first_name") or "").strip()
-            last_name = str(row.get("last_name") or "").strip()
-            full_name = str(row.get("full_name") or f"{first_name} {last_name}").strip()
-            email = str(row.get("email") or "").strip().lower()
-            phone = str(row.get("phone") or "").strip()
-            meta = row.get("meta_data") if isinstance(row.get("meta_data"), dict) else None
-            designation = str(row.get("designation") or (meta or {}).get("designation") or (meta or {}).get("post_details", {}).get("designation") or "").strip()
-            department = str(row.get("department") or (meta or {}).get("department") or (meta or {}).get("post_details", {}).get("department") or "").strip()
-            raw_role = str(row.get("role") or (meta or {}).get("role") or "").strip().upper()
+            # Normalize headers stripping trailing asterisks and whitespace
+            clean_row: Dict[str, Any] = {}
+            for k, v in row.items():
+                clean_k = re.sub(r"\s*\*+\s*$", "", str(k)).strip()
+                clean_row[clean_k] = v
+                clean_row[re.sub(r"[^a-zA-Z0-9]+", "_", clean_k.lower()).strip("_")] = v
+
+            first_name = str(clean_row.get("first_name") or "").strip()
+            last_name = str(clean_row.get("last_name") or "").strip()
+            full_name = str(clean_row.get("full_name") or clean_row.get("name") or f"{first_name} {last_name}").strip()
+            email = str(clean_row.get("email") or clean_row.get("personal_email") or "").strip().lower()
+            phone = str(clean_row.get("phone") or clean_row.get("contact_number_mobile") or clean_row.get("mobile") or "").strip()
+
+            meta_in = clean_row.get("meta_data") if isinstance(clean_row.get("meta_data"), dict) else {}
+            designation = str(clean_row.get("designation") or (meta_in or {}).get("designation") or (meta_in or {}).get("post_details", {}).get("designation") or "").strip()
+            department = str(clean_row.get("department") or (meta_in or {}).get("department") or (meta_in or {}).get("post_details", {}).get("department") or "").strip()
+            raw_role = str(clean_row.get("role") or clean_row.get("role_staff_faculty_trainer_manager_admin") or (meta_in or {}).get("role") or "").strip().upper()
 
             missing_fields: List[str] = []
             if not full_name:
@@ -816,28 +911,50 @@ def _run_employees_import(db: Session, rows: List[Dict[str, Any]], job: Dict[str
                     sp.commit()
                 continue
 
+            # Resolve branch scoped to this row first
+            try:
+                branch_id, ho_id, owner_id, org_name, branch_name = _resolve_branch(clean_row, branches)
+            except ValueError as b_err:
+                job["failed"] += 1
+                if len(job.setdefault("row_errors", [])) < 100:
+                    job["row_errors"].append({
+                        "row": i + 1,
+                        "name": full_name or email or f"Row {i + 1}",
+                        "error": str(b_err)
+                    })
+                if sp is not None:
+                    sp.commit()
+                continue
+
+            masters = get_masters(branch_id)
+            valid_departments = masters["departments"]
+            valid_designations = masters["designations"]
+            valid_roles = masters["roles"]
+            valid_qualifications = masters.get("qualifications", set())
+            valid_specializations = masters.get("specializations", set())
+
             # Master-data database existence checks:
-            # 1. Designation must exist in DB
+            # 1. Designation must exist in DB for this branch
             if not valid_designations or designation.lower() not in valid_designations:
                 job["failed"] += 1
                 if len(job.setdefault("row_errors", [])) < 100:
                     job["row_errors"].append({
                         "row": i + 1,
                         "name": full_name or f"Row {i + 1}",
-                        "error": f"Designation '{designation}' not found in database (please create or import it in Settings first)"
+                        "error": f"Designation '{designation}' not found in database for the active organization '{org_name or branch_id}'"
                     })
                 if sp is not None:
                     sp.commit()
                 continue
 
-            # 2. Department must exist in DB
+            # 2. Department must exist in DB for this branch
             if not valid_departments or department.lower() not in valid_departments:
                 job["failed"] += 1
                 if len(job.setdefault("row_errors", [])) < 100:
                     job["row_errors"].append({
                         "row": i + 1,
                         "name": full_name or f"Row {i + 1}",
-                        "error": f"Department '{department}' not found in database (please create or import it in Settings first)"
+                        "error": f"Department '{department}' not found in database for the active organization '{org_name or branch_id}'"
                     })
                 if sp is not None:
                     sp.commit()
@@ -857,28 +974,28 @@ def _run_employees_import(db: Session, rows: List[Dict[str, Any]], job: Dict[str
                 continue
 
             # 4. Qualification check (if specified)
-            emp_qual = str(row.get("qualification") or (meta or {}).get("qualification") or "").strip()
+            emp_qual = str(clean_row.get("qualification") or (meta_in or {}).get("qualification") or "").strip()
             if emp_qual and valid_qualifications and emp_qual.lower() not in valid_qualifications:
                 job["failed"] += 1
                 if len(job.setdefault("row_errors", [])) < 100:
                     job["row_errors"].append({
                         "row": i + 1,
                         "name": full_name or f"Row {i + 1}",
-                        "error": f"Qualification '{emp_qual}' not found in database (please configure it in Settings first)"
+                        "error": f"Qualification '{emp_qual}' not found in database for the active organization '{org_name or branch_id}'"
                     })
                 if sp is not None:
                     sp.commit()
                 continue
 
             # 5. Specialization check (if specified)
-            emp_spec = str(row.get("specialization") or (meta or {}).get("specialization") or "").strip()
+            emp_spec = str(clean_row.get("area_of_service_specialization") or clean_row.get("specialization") or clean_row.get("area_of_service") or (meta_in or {}).get("specialization") or "").strip()
             if emp_spec and valid_specializations and emp_spec.lower() not in valid_specializations:
                 job["failed"] += 1
                 if len(job.setdefault("row_errors", [])) < 100:
                     job["row_errors"].append({
                         "row": i + 1,
                         "name": full_name or f"Row {i + 1}",
-                        "error": f"Specialization '{emp_spec}' not found in database (please configure it in Settings first)"
+                        "error": f"Specialization '{emp_spec}' not found in database for the active organization '{org_name or branch_id}'"
                     })
                 if sp is not None:
                     sp.commit()
@@ -914,26 +1031,25 @@ def _run_employees_import(db: Session, rows: List[Dict[str, Any]], job: Dict[str
             else:
                 role = "STAFF"
 
-            gender = str(row.get("gender") or (meta or {}).get("gender") or "").strip().lower()
-            explicit_code = str(row.get("code") or row.get("employee_code") or row.get("emp_no") or row.get("emp_code") or "").strip()
+            gender = str(clean_row.get("gender") or (meta_in or {}).get("gender") or "").strip()
+            explicit_code = str(clean_row.get("code") or clean_row.get("employee_code") or clean_row.get("emp_no") or clean_row.get("emp_code") or "").strip()
             code = explicit_code or (assigned_emp_codes[i] if i < len(assigned_emp_codes) else "")
-            employment_type = str(row.get("employment_type") or "").strip()
+            employment_type = str(clean_row.get("employment_type") or "").strip()
 
-            salary_raw = row.get("salary") or row.get("base_monthly_salary")
+            salary_raw = clean_row.get("base_monthly_salary_") or clean_row.get("base_monthly_salary") or clean_row.get("salary")
             salary = 0.0
             if salary_raw is not None and str(salary_raw).strip() != "":
                 try:
-                    salary = float(str(salary_raw).replace(",", "").strip())
+                    salary = float(re.sub(r"[^\d.]", "", str(salary_raw)).strip())
                 except (TypeError, ValueError):
                     salary = 0.0
 
-            raw_status = str(row.get("status") or "").strip().capitalize()
+            raw_status = str(clean_row.get("status") or "").strip().capitalize()
             status = raw_status if raw_status in ALLOWED_EMPLOYEE_STATUSES else ("Active" if not raw_status else raw_status)
 
-            meta = row.get("meta_data") if isinstance(row.get("meta_data"), dict) else None
-            sec_branches = row.get("secondary_branches") or (meta or {}).get("secondary_branches") or (meta or {}).get("post_details", {}).get("secondary_branches") or []
+            sec_branches = clean_row.get("secondary_branches") or (meta_in or {}).get("secondary_branches") or (meta_in or {}).get("post_details", {}).get("secondary_branches") or []
 
-            joined_date = row.get("joined_date")
+            joined_date = clean_row.get("date_of_joining_yyyy_mm_dd") or clean_row.get("date_of_joining") or clean_row.get("joined_date")
             parsed_joined = None
             if joined_date:
                 if isinstance(joined_date, datetime):
@@ -948,8 +1064,138 @@ def _run_employees_import(db: Session, rows: List[Dict[str, Any]], job: Dict[str
                         except Exception:
                             pass
 
-            branch_id, ho_id, owner_id, org_name, _branch_name = _resolve_branch(row, branches)
-            vahd_branch = str(row.get("vahd_branch") or "").strip() or org_name
+            vahd_branch = str(clean_row.get("vahd_branch") or "").strip() or org_name
+
+            # Comprehensive column mapping into meta_dict
+            father_name = clean_row.get("father_name")
+            dob = clean_row.get("date_of_birth_yyyy_mm_dd") or clean_row.get("date_of_birth") or clean_row.get("dob")
+            age = clean_row.get("age")
+            blood_group = clean_row.get("blood_group")
+            religion = clean_row.get("religion")
+            caste = clean_row.get("caste")
+            marital_status = str(clean_row.get("marital_status") or "").strip()
+            work_experience = clean_row.get("work_experience_years") or clean_row.get("work_experience")
+            tech_skills = clean_row.get("technical_skills") or clean_row.get("skills")
+            present_address = clean_row.get("present_address")
+            permanent_address = clean_row.get("permanent_address")
+            emergency_name = clean_row.get("emergency_contact_name")
+            emergency_rel = clean_row.get("emergency_relationship")
+            emergency_phone = clean_row.get("emergency_contact_number") or clean_row.get("emergency_phone")
+            emergency_addr = clean_row.get("emergency_address")
+            emergency_note = clean_row.get("emergency_note")
+            bank_holder = clean_row.get("bank_account_holder_name") or clean_row.get("account_holder_name")
+            bank_name = clean_row.get("bank_name")
+            bank_acc = clean_row.get("bank_account_number") or clean_row.get("account_number") or clean_row.get("bank_account_no")
+            bank_branch_city = clean_row.get("bank_branch_city") or clean_row.get("bank_branch")
+            bank_type = clean_row.get("bank_account_type_savings_current") or clean_row.get("bank_account_type") or clean_row.get("account_type")
+            ifsc_code = clean_row.get("ifsc_code") or clean_row.get("bank_ifsc")
+            pan_num = clean_row.get("pan_number") or clean_row.get("pan")
+            aadhar_num = clean_row.get("aadhar_number") or clean_row.get("aadhar") or clean_row.get("aadhaar_number")
+            ref_name = clean_row.get("reference_contact_name") or clean_row.get("reference_name")
+            ref_company = clean_row.get("reference_company")
+            ref_address = clean_row.get("reference_address")
+            ref_post = clean_row.get("reference_post_designation") or clean_row.get("reference_designation")
+            ref_tel = clean_row.get("reference_telephone")
+            ref_contact = clean_row.get("reference_contact_number") or clean_row.get("reference_mobile")
+
+            meta: Dict[str, Any] = dict(meta_in) if isinstance(meta_in, dict) else {}
+            if father_name:
+                meta["father_name"] = str(father_name).strip()
+            if dob:
+                meta["date_of_birth"] = str(dob).strip()
+            if age:
+                try:
+                    meta["age"] = int(str(age).strip())
+                except (ValueError, TypeError):
+                    meta["age"] = str(age).strip()
+            if blood_group:
+                meta["blood_group"] = str(blood_group).strip()
+            if religion:
+                meta["religion"] = str(religion).strip()
+            if caste:
+                meta["caste"] = str(caste).strip()
+            if marital_status:
+                meta["marital_status"] = marital_status
+            if work_experience:
+                meta["work_experience_years"] = str(work_experience).strip()
+            if pan_num:
+                meta["pan_number"] = str(pan_num).strip()
+            if aadhar_num:
+                meta["aadhar_number"] = str(aadhar_num).strip()
+            if present_address:
+                meta["present_address"] = str(present_address).strip()
+            if permanent_address:
+                meta["permanent_address"] = str(permanent_address).strip()
+            if tech_skills:
+                meta["technical_skills"] = tech_skills
+
+            bank_info: Dict[str, Any] = {}
+            if bank_holder:
+                bank_info["holder_name"] = str(bank_holder).strip()
+            if bank_name:
+                bank_info["bank_name"] = str(bank_name).strip()
+            if bank_acc:
+                bank_info["account_number"] = str(bank_acc).strip()
+            if bank_branch_city:
+                bank_info["branch_city"] = str(bank_branch_city).strip()
+            if bank_type:
+                bank_info["account_type"] = str(bank_type).strip()
+            if ifsc_code:
+                bank_info["ifsc_code"] = str(ifsc_code).strip()
+            if bank_info:
+                meta["bank_details"] = bank_info
+
+            em_info: Dict[str, Any] = {}
+            if emergency_name:
+                em_info["name"] = str(emergency_name).strip()
+            if emergency_rel:
+                em_info["relationship"] = str(emergency_rel).strip()
+            if emergency_phone:
+                em_info["number"] = str(emergency_phone).strip()
+            if emergency_addr:
+                em_info["address"] = str(emergency_addr).strip()
+            if emergency_note:
+                em_info["note"] = str(emergency_note).strip()
+            if em_info:
+                meta["emergency_contact_details"] = em_info
+
+            ref_info: Dict[str, Any] = {}
+            if ref_name:
+                ref_info["name"] = str(ref_name).strip()
+            if ref_company:
+                ref_info["company"] = str(ref_company).strip()
+            if ref_address:
+                ref_info["address"] = str(ref_address).strip()
+            if ref_post:
+                ref_info["post_designation"] = str(ref_post).strip()
+            if ref_tel:
+                ref_info["telephone"] = str(ref_tel).strip()
+            if ref_contact:
+                ref_info["contact_number"] = str(ref_contact).strip()
+            if ref_info:
+                meta["reference_details"] = ref_info
+
+            skills_val = None
+            if tech_skills:
+                if isinstance(tech_skills, list):
+                    skills_val = tech_skills
+                elif isinstance(tech_skills, str):
+                    skills_val = [s.strip() for s in tech_skills.split(",") if s.strip()]
+                else:
+                    skills_val = [str(tech_skills)]
+
+            addr_val = str(present_address or permanent_address or clean_row.get("address") or "").strip()
+
+            em_contact_val = str(clean_row.get("emergency_contact") or "").strip()
+            if not em_contact_val and (emergency_name or emergency_phone):
+                em_parts = []
+                if emergency_name:
+                    em_parts.append(str(emergency_name).strip())
+                if emergency_rel:
+                    em_parts.append(f"({str(emergency_rel).strip()})")
+                if emergency_phone:
+                    em_parts.append(f": {str(emergency_phone).strip()}")
+                em_contact_val = " ".join(em_parts).strip()
 
             password = generate_enrollment_password(full_name, phone)
 
@@ -987,19 +1233,13 @@ def _run_employees_import(db: Session, rows: List[Dict[str, Any]], job: Dict[str
                 chunk.append(u)
                 chunk_hashes.append(password)
 
-            # distinct code per (tenant_id, code) — the table has a
-            # uq(tenant_id, code) index, so two empty-code rows in one tenant
-            # would collide. Use a UUID suffix (never collides with existing
-            # BULK00xx data or codes already in the DB).
             if not code:
                 code = assigned_emp_codes[i] if i < len(assigned_emp_codes) else f"{EMPLOYEE_CODE_PREFIX}{uuid.uuid4().hex[:6].upper()}"
             elif (branch_id or "", code) in _EMP_CODES_SEEN:
                 code = f"{code}-{uuid.uuid4().hex[:4].upper()}"
             _EMP_CODES_SEEN.add((branch_id or "", code))
 
-            # 2) employeeProfile (legacy table — mirrors register_employee;
-            #    employeeProfiles have NO department column — it lives on
-            #    specialization/hrms Employee)
+            # 2) employeeProfile
             p = profiles_by_email.get(email)
             if p:
                 p.full_name = full_name
@@ -1009,12 +1249,12 @@ def _run_employees_import(db: Session, rows: List[Dict[str, Any]], job: Dict[str
                 if designation:
                     p.specialization = designation
                 p.base_monthly_salary = salary
-                p.bank_account_no = row.get("account_number") or row.get("bank_account_no") or p.bank_account_no
-                p.bank_ifsc = row.get("ifsc_code") or row.get("bank_ifsc") or p.bank_ifsc
-                p.upi_id = row.get("upi_id") or p.upi_id
+                p.bank_account_no = str(bank_acc or p.bank_account_no or "") or None
+                p.bank_ifsc = str(ifsc_code or p.bank_ifsc or "") or None
+                p.upi_id = clean_row.get("upi_id") or p.upi_id
                 p.primary_vahd_location = vahd_branch or p.primary_vahd_location
                 p.tenant_id = branch_id or p.tenant_id
-                p.is_active = str(row.get("status") or "Active").lower() == "active"
+                p.is_active = str(status).lower() == "active"
                 row_updated = 1
             else:
                 p = employeeProfile(
@@ -1027,9 +1267,9 @@ def _run_employees_import(db: Session, rows: List[Dict[str, Any]], job: Dict[str
                     role=role,
                     specialization=designation or None,
                     base_monthly_salary=salary,
-                    bank_account_no=row.get("account_number") or row.get("bank_account_no"),
-                    bank_ifsc=row.get("ifsc_code") or row.get("bank_ifsc"),
-                    upi_id=row.get("upi_id"),
+                    bank_account_no=str(bank_acc or "") or None,
+                    bank_ifsc=str(ifsc_code or "") or None,
+                    upi_id=clean_row.get("upi_id"),
                     primary_vahd_location=vahd_branch or None,
                     tenant_id=branch_id,
                 )
@@ -1038,11 +1278,10 @@ def _run_employees_import(db: Session, rows: List[Dict[str, Any]], job: Dict[str
                 new_profile_email = email
                 row_created = 1
 
-            # 3) HRMS Employee — field-for-field with create_employee
+            # 3) HRMS Employee
             e = emps_by_email.get(email)
             if e:
-                if meta:
-                    e.meta_data = meta
+                e.meta_data = meta
                 if sec_branches:
                     e.secondary_branches = sec_branches
                 if department:
@@ -1051,6 +1290,18 @@ def _run_employees_import(db: Session, rows: List[Dict[str, Any]], job: Dict[str
                     e.designation = designation
                 if gender:
                     e.gender = gender
+                if marital_status:
+                    e.marital_status = marital_status
+                if skills_val:
+                    e.skills = skills_val
+                if addr_val:
+                    e.address = addr_val
+                if em_contact_val:
+                    e.emergency_contact = em_contact_val
+                if emp_qual:
+                    e.qualification = emp_qual
+                if emp_spec or designation:
+                    e.specialization = emp_spec or designation
                 if phone:
                     e.phone = phone
                 if explicit_code:
@@ -1073,15 +1324,6 @@ def _run_employees_import(db: Session, rows: List[Dict[str, Any]], job: Dict[str
                 if owner_id:
                     e.owner_id = owner_id
                 e.status = status
-                if row.get("qualification"):
-                    e.qualification = str(row.get("qualification"))
-                if row.get("specialization"):
-                    e.specialization = str(row.get("specialization"))
-                if row.get("address"):
-                    e.address = str(row.get("address"))
-                if row.get("emergency_contact"):
-                    e.emergency_contact = str(row.get("emergency_contact"))
-                # heal legacy rows: ensure the canonical person links exist
                 if not getattr(e, "user_id", None):
                     e.user_id = u.id
                 if not getattr(e, "profile_id", None):
@@ -1094,11 +1336,12 @@ def _run_employees_import(db: Session, rows: List[Dict[str, Any]], job: Dict[str
                     last_name=last_name,
                     email=email,
                     phone=phone,
-                    gender=gender,
+                    gender=gender or None,
+                    marital_status=marital_status or None,
                     designation=designation,
                     department=department,
                     joined_date=parsed_joined,
-                    employment_type=employment_type,
+                    employment_type=employment_type or None,
                     status=status,
                     salary=salary,
                     vahd_branch=vahd_branch,
@@ -1107,10 +1350,11 @@ def _run_employees_import(db: Session, rows: List[Dict[str, Any]], job: Dict[str
                     secondary_branches=sec_branches,
                     ho_id=ho_id,
                     owner_id=owner_id,
-                    address=str(row.get("address") or ""),
-                    emergency_contact=str(row.get("emergency_contact") or ""),
-                    qualification=str(row.get("qualification") or ""),
-                    specialization=str(row.get("specialization") or designation or ""),
+                    address=addr_val or None,
+                    emergency_contact=em_contact_val or None,
+                    qualification=emp_qual or None,
+                    specialization=emp_spec or designation or None,
+                    skills=skills_val,
                     meta_data=meta,
                 )
                 e.user_id = u.id

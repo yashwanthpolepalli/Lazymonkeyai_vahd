@@ -1,5 +1,5 @@
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Body, Query, Response, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Body, Query, Response, UploadFile, File, Request
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from src.database.session import get_db
@@ -167,22 +167,43 @@ def update_billing_settings(payload: dict = Body(...), db: Session = Depends(get
 # -----------------------------------------------------------------
 # DYNAMIC MASTER DATA ENDPOINTS (Database-driven for all categories)
 # -----------------------------------------------------------------
+def _resolve_request_tenant(request: Optional[Request], current_user: Optional[User], explicit_tenant: Optional[str] = None) -> Optional[str]:
+    """Helper to resolve active organization tenant_id from explicit param, X-Tenant-Id header, or current user context."""
+    if explicit_tenant and explicit_tenant.strip() and explicit_tenant.strip().lower() not in ("all", ""):
+        return explicit_tenant.strip()
+    if request:
+        hdr = request.headers.get("X-Tenant-Id") or request.query_params.get("x_tenant_id") or request.query_params.get("tenant_id")
+        if hdr and hdr.strip() and hdr.strip().lower() not in ("all", ""):
+            return hdr.strip()
+    if current_user:
+        return getattr(current_user, "tenant_id", None) or getattr(current_user, "branch_id", None)
+    return None
+
+
 @router.get("/settings/master-data")
 @router.get("/vahd/settings/master-data")
 def get_all_master_data(
     category: Optional[str] = Query(None),
+    tenant_id: Optional[str] = Query(None),
+    request: Request = None,
+    current_user: Optional[User] = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    return SettingsService.get_master_data(db, category=category)
+    active_tenant = _resolve_request_tenant(request, current_user, tenant_id)
+    return SettingsService.get_master_data(db, category=category, tenant_id=active_tenant)
 
 
 @router.get("/settings/master-data/{category}")
 @router.get("/vahd/settings/master-data/{category}")
 def get_master_data_by_category(
     category: str,
+    tenant_id: Optional[str] = Query(None),
+    request: Request = None,
+    current_user: Optional[User] = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    return SettingsService.get_master_data(db, category=category)
+    active_tenant = _resolve_request_tenant(request, current_user, tenant_id)
+    return SettingsService.get_master_data(db, category=category, tenant_id=active_tenant)
 
 
 @router.post("/settings/master-data/{category}")
@@ -190,12 +211,15 @@ def get_master_data_by_category(
 def create_master_data(
     category: str,
     payload: dict = Body(...),
+    request: Request = None,
+    current_user: Optional[User] = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     try:
-        return SettingsService.create_master_data_item(db, category=category, data=payload)
+        active_tenant = _resolve_request_tenant(request, current_user, payload.get("tenant_id"))
+        return SettingsService.create_master_data_item(db, category=category, data=payload, tenant_id=active_tenant)
     except HTTPException:
-        raise  # lets copy-on-write / 409 platform-item conflicts surface
+        raise
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -208,12 +232,15 @@ def update_master_data(
     category: str,
     item_id: str,
     payload: dict = Body(...),
+    request: Request = None,
+    current_user: Optional[User] = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     try:
-        return SettingsService.update_master_data_item(db, category=category, item_id=item_id, data=payload)
+        active_tenant = _resolve_request_tenant(request, current_user, payload.get("tenant_id"))
+        return SettingsService.update_master_data_item(db, category=category, item_id=item_id, data=payload, tenant_id=active_tenant)
     except HTTPException:
-        raise  # lets copy-on-write / 409 platform-item conflicts surface
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to update master data item: {e}")
 
@@ -223,13 +250,16 @@ def update_master_data(
 def delete_master_data(
     category: str,
     item_id: str,
+    request: Request = None,
+    current_user: Optional[User] = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     try:
-        SettingsService.delete_master_data_item(db, category=category, item_id=item_id)
+        active_tenant = _resolve_request_tenant(request, current_user, None)
+        SettingsService.delete_master_data_item(db, category=category, item_id=item_id, tenant_id=active_tenant)
         return {"message": "Item deleted successfully", "id": item_id, "category": category}
     except HTTPException:
-        raise  # lets the 409 platform-item conflict surface
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to delete master data item: {e}")
 
@@ -239,15 +269,18 @@ def delete_master_data(
 # -------------------------------------------------------------
 @router.get("/settings/holidays")
 def get_settings_holidays(
+    request: Request = None,
     year: Optional[int] = Query(None),
     type: Optional[str] = Query(None),
     search: Optional[str] = Query(None),
     institution_type: Optional[str] = Query(None),
     branch_id: Optional[str] = Query(None),
+    tenant_id: Optional[str] = Query(None),
     current_user: Optional[User] = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     try:
+        active_tenant = _resolve_request_tenant(request, current_user, tenant_id)
         return HrmsService.get_holidays(
             db,
             year=year,
@@ -255,6 +288,7 @@ def get_settings_holidays(
             search=search,
             institution_type=institution_type,
             branch_id=branch_id,
+            tenant_id=active_tenant,
             current_user=current_user
         )
     except Exception as e:
@@ -264,11 +298,13 @@ def get_settings_holidays(
 @router.post("/settings/holidays")
 def save_settings_holiday(
     payload: dict = Body(...),
+    request: Request = None,
     current_user: Optional[User] = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     try:
-        return HrmsService.save_holiday(db, payload, current_user=current_user)
+        active_tenant = _resolve_request_tenant(request, current_user, payload.get("tenant_id"))
+        return HrmsService.save_holiday(db, payload, current_user=current_user, tenant_id=active_tenant)
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
     except ValueError as e:
@@ -281,12 +317,14 @@ def save_settings_holiday(
 def update_settings_holiday(
     holiday_id: str,
     payload: dict = Body(...),
+    request: Request = None,
     current_user: Optional[User] = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     payload["id"] = holiday_id
     try:
-        return HrmsService.save_holiday(db, payload, current_user=current_user)
+        active_tenant = _resolve_request_tenant(request, current_user, payload.get("tenant_id"))
+        return HrmsService.save_holiday(db, payload, current_user=current_user, tenant_id=active_tenant)
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
     except ValueError as e:
@@ -298,11 +336,13 @@ def update_settings_holiday(
 @router.delete("/settings/holidays/{holiday_id}")
 def delete_settings_holiday(
     holiday_id: str,
+    request: Request = None,
     current_user: Optional[User] = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     try:
-        return HrmsService.delete_holiday(db, holiday_id, current_user=current_user)
+        active_tenant = _resolve_request_tenant(request, current_user, None)
+        return HrmsService.delete_holiday(db, holiday_id, current_user=current_user, tenant_id=active_tenant)
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
     except ValueError as e:
@@ -331,12 +371,14 @@ def download_settings_holiday_template():
 @router.post("/settings/holidays/upload")
 async def upload_settings_holidays_file(
     file: UploadFile = File(...),
+    request: Request = None,
     current_user: Optional[User] = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     try:
         content = await file.read()
-        return HrmsService.upload_holidays(db, content, file.filename, current_user=current_user)
+        active_tenant = _resolve_request_tenant(request, current_user, None)
+        return HrmsService.upload_holidays(db, content, file.filename, current_user=current_user, tenant_id=active_tenant)
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
     except ValueError as e:

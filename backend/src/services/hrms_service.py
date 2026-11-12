@@ -645,7 +645,6 @@ class HrmsService:
                         f"Role '{_payload_role}' is not configured for this organization. "
                         f"Allowed: {', '.join(sorted({v.strip() for v in _roles_allowed})[:20])}"
                     )
-
         from src.models.settings import Branch as vahdBranch
         from sqlalchemy import or_
 
@@ -692,6 +691,49 @@ class HrmsService:
             owner_u = db.query(User).filter(User.id == owner_id).first()
             if owner_u and owner_u.ho_id:
                 ho_id = owner_u.ho_id
+
+        # 1. Validate Department strictly against DB scoped by active organization (no auto-creation)
+        if department:
+            clean_d = department.strip()
+            dept_filters = [
+                func.lower(Department.name) == clean_d.lower(),
+                Department.is_active != False
+            ]
+            if branch_id:
+                dept_filters.append(or_(Department.tenant_id == branch_id, Department.tenant_id.is_(None)))
+            existing_dept = db.query(Department).filter(*dept_filters).first()
+            if not existing_dept:
+                md_filters = [
+                    MasterData.category == "departments",
+                    func.lower(MasterData.name) == clean_d.lower(),
+                    MasterData.is_active != False
+                ]
+                if branch_id:
+                    md_filters.append(or_(MasterData.tenant_id == branch_id, MasterData.tenant_id.is_(None)))
+                existing_md = db.query(MasterData).filter(*md_filters).first()
+                if not existing_md:
+                    raise ValueError(f"Department '{department}' not found in database for the active organization.")
+
+        # 2. Validate Designation strictly against DB scoped by active organization (no auto-creation)
+        if designation:
+            clean_desg = designation.strip()
+            desg_filters = [
+                func.lower(Designation.title) == clean_desg.lower()
+            ]
+            if branch_id:
+                desg_filters.append(or_(Designation.tenant_id == branch_id, Designation.tenant_id.is_(None)))
+            existing_desg = db.query(Designation).filter(*desg_filters).first()
+            if not existing_desg:
+                md_desg_filters = [
+                    MasterData.category == "designations",
+                    func.lower(MasterData.name) == clean_desg.lower(),
+                    MasterData.is_active != False
+                ]
+                if branch_id:
+                    md_desg_filters.append(or_(MasterData.tenant_id == branch_id, MasterData.tenant_id.is_(None)))
+                existing_md_desg = db.query(MasterData).filter(*md_desg_filters).first()
+                if not existing_md_desg:
+                    raise ValueError(f"Designation '{designation}' not found in database for the active organization.")
 
         # Parse joined date safely
         parsed_joined = None
@@ -916,7 +958,7 @@ class HrmsService:
     # 2. DEPARTMENTS, DESIGNATIONS, TEAMS, DOCUMENTS
     # -------------------------------------------------------------
     @staticmethod
-    def get_departments(db: Session) -> List[Dict[str, Any]]:
+    def get_departments(db: Session, tenant_id: Optional[str] = None) -> List[Dict[str, Any]]:
         # Self-healing: ensure any department present on Employee records is in Department table
         emp_depts = db.query(Employee.department).distinct().all()
         existing_dept_names = {d.name.strip().lower() for d in db.query(Department.name).all() if d.name}
@@ -930,6 +972,7 @@ class HrmsService:
                     d_code = f"{d_code}{uuid.uuid4().hex[:3].upper()}"
                 new_d = Department(
                     id=f"dept_{uuid.uuid4().hex[:8]}",
+                    tenant_id=tenant_id,
                     name=clean_name,
                     code=d_code,
                     description=f"Auto-created department: {clean_name}",
@@ -949,6 +992,7 @@ class HrmsService:
                     d_code = "".join([w[0].upper() for w in words if w.isalnum()])[:6] or s_dept[:4].upper()
                     new_d = Department(
                         id=f"dept_{uuid.uuid4().hex[:8]}",
+                        tenant_id=tenant_id,
                         name=s_dept,
                         code=d_code,
                         description=f"Auto-created department: {s_dept}",
@@ -965,10 +1009,20 @@ class HrmsService:
         except Exception:
             db.rollback()
 
-        depts = db.query(Department).order_by(Department.name.asc()).all()
-        employees = db.query(Employee).all()
-        employee_profiles = db.query(employeeProfile).all()
-        students = db.query(student).all()
+        dept_q = db.query(Department)
+        emp_q = db.query(Employee)
+        prof_q = db.query(employeeProfile)
+        stud_q = db.query(student)
+        if tenant_id:
+            dept_q = dept_q.filter(or_(Department.tenant_id == tenant_id, Department.tenant_id.is_(None)))
+            emp_q = emp_q.filter(or_(Employee.tenant_id == tenant_id, Employee.branch_id == tenant_id))
+            prof_q = prof_q.filter(employeeProfile.tenant_id == tenant_id)
+            stud_q = stud_q.filter(or_(student.tenant_id == tenant_id, student.branch_id == tenant_id))
+
+        depts = dept_q.order_by(Department.name.asc()).all()
+        employees = emp_q.all()
+        employee_profiles = prof_q.all()
+        students = stud_q.all()
         # MasterData mirrors are tenant-scoped: for a given department name
         # prefer the mirror that belongs to the same tenant, then any
         # org-owned mirror, then the global (shared) one.
@@ -1119,7 +1173,42 @@ class HrmsService:
         return result
 
     @staticmethod
-    def create_department(db: Session, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def _sync_department_master_data(db: Session, dept: Department, raw_type: str = ""):
+        try:
+            q = db.query(MasterData).filter(
+                MasterData.category == "departments",
+                func.lower(MasterData.name) == (dept.name or "").strip().lower()
+            )
+            if dept.tenant_id:
+                q = q.filter(MasterData.tenant_id == dept.tenant_id)
+            else:
+                q = q.filter(MasterData.tenant_id.is_(None))
+            md = q.first()
+            if not md:
+                md = MasterData(
+                    id=f"mdata_{uuid.uuid4().hex[:8]}",
+                    category="departments",
+                    tenant_id=dept.tenant_id,
+                    name=dept.name,
+                    code=dept.code or (dept.name[:4].upper() if dept.name else ""),
+                    description=dept.description or "",
+                    extra_info=raw_type or "",
+                    is_active=dept.is_active if dept.is_active is not None else True
+                )
+                db.add(md)
+            else:
+                if raw_type:
+                    md.extra_info = raw_type
+                if dept.description:
+                    md.description = dept.description
+                if dept.code:
+                    md.code = dept.code
+                md.is_active = dept.is_active if dept.is_active is not None else True
+        except Exception:
+            pass
+
+    @staticmethod
+    def create_department(db: Session, payload: Dict[str, Any], current_user: Optional[User] = None, tenant_id: Optional[str] = None) -> Dict[str, Any]:
         dept_name = str(payload.get("name") or "").strip()
         dept_code = str(payload.get("code") or "").strip()
         dept_desc = str(payload.get("description") or "").strip()
@@ -1130,22 +1219,24 @@ class HrmsService:
             raw_type = infer_dept_type(dept_name)
 
         _is_scoped, _home_tenant = _tenant_context(db)
+        target_tenant = tenant_id or _home_tenant or (getattr(current_user, "tenant_id", None) or getattr(current_user, "branch_id", None) if current_user else None)
 
         # Match the request's OWN row first; fall back to a shared/global row.
         q = db.query(Department).filter(func.lower(Department.name) == dept_name.lower())
-        if _is_scoped:
-            q = q.filter(Department.tenant_id == _home_tenant)
+        if target_tenant:
+            q = q.filter(Department.tenant_id == target_tenant)
         dept = q.first()
 
         if not dept:
             global_dept = None
-            if _is_scoped:
+            if target_tenant:
                 gq = db.query(Department).filter(func.lower(Department.name) == dept_name.lower())
                 gq = gq.filter(Department.tenant_id.is_(None))
                 global_dept = gq.first()
             if global_dept:
                 # COPY-ON-WRITE: org gets its own row; the global row stays untouched.
                 dept = _tenant_guard(db, global_dept, Department)
+                dept.tenant_id = target_tenant
                 if dept_code: dept.code = f"{dept_code}_{uuid.uuid4().hex[:4].upper()}"
                 if dept_desc: dept.description = dept_desc
                 if dept_head: dept.head_name = dept_head
@@ -1158,7 +1249,7 @@ class HrmsService:
                     description=dept_desc,
                     head_name=dept_head,
                     is_active=dept_active,
-                    tenant_id=_home_tenant if _is_scoped else None,
+                    tenant_id=target_tenant,
                 )
                 db.add(dept)
         else:
@@ -1169,13 +1260,13 @@ class HrmsService:
 
         # Synchronize with MasterData — the mirror must carry the SAME tenant
         # as the HRMS row it mirrors (never leave an org mirror global).
-        _sync_department_master_data(db, dept, raw_type)
+        HrmsService._sync_department_master_data(db, dept, raw_type)
 
         db.commit()
         return {"message": "Department created successfully", "id": dept.id, "name": dept.name, "extra_info": raw_type, "department_type": raw_type}
 
     @staticmethod
-    def update_department(db: Session, dept_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def update_department(db: Session, dept_id: str, payload: Dict[str, Any], tenant_id: Optional[str] = None) -> Dict[str, Any]:
         clean_id = (dept_id or "").strip()
         while clean_id.startswith("cat_dept_"):
             clean_id = clean_id[len("cat_dept_"):]
@@ -1197,12 +1288,19 @@ class HrmsService:
                 or_(MasterData.id == dept_id, MasterData.id == clean_id)
             ).first()
             if m_item:
+                if m_item.tenant_id and tenant_id and m_item.tenant_id != tenant_id:
+                    raise HTTPException(status_code=403, detail="Cannot modify department belonging to another organization")
                 dept = db.query(Department).filter(
                     or_(
                         Department.name.ilike(m_item.name),
                         Department.id == m_item.id
                     )
                 ).first()
+
+        if dept and dept.tenant_id and tenant_id and dept.tenant_id != tenant_id:
+            raise HTTPException(status_code=403, detail="Cannot modify department belonging to another organization")
+
+        effective_tenant = tenant_id or (dept.tenant_id if dept else (m_item.tenant_id if m_item else None))
 
         if not dept:
             dept_name = str(payload.get("name") or (m_item.name if m_item else "")).strip()
@@ -1220,6 +1318,7 @@ class HrmsService:
                 raw_t = (payload.get("department_type") or payload.get("extra_info") or "").strip().lower() or infer_dept_type(dept_name)
                 dept = Department(
                     id=clean_id if clean_id.startswith("dept_") else f"dept_{uuid.uuid4().hex[:8]}",
+                    tenant_id=effective_tenant,
                     name=dept_name,
                     code=str(payload.get("code") or (m_item.code if m_item else "")).strip() or dept_name[:4].upper(),
                     description=str(payload.get("description") or (m_item.description if m_item else "")).strip(),
@@ -1229,6 +1328,7 @@ class HrmsService:
                 db.add(dept)
                 md = MasterData(
                     id=f"mdata_{uuid.uuid4().hex[:8]}",
+                    tenant_id=effective_tenant,
                     category="departments",
                     name=dept_name,
                     code=dept.code,
@@ -1243,8 +1343,11 @@ class HrmsService:
         if "name" in payload and str(payload["name"]).strip():
             old_name = dept.name
             dept.name = str(payload["name"]).strip()
-            # Update associated employees
-            db.query(Employee).filter(Employee.department == old_name).update({"department": dept.name})
+            # Update associated employees scoped to tenant
+            emp_q = db.query(Employee).filter(Employee.department == old_name)
+            if effective_tenant:
+                emp_q = emp_q.filter(or_(Employee.branch_id == effective_tenant, Employee.tenant_id == effective_tenant))
+            emp_q.update({"department": dept.name}, synchronize_session=False)
         if "code" in payload:
             dept.code = str(payload["code"]).strip()
         if "description" in payload:
@@ -1256,10 +1359,13 @@ class HrmsService:
 
         # Sync MasterData
         raw_type = (payload.get("extra_info") or payload.get("department_type") or "").strip().lower()
-        md = db.query(MasterData).filter(
+        md_q = db.query(MasterData).filter(
             MasterData.category == "departments",
             func.lower(MasterData.name) == dept.name.lower()
-        ).first()
+        )
+        if effective_tenant:
+            md_q = md_q.filter(MasterData.tenant_id == effective_tenant)
+        md = md_q.first()
         if md:
             md.name = dept.name
             md.code = dept.code
@@ -1270,6 +1376,7 @@ class HrmsService:
         elif raw_type:
             db.add(MasterData(
                 id=f"mdata_{uuid.uuid4().hex[:8]}",
+                tenant_id=effective_tenant,
                 category="departments",
                 name=dept.name,
                 code=dept.code,
@@ -1282,7 +1389,7 @@ class HrmsService:
         return {"message": "Department updated successfully", "id": dept.id}
 
     @staticmethod
-    def delete_department(db: Session, dept_id: str) -> Dict[str, Any]:
+    def delete_department(db: Session, dept_id: str, tenant_id: Optional[str] = None) -> Dict[str, Any]:
         clean_id = (dept_id or "").strip()
         while clean_id.startswith("cat_dept_"):
             clean_id = clean_id[len("cat_dept_"):]
@@ -1296,24 +1403,38 @@ class HrmsService:
         ).first()
         if not dept:
             # Also check MasterData
-            db.query(MasterData).filter(
+            cross_md = db.query(MasterData).filter(
                 MasterData.category == "departments",
                 or_(MasterData.id == dept_id, MasterData.id == clean_id)
-            ).delete(synchronize_session=False)
-            db.commit()
+            ).first()
+            if cross_md and cross_md.tenant_id and tenant_id and cross_md.tenant_id != tenant_id:
+                raise HTTPException(status_code=403, detail="Cannot delete department belonging to another organization")
+            if cross_md:
+                if not cross_md.tenant_id:
+                    raise HTTPException(status_code=403, detail="Cannot delete system-wide shared master data record")
+                db.delete(cross_md)
+                db.commit()
+                return {"message": "Department deleted successfully", "id": dept_id}
             return {"message": "Department deleted or already removed", "id": dept_id}
         
+        if dept.tenant_id and tenant_id and dept.tenant_id != tenant_id:
+            raise HTTPException(status_code=403, detail="Cannot delete department belonging to another organization")
+
         dept_name = dept.name
+        effective_tenant = tenant_id or dept.tenant_id
         db.delete(dept)
-        db.query(MasterData).filter(
+        md_del_q = db.query(MasterData).filter(
             MasterData.category == "departments",
             func.lower(MasterData.name) == dept_name.lower()
-        ).delete(synchronize_session=False)
+        )
+        if effective_tenant:
+            md_del_q = md_del_q.filter(MasterData.tenant_id == effective_tenant)
+        md_del_q.delete(synchronize_session=False)
         db.commit()
         return {"message": "Department deleted successfully", "id": dept.id}
 
     @staticmethod
-    def get_designations(db: Session) -> List[Dict[str, Any]]:
+    def get_designations(db: Session, tenant_id: Optional[str] = None) -> List[Dict[str, Any]]:
         # Self-healing: ensure any designation present on Employee records is in Designation table
         emp_desgs = db.query(Employee.designation, Employee.department).distinct().all()
         existing_titles = {d.title.strip().lower() for d in db.query(Designation.title).all() if d.title}
@@ -1322,6 +1443,7 @@ class HrmsService:
                 clean_title = desg_title.strip()
                 new_desg = Designation(
                     id=f"desg_{uuid.uuid4().hex[:8]}",
+                    tenant_id=tenant_id,
                     title=clean_title,
                     department=dept_name or "General",
                     level="Mid",
@@ -1334,9 +1456,17 @@ class HrmsService:
         except Exception:
             db.rollback()
 
-        desgs = db.query(Designation).order_by(Designation.title.asc()).all()
-        employees = db.query(Employee).all()
-        employee_profiles = db.query(employeeProfile).all()
+        desg_q = db.query(Designation)
+        emp_q = db.query(Employee)
+        prof_q = db.query(employeeProfile)
+        if tenant_id:
+            desg_q = desg_q.filter(or_(Designation.tenant_id == tenant_id, Designation.tenant_id.is_(None)))
+            emp_q = emp_q.filter(or_(Employee.tenant_id == tenant_id, Employee.branch_id == tenant_id))
+            prof_q = prof_q.filter(employeeProfile.tenant_id == tenant_id)
+
+        desgs = desg_q.order_by(Designation.title.asc()).all()
+        employees = emp_q.all()
+        employee_profiles = prof_q.all()
         
         result = []
         for d in desgs:
@@ -1383,20 +1513,36 @@ class HrmsService:
         return result
 
     @staticmethod
-    def create_designation(db: Session, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def create_designation(db: Session, payload: Dict[str, Any], current_user: Optional[User] = None, tenant_id: Optional[str] = None) -> Dict[str, Any]:
+        target_tenant = tenant_id or (getattr(current_user, "tenant_id", None) or getattr(current_user, "branch_id", None) if current_user else None)
         desg = Designation(
             id=f"desg_{uuid.uuid4().hex[:8]}",
+            tenant_id=target_tenant,
             title=str(payload.get("title") or "").strip(),
             department=str(payload.get("department") or "").strip(),
             level=str(payload.get("level") or "").strip(),
             description=str(payload.get("description") or "").strip()
         )
         db.add(desg)
+        try:
+            md = MasterData(
+                id=f"mdata_{uuid.uuid4().hex[:8]}",
+                category="designations",
+                tenant_id=target_tenant,
+                name=desg.title,
+                code=desg.title[:4].upper(),
+                description=desg.description,
+                extra_info=desg.department,
+                is_active=True
+            )
+            db.add(md)
+        except Exception:
+            pass
         db.commit()
-        return {"message": "Designation created successfully", "id": desg.id, "title": desg.title}
+        return {"message": "Designation created successfully", "id": desg.id, "title": desg.title, "tenant_id": target_tenant}
 
     @staticmethod
-    def update_designation(db: Session, desg_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def update_designation(db: Session, desg_id: str, payload: Dict[str, Any], tenant_id: Optional[str] = None) -> Dict[str, Any]:
         clean_id = (desg_id or "").strip()
         desg = db.query(Designation).filter(
             or_(
@@ -1405,9 +1551,13 @@ class HrmsService:
                 Designation.title.ilike(clean_id)
             )
         ).first()
+        if desg and desg.tenant_id and tenant_id and desg.tenant_id != tenant_id:
+            raise HTTPException(status_code=403, detail="Cannot modify designation belonging to another organization")
+        effective_tenant = tenant_id or (desg.tenant_id if desg else None)
         if not desg:
             desg = Designation(
                 id=clean_id if clean_id.startswith("desg_") else f"desg_{uuid.uuid4().hex[:8]}",
+                tenant_id=effective_tenant,
                 title=str(payload.get("title") or "").strip(),
                 department=str(payload.get("department") or "").strip(),
                 level=str(payload.get("level") or "").strip(),
@@ -1419,7 +1569,10 @@ class HrmsService:
         if "title" in payload:
             old_title = desg.title
             desg.title = str(payload["title"]).strip()
-            db.query(Employee).filter(Employee.designation == old_title).update({"designation": desg.title})
+            emp_q = db.query(Employee).filter(Employee.designation == old_title)
+            if effective_tenant:
+                emp_q = emp_q.filter(or_(Employee.branch_id == effective_tenant, Employee.tenant_id == effective_tenant))
+            emp_q.update({"designation": desg.title}, synchronize_session=False)
         if "department" in payload:
             desg.department = str(payload["department"]).strip()
         if "level" in payload:
@@ -1430,7 +1583,7 @@ class HrmsService:
         return {"message": "Designation updated successfully", "id": desg.id}
 
     @staticmethod
-    def delete_designation(db: Session, desg_id: str) -> Dict[str, Any]:
+    def delete_designation(db: Session, desg_id: str, tenant_id: Optional[str] = None) -> Dict[str, Any]:
         clean_id = (desg_id or "").strip()
         desg = db.query(Designation).filter(
             or_(
@@ -1440,8 +1593,34 @@ class HrmsService:
             )
         ).first()
         if not desg:
+            # Also check MasterData
+            cross_md = db.query(MasterData).filter(
+                MasterData.category == "designations",
+                or_(MasterData.id == desg_id, MasterData.id == clean_id)
+            ).first()
+            if cross_md and cross_md.tenant_id and tenant_id and cross_md.tenant_id != tenant_id:
+                raise HTTPException(status_code=403, detail="Cannot delete designation belonging to another organization")
+            if cross_md:
+                if not cross_md.tenant_id:
+                    raise HTTPException(status_code=403, detail="Cannot delete system-wide shared master data record")
+                db.delete(cross_md)
+                db.commit()
+                return {"message": "Designation deleted successfully", "id": desg_id}
             return {"message": "Designation deleted or already removed", "id": desg_id}
+
+        if desg.tenant_id and tenant_id and desg.tenant_id != tenant_id:
+            raise HTTPException(status_code=403, detail="Cannot delete designation belonging to another organization")
+
+        desg_title = desg.title
+        effective_tenant = tenant_id or desg.tenant_id
         db.delete(desg)
+        md_del_q = db.query(MasterData).filter(
+            MasterData.category == "designations",
+            func.lower(MasterData.name) == desg_title.lower()
+        )
+        if effective_tenant:
+            md_del_q = md_del_q.filter(MasterData.tenant_id == effective_tenant)
+        md_del_q.delete(synchronize_session=False)
         db.commit()
         return {"message": "Designation deleted successfully", "id": desg.id}
 
@@ -4045,8 +4224,17 @@ class HrmsService:
         return []
 
     @staticmethod
-    def get_work_calendars(db: Session) -> List[Dict[str, Any]]:
-        cals = db.query(WorkCalendarPolicy).order_by(WorkCalendarPolicy.created_at.asc()).all()
+    def get_work_calendars(db: Session, current_user: Any = None, tenant_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        resolved_tenant = tenant_id or (getattr(current_user, "tenant_id", None) or getattr(current_user, "branch_id", None) if current_user else None)
+        query = db.query(WorkCalendarPolicy)
+        if resolved_tenant:
+            query = query.filter(
+                or_(
+                    WorkCalendarPolicy.tenant_id == resolved_tenant,
+                    WorkCalendarPolicy.tenant_id.is_(None)
+                )
+            )
+        cals = query.order_by(WorkCalendarPolicy.created_at.asc()).all()
         holidays_count = db.query(CompanyHoliday).count()
         ALL_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
@@ -4064,6 +4252,7 @@ class HrmsService:
 
             result.append({
                 "id": c.id,
+                "tenant_id": getattr(c, "tenant_id", None),
                 "name": c.name,
                 "calendar_type": getattr(c, "calendar_type", None) or "Standard Corporate",
                 "department": c.department or "All",
@@ -4078,15 +4267,21 @@ class HrmsService:
         return result
 
     @staticmethod
-    def save_work_calendar(db: Session, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def save_work_calendar(db: Session, payload: Dict[str, Any], current_user: Any = None, tenant_id: Optional[str] = None) -> Dict[str, Any]:
+        resolved_tenant = tenant_id or (getattr(current_user, "tenant_id", None) or getattr(current_user, "branch_id", None) if current_user else None)
         cal_id = payload.get("id")
         cal = None
         if cal_id:
             cal = db.query(WorkCalendarPolicy).filter(WorkCalendarPolicy.id == cal_id).first()
+            if cal and resolved_tenant and cal.tenant_id and cal.tenant_id != resolved_tenant:
+                raise PermissionError("Cannot modify work calendar belonging to another organization.")
         if not cal:
             name = (payload.get("name") or "").strip()
             if name:
-                cal = db.query(WorkCalendarPolicy).filter(WorkCalendarPolicy.name == name).first()
+                q = db.query(WorkCalendarPolicy).filter(WorkCalendarPolicy.name == name)
+                if resolved_tenant:
+                    q = q.filter(or_(WorkCalendarPolicy.tenant_id == resolved_tenant, WorkCalendarPolicy.tenant_id.is_(None)))
+                cal = q.first()
 
         working_days = payload.get("working_days") or []
         weekly_off_days = payload.get("weekly_off_days") or []
@@ -4101,7 +4296,10 @@ class HrmsService:
             weekly_off_days = ["Saturday", "Sunday"]
 
         is_def = bool(payload.get("is_default", False))
-        existing_default = db.query(WorkCalendarPolicy).filter(WorkCalendarPolicy.is_default == True).first()
+        def_check = db.query(WorkCalendarPolicy).filter(WorkCalendarPolicy.is_default == True)
+        if resolved_tenant:
+            def_check = def_check.filter(or_(WorkCalendarPolicy.tenant_id == resolved_tenant, WorkCalendarPolicy.tenant_id.is_(None)))
+        existing_default = def_check.first()
         if not existing_default and not cal:
             is_def = True
 
@@ -4111,6 +4309,7 @@ class HrmsService:
                 raise ValueError("Calendar name is required")
             cal = WorkCalendarPolicy(
                 id=f"cal_{uuid.uuid4().hex[:8]}",
+                tenant_id=resolved_tenant,
                 name=name,
                 calendar_type=payload.get("calendar_type") or "Standard Corporate",
                 department=payload.get("department") or "All",
@@ -4123,6 +4322,8 @@ class HrmsService:
             )
             db.add(cal)
         else:
+            if resolved_tenant:
+                cal.tenant_id = resolved_tenant
             if "name" in payload and payload["name"]:
                 cal.name = payload["name"].strip()
             if "calendar_type" in payload and payload["calendar_type"]:
@@ -4141,12 +4342,18 @@ class HrmsService:
                 cal.is_active = bool(payload["is_active"])
 
         if is_def:
-            db.query(WorkCalendarPolicy).filter(WorkCalendarPolicy.id != cal.id).update({"is_default": False})
+            def_q = db.query(WorkCalendarPolicy).filter(WorkCalendarPolicy.id != cal.id)
+            if resolved_tenant:
+                def_q = def_q.filter(WorkCalendarPolicy.tenant_id == resolved_tenant)
+            else:
+                def_q = def_q.filter(WorkCalendarPolicy.tenant_id.is_(None))
+            def_q.update({"is_default": False}, synchronize_session=False)
 
         db.commit()
         db.refresh(cal)
         return {
             "id": cal.id,
+            "tenant_id": getattr(cal, "tenant_id", None),
             "name": cal.name,
             "calendar_type": getattr(cal, "calendar_type", "Standard Corporate"),
             "department": cal.department,
@@ -4159,10 +4366,13 @@ class HrmsService:
         }
 
     @staticmethod
-    def delete_work_calendar(db: Session, cal_id: str) -> Dict[str, Any]:
+    def delete_work_calendar(db: Session, cal_id: str, current_user: Any = None, tenant_id: Optional[str] = None) -> Dict[str, Any]:
         cal = db.query(WorkCalendarPolicy).filter(WorkCalendarPolicy.id == cal_id).first()
         if not cal:
             raise ValueError(f"Calendar with ID {cal_id} not found")
+        resolved_tenant = tenant_id or (getattr(current_user, "tenant_id", None) or getattr(current_user, "branch_id", None) if current_user else None)
+        if resolved_tenant and cal.tenant_id and cal.tenant_id != resolved_tenant:
+            raise PermissionError("Cannot delete work calendar belonging to another organization.")
         db.delete(cal)
         db.commit()
         return {"status": "success", "message": "Work calendar deleted successfully"}
@@ -4578,21 +4788,26 @@ class HrmsService:
         institution_type: Optional[str] = None,
         branch_id: Optional[str] = None,
         ho_id: Optional[str] = None,
+        tenant_id: Optional[str] = None,
         current_user: Any = None
     ) -> List[Dict[str, Any]]:
         query = db.query(CompanyHoliday)
         if year:
-            existing_count = query.filter(CompanyHoliday.year == year).count()
-            if existing_count == 0:
-                try:
-                    HrmsService.preseed_holidays(db, int(year))
-                except Exception as seed_err:
-                    print(f"[Calendar] Preseed warning: {seed_err}")
             query = query.filter(CompanyHoliday.year == year)
         if holiday_type and holiday_type.upper() != "ALL":
             query = query.filter(CompanyHoliday.holiday_type.ilike(f"%{holiday_type.strip()}%"))
         if search:
             query = query.filter(CompanyHoliday.name.ilike(f"%{search.strip()}%"))
+
+        effective_tenant = tenant_id or (getattr(current_user, "tenant_id", None) or getattr(current_user, "branch_id", None) if current_user else None)
+        if effective_tenant:
+            query = query.filter(
+                or_(
+                    CompanyHoliday.tenant_id == effective_tenant,
+                    CompanyHoliday.branch_id == effective_tenant,
+                    CompanyHoliday.tenant_id.is_(None)
+                )
+            )
 
         if institution_type and institution_type.strip() and institution_type.strip().lower() not in ["all", "all holidays (any institution)"]:
             inst_clean = institution_type.strip()
@@ -4600,19 +4815,18 @@ class HrmsService:
                 or_(
                     CompanyHoliday.institution_type == inst_clean,
                     CompanyHoliday.branch_id == inst_clean,
+                    CompanyHoliday.tenant_id == inst_clean,
                     CompanyHoliday.institution_type == "All",
-                    CompanyHoliday.institution_type == "All holidays (any institution)",
-                    CompanyHoliday.institution_type.is_(None)
+                    CompanyHoliday.institution_type == "All holidays (any institution)"
                 )
             )
         elif branch_id:
             query = query.filter(
                 or_(
                     CompanyHoliday.branch_id == branch_id,
-                    CompanyHoliday.branch_id.is_(None),
+                    CompanyHoliday.tenant_id == branch_id,
                     CompanyHoliday.institution_type == "All",
-                    CompanyHoliday.institution_type == "All holidays (any institution)",
-                    CompanyHoliday.institution_type.is_(None)
+                    CompanyHoliday.institution_type == "All holidays (any institution)"
                 )
             )
 
@@ -4620,6 +4834,7 @@ class HrmsService:
         return [
             {
                 "id": h.id,
+                "tenant_id": getattr(h, "tenant_id", None),
                 "name": h.name,
                 "date": h.date.strftime("%Y-%m-%d"),
                 "formatted_date": h.date.strftime("%d %b, %Y"),
@@ -4637,7 +4852,7 @@ class HrmsService:
         ]
 
     @staticmethod
-    def save_holiday(db: Session, payload: Dict[str, Any], current_user: Any = None) -> Dict[str, Any]:
+    def save_holiday(db: Session, payload: Dict[str, Any], current_user: Any = None, tenant_id: Optional[str] = None) -> Dict[str, Any]:
         # Permission check for Owner
         if current_user and getattr(current_user, "role", "").lower() == "owner":
             perms = getattr(current_user, "permissions", None) or {}
@@ -4664,21 +4879,32 @@ class HrmsService:
             if branch_match:
                 branch_id = branch_match.id
 
+        resolved_tenant = (
+            tenant_id or
+            branch_id or
+            (getattr(current_user, "tenant_id", None) or getattr(current_user, "branch_id", None) if current_user else None) or
+            payload.get("tenant_id")
+        )
+
         ho_id = payload.get("ho_id") or (getattr(current_user, "ho_id", None) if current_user else None)
         h_type = (payload.get("holiday_type") or "Other holiday").strip()
 
         hol = None
         if hol_id:
             hol = db.query(CompanyHoliday).filter(CompanyHoliday.id == hol_id).first()
+            if hol and resolved_tenant and hol.tenant_id and hol.tenant_id != resolved_tenant:
+                raise PermissionError("Cannot modify holiday belonging to another organization.")
+
         if not hol:
             hol = CompanyHoliday(
                 id=f"hol_{uuid.uuid4().hex[:8]}",
+                tenant_id=resolved_tenant,
                 name=name,
                 date=d_obj,
                 year=year,
                 holiday_type=h_type,
                 institution_type=institution_type,
-                branch_id=branch_id,
+                branch_id=branch_id or resolved_tenant,
                 ho_id=ho_id,
                 description=payload.get("description") or "",
                 is_optional=bool(payload.get("is_optional", False))
@@ -4690,6 +4916,8 @@ class HrmsService:
             hol.year = year
             hol.holiday_type = h_type
             hol.institution_type = institution_type
+            if resolved_tenant:
+                hol.tenant_id = resolved_tenant
             if branch_id is not None:
                 hol.branch_id = branch_id
             if ho_id is not None:
@@ -4703,6 +4931,7 @@ class HrmsService:
         db.refresh(hol)
         return {
             "id": hol.id,
+            "tenant_id": getattr(hol, "tenant_id", None),
             "name": hol.name,
             "date": hol.date.strftime("%Y-%m-%d"),
             "formatted_date": hol.date.strftime("%d %b, %Y"),
@@ -4717,7 +4946,7 @@ class HrmsService:
         }
 
     @staticmethod
-    def delete_holiday(db: Session, holiday_id: str, current_user: Any = None) -> Dict[str, Any]:
+    def delete_holiday(db: Session, holiday_id: str, current_user: Any = None, tenant_id: Optional[str] = None) -> Dict[str, Any]:
         # Permission check for Owner
         if current_user and getattr(current_user, "role", "").lower() == "owner":
             perms = getattr(current_user, "permissions", None) or {}
@@ -4727,17 +4956,32 @@ class HrmsService:
         hol = db.query(CompanyHoliday).filter(CompanyHoliday.id == holiday_id).first()
         if not hol:
             raise ValueError("Holiday not found")
+
+        resolved_tenant = tenant_id or (getattr(current_user, "tenant_id", None) or getattr(current_user, "branch_id", None) if current_user else None)
+        if resolved_tenant and hol.tenant_id and hol.tenant_id != resolved_tenant:
+            raise PermissionError("Cannot delete holiday belonging to another organization.")
+
         db.delete(hol)
         db.commit()
         return {"success": True, "message": f"Holiday '{hol.name}' deleted successfully", "id": holiday_id}
 
     @staticmethod
-    def upload_holidays(db: Session, file_content: bytes, filename: str, current_user: Any = None) -> Dict[str, Any]:
+    def upload_holidays(
+        db: Session,
+        file_content: bytes,
+        filename: str,
+        current_user: Any = None,
+        tenant_id: Optional[str] = None,
+        fallback_institution: Optional[str] = None,
+        fallback_branch: Optional[str] = None
+    ) -> Dict[str, Any]:
         # Permission check for Owner
         if current_user and getattr(current_user, "role", "").lower() == "owner":
             perms = getattr(current_user, "permissions", None) or {}
             if perms.get("calendar.import") is False or perms.get("calendar.add") is False:
                 raise PermissionError("You do not have permission to upload calendar holidays. Please contact Head Office.")
+
+        resolved_tenant = tenant_id or (getattr(current_user, "tenant_id", None) or getattr(current_user, "branch_id", None) if current_user else None)
 
         import io
         import csv
@@ -4745,74 +4989,158 @@ class HrmsService:
         records = []
         fn_lower = (filename or "").lower()
 
-        if fn_lower.endswith(".csv"):
-            text_stream = io.StringIO(file_content.decode("utf-8", errors="replace"))
-            reader = csv.DictReader(text_stream)
-            for row in reader:
-                records.append(row)
-        elif fn_lower.endswith((".xlsx", ".xls")):
-            import openpyxl
-            wb = openpyxl.load_workbook(io.BytesIO(file_content), data_only=True)
-            ws = wb.active
-            rows = list(ws.iter_rows(values_only=True))
-            if rows:
-                headers = [str(h or "").strip().lower() for h in rows[0]]
-                for r in rows[1:]:
-                    if any(r):
+        # 1. Try reading with openpyxl (.xlsx)
+        if fn_lower.endswith(".xlsx"):
+            try:
+                import openpyxl
+                wb = openpyxl.load_workbook(io.BytesIO(file_content), data_only=True)
+                ws = wb.active
+                rows = list(ws.iter_rows(values_only=True))
+                if rows:
+                    headers = [str(h or "").strip() for h in rows[0]]
+                    for r in rows[1:]:
+                        if any(r):
+                            row_dict = {}
+                            for i, h in enumerate(headers):
+                                if i < len(r):
+                                    row_dict[h] = r[i]
+                            records.append(row_dict)
+            except Exception:
+                pass
+
+        # 2. Try reading with xlrd (.xls legacy format)
+        if not records and fn_lower.endswith((".xls", ".xlsx")):
+            try:
+                import xlrd
+                book = xlrd.open_workbook(file_contents=file_content)
+                sheet = book.sheet_by_index(0)
+                if sheet.nrows > 0:
+                    headers = [str(sheet.cell_value(0, c) or "").strip() for c in range(sheet.ncols)]
+                    for r_idx in range(1, sheet.nrows):
                         row_dict = {}
-                        for i, h in enumerate(headers):
-                            if i < len(r):
-                                val = r[i]
-                                if isinstance(val, (datetime, date)):
-                                    val = val.strftime("%Y-%m-%d")
-                                row_dict[h] = str(val or "").strip()
-                        records.append(row_dict)
-        else:
-            raise ValueError("Unsupported file format. Please upload a .csv or .xlsx file.")
+                        has_val = False
+                        for c_idx in range(sheet.ncols):
+                            cell = sheet.cell(r_idx, c_idx)
+                            val = cell.value
+                            if val not in (None, ""):
+                                has_val = True
+                            if cell.ctype == xlrd.XLCELL_DATE:
+                                try:
+                                    dt_tuple = xlrd.xldate_as_tuple(val, book.datemode)
+                                    val = f"{dt_tuple[0]:04d}-{dt_tuple[1]:02d}-{dt_tuple[2]:02d}"
+                                except Exception:
+                                    pass
+                            row_dict[headers[c_idx]] = val
+                        if has_val:
+                            records.append(row_dict)
+            except Exception:
+                pass
+
+        # 3. Try reading as CSV with multi-encoding fallback
+        if not records:
+            for encoding in ["utf-8-sig", "utf-8", "latin-1", "cp1252"]:
+                try:
+                    text_content = file_content.decode(encoding)
+                    text_stream = io.StringIO(text_content)
+                    reader = csv.DictReader(text_stream)
+                    for row in reader:
+                        if any(row.values()):
+                            records.append(row)
+                    if records:
+                        break
+                except Exception:
+                    continue
+
+        if not records:
+            raise ValueError("No valid holiday records found. Please ensure your file has 'Name' and 'Date' columns.")
 
         inserted_count = 0
         updated_count = 0
+        years_affected = set()
 
-        for r in records:
-            name = (
-                r.get("name") or r.get("holiday name") or r.get("holiday_name") or
-                r.get("title") or r.get("holiday") or ""
-            ).strip()
-            date_raw = (
-                r.get("date") or r.get("holiday date") or r.get("holiday_date") or ""
-            ).strip()
-            if not name or not date_raw:
-                continue
-
-            # Parse date flexibly
-            d_obj = None
-            for fmt in ["%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%m/%d/%Y", "%Y/%m/%d", "%d.%m.%Y"]:
+        def _parse_flexible_date(val: Any) -> Optional[date]:
+            if not val:
+                return None
+            if isinstance(val, datetime):
+                return val.date()
+            if isinstance(val, date):
+                return val
+            if isinstance(val, (int, float)):
                 try:
-                    d_obj = datetime.strptime(date_raw, fmt).date()
-                    break
+                    return (datetime(1899, 12, 30) + timedelta(days=int(val))).date()
                 except Exception:
                     pass
+            raw = str(val).strip()
+            if not raw:
+                return None
+            formats = [
+                "%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%m/%d/%Y", "%Y/%m/%d",
+                "%d.%m.%Y", "%d %b %Y", "%d %b, %Y", "%d %B %Y", "%d %B, %Y",
+                "%b %d, %Y", "%B %d, %Y"
+            ]
+            for fmt in formats:
+                try:
+                    return datetime.strptime(raw, fmt).date()
+                except Exception:
+                    pass
+            try:
+                from dateutil import parser
+                return parser.parse(raw).date()
+            except Exception:
+                pass
+            return None
 
-            if not d_obj:
+        for raw_r in records:
+            clean_r = {}
+            for k, v in raw_r.items():
+                if k is not None:
+                    norm_k = str(k).lstrip("\ufeff").strip().lower().replace(" ", "_").replace("-", "_")
+                    clean_r[norm_k] = v
+
+            name = str(
+                clean_r.get("name") or clean_r.get("holiday_name") or clean_r.get("title") or
+                clean_r.get("holiday") or clean_r.get("event") or clean_r.get("festival") or ""
+            ).strip()
+
+            raw_date = clean_r.get("date") or clean_r.get("holiday_date") or clean_r.get("event_date") or clean_r.get("day")
+            d_obj = _parse_flexible_date(raw_date)
+
+            if not name or not d_obj:
                 continue
 
-            h_type = (
-                r.get("holiday_type") or r.get("holiday type") or r.get("type") or "Holiday"
-            ).strip() or "Holiday"
+            years_affected.add(d_obj.year)
 
-            inst_type = (
-                r.get("institution_type") or r.get("institution type") or r.get("institution") or
-                r.get("branch") or r.get("organization") or "All holidays (any institution)"
+            h_type = str(clean_r.get("holiday_type") or clean_r.get("type") or clean_r.get("category") or "Holiday").strip() or "Holiday"
+
+            inst_raw = str(
+                clean_r.get("institution_type") or clean_r.get("institution") or clean_r.get("branch") or
+                clean_r.get("organization") or fallback_institution or "All holidays (any institution)"
             ).strip()
-            desc = (r.get("description") or "").strip()
+            inst_type = inst_raw if inst_raw else "All holidays (any institution)"
 
-            existing = db.query(CompanyHoliday).filter(
-                (CompanyHoliday.name == name) & (CompanyHoliday.date == d_obj)
-            ).first()
+            desc = str(clean_r.get("description") or clean_r.get("remarks") or clean_r.get("details") or "").strip()
+
+            target_branch = fallback_branch if (fallback_branch and fallback_branch != "All holidays (any institution)") else (resolved_tenant or None)
+
+            q_exist = db.query(CompanyHoliday).filter(
+                CompanyHoliday.name == name,
+                CompanyHoliday.date == d_obj
+            )
+            if resolved_tenant:
+                q_exist = q_exist.filter(
+                    or_(
+                        CompanyHoliday.tenant_id == resolved_tenant,
+                        CompanyHoliday.tenant_id.is_(None)
+                    )
+                )
+            existing = q_exist.first()
 
             if not existing:
                 hol = CompanyHoliday(
                     id=f"hol_{uuid.uuid4().hex[:8]}",
+                    tenant_id=resolved_tenant,
+                    branch_id=target_branch,
+                    ho_id=getattr(current_user, "ho_id", None) if current_user else None,
                     name=name,
                     date=d_obj,
                     year=d_obj.year,
@@ -4826,6 +5154,9 @@ class HrmsService:
             else:
                 existing.holiday_type = h_type
                 existing.institution_type = inst_type
+                if resolved_tenant:
+                    existing.tenant_id = resolved_tenant
+                    existing.branch_id = target_branch
                 if desc:
                     existing.description = desc
                 existing.updated_at = datetime.utcnow()
@@ -4834,106 +5165,23 @@ class HrmsService:
         db.commit()
         return {
             "success": True,
+            "status": "success",
             "message": f"Successfully processed {len(records)} records ({inserted_count} added, {updated_count} updated).",
             "inserted_count": inserted_count,
-            "updated_count": updated_count
+            "updated_count": updated_count,
+            "years": sorted(list(years_affected))
         }
 
     @staticmethod
-    def preseed_holidays(db: Session, target_year: int = 2026) -> Dict[str, Any]:
-        import calendar as py_cal
-
-        # 1. Canonical Indian National, Festival, and Regional Public Holidays
-        india_holidays = [
-            ("New Year's Day", f"{target_year}-01-01", "India holiday", "Public Holiday"),
-            ("Bhogi", f"{target_year}-01-14", "India holiday", "Sankranti Harvest Festival"),
-            ("Sankranti / Pongal", f"{target_year}-01-15", "India holiday", "Makar Sankranti Festival"),
-            ("Kanuma", f"{target_year}-01-16", "India holiday", "Cattle Festival"),
-            ("Republic Day", f"{target_year}-01-26", "India holiday", "National Holiday"),
-            ("Maha Shivratri", f"{target_year}-02-15", "India holiday", "Religious Festival"),
-            ("Holi", f"{target_year}-03-04", "India holiday", "Festival of Colors"),
-            ("Ugadi / Gudi Padwa", f"{target_year}-03-19", "India holiday", "Telugu New Year"),
-            ("Eid ul-Fitr (Ramzan)", f"{target_year}-03-21", "India holiday", "Islamic Festival"),
-            ("Sri Rama Navami", f"{target_year}-03-28", "India holiday", "Religious Festival"),
-            ("Good Friday", f"{target_year}-04-03", "India holiday", "Christian Holiday"),
-            ("Dr. B.R. Ambedkar Jayanti", f"{target_year}-04-14", "India holiday", "National Holiday"),
-            ("May Day / Labour Day", f"{target_year}-05-01", "India holiday", "International Workers' Day"),
-            ("Bakrid / Eid al-Adha", f"{target_year}-05-27", "India holiday", "Islamic Festival"),
-            ("Muharram", f"{target_year}-06-26", "India holiday", "Islamic New Year"),
-            ("Bonalu", f"{target_year}-07-20", "India holiday", "Telangana Regional Festival"),
-            ("Independence Day", f"{target_year}-08-15", "India holiday", "National Holiday"),
-            ("Milad-un-Nabi", f"{target_year}-08-26", "India holiday", "Prophet's Birthday"),
-            ("Sri Krishna Janmashtami", f"{target_year}-09-04", "India holiday", "Religious Festival"),
-            ("Ganesh Chaturthi / Vinayaka Chavithi", f"{target_year}-09-07", "India holiday", "Vinayaka Chavithi"),
-            ("Bathukamma", f"{target_year}-09-28", "India holiday", "Floral Festival of Telangana"),
-            ("Mahatma Gandhi Jayanti", f"{target_year}-10-02", "India holiday", "National Holiday"),
-            ("Dussehra / Vijayadashami", f"{target_year}-10-20", "India holiday", "Vijayadashami Festival"),
-            ("Diwali / Deepavali", f"{target_year}-11-08", "India holiday", "Festival of Lights"),
-            ("Guru Nanak Jayanti", f"{target_year}-11-24", "India holiday", "Sikh Festival"),
-            ("Christmas Day", f"{target_year}-12-25", "India holiday", "National Public Holiday"),
-        ]
-
-        # 2. All Sundays of the Year (Categorized as 'Other holiday')
-        weekend_holidays = []
-        for month in range(1, 13):
-            month_cal = py_cal.monthcalendar(target_year, month)
-            # Find Second Saturday: 6th column (index 5)
-            sats = [w[5] for w in month_cal if w[5] != 0]
-            if len(sats) >= 2:
-                sec_sat_day = sats[1]
-                weekend_holidays.append((
-                    "Second Saturday",
-                    f"{target_year}-{month:02d}-{sec_sat_day:02d}",
-                    "Other holiday",
-                    "Second Saturday Official Holiday"
-                ))
-
-            # Find all Sundays: 7th column (index 6)
-            for w in month_cal:
-                if w[6] != 0:
-                    sun_day = w[6]
-                    weekend_holidays.append((
-                        "Sunday",
-                        f"{target_year}-{month:02d}-{sun_day:02d}",
-                        "Other holiday",
-                        "Weekly Rest Day"
-                    ))
-
-        all_items = india_holidays + weekend_holidays
-        inserted = 0
-
-        for name, d_str, h_type, desc in all_items:
-            try:
-                d_obj = datetime.strptime(d_str, "%Y-%m-%d").date()
-            except Exception:
-                continue
-
-            existing = db.query(CompanyHoliday).filter(
-                (CompanyHoliday.name == name) & (CompanyHoliday.date == d_obj)
-            ).first()
-
-            if not existing:
-                db.add(CompanyHoliday(
-                    id=f"hol_{uuid.uuid4().hex[:8]}",
-                    name=name,
-                    date=d_obj,
-                    year=target_year,
-                    holiday_type=h_type,
-                    institution_type="All holidays (any institution)",
-                    description=desc,
-                    is_optional=False
-                ))
-                inserted += 1
-            else:
-                existing.holiday_type = h_type
-                if not existing.institution_type:
-                    existing.institution_type = "All holidays (any institution)"
-
-        db.commit()
+    def preseed_holidays(db: Session, target_year: Optional[int] = None) -> Dict[str, Any]:
+        """Dynamic holiday handler with zero hardcoded default data or years.
+        Holidays are managed dynamically via Admin Add/Import with organization scoping.
+        """
+        effective_year = target_year or datetime.now().year
         return {
             "status": "success",
-            "message": f"Pre-seeded {inserted} holidays for year {target_year} successfully.",
-            "inserted_count": inserted
+            "message": f"Holiday catalog for year {effective_year} is managed dynamically via Add / Import.",
+            "inserted_count": 0
         }
 
     @staticmethod

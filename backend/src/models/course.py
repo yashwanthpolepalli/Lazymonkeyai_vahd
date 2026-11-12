@@ -25,6 +25,15 @@ class Course(Base):
     created_at = Column(DateTime, default=now_ist_naive)
     updated_at = Column(DateTime, default=now_ist_naive, onupdate=now_ist_naive)
 
+    @property
+    def code(self) -> str:
+        return self.category or self.badge or ""
+
+    @code.setter
+    def code(self, value: str):
+        self.category = value
+        self.badge = value
+
 
 class CourseLanguage(Base):
     __tablename__ = "course_languages"

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, Body, Response, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Query, Body, Response, UploadFile, File, Request, Form
 from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 from typing import Optional, List, Dict, Any
@@ -69,7 +69,17 @@ def bulk_import_employees(
                 r["owner_id"] = default_owner
             if not r.get("ho_id"):
                 r["ho_id"] = default_ho
-            if not r.get("branch_id"):
+            has_explicit_branch = bool(
+                r.get("branch_id")
+                or r.get("branch")
+                or r.get("Branch / Campus Location")
+                or r.get("branch_campus_location")
+                or r.get("location")
+                or r.get("campus")
+                or r.get("primary_vahd_location")
+                or r.get("branch_name")
+            )
+            if not has_explicit_branch and not r.get("branch_id"):
                 r["branch_id"] = default_branch
 
     from src.services import bulk_import_service
@@ -140,7 +150,10 @@ def create_employee(
                 payload["owner_id"] = b_obj.owner_id
             if not payload.get("ho_id") and b_obj.ho_id:
                 payload["ho_id"] = b_obj.ho_id
-    return HrmsService.create_employee(db, payload)
+    try:
+        return HrmsService.create_employee(db, payload)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @router.put("/employees/{emp_id}")
 def update_employee(emp_id: str, payload: dict, db: Session = Depends(get_db)):
@@ -159,53 +172,123 @@ def delete_employee(emp_id: str, db: Session = Depends(get_db)):
 # -------------------------------------------------------------
 # 2. DEPARTMENTS, DESIGNATIONS, TEAMS, DOCUMENTS
 # -------------------------------------------------------------
+def _resolve_hrms_tenant(request: Optional[Request], current_user: Optional[User], explicit_tenant: Optional[str] = None) -> Optional[str]:
+    if explicit_tenant and explicit_tenant.strip() and explicit_tenant.strip().lower() not in ("all", ""):
+        return explicit_tenant.strip()
+    if request:
+        hdr = request.headers.get("X-Tenant-Id") or request.query_params.get("x_tenant_id") or request.query_params.get("tenant_id")
+        if hdr and hdr.strip() and hdr.strip().lower() not in ("all", ""):
+            return hdr.strip()
+    if current_user:
+        return getattr(current_user, "tenant_id", None) or getattr(current_user, "branch_id", None)
+    return None
+
+
 @router.get("/departments")
-def get_departments(db: Session = Depends(get_db)):
-    return HrmsService.get_departments(db)
+def get_departments(
+    tenant_id: Optional[str] = Query(None),
+    request: Request = None,
+    current_user: Optional[User] = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    active_tenant = _resolve_hrms_tenant(request, current_user, tenant_id)
+    return HrmsService.get_departments(db, tenant_id=active_tenant)
 
 @router.post("/departments")
-def create_department(payload: dict, db: Session = Depends(get_db)):
+def create_department(
+    payload: dict,
+    request: Request = None,
+    current_user: Optional[User] = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     try:
-        return HrmsService.create_department(db, payload)
+        active_tenant = _resolve_hrms_tenant(request, current_user, payload.get("tenant_id"))
+        return HrmsService.create_department(db, payload, current_user=current_user, tenant_id=active_tenant)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.put("/departments/{dept_id}")
-def update_department(dept_id: str, payload: dict, db: Session = Depends(get_db)):
+def update_department(
+    dept_id: str,
+    payload: dict,
+    request: Request = None,
+    current_user: Optional[User] = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     try:
-        return HrmsService.update_department(db, dept_id, payload)
+        active_tenant = _resolve_hrms_tenant(request, current_user, payload.get("tenant_id"))
+        return HrmsService.update_department(db, dept_id, payload, tenant_id=active_tenant)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.delete("/departments/{dept_id}")
-def delete_department(dept_id: str, db: Session = Depends(get_db)):
+def delete_department(
+    dept_id: str,
+    request: Request = None,
+    current_user: Optional[User] = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     try:
-        return HrmsService.delete_department(db, dept_id)
+        active_tenant = _resolve_hrms_tenant(request, current_user, None)
+        return HrmsService.delete_department(db, dept_id, tenant_id=active_tenant)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/designations")
-def get_designations(db: Session = Depends(get_db)):
-    return HrmsService.get_designations(db)
+def get_designations(
+    tenant_id: Optional[str] = Query(None),
+    request: Request = None,
+    current_user: Optional[User] = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    active_tenant = _resolve_hrms_tenant(request, current_user, tenant_id)
+    return HrmsService.get_designations(db, tenant_id=active_tenant)
 
 @router.post("/designations")
-def create_designation(payload: dict, db: Session = Depends(get_db)):
+def create_designation(
+    payload: dict,
+    request: Request = None,
+    current_user: Optional[User] = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     try:
-        return HrmsService.create_designation(db, payload)
+        active_tenant = _resolve_hrms_tenant(request, current_user, payload.get("tenant_id"))
+        return HrmsService.create_designation(db, payload, current_user=current_user, tenant_id=active_tenant)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.put("/designations/{desg_id}")
-def update_designation(desg_id: str, payload: dict, db: Session = Depends(get_db)):
+def update_designation(
+    desg_id: str,
+    payload: dict,
+    request: Request = None,
+    current_user: Optional[User] = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     try:
-        return HrmsService.update_designation(db, desg_id, payload)
+        active_tenant = _resolve_hrms_tenant(request, current_user, payload.get("tenant_id"))
+        return HrmsService.update_designation(db, desg_id, payload, tenant_id=active_tenant)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.delete("/designations/{desg_id}")
-def delete_designation(desg_id: str, db: Session = Depends(get_db)):
+def delete_designation(
+    desg_id: str,
+    request: Request = None,
+    current_user: Optional[User] = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     try:
-        return HrmsService.delete_designation(db, desg_id)
+        active_tenant = _resolve_hrms_tenant(request, current_user, None)
+        return HrmsService.delete_designation(db, desg_id, tenant_id=active_tenant)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -1064,11 +1147,14 @@ def reset_password(
 # -------------------------------------------------------------
 @router.get("/shifts/calendars")
 def get_work_calendars(
+    tenant_id: Optional[str] = Query(None),
+    request: Request = None,
     current_user: Optional[User] = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     try:
-        return HrmsService.get_work_calendars(db)
+        active_tenant = _resolve_hrms_tenant(request, current_user, tenant_id)
+        return HrmsService.get_work_calendars(db, current_user=current_user, tenant_id=active_tenant)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch work calendars: {str(e)}")
 
@@ -1076,11 +1162,15 @@ def get_work_calendars(
 @router.post("/shifts/calendars")
 def save_work_calendar(
     payload: dict,
+    request: Request = None,
     current_user: Optional[User] = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     try:
-        return HrmsService.save_work_calendar(db, payload)
+        active_tenant = _resolve_hrms_tenant(request, current_user, payload.get("tenant_id"))
+        return HrmsService.save_work_calendar(db, payload, current_user=current_user, tenant_id=active_tenant)
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -1090,11 +1180,17 @@ def save_work_calendar(
 @router.delete("/shifts/calendars/{calendar_id}")
 def delete_work_calendar(
     calendar_id: str,
+    request: Request = None,
     current_user: Optional[User] = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     try:
-        return HrmsService.delete_work_calendar(db, calendar_id)
+        active_tenant = _resolve_hrms_tenant(request, current_user, None)
+        return HrmsService.delete_work_calendar(db, calendar_id, current_user=current_user, tenant_id=active_tenant)
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except HTTPException:
+        raise
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
@@ -1250,15 +1346,18 @@ def assign_shift(
 # -------------------------------------------------------------
 @router.get("/holidays")
 def get_holidays(
+    request: Request = None,
     year: Optional[int] = Query(None),
     type: Optional[str] = Query(None),
     search: Optional[str] = Query(None),
     institution_type: Optional[str] = Query(None),
     branch_id: Optional[str] = Query(None),
+    tenant_id: Optional[str] = Query(None),
     current_user: Optional[User] = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     try:
+        active_tenant = _resolve_hrms_tenant(request, current_user, tenant_id or branch_id)
         return HrmsService.get_holidays(
             db,
             year=year,
@@ -1266,6 +1365,7 @@ def get_holidays(
             search=search,
             institution_type=institution_type,
             branch_id=branch_id,
+            tenant_id=active_tenant,
             current_user=current_user
         )
     except Exception as e:
@@ -1275,11 +1375,14 @@ def get_holidays(
 @router.post("/holidays")
 def save_holiday(
     payload: dict,
+    request: Request = None,
+    tenant_id: Optional[str] = Query(None),
     current_user: Optional[User] = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     try:
-        return HrmsService.save_holiday(db, payload, current_user=current_user)
+        active_tenant = _resolve_hrms_tenant(request, current_user, tenant_id or payload.get("tenant_id") or payload.get("branch_id"))
+        return HrmsService.save_holiday(db, payload, current_user=current_user, tenant_id=active_tenant)
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
     except ValueError as e:
@@ -1292,12 +1395,15 @@ def save_holiday(
 def update_holiday(
     holiday_id: str,
     payload: dict,
+    request: Request = None,
+    tenant_id: Optional[str] = Query(None),
     current_user: Optional[User] = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     payload["id"] = holiday_id
     try:
-        return HrmsService.save_holiday(db, payload, current_user=current_user)
+        active_tenant = _resolve_hrms_tenant(request, current_user, tenant_id or payload.get("tenant_id") or payload.get("branch_id"))
+        return HrmsService.save_holiday(db, payload, current_user=current_user, tenant_id=active_tenant)
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
     except ValueError as e:
@@ -1309,11 +1415,14 @@ def update_holiday(
 @router.delete("/holidays/{holiday_id}")
 def delete_holiday(
     holiday_id: str,
+    request: Request = None,
+    tenant_id: Optional[str] = Query(None),
     current_user: Optional[User] = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     try:
-        return HrmsService.delete_holiday(db, holiday_id, current_user=current_user)
+        active_tenant = _resolve_hrms_tenant(request, current_user, tenant_id)
+        return HrmsService.delete_holiday(db, holiday_id, current_user=current_user, tenant_id=active_tenant)
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
     except ValueError as e:
@@ -1342,12 +1451,25 @@ def download_holiday_template():
 @router.post("/holidays/upload")
 async def upload_holidays_file(
     file: UploadFile = File(...),
+    institution_type: Optional[str] = Form(None),
+    branch_id: Optional[str] = Form(None),
+    tenant_id: Optional[str] = Form(None),
+    request: Request = None,
     current_user: Optional[User] = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     try:
+        active_tenant = _resolve_hrms_tenant(request, current_user, tenant_id or branch_id)
         content = await file.read()
-        return HrmsService.upload_holidays(db, content, file.filename, current_user=current_user)
+        return HrmsService.upload_holidays(
+            db,
+            content,
+            file.filename,
+            current_user=current_user,
+            tenant_id=active_tenant,
+            fallback_institution=institution_type,
+            fallback_branch=branch_id
+        )
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
     except ValueError as e:
@@ -1363,7 +1485,8 @@ def preseed_holidays(
     current_user: Optional[User] = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    target_year = (payload.get("year") if payload else None) or year or 2026
+    from datetime import datetime
+    target_year = (payload.get("year") if payload else None) or year or datetime.now().year
     try:
         return HrmsService.preseed_holidays(db, target_year=int(target_year))
     except Exception as e:

@@ -6,6 +6,13 @@ export interface RequestOptions extends RequestInit {
   params?: Record<string, string | number | boolean | undefined | null>;
   timeout?: number;
   responseType?: 'json' | 'blob' | 'text';
+  /**
+   * Skip attaching the X-Tenant-Id (selected-org) header for THIS request.
+   * Used by the topbar organization switcher: its list must be the user's
+   * FULL set of organizations, not narrowed to the one currently selected
+   * (narrowing is what made the ribbon a strict subset of the directory).
+   */
+  noTenantScope?: boolean;
 }
 
 async function request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
@@ -22,9 +29,12 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
   // Send the organization selected in the Topbar ribbon (branch/HO id) so the
   // backend narrows EVERY request to that organization (see api/deps.py
   // X-Tenant-Id handling). Omitted for 'all' so HQ views still aggregate.
+  // `noTenantScope` opts a single request OUT of this narrowing — used by the
+  // topbar switcher's own list fetch, which must return the user's FULL set of
+  // organizations, not just the currently-selected one.
   try {
     const selectedOrg = localStorage.getItem('vahd_selected_org_id');
-    if (selectedOrg && selectedOrg !== 'all' && !headers['X-Tenant-Id']) {
+    if (!options?.noTenantScope && selectedOrg && selectedOrg !== 'all' && !headers['X-Tenant-Id']) {
       headers['X-Tenant-Id'] = selectedOrg;
     }
   } catch {

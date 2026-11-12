@@ -102,22 +102,30 @@ export function Topbar() {
   }, []);
 
   useEffect(() => {
-    const fetchOrgs = async () => {
+    // Fetch the switcher's FULL organization list. `noTenantScope` opts this
+    // request OUT of the X-Tenant-Id (selected-org) narrowing — the switcher
+    // must list every org the user can switch to, not just the one currently
+    // selected. (Without it, picking a single org narrowed the very list it
+    // was built from, so the dropdown became a subset of the directory.)
+    // Cache is only used for an instant paint; the fetch always overwrites it.
+    const fetchOrgs = async (force: boolean = false) => {
       if (!user?.role) return;
       const cacheKey = `vahd_topbar_orgs_${user.role}_${user.id || ''}`;
-      const cached = sessionStorage.getItem(cacheKey);
-      if (cached) {
-        try {
-          const parsed = JSON.parse(cached);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setTopbarOrgs(parsed);
-          }
-        } catch (_e) { }
+      if (!force) {
+        const cached = sessionStorage.getItem(cacheKey);
+        if (cached) {
+          try {
+            const parsed = JSON.parse(cached);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              setTopbarOrgs(parsed);
+            }
+          } catch (_e) { }
+        }
       }
 
       try {
         if (user?.role === 'super_admin') {
-          const res = await apiClient.get<any[]>('/superadmin/vahds');
+          const res = await apiClient.get<any[]>('/superadmin/vahds', { noTenantScope: true });
           if (Array.isArray(res)) {
             const seen = new Set<string>();
             const unique: typeof topbarOrgs = [];
@@ -137,7 +145,7 @@ export function Topbar() {
             sessionStorage.setItem(cacheKey, JSON.stringify(unique));
           }
         } else if (user?.role === 'ho') {
-          const res = await apiClient.get<any>('/ho/organizations');
+          const res = await apiClient.get<any>('/ho/organizations', { noTenantScope: true });
           if (res?.organizations) {
             const seen = new Set<string>();
             const unique: typeof topbarOrgs = [];
@@ -156,7 +164,7 @@ export function Topbar() {
             sessionStorage.setItem(cacheKey, JSON.stringify(unique));
           }
         } else if (user?.role === 'owner') {
-          const res = await apiClient.get<any[]>('/settings/branches');
+          const res = await apiClient.get<any[]>('/settings/branches', { noTenantScope: true });
           if (Array.isArray(res)) {
             const seen = new Set<string>();
             const unique: typeof topbarOrgs = [];
@@ -184,8 +192,18 @@ export function Topbar() {
         setSelectedTopbarOrg(e.detail.id);
       }
     };
+    // Re-fetch (bypassing cache) when the org set itself changes — new org
+    // onboarding, deletion, status change — so the switcher always matches
+    // the directory.
+    const handleOrgsChanged = () => {
+      fetchOrgs(true);
+    };
     window.addEventListener('vahd:org_changed', handleOrgChanged);
-    return () => window.removeEventListener('vahd:org_changed', handleOrgChanged);
+    window.addEventListener('vahd:orgs_changed', handleOrgsChanged);
+    return () => {
+      window.removeEventListener('vahd:org_changed', handleOrgChanged);
+      window.removeEventListener('vahd:orgs_changed', handleOrgsChanged);
+    };
   }, [user]);
 
   const handleLogout = () => {

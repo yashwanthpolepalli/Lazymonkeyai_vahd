@@ -279,8 +279,10 @@ export const HoDashboard: React.FC = () => {
 
       const res: any = await apiClient.post('/ho/onboard-owner', payload);
       setOnboardSuccess(res);
-      // Refresh dashboard live from DB
+      // Refresh dashboard live from DB + tell the topbar switcher its org
+      // list changed so a newly created organization appears there too.
       await fetchDashboardData();
+      window.dispatchEvent(new CustomEvent('vahd:orgs_changed'));
     } catch (err: any) {
       const msg = err?.response?.data?.detail || err?.message || 'Failed to onboard owner';
       setFormError(msg);
@@ -420,6 +422,8 @@ export const HoDashboard: React.FC = () => {
       setSelectedOrgIds((prev) => prev.filter((id) => !deleteConfirmModal.orgIds.includes(id)));
       setDeleteConfirmModal({ open: false, orgIds: [], orgNames: [] });
       await fetchDashboardData();
+      // Deleted orgs must drop out of the topbar switcher as well.
+      window.dispatchEvent(new CustomEvent('vahd:orgs_changed'));
     } catch (err: any) {
       alert(err?.response?.data?.detail || err?.message || 'Failed to delete organization');
     } finally {
